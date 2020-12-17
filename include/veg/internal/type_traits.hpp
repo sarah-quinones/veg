@@ -291,7 +291,16 @@ struct first_true<First, Preds...>
                                             First::value,
                                             std::true_type,
                                             first_true<Preds...>>::value)> {
-  static constexpr std::true_type found{};
+  static constexpr conditional_t<
+      (First::value ? 0
+                    : internal::incr_or_not_found(
+                          conditional_t<
+                              First::value,
+                              std::true_type,
+                              first_true<Preds...>>::value)) == not_found,
+      std::false_type,
+      std::true_type>
+      found{};
 };
 
 namespace internal {

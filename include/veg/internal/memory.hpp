@@ -89,9 +89,8 @@ struct construct_at_fn {
   VEG_CPP20(constexpr)
   auto operator()(T* mem, Args&&... args) const noexcept -> VEG_REQUIRES_RET(
       (meta::first_true<
-           std::is_constructible<T, Args...>,
-           meta::is_uniform_init_constructible<T, Args...>>::value !=
-       meta::not_found),
+          std::is_constructible<T, Args...>,
+          meta::is_uniform_init_constructible<T, Args...>>::found),
       T*) {
     return _ctor_at::construct_at_impl<meta::first_true<
         std::is_constructible<T, Args...>,
@@ -131,8 +130,8 @@ struct addressof_fn {
 
     return _addr::addressof_impl< //
         (meta::first_true<
-             _addr::has_member_addr_op<T>,                               //
-             _addr::has_nonmember_addr_op<T>>::value != meta::not_found) //
+            _addr::has_member_addr_op<T>,            //
+            _addr::has_nonmember_addr_op<T>>::found) //
         >::apply(var);
 
 #endif
