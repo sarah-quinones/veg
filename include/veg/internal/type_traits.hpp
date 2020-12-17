@@ -326,11 +326,15 @@ namespace internal {
 template <typename T, typename... Args>
 using uniform_ctor = decltype(static_cast<void>(T{VEG_DECLVAL(Args)...}));
 
+template <typename Enable, typename T, typename... Args>
+struct is_uniform_init_constructible_impl
+    : is_detected<internal::uniform_ctor, T, Args...> {};
+
 } // namespace internal
 
-template <typename Enable, typename T, typename... Args>
+template <typename T, typename... Args>
 struct is_uniform_init_constructible
-    : is_detected<internal::uniform_ctor, T, Args...> {};
+    : internal::is_uniform_init_constructible_impl<void, T, Args...> {};
 
 template <typename... Ts>
 struct dependent_true : std::true_type {};
