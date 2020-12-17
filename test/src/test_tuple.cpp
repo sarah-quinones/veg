@@ -8,13 +8,14 @@ TEST_CASE("tuple") {
 
   veg::tuple<int, char, bool> tup{1, 'c', true};
   veg::tuple<int, char, bool> const tup_c{1, 'c', true};
-  veg::tuple<int, char, bool&> const tup_ref{1, 'c', get<2>(tup)};
+  veg::tuple<int, int const, char&&, char const&&, bool&, bool const&> tup_ref{
+      1, 1, VEG_MOV(tup)[1_c], VEG_MOV(tup)[1_c], get<2>(tup), get<2>(tup)};
 
   CHECK(get<0>(tup) == 1);
   CHECK(get<1>(tup) == 'c');
   CHECK(get<2>(tup));
-  CHECK(&get<2>(tup) == &get<2>(tup_ref));
 
+  VEG_BIND(auto, (e, f, g), [&] { return tup; }());
 #if __cplusplus >= 201703L
   auto [i, c, b] = [&] { return tup; }();
   CHECK(i == 1);
@@ -36,6 +37,28 @@ TEST_CASE("tuple") {
   ASSERT_SAME(decltype(get<1>(tup_c)), char const&);
   ASSERT_SAME(decltype(get<0>(VEG_MOV(tup))), int&&);
   ASSERT_SAME(decltype(get<1>(VEG_MOV(tup_c))), char const&&);
+
+  ASSERT_SAME(decltype(e), int&&);
+  ASSERT_SAME(decltype((e)), int&);
+  ASSERT_SAME(decltype(f), char&&);
+  ASSERT_SAME(decltype((f)), char&);
+  ASSERT_SAME(decltype((g)), bool&);
+
+  ASSERT_SAME(decltype(tup_ref[0_c]), int&);
+  ASSERT_SAME(decltype(tup_ref[1_c]), int const&);
+  ASSERT_SAME(decltype(VEG_MOV(tup_ref)[0_c]), int&&);
+  ASSERT_SAME(decltype(VEG_MOV(tup_ref)[1_c]), int const&&);
+
+  ASSERT_SAME(decltype(tup_ref[2_c]), char&);
+  ASSERT_SAME(decltype(tup_ref[3_c]), char const&);
+  ASSERT_SAME(decltype(VEG_MOV(tup_ref)[2_c]), char&&);
+  ASSERT_SAME(decltype(VEG_MOV(tup_ref)[3_c]), char const&&);
+
+  ASSERT_SAME(decltype(tup_ref[4_c]), bool&);
+  ASSERT_SAME(decltype(tup_ref[5_c]), bool const&);
+  ASSERT_SAME(decltype(VEG_MOV(tup_ref)[4_c]), bool&);
+  ASSERT_SAME(decltype(VEG_MOV(tup_ref)[5_c]), bool const&);
+
 #if __cplusplus >= 201703L
   ASSERT_SAME(decltype(i), int);
   ASSERT_SAME(decltype((i)), int&);

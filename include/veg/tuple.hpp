@@ -3,6 +3,39 @@
 
 #include "veg/internal/tuple_generic.hpp"
 
+/******************************************************************************/
+#define VEG_IMPL_BIND(r, Tuple, Index, Identifier)                             \
+  auto&& Identifier = ::veg::get<Index>(VEG_FWD(Tuple));
+
+#define VEG_IMPL_BIND_ID_SEQ(CV_Auto, Identifiers, Tuple, SeqSize, TupleId)    \
+  CV_Auto TupleId = Tuple;                                                     \
+  static_assert(                                                               \
+      ::std::tuple_size<                                                       \
+          typename ::std::remove_const<typename ::std::remove_reference<       \
+              decltype(TupleId)>::type>::type>::value == SeqSize,              \
+      "Wrong number of identifiers.");                                         \
+  VEG_PP_SEQ_FOR_EACH_I(VEG_IMPL_BIND, TupleId, Identifiers)                   \
+  static_assert(true, "")
+
+// example: difference vs c++17 structure bindings
+// auto get() -> tuple<A, B&, C&&>;
+//
+// auto [a, b, c] = get();
+// VEG_BIND(auto, (x, y, z), get());
+// decltype({a,b,c}) => {A,B&,C&&}     same as tuple_element<i, E>
+// decltype({x,y,z}) => {A&&,B&,C&&}   always a reference, lvalue if initializer
+//                                     expression or tuple_element<i, E> is an
+//                                     lvalue, rvalue otherwise.
+//
+#define VEG_BIND(CV_Auto, Identifiers, Tuple)                                  \
+  VEG_IMPL_BIND_ID_SEQ(                                                        \
+      CV_Auto,                                                                 \
+      VEG_PP_TUPLE_TO_SEQ(Identifiers),                                        \
+      Tuple,                                                                   \
+      VEG_PP_TUPLE_SIZE(Identifiers),                                          \
+      VEG_PP_CAT(_dummy_tuple_variable_id_, __LINE__))
+/******************************************************************************/
+
 namespace veg {
 namespace internal {
 namespace get {

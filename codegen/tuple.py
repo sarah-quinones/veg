@@ -53,17 +53,22 @@ def nth_tuple(n_elems):
     return tup_def
 
 
-def nth_get(ith_elem):
+def nth_get(i):
     """
     codegen for adl get<I>(tuple)
     """
     return (
-        f"template <> struct get_impl<{ith_elem}> {B}\n"
+        f"template <> struct get_impl<{i}> {B}\n"
         f"template <typename T> static constexpr auto apply(T&& tup) noexcept"
         f"-> auto&& "
-        f"{B} return (VEG_FWD(tup)._{ith_elem}); {E}\n"
-        f"template <{', '.join([f'typename T{i}' for i in range(ith_elem+1)])}, typename... Ts>"
-        f"using type = T{ith_elem}; "
+        f"{B}\n"
+        f"return static_cast<"
+        f"meta::conditional_t<\n"
+        f"  !std::is_rvalue_reference<decltype(tup._{i})>::value || "
+        f"!std::is_rvalue_reference<T&&>::value,\n"
+        f"decltype((VEG_FWD(tup)._{i})), decltype(tup._{i})&&>>(tup._{i}); {E}\n"
+        f"template <{', '.join([f'typename T{k}' for k in range(i+1)])}, typename... Ts>"
+        f"using type = T{i}; "
         f"{E};"
     )
 

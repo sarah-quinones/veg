@@ -242,8 +242,6 @@ template <typename T>
 using decay_t = typename std::decay<T>::type;
 
 enum struct category_e {
-  mut,
-  cst,
   mut_lval,
   cst_lval,
   mut_rval,
@@ -251,10 +249,8 @@ enum struct category_e {
 };
 
 template <typename T>
-struct value_category : std::integral_constant<category_e, category_e::mut> {};
-template <typename T>
-struct value_category<T const>
-    : std::integral_constant<category_e, category_e::cst> {};
+struct value_category;
+
 template <typename T>
 struct value_category<T&>
     : std::integral_constant<category_e, category_e::mut_lval> {};
