@@ -28,16 +28,16 @@ include(cmake/conan.cmake)
 add_library(veg src/veg.cpp src/argparse.cpp)
 target_include_directories(veg PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-# Conan dependencies
-set(CONAN_REQUIRES # MIT License
-    fmt/7.1.2 backward-cpp/1.5
-)
-set(CONAN_OPTIONS)
-run_conan()
-
-target_link_libraries(veg PUBLIC CONAN_PKG::fmt)
-
 if(top_level AND ENABLE_TESTING)
+  # Conan dependencies
+  set(CONAN_REQUIRES # MIT License
+      fmt/7.1.2 backward-cpp/1.5
+  )
+  set(CONAN_OPTIONS)
+  run_conan()
+
+  target_link_libraries(veg PUBLIC CONAN_PKG::fmt)
+
   add_library(project_warnings INTERFACE)
   add_library(project_options INTERFACE)
 
