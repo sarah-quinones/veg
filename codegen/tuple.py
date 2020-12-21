@@ -25,7 +25,7 @@ def nth_tuple(n_elems):
             (
                 f"template <usize I, typename T> friend constexpr auto get(T&& arg) noexcept\n"
                 f"-> VEG_REQUIRES_RET2((I < {n_elems}) && "
-                f"meta::is_same_v<meta::remove_cvref_t<T>, tuple>,\n"
+                f"meta::is_same<meta::remove_cvref_t<T>, tuple>::value,\n"
                 f"decltype(internal::tuple::get_impl<I>::apply(VEG_FWD(arg))))\n"
                 f"{B} return internal::tuple::get_impl<I>::apply(VEG_FWD(arg)); {E}\n"
                 f"template <i64 I> constexpr auto operator[](fix<I> /*arg*/) & noexcept"
@@ -77,7 +77,7 @@ def main(n_upper):
     """
     generate tuple specialization file without header guards
     """
-    print(f"#define VEG_TUPLE_SPECIALIZATION_COUNT {n_upper+1}")
+    print(f"#define VEG_TUPLE_SPECIALIZATION_COUNT {n_upper}")
     print('#include "veg/internal/type_traits.hpp"')
     print('#include "veg/internal/meta_int.hpp"')
     print("namespace veg {")
@@ -95,7 +95,7 @@ def main(n_upper):
     print("template <decltype(sizeof(int)) I> struct get_impl;")
     print()
 
-    for i in range(n_upper):
+    for i in range(n_upper - 1):
         print(nth_get(i))
 
     print()
@@ -104,7 +104,7 @@ def main(n_upper):
     print()
     print("template <typename... Ts> struct tuple;")
 
-    for i in range(n_upper + 1):
+    for i in range(n_upper):
         print(nth_tuple(i))
 
     print("// clang-format on")

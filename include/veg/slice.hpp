@@ -6,52 +6,68 @@
 namespace veg {
 namespace internal {
 
-template <typename T, typename Enable = void>
-struct has_member_fn_data : std::false_type {};
+struct member_fn_data_size {
+  template <typename R, typename T>
+  using dtype_r = decltype(void(static_cast<R* const*>(
+      static_cast<decltype(VEG_DECLVAL(T&).data()) const*>(nullptr))));
 
-template <typename T>
-struct has_member_fn_data<
-    T,
-    meta::enable_if_t<
-        meta::is_pointer_v<decltype(VEG_DECLVAL(T&).data())> &&
-        meta::is_constructible_v<decltype(VEG_DECLVAL(T const&).size())>>>
-    : std::true_type {};
+  template <typename T>
+  using dtype = decltype(void(VEG_DECLVAL(T&).data()));
 
-template <
-    typename T,
-    i64 which = meta::first_true<
-        meta::is_bounded_array<meta::remove_cvref_t<T>>,
-        has_member_fn_data<T>>::value>
-struct has_data;
+  template <typename T>
+  using stype = decltype(void(static_cast<i64>(VEG_DECLVAL(T&).size())));
 
-template <typename T>
-struct has_data<T, meta::not_found> : std::true_type {
-  static void data(T& /*rng*/) {}
-  static void size(T& /*rng*/) {}
+  template <typename T>
+  static constexpr auto d(T& arg) noexcept -> decltype(auto) {
+    return arg.data();
+  }
+  template <typename T>
+  static constexpr auto s(T& arg) noexcept -> decltype(auto) {
+    return i64(arg.size());
+  }
 };
-
+template <typename R, typename T>
+struct has_members_r
+    : meta::conjunction<
+          meta::is_detected<member_fn_data_size::dtype_r, R, T&>,
+          meta::is_detected<member_fn_data_size::stype, T&>>,
+      member_fn_data_size {};
 template <typename T>
-struct has_data<T, 0> : std::true_type {
-  // array
-  constexpr static auto data(T& rng) noexcept { return +rng; };
-  constexpr static auto size(T& rng) noexcept {
-    return sizeof(rng) / sizeof(rng[0]);
+struct has_members : meta::conjunction<
+                         meta::is_detected<member_fn_data_size::dtype, T&>,
+                         meta::is_detected<member_fn_data_size::stype, T&>>,
+                     member_fn_data_size {};
+
+struct array_data_size {
+  template <typename T>
+  static constexpr auto d(T& arg) noexcept -> decltype(auto) {
+    return +arg;
+  }
+  template <typename T, usize N>
+  static constexpr auto s(T (&/*arg*/)[N]) noexcept -> decltype(auto) {
+    return i64(N);
   }
 };
 
-template <typename T>
-struct has_data<T, 1> : std::true_type {
-  // mem fn
-  constexpr static auto data(T& rng) noexcept { return rng.data(); }
-  constexpr static auto size(T& rng) noexcept { return rng.size(); }
-};
+template <typename R, typename T>
+struct has_array_data2
+    : meta::is_convertible<
+          T&,
+          R (&)[sizeof(T) / sizeof(decltype(VEG_DECLVAL(T)[0]))]> {};
 
-template <typename Rng>
-using data_t =
-    decltype(has_data<meta::remove_cvref_t<Rng>>::data(VEG_DECLVAL(Rng&)));
-template <typename Rng>
-using size_t_ =
-    decltype(has_data<meta::remove_cvref_t<Rng>>::size(VEG_DECLVAL(Rng&)));
+template <typename R, typename T>
+struct has_array_data_r
+    : meta::conjunction<meta::is_bounded_array<T>, has_array_data2<R, T>>,
+      array_data_size {};
+
+template <typename T>
+struct has_array_data : meta::is_bounded_array<T>, array_data_size {};
+
+template <typename R, typename T>
+struct has_data_r
+    : meta::disjunction<has_members_r<R, T&>, has_array_data_r<R, T>> {};
+template <typename T>
+struct has_data : meta::disjunction<has_members<T&>, has_array_data<T>> {};
 
 // prevents forwarding ctor from hiding copy/move ctors
 // disables implicitly generated deduction guides
@@ -68,19 +84,18 @@ struct slice_ctor_common {
   }
 
   // COMPAT: check if slice_ctor_common is a base of Rng
-  template <typename Rng>
-  constexpr slice_ctor_common /* NOLINT(hicpp-explicit-conversions,
-                         bugprone-forwarding-reference-overload) */
-      (Rng&& rng,
-       VEG_REQUIRES_CTOR((                                 //
-           meta::is_convertible_v<                         //
-               meta::remove_pointer_t<data_t<Rng&>> (*)[], //
-               T (*)[]> &&                                 //
-           meta::is_constructible_v<i64, size_t_<Rng&>>    //
-           ))) noexcept
+  VEG_TEMPLATE(
+      (typename Rng),
+      requires(internal::has_data_r<T, meta::remove_cvref_t<Rng>>::value),
+      constexpr slice_ctor_common, /* NOLINT(hicpp-explicit-conversions,
+                             bugprone-forwarding-reference-overload) */
+      (rng, Rng&&))
+  noexcept
       : slice_ctor_common(
-            has_data<meta::remove_cvref_t<Rng>>::data(rng),
-            i64(has_data<meta::remove_cvref_t<Rng>>::size(rng))) {}
+            static_cast<T*>(
+                internal::has_data_r<T, meta::remove_cvref_t<Rng>>::d(rng)),
+            static_cast<i64>(
+                has_data_r<T, meta::remove_cvref_t<Rng>>::s(rng))) {}
 
   T* m_begin = nullptr;
   i64 m_count = 0;
@@ -115,36 +130,43 @@ struct slice : private internal::slice_ctor<T> {
 template <>
 struct slice<void> : slice<unsigned char> {
   using slice<unsigned char>::slice;
-  template <typename T>
-  slice /* NOLINT(hicpp-explicit-conversions) */ (
-      slice<T> s,
-      VEG_REQUIRES_CTOR(
-          !meta::is_const<T>::value && //
-          meta::is_trivially_copyable<T>::value)) noexcept
+
+  VEG_TEMPLATE(
+      (typename T),
+      requires !meta::is_const<T>::value && //
+          meta::is_trivially_copyable<T>::value,
+      slice, /* NOLINT(hicpp-explicit-conversions) */
+      (s, slice<T>))
+  noexcept
       : slice(s.data(), s.size() * static_cast<i64>(sizeof(T))) {}
 };
 template <>
 struct slice<void const> : slice<unsigned char const> {
   using slice<unsigned char const>::slice;
-  template <typename T>
-  slice /* NOLINT(hicpp-explicit-conversions) */ (
-      slice<T> s,
-      VEG_REQUIRES_CTOR(std::is_trivially_copyable<T>::value)) noexcept
+  VEG_TEMPLATE(
+      (typename T),
+      requires std::is_trivially_copyable<T>::value,
+      slice, /* NOLINT(hicpp-explicit-conversions) */
+      (s, slice<T>))
+  noexcept
       : slice{s.data(), s.size() * static_cast<i64>(sizeof(T))} {}
 };
 
 namespace make {
 namespace fn {
 struct slice_fn {
-  template <typename Rng>
-  auto operator()(Rng&& rng) const noexcept -> VEG_REQUIRES_RET(
-      (std::is_constructible< //
-          slice<meta::remove_pointer_t<decltype(
-              internal::has_data<meta::remove_cvref_t<Rng>>::data(rng))>>, //
-          Rng&&                                                            //
-          >::value),
-      slice<meta::remove_pointer_t<decltype(
-          internal::has_data<meta::remove_cvref_t<Rng>>::data(rng))>>) {
+  VEG_TEMPLATE(
+      (typename Rng),
+      requires(std::is_constructible< //
+               slice<meta::remove_pointer_t<
+                   decltype(internal::has_data<meta::remove_cvref_t<Rng>>::d(
+                       VEG_DECLVAL(Rng&)))>>,
+               Rng&&>::value),
+      auto
+      operator(),
+      (rng, Rng&&))
+  const noexcept->slice<meta::remove_pointer_t<decltype(
+      internal::has_data<meta::remove_cvref_t<Rng>>::d(rng))>> {
     return {VEG_FWD(rng)};
   }
 };

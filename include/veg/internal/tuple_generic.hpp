@@ -2,144 +2,140 @@
 #define VEG_TUPLE_GENERIC_HPP_DUSBI7AJS
 
 #include "veg/internal/type_traits.hpp"
-#include "veg/internal/tuple_spec.hpp"
+#include "veg/internal/integer_seq.hpp"
 #include "veg/internal/integer_seq.hpp"
 #include "veg/internal/meta_int.hpp"
-
-#include "veg/internal/std.hpp"
+#include "veg/internal/storage.hpp"
 
 namespace veg {
+
+template <typename... Ts>
+struct tuple;
+
 namespace internal {
 namespace tuple {
-template <typename T, bool Default_Ctor /*true*/>
-struct tuple_leaf_base {
-  constexpr tuple_leaf_base() = default;
-  constexpr explicit tuple_leaf_base(T&& arg) : elem(VEG_FWD(arg)) {}
-  T elem = {};
-};
 
 template <typename T>
-struct tuple_leaf_base<T, false> {
-  constexpr explicit tuple_leaf_base(T&& arg) : elem(VEG_FWD(arg)) {}
-  T elem;
-};
-
-template <typename T, usize I>
-struct tuple_leaf
-    : tuple_leaf_base<T, std::is_default_constructible<T>::value> {
-  constexpr explicit tuple_leaf(T&& arg)
-      : tuple_leaf_base<T, std::is_default_constructible<T>::value>{
-            VEG_FWD(arg)} {}
-};
-
-template <meta::category_e C>
-struct get_leaf_impl;
+auto get() = delete;
+template <usize I, typename T>
+auto adl_get(T&& arg) noexcept(noexcept(get<I>(VEG_FWD(arg))))
+    -> decltype(auto) {
+  return get<I>(VEG_FWD(arg));
+}
 
 template <usize I, typename T>
-auto get_leaf_type(tuple_leaf<T, I> const& arg) -> T;
-
-template <>
-struct get_leaf_impl<meta::category_e::mut_lval> {
-  template <usize I, typename T>
-  static constexpr auto apply(tuple_leaf<T, I>& arg) -> T& {
-    return arg.elem;
-  }
-};
-template <>
-struct get_leaf_impl<meta::category_e::cst_lval> {
-  template <usize I, typename T>
-  static constexpr auto apply(tuple_leaf<T, I> const& arg) -> T const& {
-    return arg.elem;
-  }
-};
-template <>
-struct get_leaf_impl<meta::category_e::mut_rval> {
-  template <usize I, typename T>
-  static constexpr auto apply(tuple_leaf<T, I>&& arg) -> T&& {
-    return static_cast<tuple_leaf<T, I>&&>(arg).elem;
-  }
-};
-template <>
-struct get_leaf_impl<meta::category_e::cst_rval> {
-  template <usize I, typename T>
-  static constexpr auto apply(tuple_leaf<T, I> const& arg) -> T const&& {
-    return static_cast<tuple_leaf<T, I> const&&>(arg).elem;
-  }
+struct tuple_leaf : storage::storage<T> {
+  using storage::storage<T>::storage;
 };
 
 template <typename ISeq, typename... Ts>
 struct tuple_impl;
 
 template <usize... Is, typename... Ts>
-struct tuple_impl<meta::index_sequence<Is...>, Ts...> : tuple_leaf<Ts, Is>... {
+struct tuple_impl<meta::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
   constexpr tuple_impl() = default;
-  constexpr explicit tuple_impl(Ts&&... args)
-      : tuple_leaf<Ts, Is>{static_cast<Ts&&>(args)}... {}
+  constexpr explicit tuple_impl(meta::remove_cv_t<Ts>&&... args)
+      : tuple_leaf<Is, Ts>{VEG_FWD(args)}... {}
 };
 
-template <usize I, typename T, bool Use_Spec>
-struct tuple_element {};
-
-template <usize I, typename... Ts>
-struct tuple_element<I, veg::tuple<Ts...>, false> {
-  using type =
-      decltype(tuple::get_leaf_type<I>(VEG_DECLVAL(veg::tuple<Ts...>&).m_impl));
+template <usize I>
+struct pack_ith_elem {
+  template <typename... Ts>
+  using type = decltype(
+      storage::get_inner<meta::category_e::own>::
+          template with_idx<usize, tuple_leaf>::template get_type<
+              I>(VEG_DECLVAL(
+              tuple_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>)));
 };
 
-template <usize I, typename... Ts>
-struct tuple_element<I, veg::tuple<Ts...>, true> {
-  using type = typename get_impl<I>::template type<Ts...>;
-};
 } // namespace tuple
 } // namespace internal
 
 template <typename... Ts>
 struct tuple {
   constexpr tuple() = default;
-  constexpr tuple /* NOLINT(hicpp-explicit-conversions) */ (
-      Ts... args) noexcept(meta::all_of({std::is_move_constructible<Ts>::
-                                             value...}))
-      : m_impl(static_cast<Ts&&>(args)...) {}
+  constexpr tuple /* NOLINT(hicpp-explicit-conversions) */
+      (meta::remove_cv_t<Ts>... args) noexcept
+      : m_impl(VEG_FWD(args)...) {}
 
-  template <usize I, typename T>
-  friend constexpr auto get(T&& tup) noexcept -> VEG_REQUIRES_RET2(
-      (I < sizeof...(Ts) && meta::is_same_v<meta::remove_cvref_t<T>, tuple>),
-      decltype(internal::tuple::get_leaf_impl<meta::value_category<
-                   T&&>::value>::template apply<I>(VEG_FWD(tup).m_impl))) {
-    return internal::tuple::get_leaf_impl<meta::value_category<T&&>::value>::
-        template apply<I>(VEG_FWD(tup).m_impl);
+  VEG_TEMPLATE(
+      (usize I, typename T),
+      requires I < sizeof...(Ts),
+      friend constexpr auto get,
+      (tup, T&&),
+      (/*tag*/ = {}, tag_t<tuple>))
+  noexcept -> decltype(auto) {
+    return internal::storage::get_inner<meta::value_category<T>::value>::
+        template with_idx<usize, internal::tuple::tuple_leaf>::template apply<
+            I>(VEG_FWD(tup).m_impl);
   }
 
-  template <i64 I>
-  constexpr auto operator[](fix<I> /*arg*/) & noexcept -> VEG_REQUIRES_RET(
-      (I < sizeof...(Ts)) && (I >= 0),
-      decltype(internal::tuple::adl_get<I>(*this))) {
-    return internal::tuple::adl_get<I>(*this);
+  VEG_TEMPLATE(
+      (typename... Us),
+      requires //
+      VEG_ALL_OF(meta::is_swappable<
+                 internal::storage::storage<Ts>&,
+                 internal::storage::storage<Us>&>::value),
+      friend constexpr void swap,
+      (ts, tuple<Ts...>&),
+      (us, tuple<Us...>&))
+  noexcept(VEG_ALL_OF(meta::is_nothrow_swappable<
+                      internal::storage::storage<Ts>&,
+                      internal::storage::storage<Us>&>::value)) {
+    return tuple::swap_impl(ts, us, meta::make_index_sequence<sizeof...(Ts)>{});
   }
-  template <i64 I>
-  constexpr auto operator[](fix<I> /*arg*/) const& noexcept -> VEG_REQUIRES_RET(
-      (I < sizeof...(Ts)) && (I >= 0),
-      decltype(internal::tuple::adl_get<I>(*this))) {
-    return internal::tuple::adl_get<I>(*this);
-  }
-  template <i64 I>
-  constexpr auto operator[](fix<I> /*arg*/) && noexcept -> VEG_REQUIRES_RET(
-      (I < sizeof...(Ts)) && (I >= 0),
-      decltype(internal::tuple::adl_get<I>(static_cast<tuple&&>(*this)))) {
-    return internal::tuple::adl_get<I>(static_cast<tuple&&>(*this));
-  }
-  template <i64 I>
-  constexpr auto operator[](fix<I> /*arg*/) const&& noexcept
-      -> VEG_REQUIRES_RET(
-          (I < sizeof...(Ts)) && (I >= 0),
-          decltype(
-              internal::tuple::adl_get<I>(static_cast<tuple const&&>(*this)))) {
-    return internal::tuple::adl_get<I>(static_cast<tuple const&&>(*this));
-  }
+
+  VEG_CVREF_DUPLICATE(
+      VEG_TEMPLATE(
+          (i64 I),
+          requires(I < sizeof...(Ts) && (I >= 0)),
+          constexpr auto
+          operator[],
+          (/*arg*/, fix<I>)),
+      internal::tuple::adl_get<I>,
+      ());
+
+  VEG_CVREF_DUPLICATE(
+      constexpr auto as_ref(),
+      tuple::as_ref_impl,
+      (, meta::make_index_sequence<sizeof...(Ts)>{}));
 
 private:
-  template <usize, typename, bool>
-  friend struct internal::tuple::tuple_element;
+  template <usize I, typename Self>
+  static constexpr auto ith_ref(Self&& tup) noexcept -> auto&& {
+
+    return internal::storage::get_inner<meta::value_category<Self&&>::value>::
+        template with_idx<usize, internal::tuple::tuple_leaf>::template apply<
+            I>(VEG_FWD(tup).m_impl);
+  }
+
+  template <usize I>
+  constexpr auto ith_impl() noexcept -> auto& {
+
+    return internal::storage::get_inner<meta::category_e::ref_mut>::
+        template with_idx<usize, internal::tuple::tuple_leaf>::template impl<I>(
+            m_impl);
+  }
+
+  template <typename Self, usize... Is>
+  static constexpr auto
+  as_ref_impl(Self&& self, meta::index_sequence<Is...> /*seq*/) noexcept {
+    return tuple<decltype(tuple::ith_ref<Is>(VEG_FWD(self)))...>{
+        tuple::ith_ref<Is>(VEG_FWD(self))...};
+  }
+
+  template <typename... Us, usize... Is>
+  static constexpr void swap_impl(
+      tuple<Ts...>& ts,
+      tuple<Us...>& us,
+      meta::index_sequence<Is...> /*seq*/) noexcept {
+
+    int dummy[] = {
+        (void(internal::swap_::adl_fn_swap::apply(
+             ts.template ith_impl<Is>(), us.template ith_impl<Is>())),
+         0)...};
+    (void)dummy;
+  }
 
   internal::tuple::tuple_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>
       m_impl;

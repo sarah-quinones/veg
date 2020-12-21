@@ -74,126 +74,132 @@ struct char_string_ref {
   VEG_NODISCARD auto operator==(char_string_ref other) const noexcept -> bool;
 };
 
-template <typename T>
-constexpr auto char_string_ref_(T const& arg) noexcept -> VEG_REQUIRES_RET(
-    (meta::is_constructible_v<char const*, decltype(arg.data())> &&
-     meta::is_constructible_v<i64, decltype(arg.size())>),
-    char_string_ref) {
+VEG_TEMPLATE(
+    (typename T),
+    requires(meta::is_constructible<
+             char const*,
+             decltype(VEG_DECLVAL(T const&).data())>::value&&
+                 meta::is_constructible<
+                     i64,
+                     decltype(VEG_DECLVAL(T const&).size())>::value),
+
+    constexpr auto char_string_ref_,
+    (arg, T const&))
+noexcept -> char_string_ref {
   return {static_cast<char const*>(arg.data()), static_cast<i64>(arg.size())};
 }
 
 auto char_string_ref_(char const* str) noexcept -> char_string_ref;
 
-template <typename T, typename Enable = void>
-struct tag_invoke_printable : std::false_type {};
+struct tag_invoke_print_ {
+  template <typename T>
+  using type = decltype(
+      (void(static_cast<char const*>(
+           VEG_DECLVAL(meta::tag_invoke_result_t<fn::to_string_fn, T const&>)
+               .data())),
+       (void(static_cast<i64>(
+           VEG_DECLVAL(meta::tag_invoke_result_t<fn::to_string_fn, T const&>)
+               .size())))));
 
+  template <typename T>
+  static auto apply(T const* arg) {
+    return tag_invoke(tag<fn::to_string_fn>, *arg);
+  }
+};
 template <typename T>
-struct tag_invoke_printable<
-    T,
-    meta::enable_if_t<meta::tag_invocable_v<fn::to_string_fn, T const&>>>
-    : meta::bool_constant<
-          meta::is_constructible_v<
-              char const*,
-              decltype(
-                  VEG_DECLVAL(
-                      meta::tag_invoke_result_t<fn::to_string_fn, T const&>)
-                      .data())> &&
-          meta::is_constructible_v<
-              i64,
-              decltype(
-                  VEG_DECLVAL(
-                      meta::tag_invoke_result_t<fn::to_string_fn, T const&>)
-                      .size())> && //
-          !meta::is_pointer_v<T> &&
-          !meta::is_arithmetic_v<T>> {};
-
-template <typename T>
-struct default_impl_printable
-    : meta::bool_constant<
-          (meta::is_pointer_v<T> &&
-           !meta::is_function_v<meta::remove_pointer_t<T>>) ||
-          meta::is_arithmetic_v<T>> {};
-
-template <typename T>
-struct truthy_printable : std::is_constructible<bool, T> {};
+struct tag_invoke_printable
+    : meta::is_detected<tag_invoke_print_::type, T const&>,
+      tag_invoke_print_ {};
 
 template <typename T>
 auto to_string_primitive(T arg) -> assert::internal::string;
 
 template <typename T>
 using cast_up = meta::conditional_t<
-    meta::is_pointer_v<T>, //
-    void const volatile*,  //
+    meta::is_pointer<T>::value, //
+    void const volatile*,       //
     meta::conditional_t<
-        meta::is_floating_point_v<T>,
+        meta::is_floating_point<T>::value,
         long double,
         meta::conditional_t<
-            meta::is_signed_v<T>,
+            meta::is_signed<T>::value,
             signed long long,
             unsigned long long>>>;
 
-template <i64 which /* = not found */>
-struct to_string_impl : std::false_type {
+struct default_impl_print_ {
   template <typename T>
-  static constexpr auto apply(T const& /*arg*/) noexcept
-      -> assert::internal::char_string_ref {
-    return {"{?}", sizeof("{?}") - 1};
+  static auto apply(T const* arg) {
+    auto const upscaled = static_cast<cast_up<T>>(*arg);
+    return internal::to_string_primitive(upscaled);
   }
 };
-template <>
-struct to_string_impl<0> : std::true_type {
-  static constexpr auto apply(bool arg) -> assert::internal::char_string_ref {
-    if (arg) {
+
+template <typename T>
+struct is_ptr_non_fn
+    : meta::bool_constant<(
+          meta::is_pointer<T>::value &&
+          !meta::is_function<meta::remove_pointer_t<T>>::value)> {};
+
+template <typename T>
+struct default_impl_printable
+    : meta::disjunction<meta::is_arithmetic<T>, is_ptr_non_fn<T>>,
+      default_impl_print_ {};
+
+struct bool_print_ {
+  static constexpr auto apply(bool const* arg)
+      -> assert::internal::char_string_ref {
+    if (*arg) {
       return {"true", sizeof("true") - 1};
     }
     return {"false", sizeof("false") - 1};
   }
 };
-template <>
-struct to_string_impl<1> : std::true_type {
-  template <typename T>
-  static auto apply(T const& arg) {
-    auto const upscaled = static_cast<cast_up<T>>(arg);
-    return internal::to_string_primitive(upscaled);
-  }
-};
-template <>
-struct to_string_impl<2> : std::true_type {
-  template <typename T>
-  static auto apply(T const& arg) {
-    return tag_invoke(tag<fn::to_string_fn>, arg);
-  }
-};
-template <>
-struct to_string_impl<3> : std::true_type {
-  template <typename T>
-  static constexpr auto
-  apply(T const& arg) noexcept(noexcept(static_cast<bool>(arg)))
-      -> assert::internal::char_string_ref {
-    bool arg_ = static_cast<bool>(arg);
-    if (arg_) {
+template <typename T>
+struct bool_printable : meta::is_same<T, bool>, bool_print_ {};
+
+struct boolish_print_ {
+  static constexpr auto impl(bool arg) -> assert::internal::char_string_ref {
+    if (arg) {
       return {"truthy", sizeof("truthy") - 1};
     }
     return {"falsy", sizeof("falsy") - 1};
   }
+  template <typename T>
+  static constexpr auto
+  apply(T const* arg) noexcept(noexcept(static_cast<bool>(*arg)))
+      -> assert::internal::char_string_ref {
+    return boolish_print_::impl(static_cast<bool>(*arg));
+  }
 };
+template <typename T>
+struct boolish_printable : meta::is_constructible<bool, T>, boolish_print_ {};
+
+struct unprintable_print_ {
+  template <typename T>
+  static constexpr auto apply(void volatile const* /*arg*/) noexcept
+      -> assert::internal::char_string_ref {
+    return {"{?}", sizeof("{?}") - 1};
+  }
+};
+
+template <typename T>
+struct unprintable : std::true_type, unprintable_print_ {};
+
+template <typename T>
+struct print_impl : meta::disjunction<
+                        bool_printable<T>,
+                        default_impl_printable<T>,
+                        tag_invoke_printable<T>,
+                        boolish_printable<T>,
+                        unprintable<T>> {};
 
 } // namespace internal
 
 namespace fn {
 
 struct to_string_fn {
-  template <
-      typename T,
-      typename Impl = internal::to_string_impl<meta::first_true<
-          meta::is_same<T, bool>,
-          internal::default_impl_printable<T>,
-          internal::tag_invoke_printable<T>,
-          internal::truthy_printable<T>>::found>>
-  auto operator()(T const& arg) const noexcept(noexcept(Impl::apply(arg)))
-      -> VEG_REQUIRES_RET((Impl::value), decltype(Impl::apply(arg))) {
-    return Impl::apply(arg);
-  }
+  VEG_TEMPLATE((typename T), requires true, auto operator(), (arg, T const&))
+  const->decltype(auto) { return internal::print_impl<T>::apply(&arg); }
 };
 
 } // namespace fn
@@ -210,11 +216,7 @@ auto to_string(T const& arg) -> string {
 
   incr_counter();
   try {
-    auto res = internal::to_string_impl<meta::first_true<
-        meta::is_same<T, bool>,
-        internal::default_impl_printable<T>,
-        internal::tag_invoke_printable<T>,
-        internal::truthy_printable<T>>::value>::apply(arg);
+    auto res = print_impl<T>::apply(&arg);
 
     char_string_ref view = char_string_ref_(res);
     buf.copy(view.data(), view.size());

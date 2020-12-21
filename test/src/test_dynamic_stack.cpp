@@ -24,7 +24,7 @@ public:
 TEST_CASE("dynamic-stack-raii") {
   unsigned char buf[4096];
 
-  veg::dynamic_stack_view stack{veg::make::slice(buf)};
+  veg::dynamic_stack_view stack{veg::slice<unsigned char>(buf)};
   using veg::tag;
 
   {

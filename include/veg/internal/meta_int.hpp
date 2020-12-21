@@ -10,13 +10,26 @@ namespace veg {
 namespace fn {
 template <typename To>
 struct narrow_fn {
-  template <typename From>
-  constexpr auto operator()(From from) const noexcept -> VEG_REQUIRES_RET(
-      std::is_arithmetic<From>::value&& std::is_arithmetic<To>::value, To) {
-    return VEG_ASSERT(static_cast<From>(static_cast<To>(from)) == from),
-           static_cast<To>(from);
-  }
+  VEG_TEMPLATE(
+      (typename From),
+      requires std::is_arithmetic<From>::value&& std::is_arithmetic<To>::value,
+      constexpr auto
+      operator(),
+      (from, From))
+  const noexcept->To;
 };
+template <typename To>
+VEG_TEMPLATE(
+    (typename From),
+    requires std::is_arithmetic<From>::value&& std::is_arithmetic<To>::value,
+    constexpr auto narrow_fn<To>::operator(),
+    (from, From))
+const noexcept -> To {
+  To to = static_cast<To>(from);
+  From from_roundtrip = static_cast<From>(to);
+  VEG_ASSERT(from_roundtrip == from);
+  return static_cast<To>(from);
+}
 } // namespace fn
 template <typename To>
 constexpr fn::narrow_fn<To> narrow{};
@@ -185,8 +198,8 @@ struct fix {
   constexpr fix /* NOLINT(hicpp-explicit-conversions) */ (
       dyn arg, safe_t /*tag*/ = {}) noexcept
       : fix((VEG_ASSERT(i64(arg) == N), arg), unsafe) {}
-  template <i64 M>
-  constexpr fix(fix<M> arg, VEG_REQUIRES_CTOR(M != N)) noexcept = delete;
+  VEG_TEMPLATE((i64 M), requires M != N, constexpr fix, (/*arg*/, fix<M>)) =
+      delete;
 
   VEG_NODISCARD explicit constexpr operator i64() const noexcept { return N; }
   VEG_NODISCARD constexpr friend auto operator+(fix /**/) noexcept -> fix {
@@ -459,62 +472,72 @@ struct binary_traits<dyn, fix<N>> : binary_traits<dyn, dyn> {
 
 } // namespace _
 
-template <typename L, typename R>
-VEG_NODISCARD constexpr auto operator+(L a, R b) noexcept -> VEG_REQUIRES_RET(
-    meta::is_index<L>::value&& meta::is_index<R>::value,
-    typename _::binary_traits<L, R>::add) {
+VEG_TEMPLATE(
+    (typename L, typename R),
+    requires meta::is_index<L>::value&& meta::is_index<R>::value,
+    VEG_NODISCARD constexpr auto
+    operator+,
+    (a, L),
+    (b, R))
+noexcept {
   return _::binary_traits<L, R>::add_fn(a, b);
 }
 
-template <typename L, typename R>
-VEG_NODISCARD constexpr auto operator-(L a, R b) noexcept
-
-    -> VEG_REQUIRES_RET(
-        meta::is_index<L>::value&& meta::is_index<R>::value,
-
-        typename _::binary_traits<L, R>::sub) {
-
+VEG_TEMPLATE(
+    (typename L, typename R),
+    requires meta::is_index<L>::value&& meta::is_index<R>::value,
+    VEG_NODISCARD constexpr auto
+    operator-,
+    (a, L),
+    (b, R))
+noexcept {
   return _::binary_traits<L, R>::sub_fn(a, b);
 }
 
-template <typename L, typename R>
-VEG_NODISCARD constexpr auto operator*(L a, R b) noexcept
-
-    -> VEG_REQUIRES_RET(
-        meta::is_index<L>::value&& meta::is_index<R>::value,
-
-        typename _::binary_traits<L, R>::mul) {
+VEG_TEMPLATE(
+    (typename L, typename R),
+    requires meta::is_index<L>::value&& meta::is_index<R>::value,
+    VEG_NODISCARD constexpr auto
+    operator*,
+    (a, L),
+    (b, R))
+noexcept {
   return _::binary_traits<L, R>::mul_fn(a, b);
 }
 
-template <typename L, typename R>
-VEG_NODISCARD constexpr auto operator/(L a, R b) noexcept
-
-    -> VEG_REQUIRES_RET(
-        (meta::is_index<L>::value && meta::is_index<R>::value &&
-         meta::is_index<typename _::binary_traits<L, R>::div>::value),
-
-        typename _::binary_traits<L, R>::div) {
+VEG_TEMPLATE(
+    (typename L, typename R),
+    requires(meta::is_index<L>::value&& meta::is_index<R>::value&&
+                 meta::is_index<typename _::binary_traits<L, R>::div>::value),
+    VEG_NODISCARD constexpr auto
+    operator/,
+    (a, L),
+    (b, R))
+noexcept {
   return _::binary_traits<L, R>::div_fn(a, b);
 }
 
-template <typename L, typename R>
-VEG_NODISCARD constexpr auto operator%(L a, R b) noexcept
-
-    -> VEG_REQUIRES_RET(
-        (meta::is_index<L>::value && meta::is_index<R>::value &&
-         meta::is_index<typename _::binary_traits<L, R>::mod>::value),
-
-        typename _::binary_traits<L, R>::mod) {
+VEG_TEMPLATE(
+    (typename L, typename R),
+    requires(meta::is_index<L>::value&& meta::is_index<R>::value&&
+                 meta::is_index<typename _::binary_traits<L, R>::mod>::value),
+    VEG_NODISCARD constexpr auto
+    operator%,
+    (a, L),
+    (b, R))
+noexcept {
   return _::binary_traits<L, R>::mod_fn(a, b);
 }
 
 #define VEG_CMP(Name, Op)                                                      \
-  template <typename L, typename R>                                            \
-  VEG_NODISCARD constexpr auto operator Op(L a, R b) noexcept                  \
-      ->VEG_REQUIRES_RET(                                                      \
-          meta::is_index<L>::value&& meta::is_index<R>::value,                 \
-          typename _::binary_traits<L, R>::cmp_##Name) {                       \
+  VEG_TEMPLATE(                                                                \
+      (typename L, typename R),                                                \
+      requires meta::is_index<L>::value&& meta::is_index<R>::value,            \
+      VEG_NODISCARD constexpr auto                                             \
+      operator Op,                                                             \
+      (a, L),                                                                  \
+      (b, R))                                                                  \
+  noexcept {                                                                   \
     return _::binary_traits<L, R>::cmp_##Name##_fn(a, b);                      \
   }                                                                            \
   static_assert(true, "")

@@ -1,0 +1,17 @@
+cpp20 constexpr
+
+1. tuple operator<=>
+
+3. make fn_ref<_> non-nullable
+4. nullable should be option<fn_ref<_>>
+
+5. optional<T>
+6. optional<T&>
+7. optional<T&&> = delete
+
+8. result<T, E>
+9. result<void, E>
+
+(give up on std::ranges?)
+9. rng: for_each( fn(refernce<rng>) -> /* ignored */ ) -> void
+10. rng: try_for_each( fn(refernce<rng>) -> result<void, E> ) -> result<void, E>

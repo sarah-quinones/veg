@@ -63,28 +63,28 @@ namespace _argparse {
 
 template <typename T>
 struct is_supported : meta::bool_constant<                           //
-                          meta::is_same_v<std::nullptr_t, T> ||      //
-                          meta::is_same_v<char const**, T> ||        //
-                          meta::is_same_v<ternary*, T> ||            //
-                          meta::is_same_v<bool*, T> ||               //
+                          meta::is_same<std::nullptr_t, T>::value ||      //
+                          meta::is_same<char const**, T>::value ||        //
+                          meta::is_same<ternary*, T>::value ||            //
+                          meta::is_same<bool*, T>::value ||               //
                                                                      //
-                          meta::is_same_v<char*, T> ||               //
+                          meta::is_same<char*, T>::value ||               //
                                                                      //
-                          meta::is_same_v<char signed*, T> ||        //
-                          meta::is_same_v<short signed*, T> ||       //
-                          meta::is_same_v<int signed*, T> ||         //
-                          meta::is_same_v<long signed*, T> ||        //
-                          meta::is_same_v<long long signed*, T> ||   //
+                          meta::is_same<char signed*, T>::value ||        //
+                          meta::is_same<short signed*, T>::value ||       //
+                          meta::is_same<int signed*, T>::value ||         //
+                          meta::is_same<long signed*, T>::value ||        //
+                          meta::is_same<long long signed*, T>::value ||   //
                                                                      //
-                          meta::is_same_v<char unsigned*, T> ||      //
-                          meta::is_same_v<short unsigned*, T> ||     //
-                          meta::is_same_v<int unsigned*, T> ||       //
-                          meta::is_same_v<long unsigned*, T> ||      //
-                          meta::is_same_v<long long unsigned*, T> || //
+                          meta::is_same<char unsigned*, T>::value ||      //
+                          meta::is_same<short unsigned*, T>::value ||     //
+                          meta::is_same<int unsigned*, T>::value ||       //
+                          meta::is_same<long unsigned*, T>::value ||      //
+                          meta::is_same<long long unsigned*, T>::value || //
                                                                      //
-                          meta::is_same_v<float*, T> ||              //
-                          meta::is_same_v<double*, T> ||             //
-                          meta::is_same_v<long double*, T>           //
+                          meta::is_same<float*, T>::value ||              //
+                          meta::is_same<double*, T>::value ||             //
+                          meta::is_same<long double*, T>::value           //
                           > {};
 
 enum struct argparse_option_type {
@@ -269,14 +269,15 @@ struct argparse_option : _argparse::layout {
              {},
              0}} {}
 
-  template <typename T>
-  constexpr argparse_option(
-      T value_ptr,
-      char const* arg_long_name,
-      char const* help_str = "",
-      argparse_callback callback_fn = {},
-
-      VEG_REQUIRES_CTOR(_argparse::is_supported<T>::value)) noexcept
+  VEG_TEMPLATE(
+      (typename T),
+      requires _argparse::is_supported<T>::value,
+      constexpr argparse_option,
+      (value_ptr, T),
+      (arg_long_name, char const*),
+      (help_str = "", char const*),
+      (callback_fn = {}, argparse_callback))
+  noexcept
       : argparse_option{{
             _argparse::to_option_type<meta::remove_pointer_t<T>>::value,
             '\0',
@@ -287,14 +288,16 @@ struct argparse_option : _argparse::layout {
             0,
         }} {}
 
-  template <typename T>
-  constexpr argparse_option(
-      T value_ptr,
-      char arg_short_name,
-      char const* arg_long_name = nullptr,
-      char const* help_str = "",
-      argparse_callback callback_fn = {},
-      VEG_REQUIRES_CTOR(_argparse::is_supported<T>::value)) noexcept
+  VEG_TEMPLATE(
+      (typename T),
+      requires _argparse::is_supported<T>::value,
+      constexpr argparse_option,
+      (value_ptr, T),
+      (arg_short_name, char),
+      (arg_long_name = nullptr, char const*),
+      (help_str = "", char const*),
+      (callback_fn = {}, argparse_callback))
+  noexcept
       : argparse_option{{
             _argparse::to_option_type<meta::remove_pointer_t<T>>::value,
             arg_short_name,

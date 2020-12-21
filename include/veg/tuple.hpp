@@ -43,63 +43,49 @@ namespace get {
 template <typename T>
 void get() = delete;
 
-template <typename T, size_t I, typename Enable = void>
-struct has_member_get : std::false_type {};
-
-template <typename T, size_t I>
-struct has_member_get<
-    T,
-    I,
-    meta::void_t<decltype(VEG_DECLVAL(T).template get<I>())>> : std::true_type {
-};
-
-template <typename T, size_t I, typename Enable = void>
-struct has_adl_get : std::false_type {};
-
-template <typename T, size_t I>
-struct has_adl_get<T, I, meta::void_t<decltype(get<I>(VEG_DECLVAL(T)))>>
-    : std::true_type {};
-
-template <
-    typename T,
-    size_t I,
-    i64 which = meta::first_true< //
-        has_member_get<T, I>,     //
-        has_adl_get<T, I>         //
-        >::value                  //
-    >
-struct has_get;
-
-template <typename T, size_t I>
-struct has_get<T, I, meta::not_found> : std::false_type {
-  static void apply(T&& /*arg*/) {}
-};
-template <typename T, size_t I>
-struct has_get<T, I, 0> : std::true_type {
-  constexpr static auto apply(T&& arg)
-      -> decltype(VEG_FWD(arg).template get<I>()) {
+struct member_get {
+  template <usize I, typename T>
+  using type = decltype(void(VEG_DECLVAL(T).template get<I>()));
+  template <usize I, typename T>
+  static constexpr auto
+  apply(T&& arg) noexcept(noexcept(VEG_FWD(arg).template get<I>()))
+      -> decltype(auto) {
     return VEG_FWD(arg).template get<I>();
   }
 };
-template <typename T, size_t I>
-struct has_get<T, I, 1> : std::true_type {
-  constexpr static auto apply(T&& arg) -> decltype(get<I>(VEG_FWD(arg))) {
+struct adl_get {
+  template <usize I, typename T>
+  using type = decltype(void(get<I>(VEG_DECLVAL(T))));
+
+  template <usize I, typename T>
+  static constexpr auto apply(T&& arg) noexcept(noexcept(get<I>(VEG_FWD(arg))))
+      -> decltype(auto) {
     return get<I>(VEG_FWD(arg));
   }
 };
 
+template <usize I, typename T>
+struct has_member_get : meta::is_detected_i<member_get::type, I, T&&>,
+                        member_get {};
+template <usize I, typename T>
+struct has_adl_get : meta::is_detected_i<adl_get::type, I, T&&>, adl_get {};
+
+template <usize I, typename T>
+struct get_impl : meta::disjunction<has_member_get<I, T>, has_adl_get<I, T>> {};
 } // namespace get
 } // namespace internal
 
 namespace fn {
 template <i64 I>
 struct get_fn {
-  template <typename T>
-  constexpr auto operator()(T&& arg) const noexcept -> VEG_REQUIRES_RET(
-      (internal::get::has_get<T, static_cast<size_t>(I)>::value),
-      decltype(internal::get::has_get<T, static_cast<size_t>(I)>::apply(
-          VEG_FWD(arg)))) {
-    return internal::get::has_get<T, static_cast<size_t>(I)>::apply(
+  VEG_TEMPLATE(
+      (typename T),
+      requires(internal::get::get_impl<static_cast<usize>(I), T>::value),
+      constexpr auto
+      operator(),
+      (arg, T&&))
+  const noexcept->decltype(auto) {
+    return internal::get::get_impl<static_cast<usize>(I), T>::template apply<I>(
         VEG_FWD(arg));
   }
 };
@@ -113,11 +99,14 @@ constexpr auto const& get /* NOLINT */ =
 namespace make {
 namespace fn {
 struct tuple_fn {
-  template <typename... Ts>
-  constexpr auto operator()(Ts&&... args) const noexcept -> VEG_REQUIRES_RET(
-      (VEG_ALL_OF(
-          std::is_constructible<meta::remove_cvref_t<Ts>, Ts&&>::value)),
-      tuple<meta::remove_cvref_t<Ts>...>) {
+  VEG_TEMPLATE(
+      (typename... Ts),
+      requires_all(
+          meta::is_move_constructible<meta::remove_cvref_t<Ts>>::value),
+      constexpr auto
+      operator(),
+      (... args, Ts&&))
+  const noexcept->tuple<meta::remove_cvref_t<Ts>...> {
     return {VEG_FWD(args)...};
   }
 };
@@ -130,14 +119,13 @@ VEG_ODR_VAR(tuple, fn::tuple_fn);
 namespace std {
 template <typename... Ts>
 struct tuple_size<veg::tuple<Ts...>>
-    : integral_constant<veg::meta::size_t, sizeof...(Ts)> {};
+    : integral_constant<veg::meta::usize, sizeof...(Ts)> {};
 
-template <veg::meta::size_t I, typename... Ts>
-struct tuple_element<I, veg::tuple<Ts...>>
-    : veg::internal::tuple::tuple_element<
-          I,
-          veg::tuple<Ts...>,
-          (sizeof...(Ts) < VEG_TUPLE_SPECIALIZATION_COUNT)> {};
+template <veg::meta::usize I, typename... Ts>
+struct tuple_element<I, veg::tuple<Ts...>> {
+  using type =
+      typename veg::internal::tuple::pack_ith_elem<I>::template type<Ts...>;
+};
 } // namespace std
 
 #endif /* end of include guard VEG_TUPLE_HPP_B8PHUNWES */

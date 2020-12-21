@@ -53,10 +53,10 @@ struct call_r_impl {
 template <typename To, typename Fn, typename... Args>
 struct call_r_impl<
     meta::enable_if_t<
-        meta::is_same_v<To, void> ||
-        meta::is_convertible_v<
+        meta::is_same<To, void>::value ||
+        meta::is_convertible<
             decltype(VEG_DECLVAL(Fn)(VEG_DECLVAL(Args)...)),
-            To>>,
+            To>::value>,
     Fn,
     To,
     Args...> {
@@ -74,11 +74,11 @@ struct invoke_r_impl : call_r_impl<Enable, Fn, To, Args...> {};
 template <typename To, typename Mem_Fn, typename First, typename... Args>
 struct invoke_r_impl<
     meta::enable_if_t<
-        meta::is_same_v<To, void> ||
-        meta::is_convertible_v<
+        meta::is_same<To, void>::value ||
+        meta::is_convertible<
             decltype((VEG_DECLVAL(First).*VEG_DECLVAL(Mem_Fn))(
                 VEG_DECLVAL(Args)...)),
-            To>>,
+            To>::value>,
     Mem_Fn,
     To,
     First,
@@ -279,13 +279,14 @@ template <
 struct function_ref_impl {
 
   constexpr function_ref_impl() = default;
-  template <typename Fn>
   // COMPAT: check if function_ref_impl is a base of Fn
-  function_ref_impl /* NOLINT(hicpp-explicit-conversions,
-                       bugprone-forwarding-reference-overload) */
-      (Fn&& fn,
-       VEG_REQUIRES_CTOR(Concept<Fn, Ret, Args...>::value //
-                         )) noexcept
+  VEG_TEMPLATE(
+      (typename Fn),
+      requires(Concept<Fn, Ret, Args...>::value),
+      function_ref_impl, /* NOLINT(hicpp-explicit-conversions,
+                           bugprone-forwarding-reference-overload) */
+      (fn, Fn&&))
+  noexcept
       : m_state(fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::
                     template address<State>(fn)),
         m_call(fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::

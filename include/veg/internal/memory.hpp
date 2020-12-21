@@ -23,47 +23,49 @@ void free(void* ptr) noexcept;
 #if !(VEG_HAS_BUILTIN(__builtin_addressof) || __cplusplus >= 201703L)
 
 namespace _addr {
-template <typename T, typename Enable = void>
-struct has_member_addr_op : std::false_type {};
-template <typename T>
-struct has_member_addr_op<
-    T,
-    meta::void_t<decltype(VEG_DECLVAL(T&).operator&())>> : std::true_type {};
+struct member_addr {
+  template <typename T>
+  using type = decltype(void(VEG_DECLVAL(T&).operator&()));
 
-template <typename T, typename Enable = void>
-struct has_nonmember_addr_op : std::false_type {};
-template <typename T>
-struct has_nonmember_addr_op<
-    T,
-    meta::void_t<decltype(operator&(VEG_DECLVAL(T&)))>> : std::true_type {};
-
-template <bool Has_Overloaded_Address_Of /* true */>
-struct addressof_impl {
   template <typename T>
   static auto apply(T& var) -> T* {
     using char_ref = char&;
     return static_cast<T*>(static_cast<void*>(&char_ref(var)));
   }
 };
-
-template <>
-struct addressof_impl<false> {
+struct adl_addr : member_addr {
+  template <typename T>
+  using type = decltype(void(operator&(VEG_DECLVAL(T&))));
+};
+struct builtin_addr : std::true_type {
   template <typename T>
   static constexpr auto apply(T& var) -> T* {
     return &var;
   }
 };
+template <typename T>
+struct has_member_addr : meta::is_detected<member_addr::type, T&>,
+                         member_addr {};
+template <typename T>
+struct has_adl_addr : meta::is_detected<adl_addr::type, T&>, adl_addr {};
+
+template <typename T>
+struct addr_impl
+    : meta::disjunction<has_member_addr<T>, has_adl_addr<T>, builtin_addr> {};
+
 } // namespace _addr
 
 #endif
 
 namespace _ctor_at {
 
-template <i64 which /* = not_found */>
-struct construct_at_impl;
-
-template <>
-struct construct_at_impl<0> {
+struct uniform_init_ctor {
+  template <typename T, typename... Args>
+  static auto apply(T* mem, Args&&... args) -> T* {
+    return new (mem) T{VEG_FWD(args)...};
+  }
+};
+struct ctor {
   template <typename T, typename... Args>
   static VEG_CPP20(constexpr) auto apply(T* mem, Args&&... args) -> T* {
 #if __cplusplus >= 202002L
@@ -73,29 +75,32 @@ struct construct_at_impl<0> {
 #endif
   }
 };
-template <>
-struct construct_at_impl<1> {
-  template <typename T, typename... Args>
-  static auto apply(T* mem, Args&&... args) -> T* {
-    return new (mem) T{VEG_FWD(args)...};
-  }
-};
+
+template <typename T, typename... Args>
+struct uniform_constructible
+    : meta::is_uniform_init_constructible<T, Args&&...>,
+      uniform_init_ctor {};
+template <typename T, typename... Args>
+struct constructible : meta::is_constructible<T, Args&&...>, ctor {};
+
+template <typename T, typename... Args>
+struct ctor_at_impl : meta::disjunction<
+                          constructible<T, Args&&...>,
+                          uniform_constructible<T, Args&&...>> {};
 
 } // namespace _ctor_at
 
 namespace fn {
 struct construct_at_fn {
-  template <typename T, typename... Args>
-  VEG_CPP20(constexpr)
-  auto operator()(T* mem, Args&&... args) const noexcept -> VEG_REQUIRES_RET(
-      (meta::first_true<
-          std::is_constructible<T, Args...>,
-          meta::is_uniform_init_constructible<T, Args...>>::found),
-      T*) {
-    return _ctor_at::construct_at_impl<meta::first_true<
-        std::is_constructible<T, Args...>,
-        meta::is_uniform_init_constructible<T, Args...>>::value>::
-        apply(mem, VEG_FWD(args)...);
+  VEG_TEMPLATE(
+      (typename T, typename... Args),
+      requires(_ctor_at::ctor_at_impl<T, Args&&...>::value),
+      VEG_CPP20(constexpr) auto
+      operator(),
+      (mem, T*),
+      (... args, Args&&))
+  const noexcept(meta::is_nothrow_constructible<T, Args&&...>::value)->T* {
+    return _ctor_at::ctor_at_impl<T, Args&&...>::apply(mem, VEG_FWD(args)...);
   }
 };
 
@@ -128,11 +133,7 @@ struct addressof_fn {
 
 #else
 
-    return _addr::addressof_impl< //
-        (meta::first_true<
-            _addr::has_member_addr_op<T>,            //
-            _addr::has_nonmember_addr_op<T>>::found) //
-        >::apply(var);
+    return _addr::addr_impl<T>::apply(var);
 
 #endif
   }

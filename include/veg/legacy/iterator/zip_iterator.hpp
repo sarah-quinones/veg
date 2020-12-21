@@ -47,13 +47,14 @@ struct zip_proxy {
   tuple<decltype(*VEG_DECLVAL(Iters))...> m_proxies;
 
 public:
-  template <usize I, typename T>
-  friend constexpr auto get(T&& p) noexcept -> VEG_REQUIRES_RET2(
-      (I < sizeof...(Iters) &&
-       meta::is_same_v<meta::remove_cvref_t<T>, zip_proxy>),
-
-      decltype(::veg::internal::tuple::adl_get<I>((VEG_FWD(p).m_proxies)))) {
-
+  VEG_TEMPLATE(
+      (usize I, typename T),
+      requires(
+          I < sizeof...(Iters) &&
+          meta::is_same<meta::remove_cvref_t<T>, zip_proxy>::value),
+      friend constexpr auto get,
+      (p, T&&))
+  noexcept -> decltype(auto) {
     return ::veg::internal::tuple::adl_get<I>((VEG_FWD(p).m_proxies));
   }
 
@@ -124,13 +125,15 @@ public:
     return cmp_eq(other, seq{});
   }
 
-  template <usize I, typename T>
-  friend constexpr auto get(T&& p) noexcept -> VEG_REQUIRES_RET2(
-      (I < sizeof...(Iters) &&
-       meta::is_same_v<meta::remove_cvref_t<T>, zip_iterator>),
-
-      decltype(::veg::internal::tuple::adl_get<I>((VEG_FWD(p).m_iters)))) {
-
+  VEG_TEMPLATE(
+      (usize I, typename T),
+      requires(
+          I < sizeof...(Iters) &&
+          meta::is_same<meta::remove_cvref_t<T>, zip_iterator>::value),
+      friend constexpr auto get,
+      (p, T&&),
+      (/*tag*/ = {}, tag_t<zip_iterator>))
+  noexcept -> decltype(auto) {
     return ::veg::internal::tuple::adl_get<I>((VEG_FWD(p).m_iters));
   }
 
@@ -226,13 +229,14 @@ public:
     return const_reverse_iterator{begin()};
   }
 
-  template <usize I, typename T>
-  friend constexpr auto get(T&& p) noexcept -> VEG_REQUIRES_RET2(
-      (I < sizeof...(Rngs) &&
-       meta::is_same_v<meta::remove_cvref_t<T>, zip_iterator>),
-
-      decltype(::veg::internal::tuple::adl_get<I>((VEG_FWD(p).m_rngs)))) {
-
+  VEG_TEMPLATE(
+      (usize I, typename T),
+      requires(
+          I < sizeof...(Rngs) &&
+          meta::is_same<meta::remove_cvref_t<T>, zip_exact>::value),
+      friend constexpr auto get,
+      (p, T&&))
+  noexcept -> decltype(auto) {
     return ::veg::internal::tuple::adl_get<I>((VEG_FWD(p).m_rngs));
   }
 

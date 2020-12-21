@@ -48,23 +48,33 @@ struct cmp_impl<which::int_unsigned_signed> {
   }
 };
 
+template <typename T>
+struct id {
+  static constexpr std::nullptr_t value = nullptr;
+};
+template <typename T>
+constexpr std::nullptr_t id<T>::value; // NOLINT
+
 template <typename A, typename B, typename Enable = void>
-struct is_equality_comparable : std::false_type {};
+struct is_equality_comparable_impl : std::false_type {};
 template <typename A, typename B>
-struct is_equality_comparable<
+struct is_equality_comparable_impl<
     A,
     B,
-    decltype(void(VEG_DECLVAL(A const&) == VEG_DECLVAL(B const&)))>
+    decltype(void(
+        static_cast<bool>(VEG_DECLVAL(A const&) == VEG_DECLVAL(B const&))))>
 
-    : meta::bool_constant<
-          (meta::is_enum_v<A> && meta::is_same_v<A, B>) ||
+    : meta::disjunction<
+          meta::bool_constant<&id<A>::value == &id<B>::value>,
+          meta::negation<meta::disjunction<std::is_enum<A>, std::is_enum<B>>>> {
+};
 
-          (!meta::is_enum_v<A> && //
-           !meta::is_enum_v<B> && //
-
-           meta::is_constructible_v<
-               bool,
-               decltype(VEG_DECLVAL(A const&) == VEG_DECLVAL(B const&))>)> {};
+template <typename A, typename B>
+struct is_equality_comparable
+    : meta::disjunction<
+          meta::bool_constant<
+              meta::is_scalar<A>::value && meta::is_scalar<B>::value>,
+          is_equality_comparable_impl<A, B>> {};
 
 template <typename A, typename B, typename Enable = void>
 struct is_less_than_comparable : std::false_type {};
@@ -75,37 +85,28 @@ struct is_less_than_comparable<
     decltype(void(VEG_DECLVAL(A const&) < VEG_DECLVAL(B const&)))> :
 
     meta::bool_constant<
-        (meta::is_enum_v<A> && meta::is_same_v<A, B>) ||
+        (std::is_enum<A>::value && std::is_same<A, B>::value) ||
 
-        (!meta::is_enum_v<A> && //
-         !meta::is_enum_v<B> && //
-
-         meta::is_constructible_v<
-             bool,
-             decltype(VEG_DECLVAL(A const&) < VEG_DECLVAL(B const&))>)> {};
-
-namespace { // NOLINT
-template <typename A, typename B>
-constexpr bool const& is_equality_comparable_v =
-    is_equality_comparable<A, B>::value;
-template <typename A, typename B>
-constexpr bool const& is_less_than_comparable_v =
-    is_less_than_comparable<A, B>::value;
-} // namespace
+        (!std::is_enum<A>::value && //
+         !std::is_enum<B>::value)> {};
 } // namespace cmp
 } // namespace internal
 
 namespace fn {
 struct cmp_equal_fn {
-  template <typename A, typename B>
-  constexpr auto operator()(A const& a, B const& b) const noexcept
-      -> VEG_REQUIRES_RET(
-          (internal::cmp::is_equality_comparable_v<A, B>), bool) {
-
+  VEG_TEMPLATE(
+      (typename A, typename B),
+      requires(internal::cmp::is_equality_comparable<A, B>::value),
+      constexpr auto
+      operator(),
+      (a, A const&),
+      (b, B const&))
+  const noexcept->bool {
     return internal::cmp::cmp_impl <
-                   (meta::is_integral_v<A> && meta::is_integral_v<B> &&
-                    meta::is_signed_v<A> != meta::is_signed_v<B>)
-               ? (meta::is_signed_v<A>
+                   (meta::is_integral<A>::value &&
+                    meta::is_integral<B>::value &&
+                    meta::is_signed<A>::value != meta::is_signed<B>::value)
+               ? (meta::is_signed<A>::value
                       ? internal::cmp::which::int_signed_unsigned
                       : internal::cmp::which::int_unsigned_signed)
                : internal::cmp::which::generic > ::eq(a, b);
@@ -113,24 +114,30 @@ struct cmp_equal_fn {
 };
 
 struct cmp_not_equal_fn {
-  template <typename A, typename B>
-  constexpr auto operator()(A const& a, B const& b) const noexcept
-      -> VEG_REQUIRES_RET(
-          (internal::cmp::is_equality_comparable_v<A, B>), bool) {
-    return !cmp_equal_fn{}(a, b);
-  }
+  VEG_TEMPLATE(
+      (typename A, typename B),
+      requires(internal::cmp::is_equality_comparable<A, B>::value),
+      constexpr auto
+      operator(),
+      (a, A const&),
+      (b, B const&))
+  const noexcept->bool { return !cmp_equal_fn{}(a, b); }
 };
 
 struct cmp_less_fn {
-  template <typename A, typename B>
-  constexpr auto operator()(A const& a, B const& b) const noexcept
-      -> VEG_REQUIRES_RET(
-          (internal::cmp::is_less_than_comparable_v<A, B>), bool) {
-
+  VEG_TEMPLATE(
+      (typename A, typename B),
+      requires(internal::cmp::is_less_than_comparable<A, B>::value),
+      constexpr auto
+      operator(),
+      (a, A const&),
+      (b, B const&))
+  const noexcept->bool {
     return internal::cmp::cmp_impl <
-                   (meta::is_integral_v<A> && meta::is_integral_v<B> &&
-                    meta::is_signed_v<A> != meta::is_signed_v<B>)
-               ? (meta::is_signed_v<A>
+                   (meta::is_integral<A>::value &&
+                    meta::is_integral<B>::value &&
+                    meta::is_signed<A>::value != meta::is_signed<B>::value)
+               ? (meta::is_signed<A>::value
                       ? internal::cmp::which::int_signed_unsigned
                       : internal::cmp::which::int_unsigned_signed)
                : internal::cmp::which::generic > ::lt(a, b);
@@ -138,30 +145,36 @@ struct cmp_less_fn {
 };
 
 struct cmp_greater_fn {
-  template <typename A, typename B>
-  constexpr auto operator()(A const& a, B const& b) const noexcept
-      -> VEG_REQUIRES_RET(
-          (internal::cmp::is_less_than_comparable_v<B, A>), bool) {
-    return cmp_less_fn{}(b, a);
-  }
+  VEG_TEMPLATE(
+      (typename A, typename B),
+      requires(internal::cmp::is_less_than_comparable<B, A>::value),
+      constexpr auto
+      operator(),
+      (a, A const&),
+      (b, B const&))
+  const noexcept->bool { return cmp_less_fn{}(b, a); }
 };
 
 struct cmp_less_equal_fn {
-  template <typename A, typename B>
-  constexpr auto operator()(A const& a, B const& b) const noexcept
-      -> VEG_REQUIRES_RET(
-          (internal::cmp::is_less_than_comparable_v<B, A>), bool) {
-    return !cmp_less_fn{}(b, a);
-  }
+  VEG_TEMPLATE(
+      (typename A, typename B),
+      requires(internal::cmp::is_less_than_comparable<B, A>::value),
+      constexpr auto
+      operator(),
+      (a, A const&),
+      (b, B const&))
+  const noexcept->bool { return !cmp_less_fn{}(b, a); }
 };
 
 struct cmp_greater_equal_fn {
-  template <typename A, typename B>
-  constexpr auto operator()(A const& a, B const& b) const noexcept
-      -> VEG_REQUIRES_RET(
-          (internal::cmp::is_less_than_comparable_v<A, B>), bool) {
-    return !cmp_less_fn{}(a, b);
-  }
+  VEG_TEMPLATE(
+      (typename A, typename B),
+      requires(internal::cmp::is_less_than_comparable<A, B>::value),
+      constexpr auto
+      operator(),
+      (a, A const&),
+      (b, B const&))
+  const noexcept->bool { return !cmp_less_fn{}(a, b); }
 };
 
 } // namespace fn
