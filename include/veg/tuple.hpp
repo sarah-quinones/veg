@@ -2,6 +2,7 @@
 #define VEG_TUPLE_HPP_B8PHUNWES
 
 #include "veg/internal/tuple_generic.hpp"
+#include <utility> // std::tuple_{size,element}
 
 /******************************************************************************/
 #define VEG_IMPL_BIND(r, Tuple, Index, Identifier)                             \

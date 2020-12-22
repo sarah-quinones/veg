@@ -53,18 +53,25 @@ struct pack_ith_elem {
 
 template <typename... Ts>
 struct tuple {
+  ~tuple() = default;
   constexpr tuple() = default;
+  constexpr tuple(tuple const&) = default;
+  constexpr tuple(tuple&&) = default; // NOLINT
+  constexpr auto operator=(tuple const&) & -> tuple& = default;
+  constexpr auto operator=(tuple&&) & -> tuple& = default; // NOLINT
   constexpr tuple /* NOLINT(hicpp-explicit-conversions) */
       (meta::remove_cv_t<Ts>... args) noexcept
       : m_impl(VEG_FWD(args)...) {}
 
   VEG_TEMPLATE(
-      (usize I, typename T),
+      (usize I, typename T, VEG_FRIEND_WORKAROUND),
       requires I < sizeof...(Ts),
       friend constexpr auto get,
-      (tup, T&&),
-      (/*tag*/ = {}, tag_t<tuple>))
-  noexcept -> decltype(auto) {
+      (tup, T&&))
+  noexcept(meta::is_nothrow_constructible<
+           typename internal::tuple::pack_ith_elem<I>::template type<Ts...>,
+           typename internal::tuple::pack_ith_elem<I>::template type<Ts...>&&>::
+               value) -> decltype(auto) {
     return internal::storage::get_inner<meta::value_category<T>::value>::
         template with_idx<usize, internal::tuple::tuple_leaf>::template apply<
             I>(VEG_FWD(tup).m_impl);

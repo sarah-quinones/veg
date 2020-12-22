@@ -4,9 +4,7 @@
 #include <bits/char_traits.h>
 
 namespace veg {
-namespace tt {
-
-} // namespace tt
+namespace tt {} // namespace tt
 
 template <typename CharT, typename Traits = std::char_traits<CharT>>
 struct string_ref {};

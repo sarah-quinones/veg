@@ -291,20 +291,18 @@ struct function_ref_impl {
                     template address<State>(fn)),
         m_call(fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::
                    template call<State, Fn, Ret, Args...>) {
-    if (fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::is_null(
-            m_state)) {
-      m_call = nullptr;
-    }
+    VEG_ASSERT(
+        !fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::is_null(
+            m_state));
   }
 
   auto operator()(Args... args) const -> Ret {
-    VEG_ASSERT(m_call != nullptr);
+    VEG_DEBUG_ASSERT(m_call != nullptr);
     return this->m_call(this->m_state, VEG_FWD(args)...);
   }
 
   constexpr explicit operator bool() const { return m_call != nullptr; }
 
-private:
   template <fnref::fn_kind_e>
   friend struct fnref::fn_ref_impl;
 
@@ -327,8 +325,12 @@ private:
       internal::fnref::is_call_convertible,
       Ret,
       Args...>;
+  explicit constexpr mini_fn_ref(internal::fnref::dummy /*unused*/) : base(){};
+  template <typename U>
+  friend struct meta::value_sentinel_for;
 
 public:
+  mini_fn_ref() = delete;
   using base ::base;
   using base::operator();
   using base::operator bool;
@@ -346,11 +348,41 @@ private:
       internal::fnref::is_invoke_convertible,
       Ret,
       Args...>;
+  explicit constexpr fn_ref(internal::fnref::dummy /*unused*/) : base(){};
+  template <typename U>
+  friend struct meta::value_sentinel_for;
 
 public:
+  fn_ref() = delete;
   using base ::base;
   using base::operator();
   using base::operator bool;
+};
+
+template <typename Ret, typename... Args>
+struct meta::value_sentinel_for<fn_ref<Ret(Args...)>>
+    : std::integral_constant<i64, 1> {
+  static constexpr auto invalid(i64 i) noexcept {
+    if (i == 0) {
+      return fn_ref<Ret(Args...)>{::veg::internal::fnref::dummy{}};
+    }
+    terminate();
+  }
+  static constexpr auto id(fn_ref<Ret(Args...)> arg) -> i64 {
+    return arg.m_call == nullptr ? 0 : -1;
+  }
+};
+template <typename Ret, typename... Args>
+struct meta::value_sentinel_for<mini_fn_ref<Ret(Args...)>> : std::true_type {
+  static constexpr auto invalid(i64 i) noexcept {
+    if (i == 0) {
+      return mini_fn_ref<Ret(Args...)>{::veg::internal::fnref::dummy{}};
+    }
+    terminate();
+  }
+  static constexpr auto id(mini_fn_ref<Ret(Args...)> arg) -> i64 {
+    return arg.m_call == nullptr ? 0 : -1;
+  }
 };
 
 } // namespace veg

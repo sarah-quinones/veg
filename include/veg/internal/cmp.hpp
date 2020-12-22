@@ -48,13 +48,6 @@ struct cmp_impl<which::int_unsigned_signed> {
   }
 };
 
-template <typename T>
-struct id {
-  static constexpr std::nullptr_t value = nullptr;
-};
-template <typename T>
-constexpr std::nullptr_t id<T>::value; // NOLINT
-
 template <typename A, typename B, typename Enable = void>
 struct is_equality_comparable_impl : std::false_type {};
 template <typename A, typename B>
@@ -65,7 +58,7 @@ struct is_equality_comparable_impl<
         static_cast<bool>(VEG_DECLVAL(A const&) == VEG_DECLVAL(B const&))))>
 
     : meta::disjunction<
-          meta::bool_constant<&id<A>::value == &id<B>::value>,
+          meta::is_same<A, B>,
           meta::negation<meta::disjunction<std::is_enum<A>, std::is_enum<B>>>> {
 };
 

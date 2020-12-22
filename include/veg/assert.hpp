@@ -3,7 +3,7 @@
 
 #include "veg/internal/typedefs.hpp"
 #include "veg/internal/type_traits.hpp"
-#include "veg/cmp.hpp"
+#include "veg/internal/cmp.hpp"
 #include "veg/internal/.external/boostpp.h"
 #include "veg/internal/.external/hedley.h"
 
@@ -25,7 +25,6 @@
 #endif
 
 namespace veg {
-[[noreturn]] void terminate() noexcept;
 namespace assert {
 
 namespace fn {

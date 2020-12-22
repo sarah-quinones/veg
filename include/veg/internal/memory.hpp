@@ -139,17 +139,11 @@ struct addressof_fn {
   }
 };
 
-struct align_next_fn {
-  auto
-  operator()(i64 alignment, i64 size, void*& ptr, i64& space) const noexcept
-      -> void*;
-};
 } // namespace fn
 
 VEG_ODR_VAR(construct_at, fn::construct_at_fn);
 VEG_ODR_VAR(destroy_at, fn::destroy_at_fn);
 VEG_ODR_VAR(addressof, fn::addressof_fn);
-VEG_ODR_VAR(align_next, fn::align_next_fn);
 
 } // namespace mem
 } // namespace veg

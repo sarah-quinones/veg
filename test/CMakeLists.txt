@@ -25,11 +25,15 @@ target_link_libraries(test.dynstack veg ${testlibs})
 add_executable(test.tuple src/test_tuple.cpp)
 target_link_libraries(test.tuple veg ${testlibs})
 
+add_executable(test.option src/test_option.cpp)
+target_link_libraries(test.option veg ${testlibs})
+
 doctest_discover_tests(test.int)
 doctest_discover_tests(test.fn)
 doctest_discover_tests(test.arg)
 doctest_discover_tests(test.dynstack)
 doctest_discover_tests(test.tuple)
+doctest_discover_tests(test.option)
 
 add_custom_target(
   check
@@ -40,4 +44,5 @@ add_custom_target(
           test.arg
           test.dynstack
           test.tuple
+          test.option
 )

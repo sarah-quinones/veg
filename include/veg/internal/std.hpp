@@ -10,7 +10,6 @@
 #include <cstddef>          // maybe unneeded
 #include <cstdint>          // i64, u64
 #include <initializer_list> // std::initializer_list
-#include <utility>          // std::tuple_{size,element}
 #include <new>              // placement new, launder
 
 // clang-format off

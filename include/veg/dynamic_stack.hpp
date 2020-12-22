@@ -6,6 +6,7 @@
 #include "veg/assert.hpp"
 #include "veg/slice.hpp"
 #include "veg/internal/memory.hpp"
+#include "veg/option.hpp"
 
 namespace veg {
 namespace internal {
@@ -63,8 +64,12 @@ public:
       (len, i64),
       (align = alignof(T), i64))
   noexcept(std::is_nothrow_default_constructible<T>::value)
-      -> dynamic_array<T> {
-    return {*this, len, align, internal::dynstack::zero_init_fn{}};
+      -> option<dynamic_array<T>> {
+    dynamic_array<T> get{*this, len, align, internal::dynstack::zero_init_fn{}};
+    if (get.data() == nullptr) {
+      return none;
+    }
+    return {some, VEG_MOV(get)};
   }
 
   VEG_TEMPLATE(
@@ -79,14 +84,23 @@ public:
 
   noexcept(std::is_nothrow_default_constructible<T>::value)
       -> dynamic_array<T> {
-    return {*this, len, align, internal::dynstack::default_init_fn{}};
+    dynamic_array<T> get{
+        *this, len, align, internal::dynstack::default_init_fn{}};
+    if (get.data() == nullptr) {
+      return none;
+    }
+    return {some, VEG_MOV(get)};
   }
 
   template <typename T>
   VEG_NODISCARD auto
   make_alloc(tag_t<T> /*unused*/, i64 len, i64 align = alignof(T)) noexcept
-      -> dynamic_alloc<T> {
-    return {*this, len, align, internal::dynstack::no_init_fn{}};
+      -> option<dynamic_alloc<T>> {
+    dynamic_alloc<T> get{*this, len, align, internal::dynstack::no_init_fn{}};
+    if (get.data() == nullptr) {
+      return none;
+    }
+    return {some, VEG_MOV(get)};
   }
 
 private:

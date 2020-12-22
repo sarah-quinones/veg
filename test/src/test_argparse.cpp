@@ -57,12 +57,12 @@ TEST_CASE("argparse") {
             'r',
             "tern",
             "",
-            [&found](
-                veg::argparse* /*self*/,
-                veg::argparse_option const* /*opt*/) -> int {
+            {veg::some, [&found](
+                 veg::argparse* /*self*/,
+                 veg::argparse_option const* /*opt*/) -> int {
               found = true;
               return 0;
-            }},
+            }}},
 
            {&force, 'f', "force", "force to do"},
            "More options",

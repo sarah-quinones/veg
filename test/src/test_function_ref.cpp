@@ -1,4 +1,5 @@
 #include <veg/fn_ref.hpp>
+#include <veg/option.hpp>
 #include "doctest.h"
 
 TEST_CASE("no args") {
@@ -33,7 +34,7 @@ TEST_CASE("no args") {
   fn_ref();
   CHECK(i == 7);
 
-  fn_ref = inc_fn_ptr;
+  fn_ref = *inc_fn_ptr;
   CHECK(global == 0);
   fn_ref();
   CHECK(global == 1);
@@ -43,6 +44,7 @@ TEST_CASE("no args") {
   CHECK(global == 3);
 
   fn_ref = +returns_fn_ptr;
+  fn_ref = *+returns_fn_ptr;
   fn_ref();
   CHECK(global == 6);
 }
@@ -84,8 +86,8 @@ TEST_CASE("member functions") {
 }
 
 TEST_CASE("null") {
-  veg::fn_ref<void()> f;
+  veg::option<veg::fn_ref<void()>> f;
   CHECK(!f);
-  f = [] {};
+  f = {veg::some, [] {}};
   CHECK(f);
 }

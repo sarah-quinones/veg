@@ -77,6 +77,8 @@ struct storage_base<T, false> {
   type inner_val;
   explicit constexpr storage_base(meta::remove_cvref_t<T>&& arg)
       : inner_val{static_cast<meta::remove_cvref_t<T>&&>(arg)} {}
+  explicit constexpr storage_base(meta::remove_cvref_t<T> const& arg)
+      : inner_val{arg} {}
 };
 
 template <typename T>
@@ -86,12 +88,20 @@ struct storage : storage_base<T> {
 
   using typename storage_base<T>::type;
 
-  auto get() const noexcept -> T const& { return inner_val; }
-  auto get_mut() noexcept -> T& { return inner_val; }
-  auto get_mov_ref() && noexcept -> decltype(auto) {
+  constexpr auto get() const noexcept -> T const& { return inner_val; }
+  constexpr auto get_mut() noexcept -> T& { return inner_val; }
+  constexpr auto get_mov_ref() && noexcept -> decltype(auto) {
     return static_cast<type&&>(inner_val);
   }
-  auto get_mov() && noexcept -> auto { return static_cast<type&&>(inner_val); }
+  constexpr auto get_mov() && noexcept -> auto {
+    return static_cast<type&&>(inner_val);
+  }
+
+  template <typename U>
+  constexpr void
+  assign(U&& rhs) noexcept(meta::is_nothrow_assignable<T&, U&&>::value) {
+    inner_val = VEG_FWD(rhs);
+  }
 
   VEG_TEMPLATE(
       (typename V),
@@ -106,6 +116,7 @@ struct storage : storage_base<T> {
   }
 };
 
+struct null_key {};
 template <typename T>
 struct storage<T&> {
   using type = T&;
@@ -114,29 +125,48 @@ struct storage<T&> {
   explicit constexpr storage(T& arg) noexcept
       : inner_ptr{mem::addressof(arg)} {}
 
-  auto get() const noexcept -> T& { return *inner_ptr; }
-  auto get_mut() noexcept -> T& { return *inner_ptr; }
-  auto get_mov_ref() && noexcept -> T& { return *inner_ptr; }
-  auto get_mov() && noexcept -> T& { return *inner_ptr; }
+  constexpr auto get() const noexcept -> T& { return *inner_ptr; }
+  constexpr auto get_mut() noexcept -> T& { return *inner_ptr; }
+  constexpr auto get_mov_ref() && noexcept -> T& { return *inner_ptr; }
+  constexpr auto get_mov() && noexcept -> T& { return *inner_ptr; }
 
   friend constexpr void swap(storage& u, storage& v) noexcept {
     swap_::mov_fn_swap::apply(u.inner_ptr, v.inner_ptr);
   }
+
+private:
+  explicit constexpr storage(null_key /*unused*/) noexcept {};
+  static constexpr auto null() -> storage { return storage{null_key{}}; }
+  template <typename U>
+  friend struct meta::value_sentinel_for;
 };
 
 template <typename T>
 struct storage<T&&> : delete_copy_ctor_if<true>, delete_copy_assign_if<true> {
   using type = T&&;
   T* inner_ptr = nullptr;
+
+  storage() = default;
   explicit constexpr storage(T&& arg) noexcept
       : inner_ptr{mem::addressof(arg)} {}
-  auto get() const noexcept -> T& { return *inner_ptr; }
-  auto get_mut() noexcept -> T& { return *inner_ptr; }
-  auto get_mov_ref() && noexcept -> T&& { return static_cast<T&&>(*inner_ptr); }
-  auto get_mov() && noexcept -> T&& { return static_cast<T&&>(*inner_ptr); }
+  constexpr auto get() const noexcept -> T& { return *inner_ptr; }
+  constexpr auto get_mut() noexcept -> T& { return *inner_ptr; }
+  constexpr auto get_mov_ref() && noexcept -> T&& {
+    return static_cast<T&&>(*inner_ptr);
+  }
+  constexpr auto get_mov() && noexcept -> T&& {
+    return static_cast<T&&>(*inner_ptr);
+  }
+
   friend constexpr void swap(storage& u, storage& v) noexcept {
     swap_::mov_fn_swap::apply(u.inner_ptr, v.inner_ptr);
   }
+
+private:
+  explicit constexpr storage(null_key /*unused*/) noexcept {};
+  static constexpr auto null() -> storage { return storage{null_key{}}; }
+  template <typename U>
+  friend struct meta::value_sentinel_for;
 };
 
 // intentionally unsupported. please don't
@@ -225,6 +255,50 @@ struct get_inner<meta::category_e::ref_mov> {
 
 } // namespace storage
 } // namespace internal
+
+template <typename T>
+struct meta::value_sentinel_for<veg::internal::storage::storage<T&>>
+    : std::integral_constant<i64, 1> {
+  static constexpr auto invalid(i64 i) noexcept {
+    if (i == 0) {
+      return ::veg::internal::storage::storage<T&>::null();
+    }
+    terminate();
+  }
+  static constexpr auto
+  id(::veg::internal::storage::storage<T&> const& arg) noexcept -> i64 {
+    return arg.inner_ptr == nullptr ? 0 : -1;
+  }
+};
+
+template <typename T>
+struct meta::value_sentinel_for<veg::internal::storage::storage<T&&>>
+    : std::integral_constant<i64, 1> {
+  static constexpr auto invalid(i64 i) noexcept {
+    if (i == 0) {
+      return ::veg::internal::storage::storage<T&&>::null();
+    }
+    terminate();
+  }
+  static constexpr auto
+  id(::veg::internal::storage::storage<T&&> const& arg) noexcept -> i64 {
+    return arg.inner_ptr == nullptr ? 0 : -1;
+  }
+};
+
+template <typename T>
+struct meta::value_sentinel_for<veg::internal::storage::storage<T>>
+    : std::integral_constant<i64, meta::value_sentinel_for<T>::value> {
+  static constexpr auto invalid(i64 i) noexcept {
+    return ::veg::internal::storage::storage<T>{
+        meta::value_sentinel_for<T>::invalid(i)};
+  }
+  static constexpr auto
+  id(::veg::internal::storage::storage<T> const& arg) noexcept -> i64 {
+    return meta::value_sentinel_for<T>::id(arg.inner_val);
+  }
+};
+
 } // namespace veg
 
 #endif /* end of include guard VEG_STORAGE_HPP_X0B4XDKES */

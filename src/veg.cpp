@@ -11,11 +11,11 @@
 #include <new>
 
 namespace veg {
-namespace assert {
-namespace internal {
 [[noreturn]] void terminate() noexcept {
   std::terminate();
 }
+namespace assert {
+namespace internal {
 thread_local i64
     counter = // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
     0;

@@ -33,6 +33,7 @@ Checks:          '*,-abseil-*,-fuchsia-*,-google-*,-llvm-*,-zircon-*,
                   -readability-magic-numbers,
                   -readability-misleading-indentation,
                   -readability-named-parameter,
+                  -readability-redundant-declaration,
                   '
 WarningsAsErrors: ''
 HeaderFilterRegex: ''

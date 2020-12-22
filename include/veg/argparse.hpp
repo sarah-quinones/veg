@@ -17,6 +17,7 @@
 
 #include "veg/internal/std.hpp"
 #include "veg/slice.hpp"
+#include "veg/option.hpp"
 
 namespace veg {
 
@@ -62,26 +63,26 @@ using argparse_callback = fn_ref<int(argparse*, argparse_option const*)>;
 namespace _argparse {
 
 template <typename T>
-struct is_supported : meta::bool_constant<                           //
+struct is_supported : meta::bool_constant<                                //
                           meta::is_same<std::nullptr_t, T>::value ||      //
                           meta::is_same<char const**, T>::value ||        //
                           meta::is_same<ternary*, T>::value ||            //
                           meta::is_same<bool*, T>::value ||               //
-                                                                     //
+                                                                          //
                           meta::is_same<char*, T>::value ||               //
-                                                                     //
+                                                                          //
                           meta::is_same<char signed*, T>::value ||        //
                           meta::is_same<short signed*, T>::value ||       //
                           meta::is_same<int signed*, T>::value ||         //
                           meta::is_same<long signed*, T>::value ||        //
                           meta::is_same<long long signed*, T>::value ||   //
-                                                                     //
+                                                                          //
                           meta::is_same<char unsigned*, T>::value ||      //
                           meta::is_same<short unsigned*, T>::value ||     //
                           meta::is_same<int unsigned*, T>::value ||       //
                           meta::is_same<long unsigned*, T>::value ||      //
                           meta::is_same<long long unsigned*, T>::value || //
-                                                                     //
+                                                                          //
                           meta::is_same<float*, T>::value ||              //
                           meta::is_same<double*, T>::value ||             //
                           meta::is_same<long double*, T>::value           //
@@ -216,7 +217,7 @@ struct layout {
   char const* long_name;
   void* value;
   char const* help;
-  argparse_callback callback;
+  option<argparse_callback> callback;
   unsigned flags;
 };
 
@@ -258,7 +259,7 @@ enum argparse_flag : unsigned {
 
 struct argparse_option : _argparse::layout {
 
-  constexpr argparse_option /* NOLINT(hicpp-explicit-conversions) */ (
+  argparse_option /* NOLINT(hicpp-explicit-conversions) */ (
       char const* group_name) noexcept
       : argparse_option{
             {_argparse::argparse_option_type::ARGPARSE_OPT_GROUP,
@@ -272,11 +273,11 @@ struct argparse_option : _argparse::layout {
   VEG_TEMPLATE(
       (typename T),
       requires _argparse::is_supported<T>::value,
-      constexpr argparse_option,
+      argparse_option,
       (value_ptr, T),
       (arg_long_name, char const*),
       (help_str = "", char const*),
-      (callback_fn = {}, argparse_callback))
+      (callback_fn = {}, option<argparse_callback>))
   noexcept
       : argparse_option{{
             _argparse::to_option_type<meta::remove_pointer_t<T>>::value,
@@ -291,12 +292,12 @@ struct argparse_option : _argparse::layout {
   VEG_TEMPLATE(
       (typename T),
       requires _argparse::is_supported<T>::value,
-      constexpr argparse_option,
+      argparse_option,
       (value_ptr, T),
       (arg_short_name, char),
       (arg_long_name = nullptr, char const*),
       (help_str = "", char const*),
-      (callback_fn = {}, argparse_callback))
+      (callback_fn = {}, option<argparse_callback>))
   noexcept
       : argparse_option{{
             _argparse::to_option_type<meta::remove_pointer_t<T>>::value,
@@ -308,7 +309,7 @@ struct argparse_option : _argparse::layout {
             0,
         }} {}
 
-  explicit constexpr argparse_option(layout l) noexcept : layout{l} {}
+  explicit argparse_option(layout l) noexcept : layout{l} {}
 };
 
 /**
@@ -363,7 +364,7 @@ static const argparse_option help = argparse_option{
      "help",
      nullptr,
      "show this help message and exit",
-     argparse_help_cb,
+     {some, argparse_help_cb},
      OPT_NONEG}};
 
 } // namespace veg
