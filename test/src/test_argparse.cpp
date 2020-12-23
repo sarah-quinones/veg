@@ -1,10 +1,10 @@
 #include "veg/argparse.hpp"
-#include "doctest.h"
+#include <gtest/gtest.h>
 
 #include <cstdio>
 #include <cstring>
 
-TEST_CASE("argparse") {
+TEST(argparse, all) {
   int argc = 10;
 
   char arg0[] = "/dir/exec";
@@ -57,12 +57,13 @@ TEST_CASE("argparse") {
             'r',
             "tern",
             "",
-            {veg::some, [&found](
+            {veg::some,
+             [&found](
                  veg::argparse* /*self*/,
                  veg::argparse_option const* /*opt*/) -> int {
-              found = true;
-              return 0;
-            }}},
+               found = true;
+               return 0;
+             }}},
 
            {&force, 'f', "force", "force to do"},
            "More options",
@@ -74,13 +75,13 @@ TEST_CASE("argparse") {
       "description",
       "more description");
 
-  CHECK(tern == veg::maybe);
-  CHECK(std::strcmp(path, "/a/b/c") == 0);
-  CHECK(flt == 49.5e3L);
-  CHECK(found);
+  EXPECT_EQ(tern, veg::maybe);
+  EXPECT_STREQ(path, "/a/b/c");
+  EXPECT_EQ(flt, 49.5e3L);
+  EXPECT_TRUE(found);
 
-  CHECK(argc == 3);
-  CHECK(std::strcmp(argv[0], "1") == 0);
-  CHECK(std::strcmp(argv[1], "text") == 0);
-  CHECK(std::strcmp(argv[2], "2") == 0);
+  EXPECT_EQ(argc, 3);
+  EXPECT_STREQ(argv[0], "1");
+  EXPECT_STREQ(argv[1], "text");
+  EXPECT_STREQ(argv[2], "2");
 }

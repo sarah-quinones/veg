@@ -285,7 +285,7 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
     mem::construct_at(mem::addressof(some), VEG_FWD(args)...);
 
     guard.fn.cond = false;
-    set_engaged();
+    set_engaged(true);
   }
 
   VEG_CPP20(constexpr) auto destroy() noexcept {

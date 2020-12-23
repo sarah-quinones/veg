@@ -1,10 +1,10 @@
 #include <veg/tuple.hpp>
 #include <utility>
-#include "doctest.h"
+#include <gtest/gtest.h>
 
 #define MOV VEG_MOV
 
-TEST_CASE("tuple") {
+TEST(tuple, all) {
   using namespace veg::literals;
   using veg::get;
 
@@ -29,31 +29,31 @@ TEST_CASE("tuple") {
     val_tup a{5, true, i};
     val_tup b{3, false, a[0_c]};
     swap(a, b);
-    CHECK(a[0_c] == 3);
-    CHECK(b[0_c] == 5);
-    CHECK(a[1_c] == false);
-    CHECK(b[1_c] == true);
-    CHECK(&a[2_c] == &a[0_c]);
-    CHECK(&b[2_c] == &i);
+    EXPECT_EQ(a[0_c], 3);
+    EXPECT_EQ(b[0_c], 5);
+    EXPECT_EQ(a[1_c], false);
+    EXPECT_EQ(b[1_c], true);
+    EXPECT_EQ(&a[2_c], &a[0_c]);
+    EXPECT_EQ(&b[2_c], &i);
   }
 
-  CHECK(get<0>(tup) == 1);
-  CHECK(get<1>(tup) == 'c');
-  CHECK(get<2>(tup));
+  EXPECT_EQ(get<0>(tup), 1);
+  EXPECT_EQ(get<1>(tup), 'c');
+  EXPECT_TRUE(get<2>(tup));
 
   {
     auto&& ref = VEG_MOV(tup)[2_c];
     auto&& ref2 = VEG_MOV(tup).as_ref()[2_c];
-    CHECK(&ref != &tup[2_c]);
-    CHECK(&ref2 == &tup[2_c]);
+    EXPECT_NE(&ref, &tup[2_c]);
+    EXPECT_EQ(&ref2, &tup[2_c]);
   }
 
   VEG_BIND(auto, (e, f, g), [&] { return tup; }());
 #if __cplusplus >= 201703L
   auto [i, c, b] = [&] { return tup; }();
-  CHECK(i == 1);
-  CHECK(c == 'c');
-  CHECK(b);
+  EXPECT_EQ(i, 1);
+  EXPECT_EQ(c, 'c');
+  EXPECT_TRUE(b);
   veg::tuple tup_deduce{1, 'c', true};
 #endif
 

@@ -177,12 +177,10 @@ public:
     if (this->m_len != 0) {
       // in case resource lifetimes are reodered by moving ownership
       VEG_ASSERT(this->m_parent.m_data == (this->m_data + this->m_len));
+      VEG_ASSERT(
+          static_cast<unsigned char*>(this->m_parent.m_data) >=
+          static_cast<unsigned char*>(this->m_old_pos));
 
-      if (this->m_parent.m_data != (this->m_data + this->m_len)) {
-        VEG_ASSERT(
-            static_cast<unsigned char*>(this->m_parent.m_data) >=
-            static_cast<unsigned char*>(this->m_old_pos));
-      }
       for (i64 i = 0; i < this->m_len; ++i) {
         (this->m_data + i)->~T();
       }

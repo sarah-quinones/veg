@@ -1,8 +1,9 @@
 #include <veg/fn_ref.hpp>
 #include <veg/option.hpp>
-#include "doctest.h"
+#include <gtest/gtest.h>
 
-TEST_CASE("no args") {
+using namespace veg;
+TEST(function_ref, no_args) {
   static int global = 0;
   int i = 0;
   auto inc_lambda = [&i] { ++i; };
@@ -19,34 +20,34 @@ TEST_CASE("no args") {
     return global;
   };
 
-  veg::mini_fn_ref<void()> fn_ref{inc_lambda};
-  CHECK(i == 0);
+  mini_fn_ref<void()> fn_ref{inc_lambda};
+  EXPECT_EQ(i, 0);
   fn_ref();
-  CHECK(i == 1);
+  EXPECT_EQ(i, 1);
   fn_ref();
-  CHECK(i == 2);
+  EXPECT_EQ(i, 2);
 
   fn_ref = inc2_lambda;
   fn_ref();
-  CHECK(i == 4);
+  EXPECT_EQ(i, 4);
 
   fn_ref = returns_lambda;
   fn_ref();
-  CHECK(i == 7);
+  EXPECT_EQ(i, 7);
 
   fn_ref = *inc_fn_ptr;
-  CHECK(global == 0);
+  EXPECT_EQ(global, 0);
   fn_ref();
-  CHECK(global == 1);
+  EXPECT_EQ(global, 1);
 
   fn_ref = inc2_global_lambda;
   fn_ref();
-  CHECK(global == 3);
+  EXPECT_EQ(global, 3);
 
   fn_ref = +returns_fn_ptr;
   fn_ref = *+returns_fn_ptr;
   fn_ref();
-  CHECK(global == 6);
+  EXPECT_EQ(global, 6);
 }
 
 static void const*
@@ -69,25 +70,34 @@ auto baz(foo const& /*unused*/, foo /*unused*/, int /*unused*/) -> foo {
   return {};
 }
 
-TEST_CASE("member functions") {
+TEST(function_ref, member_functions) {
   foo a;
   foo b;
-  veg::fn_ref<foo(foo&, foo, int)> fn(&foo::bar);
+  fn_ref<foo(foo&, foo, int)> fn(&foo::bar);
 
   foo _ = fn(a, {}, 1);
-  CHECK(global == &a);
+  EXPECT_EQ(global, &a);
   fn = &foo::bar2;
   _ = fn(b, {}, 1);
-  CHECK(global == (&b + 1));
+  EXPECT_EQ(global, (&b + 1));
 
   fn = baz;
   _ = fn(b, {}, 1);
-  CHECK(global == nullptr);
+  EXPECT_EQ(global, nullptr);
 }
 
-TEST_CASE("null") {
-  veg::option<veg::fn_ref<void()>> f;
-  CHECK(!f);
-  f = {veg::some, [] {}};
-  CHECK(f);
+TEST(function_ref, null) {
+  option<fn_ref<void()>> f;
+
+  EXPECT_TRUE(!f);
+  EXPECT_DEATH({ void(f.unwrap()); }, "");
+  EXPECT_DEATH({ void(f.as_ref().unwrap()); }, "");
+
+  f = {some, [] {}};
+  EXPECT_TRUE(f);
+
+  void (*null)() = nullptr;
+
+  auto make_null = [&] { f.as_ref().unwrap() = {null}; };
+  EXPECT_DEATH({ make_null(); }, "");
 }

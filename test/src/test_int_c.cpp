@@ -1,8 +1,8 @@
 #include <veg/internal/meta_int.hpp>
 #include <ostream>
-#include "doctest.h"
+#include <gtest/gtest.h>
 
-TEST_CASE("meta-int") {
+TEST(meta_int, all) {
   using namespace veg;
   using namespace veg::literals;
 
@@ -15,17 +15,19 @@ TEST_CASE("meta-int") {
 
   static_assert(!std::is_constructible<fix<3>, fix<4>>::value, "fail");
 
-  CHECK(0_c != 2_c);
-  CHECK(0_c + 2_c == 2_c);
-  CHECK(0_c + dyn(2_c) == 2_c);
-  CHECK(dyn(0_c) + dyn(2_c) == dyn(2_c));
-  CHECK(0_v + 2_v == 2_v);
-  CHECK(2_c - 2_c == 0_c);
-  CHECK(2_c - 1_c - 1_c - 1_c == -dyn(1_c));
+  EXPECT_NE(0_c, 2_c);
+  EXPECT_EQ(0_c + 2_c, 2_c);
+  EXPECT_EQ(0_c + dyn(2_c), 2_c);
+  EXPECT_EQ(dyn(0_c) + dyn(2_c), dyn(2_c));
+  EXPECT_EQ(0_v + 2_v, 2_v);
+  EXPECT_EQ(2_c - 2_c, 0_c);
+  EXPECT_EQ(2_c - 1_c - 1_c - 1_c, -dyn(1_c));
 
-  CHECK(boolean<maybe>(true));
-  CHECK(!boolean<maybe>(false));
-  CHECK(!boolean<maybe>());
-  CHECK(!boolean<no>());
-  CHECK(boolean<yes>());
+  EXPECT_TRUE(boolean<maybe>(true));
+  EXPECT_TRUE(!boolean<maybe>(false));
+  EXPECT_TRUE(!boolean<maybe>());
+  EXPECT_TRUE(!boolean<no>());
+  EXPECT_TRUE(boolean<yes>());
+  EXPECT_DEATH({ fix<2>{3}; }, "");
+  EXPECT_DEATH({ void(2_c / 0_v); }, "");
 }

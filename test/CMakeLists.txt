@@ -1,39 +1,36 @@
-include(../cmake/doctest.cmake)
-
 include_directories(include)
 
-add_library(doctest_main STATIC src/doctest_main.cpp)
 add_library(backward_cpp_main OBJECT src/backward.cpp)
 target_link_libraries(backward_cpp_main CONAN_PKG::backward-cpp)
-set(testlibs veg backward_cpp_main doctest_main)
+set(testlibs veg backward_cpp_main CONAN_PKG::gtest)
 
 add_executable(test.null src/null.cpp)
-target_link_libraries(test.null veg ${testlibs})
+target_link_libraries(test.null ${testlibs})
 
 add_executable(test.int src/test_int_c.cpp)
-target_link_libraries(test.int veg ${testlibs})
+target_link_libraries(test.int ${testlibs})
 
 add_executable(test.fn src/test_function_ref.cpp)
-target_link_libraries(test.fn veg ${testlibs})
+target_link_libraries(test.fn ${testlibs})
 
 add_executable(test.arg src/test_argparse.cpp)
-target_link_libraries(test.arg veg ${testlibs})
+target_link_libraries(test.arg ${testlibs})
 
 add_executable(test.dynstack src/test_dynamic_stack.cpp)
-target_link_libraries(test.dynstack veg ${testlibs})
+target_link_libraries(test.dynstack ${testlibs})
 
 add_executable(test.tuple src/test_tuple.cpp)
-target_link_libraries(test.tuple veg ${testlibs})
+target_link_libraries(test.tuple ${testlibs})
 
 add_executable(test.option src/test_option.cpp)
-target_link_libraries(test.option veg ${testlibs})
+target_link_libraries(test.option ${testlibs})
 
-doctest_discover_tests(test.int)
-doctest_discover_tests(test.fn)
-doctest_discover_tests(test.arg)
-doctest_discover_tests(test.dynstack)
-doctest_discover_tests(test.tuple)
-doctest_discover_tests(test.option)
+gtest_discover_tests(test.int)
+gtest_discover_tests(test.fn)
+gtest_discover_tests(test.arg)
+gtest_discover_tests(test.dynstack)
+gtest_discover_tests(test.option)
+gtest_discover_tests(test.tuple)
 
 add_custom_target(
   check

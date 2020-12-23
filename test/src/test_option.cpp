@@ -1,6 +1,6 @@
 #include "veg/option.hpp"
 #include "veg/fn_ref.hpp"
-#include "doctest.h"
+#include <gtest/gtest.h>
 
 using namespace veg;
 template <typename T, i64 N>
@@ -12,7 +12,7 @@ struct nested_option<T, 0> {
   using type = T;
 };
 
-TEST_CASE("option") {
+TEST(option, all) {
 
   struct A {
     constexpr auto operator()() const -> option<int> { return {some, 13}; }
@@ -84,8 +84,8 @@ TEST_CASE("option") {
         [&] {
           flag = {some, false};
         });
-    CHECK(flag);
-    CHECK(!flag.unwrap());
+    ASSERT_TRUE(flag);
+    ASSERT_FALSE(flag.unwrap());
 
     opt = {some, 3};
     flag = {};
@@ -96,7 +96,7 @@ TEST_CASE("option") {
         [&] {
           flag = {some, false};
         });
-    CHECK(flag);
-    CHECK(flag.unwrap());
+    ASSERT_TRUE(flag);
+    ASSERT_TRUE(flag.unwrap());
   }
 }

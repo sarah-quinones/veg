@@ -31,12 +31,14 @@ target_include_directories(veg PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 if(top_level AND ENABLE_TESTING)
   # Conan dependencies
   set(CONAN_REQUIRES # MIT License
-      fmt/7.1.2 backward-cpp/1.5
+      fmt/7.1.2 backward-cpp/1.5 gtest/1.10.0
   )
-  set(CONAN_OPTIONS)
+  set(CONAN_OPTIONS gtest:build_gmock=False)
   run_conan()
+  message(STATUS ${CONAN_LIBS})
 
   target_link_libraries(veg PUBLIC CONAN_PKG::fmt)
+  include(GoogleTest)
 
   add_library(project_warnings INTERFACE)
   add_library(project_options INTERFACE)
