@@ -90,8 +90,8 @@ TEST(function_ref, null) {
   option<fn_ref<void()>> f;
 
   EXPECT_TRUE(!f);
-  EXPECT_DEATH({ void(f.unwrap()); }, "");
   EXPECT_DEATH({ void(f.as_ref().unwrap()); }, "");
+  EXPECT_DEATH({ void(VEG_MOV(f).unwrap()); }, "");
 
   f = {some, [] {}};
   EXPECT_TRUE(f);

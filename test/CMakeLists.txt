@@ -25,12 +25,16 @@ target_link_libraries(test.tuple ${testlibs})
 add_executable(test.option src/test_option.cpp)
 target_link_libraries(test.option ${testlibs})
 
+add_executable(test.option.stx src/test_option.stx.cpp)
+target_link_libraries(test.option.stx ${testlibs})
+
 gtest_discover_tests(test.int)
 gtest_discover_tests(test.fn)
 gtest_discover_tests(test.arg)
 gtest_discover_tests(test.dynstack)
-gtest_discover_tests(test.option)
 gtest_discover_tests(test.tuple)
+gtest_discover_tests(test.option)
+gtest_discover_tests(test.option.stx)
 
 add_custom_target(
   check
@@ -42,4 +46,5 @@ add_custom_target(
           test.dynstack
           test.tuple
           test.option
+          test.option.stx
 )

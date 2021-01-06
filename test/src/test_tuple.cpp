@@ -109,3 +109,15 @@ TEST(tuple, all) {
   ASSERT_SAME(decltype(tup_deduce), veg::tuple<int, char, bool>);
 #endif
 }
+
+TEST(tuple, nested) {
+  using namespace veg;
+  tuple<int, tuple<int, float>> tup{1, {2, 3.0F}};
+  ASSERT_EQ(tup[0_c], 1);
+
+  ASSERT_EQ(tup[1_c][1_c], 3.0F);
+  ASSERT_EQ(tup[1_c][0_c], 2);
+  ASSERT_SAME(decltype(tup[1_c][0_c]), int&);
+  ASSERT_SAME(decltype(tup[1_c][0_c]), int&);
+  ASSERT_SAME(decltype(VEG_MOV(tup)[1_c][0_c]), int);
+}

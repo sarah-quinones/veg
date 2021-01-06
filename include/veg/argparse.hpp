@@ -63,29 +63,29 @@ using argparse_callback = fn_ref<int(argparse*, argparse_option const*)>;
 namespace _argparse {
 
 template <typename T>
-struct is_supported : meta::bool_constant<                                //
-                          meta::is_same<std::nullptr_t, T>::value ||      //
-                          meta::is_same<char const**, T>::value ||        //
-                          meta::is_same<ternary*, T>::value ||            //
-                          meta::is_same<bool*, T>::value ||               //
-                                                                          //
-                          meta::is_same<char*, T>::value ||               //
-                                                                          //
-                          meta::is_same<char signed*, T>::value ||        //
-                          meta::is_same<short signed*, T>::value ||       //
-                          meta::is_same<int signed*, T>::value ||         //
-                          meta::is_same<long signed*, T>::value ||        //
-                          meta::is_same<long long signed*, T>::value ||   //
-                                                                          //
-                          meta::is_same<char unsigned*, T>::value ||      //
-                          meta::is_same<short unsigned*, T>::value ||     //
-                          meta::is_same<int unsigned*, T>::value ||       //
-                          meta::is_same<long unsigned*, T>::value ||      //
-                          meta::is_same<long long unsigned*, T>::value || //
-                                                                          //
-                          meta::is_same<float*, T>::value ||              //
-                          meta::is_same<double*, T>::value ||             //
-                          meta::is_same<long double*, T>::value           //
+struct is_supported : meta::bool_constant<                       //
+                          VEG_SAME_AS(std::nullptr_t, T) ||      //
+                          VEG_SAME_AS(char const**, T) ||        //
+                          VEG_SAME_AS(ternary*, T) ||            //
+                          VEG_SAME_AS(bool*, T) ||               //
+                                                                 //
+                          VEG_SAME_AS(char*, T) ||               //
+                                                                 //
+                          VEG_SAME_AS(char signed*, T) ||        //
+                          VEG_SAME_AS(short signed*, T) ||       //
+                          VEG_SAME_AS(int signed*, T) ||         //
+                          VEG_SAME_AS(long signed*, T) ||        //
+                          VEG_SAME_AS(long long signed*, T) ||   //
+                                                                 //
+                          VEG_SAME_AS(char unsigned*, T) ||      //
+                          VEG_SAME_AS(short unsigned*, T) ||     //
+                          VEG_SAME_AS(int unsigned*, T) ||       //
+                          VEG_SAME_AS(long unsigned*, T) ||      //
+                          VEG_SAME_AS(long long unsigned*, T) || //
+                                                                 //
+                          VEG_SAME_AS(float*, T) ||              //
+                          VEG_SAME_AS(double*, T) ||             //
+                          VEG_SAME_AS(long double*, T)           //
                           > {};
 
 enum struct argparse_option_type {

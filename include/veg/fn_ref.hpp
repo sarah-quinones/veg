@@ -26,92 +26,31 @@ union state_t {
 };
 
 template <typename T>
-struct is_fn_ptr {
-  static constexpr bool value = false;
-};
+VEG_TRAIT_VAR is_fn_ptr = false;
 template <typename Ret, typename... Args>
-struct is_fn_ptr<Ret (*)(Args...)> {
-  static constexpr bool value = true;
-};
+VEG_TRAIT_VAR is_fn_ptr<Ret (*)(Args...)> = true;
 
 template <typename T, typename Enable = void>
-struct is_convertible_to_fn_ptr_with_unary_plus {
-  static constexpr bool value = false;
-};
+VEG_TRAIT_VAR is_convertible_to_fn_ptr_with_unary_plus = false;
 template <typename T>
-struct is_convertible_to_fn_ptr_with_unary_plus<
+VEG_TRAIT_VAR is_convertible_to_fn_ptr_with_unary_plus<
     T,
-    decltype(static_cast<void>(+VEG_DECLVAL(T)))> {
-  static constexpr bool value =
-      is_fn_ptr<meta::decay_t<decltype(+VEG_DECLVAL(T))>>::value;
-};
-
-template <typename Enable, typename Fn, typename To, typename... Args>
-struct call_r_impl {
-  static constexpr bool value = false;
-};
-template <typename To, typename Fn, typename... Args>
-struct call_r_impl<
-    meta::enable_if_t<
-        meta::is_same<To, void>::value ||
-        meta::is_convertible<
-            decltype(VEG_DECLVAL(Fn)(VEG_DECLVAL(Args)...)),
-            To>::value>,
-    Fn,
-    To,
-    Args...> {
-  static constexpr bool value = true;
-
-  static auto apply(Fn&& fn, Args&&... args)
-      -> decltype(VEG_FWD(fn)(VEG_FWD(args)...)) {
-    return VEG_FWD(fn)(VEG_FWD(args)...);
-  }
-};
-
-template <typename Enable, typename Fn, typename To, typename... Args>
-struct invoke_r_impl : call_r_impl<Enable, Fn, To, Args...> {};
-
-template <typename To, typename Mem_Fn, typename First, typename... Args>
-struct invoke_r_impl<
-    meta::enable_if_t<
-        meta::is_same<To, void>::value ||
-        meta::is_convertible<
-            decltype((VEG_DECLVAL(First).*VEG_DECLVAL(Mem_Fn))(
-                VEG_DECLVAL(Args)...)),
-            To>::value>,
-    Mem_Fn,
-    To,
-    First,
-    Args...> {
-
-  static constexpr bool value = true;
-
-  static auto apply(Mem_Fn fn, First&& first, Args&&... args)
-      -> decltype((VEG_FWD(first).*fn)(VEG_FWD(args)...)) {
-    return (VEG_FWD(first).*fn)(VEG_FWD(args)...);
-  }
-};
-
-template <typename Fn, typename To, typename... Args>
-struct is_invoke_convertible : invoke_r_impl<void, Fn, To, Args...> {};
-template <typename Fn, typename To, typename... Args>
-struct is_call_convertible : call_r_impl<void, Fn, To, Args...> {};
+    decltype(static_cast<void>(+VEG_DECLVAL(T)))> =
+    is_fn_ptr<meta::decay_t<decltype(+VEG_DECLVAL(T))>>;
 
 template <typename Ret>
 struct discard_void {
   // non void case
   template <typename Fn, typename... Args>
   static auto apply(Fn&& fn, Args&&... args) -> Ret {
-    return is_invoke_convertible<Fn, Ret, Args...>::apply(
-        VEG_FWD(fn), VEG_FWD(args)...);
+    return invoke(VEG_FWD(fn), VEG_FWD(args)...);
   }
 };
 template <>
 struct discard_void<void> {
   template <typename Fn, typename... Args>
   static auto apply(Fn&& fn, Args&&... args) -> void {
-    is_invoke_convertible<Fn, void, Args...>::apply(
-        VEG_FWD(fn), VEG_FWD(args)...);
+    void(invoke(VEG_FWD(fn), VEG_FWD(args)...));
   }
 };
 
@@ -122,73 +61,47 @@ enum struct fn_kind_e {
 };
 
 template <typename T>
-struct fn_kind {
-  static constexpr fn_kind_e value =
-      is_convertible_to_fn_ptr_with_unary_plus<T>::value ? fn_kind_e::fn_ptr
-                                                         : fn_kind_e::fn_obj;
-};
+VEG_TRAIT_VAR fn_kind =
+    is_convertible_to_fn_ptr_with_unary_plus<T> ? fn_kind_e::fn_ptr
+                                                : fn_kind_e::fn_obj;
 
 template <typename Ret, typename... Args>
-struct fn_kind<Ret (*)(Args...)> {
-  static constexpr fn_kind_e value = fn_kind_e::fn_ptr;
-};
+VEG_TRAIT_VAR fn_kind<Ret (*)(Args...)> = fn_kind_e::fn_ptr;
 
 // member functions were a mistake
 template <typename Ret, typename Self, typename... Args>
-struct fn_kind<Ret (Self::*)(Args...)> {
-  static constexpr fn_kind_e value = fn_kind_e::mem_fn_ptr;
-};
+VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...)> = fn_kind_e::mem_fn_ptr;
 template <typename Ret, typename Self, typename... Args>
-struct fn_kind<Ret (Self::*)(Args...) const> {
-  static constexpr fn_kind_e value = fn_kind_e::mem_fn_ptr;
-};
+VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) const> = fn_kind_e::mem_fn_ptr;
 template <typename Ret, typename Self, typename... Args>
-struct fn_kind<Ret (Self::*)(Args...)&> {
-  static constexpr fn_kind_e value = fn_kind_e::mem_fn_ptr;
-};
+VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...)&> = fn_kind_e::mem_fn_ptr;
 template <typename Ret, typename Self, typename... Args>
-struct fn_kind<Ret (Self::*)(Args...) const&> {
-  static constexpr fn_kind_e value = fn_kind_e::mem_fn_ptr;
-};
+VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) const&> = fn_kind_e::mem_fn_ptr;
 template <typename Ret, typename Self, typename... Args>
-struct fn_kind<Ret (Self::*)(Args...) &&> {
-  static constexpr fn_kind_e value = fn_kind_e::mem_fn_ptr;
-};
+VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) &&> = fn_kind_e::mem_fn_ptr;
 template <typename Ret, typename Self, typename... Args>
-struct fn_kind<Ret (Self::*)(Args...) const&&> {
-  static constexpr fn_kind_e value = fn_kind_e::mem_fn_ptr;
-};
+VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) const&&> = fn_kind_e::mem_fn_ptr;
 
 #if __cplusplus >= 201703L
 
 template <typename Ret, typename... Args>
-struct fn_kind<Ret (*)(Args...) noexcept> {
-  static constexpr fn_kind_e value = fn_kind_e::fn_ptr;
-};
+VEG_TRAIT_VAR fn_kind<Ret (*)(Args...) noexcept> = fn_kind_e::fn_ptr;
 template <typename Ret, typename Self, typename... Args>
-struct fn_kind<Ret (Self::*)(Args...) noexcept> {
-  static constexpr fn_kind_e value = fn_kind_e::mem_fn_ptr;
-};
+VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) noexcept> = fn_kind_e::mem_fn_ptr;
 template <typename Ret, typename Self, typename... Args>
-struct fn_kind<Ret (Self::*)(Args...) const noexcept> {
-  static constexpr fn_kind_e value = fn_kind_e::mem_fn_ptr;
-};
+VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) const noexcept> =
+    fn_kind_e::mem_fn_ptr;
 template <typename Ret, typename Self, typename... Args>
-struct fn_kind<Ret (Self::*)(Args...)& noexcept> {
-  static constexpr fn_kind_e value = fn_kind_e::mem_fn_ptr;
-};
+VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...)& noexcept> = fn_kind_e::mem_fn_ptr;
 template <typename Ret, typename Self, typename... Args>
-struct fn_kind<Ret (Self::*)(Args...) const& noexcept> {
-  static constexpr fn_kind_e value = fn_kind_e::mem_fn_ptr;
-};
+VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) const& noexcept> =
+    fn_kind_e::mem_fn_ptr;
 template <typename Ret, typename Self, typename... Args>
-struct fn_kind<Ret (Self::*)(Args...)&& noexcept> {
-  static constexpr fn_kind_e value = fn_kind_e::mem_fn_ptr;
-};
+VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...)&& noexcept> =
+    fn_kind_e::mem_fn_ptr;
 template <typename Ret, typename Self, typename... Args>
-struct fn_kind<Ret (Self::*)(Args...) const&& noexcept> {
-  static constexpr fn_kind_e value = fn_kind_e::mem_fn_ptr;
-};
+VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) const&& noexcept> =
+    fn_kind_e::mem_fn_ptr;
 
 #endif
 
@@ -272,7 +185,7 @@ struct fn_ref_impl<fn_kind_e::mem_fn_ptr> {
 
 template <
     typename State,
-    template <typename Ret, typename Fn, typename... Args>
+    template <typename Fn, typename... Args>
     class Concept,
     typename Ret,
     typename... Args>
@@ -282,26 +195,25 @@ struct function_ref_impl {
   // COMPAT: check if function_ref_impl is a base of Fn
   VEG_TEMPLATE(
       (typename Fn),
-      requires(Concept<Fn, Ret, Args...>::value),
+      requires(
+          meta::void_<Ret> ||
+          meta::convertible_to<Ret, meta::detected_t<Concept, Fn, Args...>>),
       function_ref_impl, /* NOLINT(hicpp-explicit-conversions,
                            bugprone-forwarding-reference-overload) */
       (fn, Fn&&))
   noexcept
-      : m_state(fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::
+      : m_state(fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>>::
                     template address<State>(fn)),
-        m_call(fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::
+        m_call(fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>>::
                    template call<State, Fn, Ret, Args...>) {
-    VEG_ASSERT(
-        !fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::is_null(
-            m_state));
+    VEG_ASSERT(!fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>>::is_null(
+        m_state));
   }
 
   auto operator()(Args... args) const -> Ret {
     VEG_DEBUG_ASSERT(m_call != nullptr);
     return this->m_call(this->m_state, VEG_FWD(args)...);
   }
-
-  constexpr explicit operator bool() const { return m_call != nullptr; }
 
   template <fnref::fn_kind_e>
   friend struct fnref::fn_ref_impl;
@@ -316,13 +228,13 @@ struct function_ref_impl {
 template <typename Ret, typename... Args>
 struct mini_fn_ref<Ret(Args...)> : private internal::fnref::function_ref_impl<
                                        internal::fnref::sstate_t,
-                                       internal::fnref::is_call_convertible,
+                                       meta::call_result_t,
                                        Ret,
                                        Args...> {
 private:
   using base = internal::fnref::function_ref_impl<
       internal::fnref::sstate_t,
-      internal::fnref::is_call_convertible,
+      meta::call_result_t,
       Ret,
       Args...>;
   explicit constexpr mini_fn_ref(internal::fnref::dummy /*unused*/) : base(){};
@@ -333,19 +245,18 @@ public:
   mini_fn_ref() = delete;
   using base ::base;
   using base::operator();
-  using base::operator bool;
 };
 
 template <typename Ret, typename... Args>
 struct fn_ref<Ret(Args...)> : private internal::fnref::function_ref_impl<
                                   internal::fnref::state_t,
-                                  internal::fnref::is_invoke_convertible,
+                                  meta::invoke_result_t,
                                   Ret,
                                   Args...> {
 private:
   using base = internal::fnref::function_ref_impl<
       internal::fnref::state_t,
-      internal::fnref::is_invoke_convertible,
+      meta::invoke_result_t,
       Ret,
       Args...>;
   explicit constexpr fn_ref(internal::fnref::dummy /*unused*/) : base(){};
@@ -356,7 +267,6 @@ public:
   fn_ref() = delete;
   using base ::base;
   using base::operator();
-  using base::operator bool;
 };
 
 template <typename Ret, typename... Args>

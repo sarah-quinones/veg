@@ -36,27 +36,6 @@ TEST(option, all) {
     constexpr auto operator()() const -> double { return 2000.; }
   };
 
-  constexpr option<int> i = {some, 3};
-  constexpr option<int> j = none;
-  static_assert(i.and_then(A{}).unwrap() == 1000. / 3);
-  static_assert(i.map(B{}).unwrap() == 2000. / 3);
-
-  static_assert(i.map_or_else(B{}, C{}) == 2000. / 3);
-  static_assert(j.map_or_else(B{}, C{}) == 2000.);
-  static_assert(j.map_or(B{}, 2000) == 2000.);
-  static_assert(i.map_or(B{}, 2000) == 2000. / 3);
-
-  static_assert(!option<int>{0}.and_then(A{}));
-  static_assert(option<int>{3}.and_then(A{}).unwrap() == 1000. / 3);
-  static_assert(option<int>{42}.take().unwrap() == 42);
-  static_assert(!option<int>{none}.take());
-  static_assert(!j.and_then(A{}));
-
-  static_assert(option<int>{i}.or_else(A{}).unwrap() == 3);
-  static_assert(option<int>{j}.or_else(A{}).unwrap() == 13);
-
-  static_assert(sizeof(option<int&>) == sizeof(int*));
-
   static_assert(sizeof(option<int>) == sizeof(int) * 2);
   static_assert(sizeof(option<option<int>>) == sizeof(int) * 2);
   static_assert(sizeof(option<option<option<option<int>>>>) == sizeof(int) * 2);
@@ -64,20 +43,52 @@ TEST(option, all) {
   static_assert(
       sizeof(option<mini_fn_ref<void()>>) == sizeof(mini_fn_ref<void()>));
 
+  constexpr option<int> i = {some, 3};
+  constexpr option<int> j = none;
+  static_assert(i.as_ref().and_then(A{}).unwrap() == 1000. / 3);
+  static_assert(i.as_ref().map(B{}).unwrap() == 2000. / 3);
+
+  static_assert(i.as_ref().map_or_else(B{}, C{}) == 2000. / 3);
+  static_assert(j.as_ref().map_or_else(B{}, C{}) == 2000.);
+  static_assert(j.as_ref().map_or(B{}, 2000.) == 2000.);
+  static_assert(i.as_ref().map_or(B{}, 2000.) == 2000. / 3);
+  static_assert(i.as_ref().map([](int k) { return 2.0 * k; }) == some(6.0));
+
+  static_assert(!option<int>{0}.and_then(A{}));
+  static_assert(option<int>{3}.and_then(A{}).unwrap() == 1000. / 3);
+  static_assert(option<int>{42}.take().unwrap() == 42);
+  static_assert(!option<int>{none}.take());
+  static_assert(!j.as_ref().and_then(A{}));
+
+  static_assert(option<int>{i}.or_else(A{}).unwrap() == 3);
+  static_assert(option<int>{j}.or_else(A{}).unwrap() == 13);
+
+  static_assert(sizeof(option<int&>) == sizeof(int*));
+
   {
     constexpr option<option<option<int>>> opt = {some, {some, {some, 3}}};
+    constexpr option<option<option<int>>> opt_also = some(some(some(3)));
     constexpr option<option<option<int>>> opt2 = {some, {some, {none}}};
-    static_assert(opt.unwrap().unwrap().unwrap() == 3);
-    static_assert(!opt2.unwrap().unwrap());
-    static_assert(!opt2.flatten().flatten());
-    static_assert(opt2.flatten());
-    static_assert(opt2.flatten());
+    static_assert(opt == opt_also);
+    static_assert(
+        opt //
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .unwrap() == 3);
+    static_assert(opt.clone().unwrap().unwrap().unwrap() == 3);
+    static_assert(!opt2.clone().unwrap().unwrap());
+    static_assert(!opt2.clone().flatten().flatten());
+    static_assert(opt2.clone().flatten());
+    static_assert(opt2.clone().flatten());
   }
 
   {
     option<bool> flag;
     option<int> opt;
-    opt.map_or_else(
+    opt.as_ref().map_or_else(
         [&](int /*unused*/) {
           flag = {some, true};
         },
@@ -85,11 +96,11 @@ TEST(option, all) {
           flag = {some, false};
         });
     ASSERT_TRUE(flag);
-    ASSERT_FALSE(flag.unwrap());
+    ASSERT_FALSE(flag.as_ref().unwrap());
 
     opt = {some, 3};
     flag = {};
-    opt.map_or_else(
+    opt.as_ref().map_or_else(
         [&](int /*unused*/) {
           flag = {some, true};
         },
@@ -97,6 +108,6 @@ TEST(option, all) {
           flag = {some, false};
         });
     ASSERT_TRUE(flag);
-    ASSERT_TRUE(flag.unwrap());
+    ASSERT_TRUE(flag.as_ref().unwrap());
   }
 }

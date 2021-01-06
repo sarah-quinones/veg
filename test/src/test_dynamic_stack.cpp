@@ -26,7 +26,7 @@ public:
 TEST(dynamic_stack, raii) {
   unsigned char buf[4096];
 
-  dynamic_stack_view stack{slice<unsigned char>(buf)};
+  dynamic_stack_view stack{slice<void>(buf)};
 
   {
     auto s1 = stack.make_new(tag<S>, 3).unwrap();
@@ -128,4 +128,24 @@ TEST(dynamic_stack, manual_lifetimes) {
     EXPECT_EQ(S::n_instances(), 0);
   }
   EXPECT_EQ(S::n_instances(), 0);
+}
+
+struct T : S {
+  T() = default;
+  int a = 0;
+};
+
+TEST(dynamic_stack, alignment) {
+  alignas(T) unsigned char buffer[4096 + 1];
+  dynamic_stack_view stack{{buffer + 1, 4096}};
+  EXPECT_EQ(stack.remaining_bytes(), 4096);
+  EXPECT_EQ(T::n_instances(), 0);
+  {
+    auto s1 = stack.make_new(tag<T>, 0);
+    EXPECT_EQ(stack.remaining_bytes(), 4096 - alignof(T) + 1);
+    auto s2 = stack.make_new(tag<S>, 0);
+    EXPECT_EQ(stack.remaining_bytes(), 4096 - alignof(T) + 1);
+    EXPECT_EQ(T::n_instances(), 0);
+  }
+  EXPECT_EQ(T::n_instances(), 0);
 }

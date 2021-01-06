@@ -94,7 +94,9 @@ namespace fn {
 struct construct_at_fn {
   VEG_TEMPLATE(
       (typename T, typename... Args),
-      requires(_ctor_at::ctor_at_impl<T, Args&&...>::value),
+      requires(meta::disjunction<
+               meta::is_constructible<T, Args&&...>,
+               meta::is_uniform_init_constructible<T, Args&&...>>::value),
       VEG_CPP20(constexpr) auto
       operator(),
       (mem, T*),

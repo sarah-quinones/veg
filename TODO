@@ -1,7 +1,5 @@
-cpp20 constexpr
-
 1. tuple operator<=>
-2. option operator<=>
+2. print -> dbg
 3. option print
 
 4. result<T, E>

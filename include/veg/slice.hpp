@@ -2,8 +2,43 @@
 #define VEG_SPAN_HPP_CBT4079WS
 
 #include "veg/assert.hpp"
+#include "veg/option.hpp"
 
 namespace veg {
+
+template <typename T, i64 N>
+struct array {
+  T self[N];
+
+  VEG_NODISCARD auto data() noexcept -> T* { return self; }
+  VEG_NODISCARD auto data() const noexcept -> T const* { return self; }
+  VEG_NODISCARD auto size() const noexcept -> i64 { return N; }
+
+  VEG_NODISCARD auto operator[](i64 i) && noexcept -> T&& = delete;
+  VEG_NODISCARD auto operator[](i64 i) & noexcept -> T& {
+    VEG_ASSERT_ALL_OF(i >= 0, i < N);
+    return self[i];
+  }
+  VEG_NODISCARD auto operator[](i64 i) const& noexcept -> T const& {
+    VEG_ASSERT_ALL_OF(i >= 0, i < N);
+    return self[i];
+  }
+
+  VEG_NODISCARD auto at(i64 i) && noexcept -> option<T&&> = delete;
+  VEG_NODISCARD auto at(i64 i) & noexcept -> option<T&> {
+    if (i >= 0 && i < N) {
+      return {some, self[i]};
+    }
+    return none;
+  }
+  VEG_NODISCARD auto at(i64 i) const& noexcept -> option<T const&> {
+    if (i >= 0 && i < N) {
+      return {some, self[i]};
+    }
+    return none;
+  }
+};
+
 namespace internal {
 
 struct member_fn_data_size {
@@ -110,8 +145,7 @@ template <typename T>
 struct slice_ctor<T const> : slice_ctor_common<T const> {
   using slice_ctor_common<T const>::slice_ctor_common;
 
-  constexpr slice_ctor(
-      init_list_t /*tag*/, std::initializer_list<T> lst) noexcept
+  constexpr slice_ctor(std::initializer_list<T> lst) noexcept
       : slice_ctor_common<T const>{lst.begin(), static_cast<i64>(lst.size())} {}
 };
 } // namespace internal
@@ -125,6 +159,18 @@ struct slice : private internal::slice_ctor<T> {
   VEG_NODISCARD constexpr auto size() const noexcept -> i64 {
     return internal::slice_ctor_common<T>::m_count;
   }
+  VEG_NODISCARD constexpr auto operator[](i64 i) const noexcept -> T& {
+    VEG_ASSERT_ALL_OF( //
+        (i >= 0),
+        (i < size()));
+    return *(data() + i);
+  }
+  VEG_NODISCARD constexpr auto at(i64 i) const noexcept -> option<T&> {
+    if (i > 0 || i <= size()) {
+      return {some, *(data() + size())};
+    }
+    return none;
+  }
 };
 
 template <>
@@ -133,8 +179,7 @@ struct slice<void> : slice<unsigned char> {
 
   VEG_TEMPLATE(
       (typename T),
-      requires !meta::is_const<T>::value && //
-          meta::is_trivially_copyable<T>::value,
+      requires !meta::const_<T> && meta::trivially_copyable<T>,
       slice, /* NOLINT(hicpp-explicit-conversions) */
       (s, slice<T>))
   noexcept
@@ -145,7 +190,7 @@ struct slice<void const> : slice<unsigned char const> {
   using slice<unsigned char const>::slice;
   VEG_TEMPLATE(
       (typename T),
-      requires std::is_trivially_copyable<T>::value,
+      requires meta::trivially_copyable<T>,
       slice, /* NOLINT(hicpp-explicit-conversions) */
       (s, slice<T>))
   noexcept
@@ -157,11 +202,11 @@ namespace fn {
 struct slice_fn {
   VEG_TEMPLATE(
       (typename Rng),
-      requires(std::is_constructible< //
+      requires(meta::constructible< //
                slice<meta::remove_pointer_t<
                    decltype(internal::has_data<meta::remove_cvref_t<Rng>>::d(
                        VEG_DECLVAL(Rng&)))>>,
-               Rng&&>::value),
+               Rng&&>),
       auto
       operator(),
       (rng, Rng&&))

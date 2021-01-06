@@ -133,7 +133,7 @@ static auto argparse_getvalue(
   Char* s = nullptr;
   if (opt->value == nullptr) {
     VEG_ASSERT(opt->callback);
-    return opt->callback.unwrap()(self, opt);
+    return (opt->callback).as_ref().unwrap()(self, opt);
   }
   switch (opt->type) {
   case to_option_type<ternary>::value:
@@ -199,7 +199,7 @@ static auto argparse_getvalue(
   }
 
   if (opt->callback) {
-    return opt->callback.unwrap()(self, opt);
+    return opt->callback.as_ref().unwrap()(self, opt);
   }
 
   return 0;

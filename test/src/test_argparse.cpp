@@ -47,30 +47,29 @@ TEST(argparse, all) {
   veg::parse_args(
       &argc,
       argv,
-      {veg::init_list,
-       {
-           veg::help,
-           "Basic options",
-           {&a, 'c', "char"},
+      {
+          veg::help,
+          "Basic options",
+          {&a, 'c', "char"},
 
-           {nullptr,
-            'r',
-            "tern",
-            "",
-            {veg::some,
-             [&found](
-                 veg::argparse* /*self*/,
-                 veg::argparse_option const* /*opt*/) -> int {
-               found = true;
-               return 0;
-             }}},
+          {nullptr,
+           'r',
+           "tern",
+           "",
+           {veg::some,
+            [&found](
+                veg::argparse* /*self*/,
+                veg::argparse_option const* /*opt*/) -> int {
+              found = true;
+              return 0;
+            }}},
 
-           {&force, 'f', "force", "force to do"},
-           "More options",
-           {&path, 'p', "path", "path to read"},
-           {&flt, "float", "num"},
-           {&num, "num", "selected num"},
-       }},
+          {&force, 'f', "force", "force to do"},
+          "More options",
+          {&path, 'p', "path", "path to read"},
+          {&flt, "float", "num"},
+          {&num, "num", "selected num"},
+      },
       usage,
       "description",
       "more description");

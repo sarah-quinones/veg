@@ -62,13 +62,15 @@ struct delete_move_assign_if {
 template <>
 struct delete_move_assign_if<false> {};
 
-template <typename T, bool = meta::is_default_constructible<T>::value>
+template <typename T, bool = meta::constructible<T>>
 struct storage_base {
   using type = std::remove_const_t<T>;
   type inner_val = {};
   constexpr storage_base() = default;
-  explicit constexpr storage_base(type&& arg)
-      : inner_val{static_cast<type&&>(arg)} {}
+  explicit constexpr storage_base(meta::remove_cvref_t<T>&& arg)
+      : inner_val{static_cast<meta::remove_cvref_t<T>&&>(arg)} {}
+  explicit constexpr storage_base(meta::remove_cvref_t<T> const& arg)
+      : inner_val{arg} {}
 };
 
 template <typename T>
@@ -88,7 +90,19 @@ struct storage : storage_base<T> {
 
   using typename storage_base<T>::type;
 
-  constexpr auto get() const noexcept -> T const& { return inner_val; }
+  constexpr auto operator=(T const& val) noexcept(
+      meta::is_nothrow_constructible<T, T const&>::value) -> storage& {
+    inner_val = val;
+    return *this;
+  }
+  constexpr auto
+  operator=(T&& val) noexcept(meta::is_nothrow_constructible<T, T&&>::value)
+      -> storage& {
+    inner_val = VEG_MOV(val);
+    return *this;
+  }
+
+  constexpr auto _get() const noexcept -> T const& { return inner_val; }
   constexpr auto get_mut() noexcept -> T& { return inner_val; }
   constexpr auto get_mov_ref() && noexcept -> decltype(auto) {
     return static_cast<type&&>(inner_val);
@@ -98,8 +112,7 @@ struct storage : storage_base<T> {
   }
 
   template <typename U>
-  constexpr void
-  assign(U&& rhs) noexcept(meta::is_nothrow_assignable<T&, U&&>::value) {
+  constexpr void assign(U&& rhs) noexcept(meta::nothrow_assignable<T&, U&&>) {
     inner_val = VEG_FWD(rhs);
   }
 
@@ -108,11 +121,10 @@ struct storage : storage_base<T> {
       requires(
           meta::is_swappable<T&, V&>::value && //
           !std::is_reference<V>::value),
-      friend constexpr void swap,
-      (t, storage<T>&),
+      constexpr void swap,
       (v, storage<V>&))
   noexcept(meta::is_nothrow_swappable<T&, V&>::value) {
-    fn::swap_fn{}(t.get_mut(), v.get_mut());
+    fn::swap_fn{}(get_mut(), v.get_mut());
   }
 };
 
@@ -125,13 +137,13 @@ struct storage<T&> {
   explicit constexpr storage(T& arg) noexcept
       : inner_ptr{mem::addressof(arg)} {}
 
-  constexpr auto get() const noexcept -> T& { return *inner_ptr; }
+  constexpr auto _get() const noexcept -> T& { return *inner_ptr; }
   constexpr auto get_mut() noexcept -> T& { return *inner_ptr; }
   constexpr auto get_mov_ref() && noexcept -> T& { return *inner_ptr; }
   constexpr auto get_mov() && noexcept -> T& { return *inner_ptr; }
 
-  friend constexpr void swap(storage& u, storage& v) noexcept {
-    swap_::mov_fn_swap::apply(u.inner_ptr, v.inner_ptr);
+  constexpr void swap(storage& v) noexcept {
+    swap_::mov_fn_swap::apply(inner_ptr, v.inner_ptr);
   }
 
 private:
@@ -149,7 +161,7 @@ struct storage<T&&> : delete_copy_ctor_if<true>, delete_copy_assign_if<true> {
   storage() = default;
   explicit constexpr storage(T&& arg) noexcept
       : inner_ptr{mem::addressof(arg)} {}
-  constexpr auto get() const noexcept -> T& { return *inner_ptr; }
+  constexpr auto _get() const noexcept -> T& { return *inner_ptr; }
   constexpr auto get_mut() noexcept -> T& { return *inner_ptr; }
   constexpr auto get_mov_ref() && noexcept -> T&& {
     return static_cast<T&&>(*inner_ptr);
@@ -158,8 +170,8 @@ struct storage<T&&> : delete_copy_ctor_if<true>, delete_copy_assign_if<true> {
     return static_cast<T&&>(*inner_ptr);
   }
 
-  friend constexpr void swap(storage& u, storage& v) noexcept {
-    swap_::mov_fn_swap::apply(u.inner_ptr, v.inner_ptr);
+  constexpr void swap(storage& v) noexcept {
+    swap_::mov_fn_swap::apply(inner_ptr, v.inner_ptr);
   }
 
 private:
@@ -199,7 +211,7 @@ struct get_inner<meta::category_e::ref> {
   template <typename T>
   static constexpr auto apply(storage<T> const& arg) noexcept
       -> decltype(auto) {
-    return arg.get();
+    return arg._get();
   }
 
   template <typename Idx, template <Idx, typename> class Indexed>
@@ -207,7 +219,7 @@ struct get_inner<meta::category_e::ref> {
     template <Idx I, typename T>
     static constexpr auto apply(Indexed<I, T> const& arg) noexcept
         -> decltype(auto) {
-      return arg.get();
+      return arg._get();
     }
 
     template <Idx I, typename T>

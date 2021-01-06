@@ -12,7 +12,7 @@ template <typename To>
 struct narrow_fn {
   VEG_TEMPLATE(
       (typename From),
-      requires std::is_arithmetic<From>::value&& std::is_arithmetic<To>::value,
+      requires meta::arithmetic<From>&& meta::arithmetic<To>,
       constexpr auto
       operator(),
       (from, From))
@@ -21,7 +21,7 @@ struct narrow_fn {
 template <typename To>
 VEG_TEMPLATE(
     (typename From),
-    requires std::is_arithmetic<From>::value&& std::is_arithmetic<To>::value,
+    requires meta::arithmetic<From>&& meta::arithmetic<To>,
     constexpr auto narrow_fn<To>::operator(),
     (from, From))
 const noexcept -> To {
@@ -141,11 +141,11 @@ struct fix;
 namespace meta {
 
 template <typename T>
-struct is_index : std::false_type {};
+VEG_TRAIT_VAR meta_int = false;
 template <>
-struct is_index<int_c::dyn> : std::true_type {};
+VEG_TRAIT_VAR_SPEC meta_int<int_c::dyn> = true;
 template <i64 N>
-struct is_index<int_c::fix<N>> : std::true_type {};
+VEG_TRAIT_VAR_SPEC meta_int<int_c::fix<N>> = true;
 
 } // namespace meta
 
@@ -474,7 +474,7 @@ struct binary_traits<dyn, fix<N>> : binary_traits<dyn, dyn> {
 
 VEG_TEMPLATE(
     (typename L, typename R),
-    requires meta::is_index<L>::value&& meta::is_index<R>::value,
+    requires meta::meta_int<L>&& meta::meta_int<R>,
     VEG_NODISCARD constexpr auto
     operator+,
     (a, L),
@@ -485,7 +485,7 @@ noexcept {
 
 VEG_TEMPLATE(
     (typename L, typename R),
-    requires meta::is_index<L>::value&& meta::is_index<R>::value,
+    requires meta::meta_int<L>&& meta::meta_int<R>,
     VEG_NODISCARD constexpr auto
     operator-,
     (a, L),
@@ -496,7 +496,7 @@ noexcept {
 
 VEG_TEMPLATE(
     (typename L, typename R),
-    requires meta::is_index<L>::value&& meta::is_index<R>::value,
+    requires meta::meta_int<L>&& meta::meta_int<R>,
     VEG_NODISCARD constexpr auto
     operator*,
     (a, L),
@@ -507,8 +507,8 @@ noexcept {
 
 VEG_TEMPLATE(
     (typename L, typename R),
-    requires(meta::is_index<L>::value&& meta::is_index<R>::value&&
-                 meta::is_index<typename _::binary_traits<L, R>::div>::value),
+    requires(meta::meta_int<L>&& meta::meta_int<R>&&
+                 meta::meta_int<typename _::binary_traits<L, R>::div>),
     VEG_NODISCARD constexpr auto
     operator/,
     (a, L),
@@ -519,8 +519,8 @@ noexcept {
 
 VEG_TEMPLATE(
     (typename L, typename R),
-    requires(meta::is_index<L>::value&& meta::is_index<R>::value&&
-                 meta::is_index<typename _::binary_traits<L, R>::mod>::value),
+    requires(meta::meta_int<L>&& meta::meta_int<R>&&
+                 meta::meta_int<typename _::binary_traits<L, R>::mod>),
     VEG_NODISCARD constexpr auto
     operator%,
     (a, L),
@@ -532,7 +532,7 @@ noexcept {
 #define VEG_CMP(Name, Op)                                                      \
   VEG_TEMPLATE(                                                                \
       (typename L, typename R),                                                \
-      requires meta::is_index<L>::value&& meta::is_index<R>::value,            \
+      requires meta::meta_int<L>&& meta::meta_int<R>,                          \
       VEG_NODISCARD constexpr auto                                             \
       operator Op,                                                             \
       (a, L),                                                                  \

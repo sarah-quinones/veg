@@ -80,7 +80,7 @@ namespace fn {
 template <i64 I>
 struct get_fn {
   VEG_TEMPLATE(
-      (typename T),
+      typename T,
       requires(internal::get::get_impl<static_cast<usize>(I), T>::value),
       constexpr auto
       operator(),
@@ -101,9 +101,8 @@ namespace make {
 namespace fn {
 struct tuple_fn {
   VEG_TEMPLATE(
-      (typename... Ts),
-      requires_all(
-          meta::is_move_constructible<meta::remove_cvref_t<Ts>>::value),
+      typename... Ts,
+      requires_all(meta::move_constructible<meta::remove_cvref_t<Ts>>),
       constexpr auto
       operator(),
       (... args, Ts&&))

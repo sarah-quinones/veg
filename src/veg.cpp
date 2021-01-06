@@ -41,9 +41,8 @@ auto char_string_ref::operator==(char_string_ref other) const noexcept -> bool {
   return size() == other.size() &&
          std::memcmp(data(), other.data(), other.size()) == 0;
 }
-auto char_string_ref_(char const* str) noexcept -> char_string_ref {
-  return {str, static_cast<i64>(std::strlen(str))};
-}
+char_string_ref::char_string_ref(char const* str) noexcept
+    : char_string_ref{str, static_cast<i64>(std::strlen(str))} {}
 
 #define LIT(x)                                                                 \
   char_string_ref { x, sizeof(x) - 1 }
@@ -191,7 +190,7 @@ auto split_if_starts_with(char_string_ref& code_str, char_string_ref word)
   if (code_str.starts_with(word)) {
     return split_at(code_str, word.size());
   }
-  return {};
+  return empty_str;
 }
 
 auto next_tk(char_string_ref& code_str, bool extended_char_set = false)
@@ -348,7 +347,7 @@ auto parse_type_loop(char_string_ref& code_str) -> parse_type_result_t {
     bool entering;
   };
   std::stack<state> stack;
-  stack.push({0, 0, {}, false, {}, true});
+  stack.push({0, 0, {empty_str, {}}, false, {}, true});
 
   while (true) {
   loop:
@@ -370,7 +369,7 @@ auto parse_type_loop(char_string_ref& code_str) -> parse_type_result_t {
       }
     };
 
-    token_t previous_token{{}, other};
+    token_t previous_token{empty_str, other};
     auto token = entering ? next_tk(code_str, true) : state->token;
 
     for (; !entering || token.text.size() > 0;
@@ -523,7 +522,7 @@ auto to_owned(char_string_ref ref) -> std::string {
 void print_type(
     std::string& output, parse_type_result_t const& type, color_t c) {
 
-  token_t prev_tk = {{}, other};
+  token_t prev_tk = {empty_str, other};
   for (auto tk : type.tokens) {
     if (tk.text == LIT("::")) {
       output += with_color(c, to_owned(tk.text));
@@ -548,7 +547,7 @@ auto parse_func_signature(char_string_ref func) -> std::string {
 
   char_string_ref code_str = func;
 
-  token_t token{};
+  token_t token{empty_str, {}};
   while (peek_next_tk(code_str).kind == keyword) {
     token = next_tk(code_str);
   }
@@ -850,7 +849,7 @@ void set_assert_params1( //
   failed_asserts.push_back({
       false,
       LIT(""),
-      {},
+      empty_str,
       op,
       std::string{lhs.data(), static_cast<std::size_t>(lhs.size())},
       std::string{rhs.data(), static_cast<std::size_t>(rhs.size())},

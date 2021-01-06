@@ -62,6 +62,27 @@ struct string {
 };
 
 struct char_string_ref {
+  constexpr char_string_ref(char const* data, i64 len) noexcept
+      : data_{data}, len_{len} {};
+
+  char_string_ref // NOLINT(hicpp-explicit-conversions)
+      (char const* str) noexcept;
+
+  VEG_TEMPLATE(
+      typename T,
+      requires(
+          (meta::constructible<
+               char const*,
+               decltype(VEG_DECLVAL(T const&).data())> && //
+           meta::constructible<i64, decltype(VEG_DECLVAL(T const&).size())>)),
+
+      constexpr char_string_ref, // NOLINT(hicpp-explicit-conversions)
+      (arg, T const&))
+  noexcept
+      : char_string_ref{
+            static_cast<char const*>(arg.data()),
+            static_cast<i64>(arg.size())} {}
+
   char const* data_;
   i64 len_;
 
@@ -72,23 +93,7 @@ struct char_string_ref {
   VEG_NODISCARD auto starts_with(char_string_ref other) const noexcept -> bool;
   VEG_NODISCARD auto operator==(char_string_ref other) const noexcept -> bool;
 };
-
-VEG_TEMPLATE(
-    (typename T),
-    requires(meta::is_constructible<
-             char const*,
-             decltype(VEG_DECLVAL(T const&).data())>::value&&
-                 meta::is_constructible<
-                     i64,
-                     decltype(VEG_DECLVAL(T const&).size())>::value),
-
-    constexpr auto char_string_ref_,
-    (arg, T const&))
-noexcept -> char_string_ref {
-  return {static_cast<char const*>(arg.data()), static_cast<i64>(arg.size())};
-}
-
-auto char_string_ref_(char const* str) noexcept -> char_string_ref;
+static constexpr char_string_ref empty_str = {"", 0};
 
 struct tag_invoke_print_ {
   template <typename T>
@@ -115,13 +120,13 @@ auto to_string_primitive(T arg) -> assert::internal::string;
 
 template <typename T>
 using cast_up = meta::conditional_t<
-    meta::is_pointer<T>::value, //
-    void const volatile*,       //
+    meta::pointer<T>,     //
+    void const volatile*, //
     meta::conditional_t<
-        meta::is_floating_point<T>::value,
+        meta::floating_point<T>,
         long double,
         meta::conditional_t<
-            meta::is_signed<T>::value,
+            meta::signed_integral<T>,
             signed long long,
             unsigned long long>>>;
 
@@ -136,8 +141,7 @@ struct default_impl_print_ {
 template <typename T>
 struct is_ptr_non_fn
     : meta::bool_constant<(
-          meta::is_pointer<T>::value &&
-          !meta::is_function<meta::remove_pointer_t<T>>::value)> {};
+          meta::pointer<T> && !meta::function<meta::remove_pointer_t<T>>)> {};
 
 template <typename T>
 struct default_impl_printable
@@ -217,7 +221,7 @@ auto to_string(T const& arg) -> string {
   try {
     auto res = print_impl<T>::apply(&arg);
 
-    char_string_ref view = char_string_ref_(res);
+    char_string_ref view(res);
     buf.copy(view.data(), view.size());
   } catch (...) {
     decr_counter();
@@ -288,7 +292,7 @@ struct lhs_all_of_t {
       -> bool {
     return (res ? void(0)
                 : internal::set_assert_params1(
-                      {}, internal::to_string(lhs), {})),
+                      empty_str, internal::to_string(lhs), {})),
            res;
   }
   template <typename U>
@@ -310,13 +314,13 @@ struct cleanup { // NOLINT(cppcoreguidelines-special-member-functions)
 } // namespace internal
 
 #define VEG_IMPL_ASSERT_IMPL(Callback, If_Fail, ...)                           \
-  (static_cast<bool>(::veg::assert::internal::decomposer{} << __VA_ARGS__)     \
-       ? static_cast<void>(0)                                                  \
+  ((::veg::assert::internal::decomposer{} << __VA_ARGS__)                      \
+       ? (void)(0)                                                             \
        : (::veg::assert::internal::cleanup{},                                  \
           ::veg::assert::internal::set_assert_params2(                         \
               ::veg::assert::internal::char_string_ref{                        \
                   #__VA_ARGS__, sizeof(#__VA_ARGS__) - 1},                     \
-              ::veg::assert::internal::char_string_ref_(If_Fail)),             \
+              If_Fail),                                                        \
           ::veg::assert::internal::Callback(                                   \
               __LINE__,                                                        \
               ::veg::assert::internal::char_string_ref{                        \
@@ -335,14 +339,14 @@ struct cleanup { // NOLINT(cppcoreguidelines-special-member-functions)
   VEG_IGNORE_SHIFT_PAREN_WARNING(                                              \
       VEG_IMPL_ASSERT_IMPL,                                                    \
       on_assert_fail,                                                          \
-      (::veg::assert::internal::char_string_ref{"", 0}),                       \
+      (::veg::assert::internal::empty_str),                                    \
       __VA_ARGS__)
 
 #define VEG_EXPECT(...)                                                        \
   VEG_IGNORE_SHIFT_PAREN_WARNING(                                              \
       VEG_IMPL_ASSERT_IMPL,                                                    \
       on_expect_fail,                                                          \
-      (::veg::assert::internal::char_string_ref{"", 0}),                       \
+      (::veg::assert::internal::empty_str),                                    \
       __VA_ARGS__)
 
 #define VEG_IMPL_ALL_OF_1(Ftor, Decomposer, Callback, ...)                     \
@@ -353,28 +357,21 @@ struct cleanup { // NOLINT(cppcoreguidelines-special-member-functions)
   VEG_IMPL_ASSERT_FTOR(                                                        \
       _,                                                                       \
       Decomposer,                                                              \
-      ((::veg::assert::internal::char_string_ref{"", 0}),                      \
-       VEG_PP_REMOVE_PARENS(Elem)))
+      (::veg::assert::internal::empty_str, VEG_PP_REMOVE_PARENS(Elem)))
 
 #define VEG_IMPL_ASSERT_FTOR(_, Decomposer, Elem)                              \
-  static_cast<bool>(                                                           \
-      ::veg::assert::internal::Decomposer{}                                    \
-      << VEG_PP_REMOVE_PARENS(VEG_PP_TUPLE_POP_FRONT(Elem)))                   \
+  (::veg::assert::internal::Decomposer{} << VEG_PP_TAIL Elem)                  \
       ? true                                                                   \
-      : (::veg::assert::internal::cleanup{},                                   \
+      : ((void)(::veg::assert::internal::cleanup{}),                           \
          ::veg::assert::internal::set_assert_params2(                          \
-             {VEG_PP_STRINGIZE(                                                \
-                  VEG_PP_REMOVE_PARENS(VEG_PP_TUPLE_POP_FRONT(Elem))),         \
-              sizeof(VEG_PP_STRINGIZE(                                         \
-                  VEG_PP_REMOVE_PARENS(VEG_PP_TUPLE_POP_FRONT(Elem)))) -       \
-                  1},                                                          \
-             ::veg::assert::internal::char_string_ref_(                        \
-                 VEG_PP_TUPLE_ELEM(0, Elem))),                                 \
+             {VEG_PP_STRINGIZE(VEG_PP_TAIL Elem),                              \
+              sizeof(VEG_PP_STRINGIZE(VEG_PP_TAIL Elem)) - 1},                 \
+             VEG_PP_HEAD Elem),                                                \
          false),
 
 #define VEG_IMPL_ALL_OF_2(Ftor, Decomposer, Callback, Seq)                     \
   (::veg::meta::all_of({VEG_PP_SEQ_FOR_EACH(Ftor, Decomposer, Seq)})           \
-       ? static_cast<void>(0)                                                  \
+       ? (void)(0)                                                             \
        : ::veg::assert::internal::Callback(                                    \
              __LINE__,                                                         \
              {__FILE__, sizeof(__FILE__) - 1},                                 \
@@ -443,14 +440,14 @@ struct cleanup { // NOLINT(cppcoreguidelines-special-member-functions)
 #endif
 
 #ifdef NDEBUG
-#define VEG_DEBUG_ASSERT(...) (static_cast<void>(0))
-#define VEG_DEBUG_EXPECT(...) (static_cast<void>(0))
-#define VEG_DEBUG_ASSERT_ELSE(Message, ...) (static_cast<void>(0))
-#define VEG_DEBUG_EXPECT_ELSE(Message, ...) (static_cast<void>(0))
-#define VEG_DEBUG_ASSERT_ALL_OF(...) (static_cast<void>(0))
-#define VEG_DEBUG_EXPECT_ALL_OF(...) (static_cast<void>(0))
-#define VEG_DEBUG_ASSERT_ALL_OF_ELSE(...) (static_cast<void>(0))
-#define VEG_DEBUG_EXPECT_ALL_OF_ELSE(...) (static_cast<void>(0))
+#define VEG_DEBUG_ASSERT(...) ((void)(0))
+#define VEG_DEBUG_EXPECT(...) ((void)(0))
+#define VEG_DEBUG_ASSERT_ELSE(Message, ...) ((void)(0))
+#define VEG_DEBUG_EXPECT_ELSE(Message, ...) ((void)(0))
+#define VEG_DEBUG_ASSERT_ALL_OF(...) ((void)(0))
+#define VEG_DEBUG_EXPECT_ALL_OF(...) ((void)(0))
+#define VEG_DEBUG_ASSERT_ALL_OF_ELSE(...) ((void)(0))
+#define VEG_DEBUG_EXPECT_ALL_OF_ELSE(...) ((void)(0))
 #else
 #define VEG_DEBUG_ASSERT(...) VEG_ASSERT(__VA_ARGS__)
 #define VEG_DEBUG_EXPECT(...) VEG_EXPECT(__VA_ARGS__)
