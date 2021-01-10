@@ -1,6 +1,7 @@
 #include "veg/option.hpp"
 #include "veg/fn_ref.hpp"
 #include <gtest/gtest.h>
+#include <vector>
 
 using namespace veg;
 template <typename T, i64 N>
@@ -109,5 +110,78 @@ TEST(option, all) {
         });
     ASSERT_TRUE(flag);
     ASSERT_TRUE(flag.as_ref().unwrap());
+  }
+  {
+    constexpr auto opt = [&] {
+      option<int> x;
+      x.emplace([&] { return 1; });
+      return x;
+    }();
+
+    static_assert(opt == some(1));
+  }
+  {
+    static_assert(meta::mostly_trivial<int>);
+    static_assert(meta::mostly_trivial<option<int>>);
+    constexpr auto opt = [&] {
+      option<option<int>> x;
+      x.emplace([&] { return some(1); });
+      return x;
+    }();
+
+    static_assert(opt == some(some(1)));
+  }
+  {
+    using std::vector;
+
+    auto opt = [&] {
+      option<vector<int>> x;
+      x.emplace([&] { return vector<int>{1, 2, 3}; });
+      return x;
+    }();
+
+    ASSERT_EQ(opt, some(vector<int>{1, 2, 3}));
+  }
+  {
+    using std::vector;
+
+    static_assert(meta::value_sentinel_for<option<vector<int>>>::value == 253);
+
+    auto opt = [&] {
+      option<option<vector<int>>> x;
+      x.emplace([&] { return some(vector<int>{1, 2, 3}); });
+      return x;
+    }();
+
+    ASSERT_EQ(opt, some(some(vector<int>{1, 2, 3})));
+  }
+  {
+    using std::vector;
+
+    static_assert(
+        meta::value_sentinel_for<option<option<vector<int>>>>::value == 252);
+
+    auto opt = [&] {
+      option<option<option<vector<int>>>> x;
+      x.emplace([&] { return some(some(vector<int>{1, 2, 3})); });
+      return x;
+    }();
+
+    ASSERT_EQ(opt, some(some(some(vector<int>{1, 2, 3}))));
+  }
+  {
+    using std::vector;
+
+    static_assert(
+        meta::value_sentinel_for<option<option<option<vector<int>>>>>::value ==
+        251);
+
+    auto opt = [&] {
+      option<option<option<option<vector<int>>>>> x;
+      x.emplace([&] { return some(some(some(vector<int>{1, 2, 3}))); });
+      return x;
+    }();
+
+    ASSERT_EQ(opt, some(some(some(some(vector<int>{1, 2, 3})))));
   }
 }

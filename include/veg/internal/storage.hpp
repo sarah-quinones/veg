@@ -62,25 +62,42 @@ struct delete_move_assign_if {
 template <>
 struct delete_move_assign_if<false> {};
 
+template <typename T, typename Arg>
+struct arg_ctor_to_fn {
+  Arg&& arg;
+  constexpr auto operator()() const
+      noexcept(meta::nothrow_constructible<T, Arg&&>) -> T {
+    return T{VEG_FWD(arg)};
+  }
+};
+template <typename T>
+using copy_ctor_fn = arg_ctor_to_fn<T, T const&>;
+template <typename T>
+using move_ctor_fn = arg_ctor_to_fn<T, T&&>;
+
 template <typename T, bool = meta::constructible<T>>
 struct storage_base {
   using type = std::remove_const_t<T>;
   type inner_val = {};
   constexpr storage_base() = default;
-  explicit constexpr storage_base(meta::remove_cvref_t<T>&& arg)
-      : inner_val{static_cast<meta::remove_cvref_t<T>&&>(arg)} {}
-  explicit constexpr storage_base(meta::remove_cvref_t<T> const& arg)
-      : inner_val{arg} {}
+  template <typename Fn>
+  constexpr storage_base(int /*unused*/, Fn&& fn) noexcept(
+      meta::nothrow_invocable<Fn&&>)
+      : inner_val(VEG_FWD(fn)()) {}
+  explicit constexpr storage_base(T&& arg) : inner_val{static_cast<T&&>(arg)} {}
+  explicit constexpr storage_base(T const& arg) : inner_val{arg} {}
 };
 
 template <typename T>
 struct storage_base<T, false> {
   using type = std::remove_const_t<T>;
   type inner_val;
-  explicit constexpr storage_base(meta::remove_cvref_t<T>&& arg)
-      : inner_val{static_cast<meta::remove_cvref_t<T>&&>(arg)} {}
-  explicit constexpr storage_base(meta::remove_cvref_t<T> const& arg)
-      : inner_val{arg} {}
+  template <typename Fn>
+  constexpr storage_base(int /*unused*/, Fn&& fn) noexcept(
+      meta::nothrow_invocable<Fn&&>)
+      : inner_val(VEG_FWD(fn)()) {}
+  explicit constexpr storage_base(T&& arg) : inner_val{static_cast<T&&>(arg)} {}
+  explicit constexpr storage_base(T const& arg) : inner_val{arg} {}
 };
 
 template <typename T>
@@ -128,6 +145,11 @@ struct storage : storage_base<T> {
   }
 };
 
+template <typename T>
+auto as_lvalue(T&& arg) -> T& {
+  return arg;
+}
+
 struct null_key {};
 template <typename T>
 struct storage<T&> {
@@ -136,6 +158,10 @@ struct storage<T&> {
 
   explicit constexpr storage(T& arg) noexcept
       : inner_ptr{mem::addressof(arg)} {}
+  template <typename Fn>
+  constexpr storage(int /*unused*/, Fn&& fn) noexcept(
+      meta::nothrow_invocable<Fn&&>)
+      : inner_ptr(mem::addressof(VEG_FWD(fn)())) {}
 
   constexpr auto _get() const noexcept -> T& { return *inner_ptr; }
   constexpr auto get_mut() noexcept -> T& { return *inner_ptr; }
@@ -161,6 +187,12 @@ struct storage<T&&> : delete_copy_ctor_if<true>, delete_copy_assign_if<true> {
   storage() = default;
   explicit constexpr storage(T&& arg) noexcept
       : inner_ptr{mem::addressof(arg)} {}
+  template <typename Fn>
+  constexpr storage(int /*unused*/, Fn&& fn) noexcept(
+      meta::nothrow_invocable<Fn&&>)
+      : inner_ptr(mem::addressof(internal::storage::as_lvalue(VEG_FWD(fn)()))) {
+  }
+
   constexpr auto _get() const noexcept -> T& { return *inner_ptr; }
   constexpr auto get_mut() noexcept -> T& { return *inner_ptr; }
   constexpr auto get_mov_ref() && noexcept -> T&& {

@@ -88,6 +88,14 @@ struct ctor_at_impl : meta::disjunction<
                           constructible<T, Args&&...>,
                           uniform_constructible<T, Args&&...>> {};
 
+template <typename Fn>
+struct fn_to_convertible {
+  Fn&& fn;
+  constexpr explicit operator meta::invoke_result_t<Fn&&>() && noexcept(
+      meta::nothrow_invocable<Fn&&>) {
+    return VEG_FWD(fn)();
+  }
+};
 } // namespace _ctor_at
 
 namespace fn {
@@ -106,16 +114,29 @@ struct construct_at_fn {
   }
 };
 
+struct construct_with_fn {
+  VEG_TEMPLATE(
+      (typename T, typename Fn),
+      requires VEG_SAME_AS(T, (meta::detected_t<meta::invoke_result_t, Fn&&>)),
+      VEG_CPP20(constexpr) auto
+      operator(),
+      (mem, T*),
+      (fn, Fn&&))
+  const noexcept(meta::nothrow_invocable<Fn&&>)->T* {
+#if __cplusplus >= 202002L
+    return ::std::construct_at(
+        mem, _ctor_at::fn_to_convertible<Fn&&>{VEG_FWD(fn)});
+#else
+    return new (mem) T(VEG_FWD(fn)());
+#endif
+  }
+};
+
 struct destroy_at_fn {
   template <typename T, typename... Args>
   VEG_CPP20(constexpr)
   void operator()(T* mem) const noexcept {
-
-#if __cplusplus >= 202002L
-    ::std::destroy_at(mem);
-#else
     mem->~T();
-#endif
   }
 };
 
@@ -144,6 +165,7 @@ struct addressof_fn {
 } // namespace fn
 
 VEG_ODR_VAR(construct_at, fn::construct_at_fn);
+VEG_ODR_VAR(construct_with, fn::construct_with_fn);
 VEG_ODR_VAR(destroy_at, fn::destroy_at_fn);
 VEG_ODR_VAR(addressof, fn::addressof_fn);
 

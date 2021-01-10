@@ -264,6 +264,10 @@ constexpr auto max2(T const& a, T const& b) {
   return a > b ? a : b;
 }
 template <typename T>
+constexpr auto min2(T const& a, T const& b) {
+  return a < b ? a : b;
+}
+template <typename T>
 constexpr auto max_of(std::initializer_list<T> lst) noexcept -> T {
   T max_ = *(lst.begin());
   for (auto x : lst) { // NOLINT
@@ -822,10 +826,9 @@ template <typename Fn, typename... Args>
 using invoke_result_t = typename invoke_result<Fn&&, Args&&...>::type;
 
 template <typename Fn, typename... Args>
-struct is_nothrow_invocable
-    : conjunction<
-          is_invocable<Fn&&, Args&&...>,
-          internal::is_nothrow_invocable_impl<Fn&&, Args&&...>> {};
+VEG_TRAIT_VAR nothrow_invocable = conjunction<
+    is_invocable<Fn&&, Args&&...>,
+    internal::is_nothrow_invocable_impl<Fn&&, Args&&...>>::value;
 
 namespace internal {
 
@@ -889,7 +892,7 @@ struct invoke_fn {
       operator(),
       (fn, Fn&&),
       (... args, Args&&))
-  const noexcept(meta::is_nothrow_invocable<Fn&&, Args&&...>::value)
+  const noexcept(meta::nothrow_invocable<Fn&&, Args&&...>)
       ->meta::invoke_result_t<Fn&&, Args&&...> {
     return meta::is_invocable<Fn&&, Args&&...>::apply(
         VEG_FWD(fn), VEG_FWD(args)...);
@@ -1073,7 +1076,7 @@ struct is_nothrow_swappable : conjunction<
 
 template <typename T>
 struct value_sentinel_for : std::integral_constant<i64, 0> {
-  static constexpr auto invalid(i64 /*unused*/) noexcept {}
+  static constexpr void invalid(i64 /*unused*/) noexcept {}
   static constexpr auto id(T const& /*unused*/) noexcept -> i64 { return -1; }
 };
 
@@ -1105,9 +1108,7 @@ struct VEG_NODISCARD finally {
   auto operator=(finally&&) noexcept(meta::nothrow_move_assignable<Fn>)
       -> finally& = default;
   VEG_CPP20(constexpr)
-  ~finally() noexcept(noexcept(meta::is_nothrow_invocable<Fn&&>::value)) {
-    invoke(fn);
-  }
+  ~finally() noexcept(noexcept(meta::nothrow_invocable<Fn&&>)) { invoke(fn); }
 };
 VEG_CPP17(
 

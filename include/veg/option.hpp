@@ -11,6 +11,8 @@ template <typename T>
 struct option;
 namespace meta {
 template <typename T>
+VEG_TRAIT_VAR_SPEC mostly_trivial<option<T>> = mostly_trivial<T>;
+template <typename T>
 struct is_option : std::false_type {};
 template <typename T>
 struct is_option<veg::option<T>> : std::true_type {};
@@ -75,15 +77,24 @@ namespace option_ {
 
 enum kind { has_sentinel, trivial, non_trivial };
 
-template <
-    typename T,
-    kind = (meta::value_sentinel_for<T>::value > 1) ? has_sentinel
-           : meta::trivially_copyable<T>            ? trivial
-                                                    : non_trivial>
-struct value_sentinel_impl;
+template <typename T, bool = (meta::value_sentinel_for<T>::value > 1)>
+struct value_sentinel_impl
+    : std::integral_constant<i64, i64(static_cast<unsigned char>(-3))> {
+  static constexpr auto invalid(i64 i) -> option<T> {
+    if (i <= static_cast<unsigned char>(-3)) {
+      option<T> val = none;
+      val.engaged = static_cast<unsigned char>(2 + i);
+      return val;
+    }
+    terminate();
+  }
+  static constexpr auto id(option<T> const& arg) {
+    return (arg.engaged < 2) ? -1 : (arg.engaged - 2);
+  }
+};
 
 template <typename T>
-struct value_sentinel_impl<T, has_sentinel>
+struct value_sentinel_impl<T, true>
     : std::integral_constant<i64, meta::value_sentinel_for<T>::value - 1> {
   static constexpr auto invalid(i64 i) {
     return option<T>{meta::value_sentinel_for<T>::invalid(i + 1)};
@@ -93,22 +104,7 @@ struct value_sentinel_impl<T, has_sentinel>
       return -1;
     }
     return meta::value_sentinel_for<T>::id(
-        arg.as_ref().unwrap_unchecked(unsafe));
-  }
-};
-template <typename T>
-struct value_sentinel_impl<T, trivial>
-    : std::integral_constant<i64, i64(static_cast<unsigned char>(-3))> {
-  static constexpr auto invalid(i64 i) {
-    if (i <= static_cast<unsigned char>(-3)) {
-      option<T> val = none;
-      val.engaged = static_cast<unsigned char>(2 + i);
-      return val;
-    }
-    terminate();
-  }
-  static constexpr auto id(option<T> const& arg) {
-    return arg.engaged < 2 ? -1 : arg.engaged - 2;
+        arg.unwrap_unchecked_invalid(unsafe));
   }
 };
 
@@ -148,32 +144,32 @@ struct make_none { // NOLINT
   }
 };
 
-template <
-    typename T,
-    kind = (meta::value_sentinel_for<storage::storage<T>>::value > 0) //
-               ? has_sentinel
-               : ((meta::mostly_trivial<T> && meta::constructible<T>))
-                     ? trivial
-                     : non_trivial>
+template <typename T>
+VEG_TRAIT_VAR kind_v =
+    ((meta::value_sentinel_for<storage::storage<T>>::value > 0) //
+         ? has_sentinel
+         : ((meta::mostly_trivial<T> && meta::constructible<T>)) ? trivial
+                                                                 : non_trivial);
+
+template <typename T, kind = kind_v<T>>
 // trivial
 struct option_storage_base {
   storage::storage<T> some = {};
   unsigned char engaged = 0;
 
   constexpr option_storage_base() = default;
-  constexpr explicit option_storage_base(std::remove_const_t<T>&& val)
+  constexpr explicit option_storage_base(T&& val)
       : some(VEG_FWD(val)), engaged(1) {}
 
   VEG_NODISCARD constexpr auto is_engaged() const noexcept -> bool {
     return engaged == 1;
   }
 
-  template <typename... Args>
-  constexpr auto
-  emplace(Args&&... args) noexcept(meta::nothrow_constructible<T, Args&&...>) {
+  template <typename Fn>
+  constexpr auto _emplace(Fn&& fn) noexcept(meta::nothrow_invocable<Fn&&>) {
     VEG_DEBUG_ASSERT(!engaged);
-    some = storage::storage<T>(T(args...));
-    engaged = true;
+    some = storage::storage<T>(veg::invoke(VEG_FWD(fn)));
+    engaged = 1;
   }
 
   template <typename U>
@@ -191,11 +187,11 @@ struct option_storage_base {
     VEG_DEBUG_ASSERT(is_engaged());
     return some._get();
   }
-  VEG_NODISCARD constexpr auto _get() & noexcept -> std::remove_const_t<T>& {
+  VEG_NODISCARD constexpr auto _get() & noexcept -> T& {
     VEG_DEBUG_ASSERT(is_engaged());
     return some.get_mut();
   }
-  VEG_NODISCARD constexpr auto _get() && noexcept -> std::remove_const_t<T>&& {
+  VEG_NODISCARD constexpr auto _get() && noexcept -> T&& {
     VEG_DEBUG_ASSERT(is_engaged());
     return VEG_MOV(some).get_mov_ref();
   }
@@ -211,18 +207,16 @@ struct option_storage_base<T, has_sentinel> {
   storage::storage<T> some = sentinel_traits::invalid(0);
 
   constexpr option_storage_base() = default;
-  constexpr explicit option_storage_base(std::remove_const_t<T>&& val)
-      : some(VEG_FWD(val)) {}
+  constexpr explicit option_storage_base(T&& val) : some(VEG_FWD(val)) {}
 
   VEG_NODISCARD constexpr auto is_engaged() const noexcept -> bool {
     return sentinel_traits::id(some) < 0;
   }
 
-  template <typename... Args>
-  constexpr auto
-  emplace(Args&&... args) noexcept(meta::nothrow_constructible<T, Args&&...>) {
+  template <typename Fn>
+  constexpr auto _emplace(Fn&& fn) noexcept(meta::nothrow_invocable<Fn&&>) {
     VEG_DEBUG_ASSERT(!is_engaged());
-    some = storage::storage<T>(T(args...));
+    some = storage::storage<T>(veg::invoke(VEG_FWD(fn)));
   }
 
   template <typename U>
@@ -233,17 +227,86 @@ struct option_storage_base<T, has_sentinel> {
 
   constexpr auto destroy() noexcept { some = sentinel_traits::invalid(0); }
 
+  VEG_NODISCARD constexpr auto
+  unwrap_unchecked_invalid(unsafe_t /*tag*/) const& noexcept -> T const& {
+    return some._get();
+  }
+
   VEG_NODISCARD constexpr auto _get() const& noexcept -> T const& {
     VEG_DEBUG_ASSERT(is_engaged());
     return some._get();
   }
-  VEG_NODISCARD constexpr auto _get() & noexcept -> std::remove_const_t<T>& {
+  VEG_NODISCARD constexpr auto _get() & noexcept -> T& {
     VEG_DEBUG_ASSERT(is_engaged());
     return some.get_mut();
   }
-  VEG_NODISCARD constexpr auto _get() && noexcept -> std::remove_const_t<T>&& {
+  VEG_NODISCARD constexpr auto _get() && noexcept -> T&& {
     VEG_DEBUG_ASSERT(is_engaged());
     return VEG_MOV(some).get_mov_ref();
+  }
+};
+
+template <typename T, bool = meta::mostly_trivial<T>>
+struct option_storage_base_option_emplace {
+  template <typename Fn>
+  constexpr auto _emplace(Fn&& fn) noexcept(meta::nothrow_invocable<Fn&&>) {
+    auto& self = *static_cast<option_storage_base<option<T>>*>(this);
+    VEG_DEBUG_ASSERT(!self.is_engaged());
+    self.some = VEG_FWD(fn)();
+  }
+};
+
+template <typename T>
+struct option_storage_base_option_emplace<T, false> {
+  template <typename Fn>
+  constexpr auto _emplace(Fn&& fn) noexcept(meta::nothrow_invocable<Fn&&>) {
+    auto& self = *static_cast<option_storage_base<option<T>>*>(this);
+    VEG_DEBUG_ASSERT(!self.is_engaged());
+    // mem::destroy_at(mem::addressof(some)); // no-op
+    mem::construct_with(mem::addressof(self.some), VEG_FWD(fn));
+  }
+};
+
+template <typename T>
+struct option_storage_base<option<T>, has_sentinel>
+    : option_storage_base_option_emplace<T> {
+  using sentinel_traits = meta::value_sentinel_for<option<T>>;
+
+  option<T> some = sentinel_traits::invalid(0);
+
+  constexpr option_storage_base() = default;
+  constexpr explicit option_storage_base(option<T>&& val)
+      : some(VEG_FWD(val)) {}
+
+  VEG_NODISCARD constexpr auto is_engaged() const noexcept -> bool {
+    return sentinel_traits::id(some) < 0;
+  }
+
+  template <typename U>
+  constexpr auto assign(U&& rhs) noexcept(noexcept(some.assign(VEG_FWD(rhs)))) {
+    VEG_DEBUG_ASSERT(is_engaged());
+    some = VEG_FWD(rhs);
+  }
+
+  constexpr auto destroy() noexcept { some = sentinel_traits::invalid(0); }
+
+  VEG_NODISCARD constexpr auto
+  unwrap_unchecked_invalid(unsafe_t /*tag*/) const& noexcept
+      -> option<T> const& {
+    return some;
+  }
+
+  VEG_NODISCARD constexpr auto _get() const& noexcept -> option<T> const& {
+    VEG_DEBUG_ASSERT(is_engaged());
+    return some;
+  }
+  VEG_NODISCARD constexpr auto _get() & noexcept -> option<T>& {
+    VEG_DEBUG_ASSERT(is_engaged());
+    return some;
+  }
+  VEG_NODISCARD constexpr auto _get() && noexcept -> option<T>&& {
+    VEG_DEBUG_ASSERT(is_engaged());
+    return VEG_MOV(some);
   }
 };
 
@@ -253,17 +316,22 @@ struct option_storage_nontrivial_base {
     unsigned char none = {};
     storage::storage<T> some;
   };
-  bool engaged = false;
+  unsigned char engaged = 0;
 
   constexpr option_storage_nontrivial_base() noexcept {};
+  constexpr option_storage_nontrivial_base(
+      i64 /* unused */, unsigned char id) noexcept
+      : engaged{id} {};
   constexpr explicit option_storage_nontrivial_base(T&& val) //
       noexcept(meta::nothrow_move_constructible<T>)
-      : some(VEG_FWD(val)), engaged(true) {}
+      : some(VEG_FWD(val)), engaged(1) {}
 
   VEG_NODISCARD constexpr auto is_engaged() const noexcept -> bool {
-    return engaged;
+    return engaged == 1;
   }
-  constexpr void set_engaged(bool b) noexcept { engaged = b; }
+  constexpr void set_engaged(bool b) noexcept {
+    engaged = static_cast<unsigned char>(b);
+  }
 };
 
 template <typename T>
@@ -274,19 +342,24 @@ struct
     unsigned char none = {};
     storage::storage<T> some;
   };
-  bool engaged = false;
+  unsigned char engaged = 0;
   constexpr option_storage_nontrivial_base() noexcept {};
+  constexpr option_storage_nontrivial_base(
+      i64 /* unused */, unsigned char id) noexcept
+      : engaged{id} {};
   constexpr explicit option_storage_nontrivial_base(T&& val) //
       noexcept(meta::nothrow_move_constructible<T>)
-      : some(VEG_FWD(val)), engaged(true) {}
+      : some(VEG_FWD(val)), engaged(1) {}
 
   VEG_NODISCARD constexpr auto is_engaged() const noexcept -> bool {
-    return engaged;
+    return engaged == 1;
   }
-  constexpr void set_engaged(bool b) noexcept { engaged = b; }
+  constexpr void set_engaged(bool b) noexcept {
+    engaged = static_cast<unsigned char>(b);
+  }
 
   VEG_CPP20(constexpr) ~option_storage_nontrivial_base() {
-    if (engaged) {
+    if (engaged == 1) {
       mem::destroy_at(mem::addressof(some));
     } else {
       mem::destroy_at(mem::addressof(none));
@@ -309,15 +382,14 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
     some.assign(VEG_FWD(rhs));
   }
 
-  template <typename... Args>
+  template <typename Fn>
   VEG_CPP20(constexpr)
-  auto emplace(Args&&... args) noexcept(
-      meta::nothrow_constructible<T, Args&&...>) {
+  auto _emplace(Fn&& fn) noexcept(meta::nothrow_invocable<Fn&&>) {
     VEG_DEBUG_ASSERT(!is_engaged());
 
     finally<do_if<make_none>> guard{{true, {mem::addressof(none)}}};
 
-    mem::construct_at(mem::addressof(some), VEG_FWD(args)...);
+    mem::construct_at(mem::addressof(some), 0, VEG_FWD(fn));
 
     guard.fn.cond = false;
     set_engaged(true);
@@ -334,11 +406,11 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
     VEG_DEBUG_ASSERT(is_engaged());
     return some._get();
   }
-  constexpr auto _get() & noexcept -> std::remove_const_t<T>& {
+  constexpr auto _get() & noexcept -> T& {
     VEG_DEBUG_ASSERT(is_engaged());
     return some.get_mut();
   }
-  constexpr auto _get() && noexcept -> std::remove_const_t<T>&& {
+  constexpr auto _get() && noexcept -> T&& {
     VEG_DEBUG_ASSERT(is_engaged());
     return VEG_MOV(some).get_mov_ref();
   }
@@ -346,7 +418,8 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
 
 template <
     typename T,
-    bool = meta::reference<T> || meta::trivially_copy_constructible<T> ||
+    bool = (kind_v<T> != non_trivial) || meta::reference<T> ||
+           meta::trivially_copy_constructible<T> ||
            !meta::constructible<T, T const&>>
 struct option_copy_ctor_base : option_storage_base<T> {
   using option_storage_base<T>::option_storage_base;
@@ -358,9 +431,10 @@ struct option_copy_ctor_base<T, false> : option_storage_base<T> {
   ~option_copy_ctor_base() = default;
   constexpr option_copy_ctor_base(option_copy_ctor_base const& rhs) noexcept(
       meta::nothrow_constructible<T, T const&>)
-      : option_storage_base<T>{} {
+      : option_storage_base<T>{0, rhs.engaged} {
     if (rhs.is_engaged()) {
-      this->emplace(rhs._get());
+      this->engaged = 0;
+      this->_emplace(storage::copy_ctor_fn<T>{rhs._get()});
     }
   }
   option_copy_ctor_base /* NOLINT */ (option_copy_ctor_base&&) = default;
@@ -372,11 +446,13 @@ struct option_copy_ctor_base<T, false> : option_storage_base<T> {
 
 template <
     typename T,
-    bool = meta::reference<T> || meta::trivially_move_constructible<T> ||
+    bool = (kind_v<T> != non_trivial) || meta::reference<T> ||
+           meta::trivially_move_constructible<T> ||
            !meta::constructible<T, T&&>>
 struct option_move_ctor_base : option_copy_ctor_base<T> {
   using option_copy_ctor_base<T>::option_copy_ctor_base;
 };
+
 template <typename T>
 struct option_move_ctor_base<T, false> : option_copy_ctor_base<T> {
   using option_copy_ctor_base<T>::option_copy_ctor_base;
@@ -385,9 +461,10 @@ struct option_move_ctor_base<T, false> : option_copy_ctor_base<T> {
   option_move_ctor_base(option_move_ctor_base const&) = default;
   constexpr option_move_ctor_base(option_move_ctor_base&& rhs) noexcept(
       meta::nothrow_constructible<T, T&&>)
-      : option_copy_ctor_base<T>{} {
+      : option_copy_ctor_base<T>{0, rhs.engaged} {
     if (rhs.is_engaged()) {
-      this->emplace(VEG_MOV(rhs)._get());
+      this->engaged = 0;
+      this->_emplace(storage::move_ctor_fn<T>{VEG_MOV(rhs)._get()});
     }
   }
   auto operator=(option_move_ctor_base const&)
@@ -398,8 +475,8 @@ struct option_move_ctor_base<T, false> : option_copy_ctor_base<T> {
 
 template <
     typename T,
-    bool = meta::reference<T> || meta::trivially_copy_assignable<T> ||
-           !meta::assignable<T, T const&>>
+    bool = (kind_v<T> != non_trivial) || meta::reference<T> ||
+           meta::trivially_copy_assignable<T> || !meta::assignable<T, T const&>>
 struct option_copy_assign_base : option_move_ctor_base<T> {
   using option_move_ctor_base<T>::option_move_ctor_base;
 };
@@ -410,21 +487,21 @@ struct option_copy_assign_base<T, false> : option_move_ctor_base<T> {
 
   option_copy_assign_base(option_copy_assign_base const&) = default;
   option_copy_assign_base /* NOLINT */ (option_copy_assign_base&&) = default;
-  constexpr auto operator=
-      /* NOLINT(cert-oop54-cpp) */(option_copy_assign_base const& rhs) noexcept(
-          (meta::nothrow_constructible<T, T const&> &&
-           meta::nothrow_assignable<T&, T const&>))
-          -> option_copy_assign_base& {
+  constexpr auto operator= // NOLINT(cert-oop54-cpp)
+      (option_copy_assign_base const& rhs) noexcept((
+          meta::nothrow_constructible<T, T const&> &&
+          meta::nothrow_assignable<T&, T const&>)) -> option_copy_assign_base& {
     if (rhs.is_engaged()) {
       if (this->is_engaged()) {
         this->assign(rhs._get());
       } else {
-        this->emplace(rhs._get());
+        this->_emplace(storage::copy_ctor_fn<T>{rhs._get()});
       }
     } else {
       if (this->is_engaged()) {
         this->destroy();
       }
+      this->engaged = rhs.engaged;
     }
     return *this;
   }
@@ -434,8 +511,8 @@ struct option_copy_assign_base<T, false> : option_move_ctor_base<T> {
 
 template <
     typename T,
-    bool = meta::reference<T> || meta::trivially_move_assignable<T> ||
-           !meta::assignable<T, T&&>>
+    bool = (kind_v<T> != non_trivial) || meta::reference<T> ||
+           meta::trivially_move_assignable<T> || !meta::assignable<T, T&&>>
 struct option_move_assign_base : option_copy_assign_base<T> {
   using option_copy_assign_base<T>::option_copy_assign_base;
 };
@@ -455,12 +532,13 @@ struct option_move_assign_base<T, false> : option_copy_assign_base<T> {
       if (this->is_engaged()) {
         this->assign(VEG_MOV(rhs)._get());
       } else {
-        this->emplace(VEG_MOV(rhs)._get());
+        this->_emplace(storage::move_ctor_fn<T>{VEG_MOV(rhs)._get()});
       }
     } else {
       if (this->is_engaged()) {
         this->destroy();
       }
+      this->engaged = rhs.engaged;
     }
     return *this;
   }
@@ -649,9 +727,23 @@ struct VEG_NODISCARD option
 
   VEG_TEMPLATE(
       (typename Fn),
+      requires(
+          (meta::invocable<Fn&&> &&
+           VEG_SAME_AS(T, (meta::detected_t<meta::invoke_result_t, Fn&&>)))),
+      constexpr void emplace,
+      (fn, Fn&&))
+  &noexcept(meta::nothrow_invocable<Fn&&>) {
+    if (*this) {
+      *this = none;
+    }
+    this->_emplace(VEG_FWD(fn));
+  }
+
+  VEG_TEMPLATE(
+      (typename Fn),
       requires(meta::is_invocable<Fn&&, T&&>::value),
       VEG_NODISCARD constexpr auto map,
-      (fn, Fn&&)) && noexcept(meta::is_nothrow_invocable<Fn&&, T&&>::value)
+      (fn, Fn&&)) && noexcept(meta::nothrow_invocable<Fn&&, T&&>)
       -> option<meta::detected_t<meta::invoke_result_t, Fn&&, T&&>> {
 
     if (!*this) {
@@ -666,7 +758,7 @@ struct VEG_NODISCARD option
       requires(meta::is_option<
                meta::detected_t<meta::invoke_result_t, Fn&&, T&&>>::value),
       VEG_NODISCARD constexpr auto and_then,
-      (fn, Fn&&)) && noexcept(meta::is_nothrow_invocable<Fn&&, T&&>::value)
+      (fn, Fn&&)) && noexcept(meta::nothrow_invocable<Fn&&, T&&>)
       -> meta::detected_t<meta::invoke_result_t, Fn&&, T&&> {
     if (!*this) {
       return none;
@@ -684,7 +776,7 @@ struct VEG_NODISCARD option
                (meta::detected_t<meta::invoke_result_t, D&&>)))),
       VEG_NODISCARD constexpr auto map_or_else,
       (fn, Fn&&),
-      (d, D&&)) && noexcept(meta::is_nothrow_invocable<Fn&&>::value)
+      (d, D&&)) && noexcept(meta::nothrow_invocable<Fn&&>)
       -> meta::detected_t<meta::invoke_result_t, Fn&&, T&&> {
     if (*this) {
       return invoke(
@@ -699,7 +791,7 @@ struct VEG_NODISCARD option
           (meta::detected_t<meta::invoke_result_t, Fn&&, T&&> &&), D&&)),
       VEG_NODISCARD constexpr auto map_or,
       (fn, Fn&&),
-      (d, D&&)) && noexcept(meta::is_nothrow_invocable<Fn&&, T&&>::value)
+      (d, D&&)) && noexcept(meta::nothrow_invocable<Fn&&, T&&>)
       -> meta::detected_t<meta::invoke_result_t, Fn&&, T&&> {
     if (!*this) {
       return VEG_FWD(d);
@@ -716,7 +808,7 @@ struct VEG_NODISCARD option
       (fn, Fn&&)) &&
 
       noexcept(
-          (meta::is_nothrow_invocable<Fn&&>::value &&
+          (meta::nothrow_invocable<Fn&&> &&
            meta::nothrow_constructible<T, T const&>)) -> option<T> {
     if (*this) {
       return {some, VEG_MOV(*this).as_ref().unwrap_unchecked(unsafe)};
@@ -782,7 +874,7 @@ struct VEG_NODISCARD option
   }
 
 private:
-  template <typename U, internal::option_::kind K>
+  template <typename U, bool B>
   friend struct internal::option_::value_sentinel_impl;
 
   template <typename U, bool B>
