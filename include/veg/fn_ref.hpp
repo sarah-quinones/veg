@@ -26,17 +26,16 @@ union state_t {
 };
 
 template <typename T>
-VEG_TRAIT_VAR is_fn_ptr = false;
+struct is_fn_ptr : std::false_type {};
 template <typename Ret, typename... Args>
-VEG_TRAIT_VAR is_fn_ptr<Ret (*)(Args...)> = true;
+struct is_fn_ptr<Ret (*)(Args...)> : std::true_type {};
 
-template <typename T, typename Enable = void>
-VEG_TRAIT_VAR is_convertible_to_fn_ptr_with_unary_plus = false;
 template <typename T>
-VEG_TRAIT_VAR is_convertible_to_fn_ptr_with_unary_plus<
-    T,
-    decltype(static_cast<void>(+VEG_DECLVAL(T)))> =
-    is_fn_ptr<meta::decay_t<decltype(+VEG_DECLVAL(T))>>;
+using unary_plus = decltype(+VEG_DECLVAL(T));
+
+template <typename T>
+struct is_convertible_to_fn_ptr_with_unary_plus
+    : is_fn_ptr<meta::detected_t<unary_plus, T>> {};
 
 template <typename Ret>
 struct discard_void {
@@ -61,47 +60,59 @@ enum struct fn_kind_e {
 };
 
 template <typename T>
-VEG_TRAIT_VAR fn_kind =
-    is_convertible_to_fn_ptr_with_unary_plus<T> ? fn_kind_e::fn_ptr
-                                                : fn_kind_e::fn_obj;
+struct fn_kind : std::integral_constant<
+                     fn_kind_e,
+                     is_convertible_to_fn_ptr_with_unary_plus<T>::value
+                         ? fn_kind_e::fn_ptr
+                         : fn_kind_e::fn_obj> {};
 
 template <typename Ret, typename... Args>
-VEG_TRAIT_VAR fn_kind<Ret (*)(Args...)> = fn_kind_e::fn_ptr;
+struct fn_kind<Ret (*)(Args...)>
+    : std::integral_constant<fn_kind_e, fn_kind_e::fn_ptr> {};
 
 // member functions were a mistake
 template <typename Ret, typename Self, typename... Args>
-VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...)> = fn_kind_e::mem_fn_ptr;
+struct fn_kind<Ret (Self::*)(Args...)>
+    : std::integral_constant<fn_kind_e, fn_kind_e::mem_fn_ptr> {};
 template <typename Ret, typename Self, typename... Args>
-VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) const> = fn_kind_e::mem_fn_ptr;
+struct fn_kind<Ret (Self::*)(Args...) const>
+    : std::integral_constant<fn_kind_e, fn_kind_e::mem_fn_ptr> {};
 template <typename Ret, typename Self, typename... Args>
-VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...)&> = fn_kind_e::mem_fn_ptr;
+struct fn_kind<Ret (Self::*)(Args...)&>
+    : std::integral_constant<fn_kind_e, fn_kind_e::mem_fn_ptr> {};
 template <typename Ret, typename Self, typename... Args>
-VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) const&> = fn_kind_e::mem_fn_ptr;
+struct fn_kind<Ret (Self::*)(Args...) const&>
+    : std::integral_constant<fn_kind_e, fn_kind_e::mem_fn_ptr> {};
 template <typename Ret, typename Self, typename... Args>
-VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) &&> = fn_kind_e::mem_fn_ptr;
+struct fn_kind<Ret (Self::*)(Args...) &&>
+    : std::integral_constant<fn_kind_e, fn_kind_e::mem_fn_ptr> {};
 template <typename Ret, typename Self, typename... Args>
-VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) const&&> = fn_kind_e::mem_fn_ptr;
+struct fn_kind<Ret (Self::*)(Args...) const&&>
+    : std::integral_constant<fn_kind_e, fn_kind_e::mem_fn_ptr> {};
 
 #if __cplusplus >= 201703L
 
 template <typename Ret, typename... Args>
-VEG_TRAIT_VAR fn_kind<Ret (*)(Args...) noexcept> = fn_kind_e::fn_ptr;
+struct fn_kind<Ret (*)(Args...) noexcept>
+    : std::integral_constant<fn_kind_e, fn_kind_e::fn_ptr> {};
 template <typename Ret, typename Self, typename... Args>
-VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) noexcept> = fn_kind_e::mem_fn_ptr;
+struct fn_kind<Ret (Self::*)(Args...) noexcept>
+    : std::integral_constant<fn_kind_e, fn_kind_e::mem_fn_ptr> {};
 template <typename Ret, typename Self, typename... Args>
-VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) const noexcept> =
-    fn_kind_e::mem_fn_ptr;
+struct fn_kind<Ret (Self::*)(Args...) const noexcept>
+    : std::integral_constant<fn_kind_e, fn_kind_e::mem_fn_ptr> {};
 template <typename Ret, typename Self, typename... Args>
-VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...)& noexcept> = fn_kind_e::mem_fn_ptr;
+struct fn_kind<Ret (Self::*)(Args...)& noexcept>
+    : std::integral_constant<fn_kind_e, fn_kind_e::mem_fn_ptr> {};
 template <typename Ret, typename Self, typename... Args>
-VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) const& noexcept> =
-    fn_kind_e::mem_fn_ptr;
+struct fn_kind<Ret (Self::*)(Args...) const& noexcept>
+    : std::integral_constant<fn_kind_e, fn_kind_e::mem_fn_ptr> {};
 template <typename Ret, typename Self, typename... Args>
-VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...)&& noexcept> =
-    fn_kind_e::mem_fn_ptr;
+struct fn_kind<Ret (Self::*)(Args...)&& noexcept>
+    : std::integral_constant<fn_kind_e, fn_kind_e::mem_fn_ptr> {};
 template <typename Ret, typename Self, typename... Args>
-VEG_TRAIT_VAR fn_kind<Ret (Self::*)(Args...) const&& noexcept> =
-    fn_kind_e::mem_fn_ptr;
+struct fn_kind<Ret (Self::*)(Args...) const&& noexcept>
+    : std::integral_constant<fn_kind_e, fn_kind_e::mem_fn_ptr> {};
 
 #endif
 
@@ -196,18 +207,20 @@ struct function_ref_impl {
   VEG_TEMPLATE(
       (typename Fn),
       requires(
-          meta::void_<Ret> ||
-          meta::convertible_to<Ret, meta::detected_t<Concept, Fn, Args...>>),
+          meta::void_<Ret>::value ||
+          meta::convertible_to<Ret, meta::detected_t<Concept, Fn, Args...>>::
+              value),
       function_ref_impl, /* NOLINT(hicpp-explicit-conversions,
                            bugprone-forwarding-reference-overload) */
       (fn, Fn&&))
   noexcept
-      : m_state(fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>>::
+      : m_state(fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::
                     template address<State>(fn)),
-        m_call(fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>>::
+        m_call(fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::
                    template call<State, Fn, Ret, Args...>) {
-    VEG_ASSERT(!fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>>::is_null(
-        m_state));
+    VEG_ASSERT(
+        !fnref::fn_ref_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::is_null(
+            m_state));
   }
 
   auto operator()(Args... args) const -> Ret {
@@ -272,11 +285,9 @@ public:
 template <typename Ret, typename... Args>
 struct meta::value_sentinel_for<fn_ref<Ret(Args...)>>
     : std::integral_constant<i64, 1> {
-  static constexpr auto invalid(i64 i) noexcept {
-    if (i == 0) {
-      return fn_ref<Ret(Args...)>{::veg::internal::fnref::dummy{}};
-    }
-    terminate();
+  static constexpr auto invalid(i64 i) noexcept -> fn_ref<Ret(Args...)> {
+    return VEG_ASSERT(i == 0),
+           fn_ref<Ret(Args...)>{::veg::internal::fnref::dummy{}};
   }
   static constexpr auto id(fn_ref<Ret(Args...)> arg) -> i64 {
     return arg.m_call == nullptr ? 0 : -1;
@@ -284,11 +295,9 @@ struct meta::value_sentinel_for<fn_ref<Ret(Args...)>>
 };
 template <typename Ret, typename... Args>
 struct meta::value_sentinel_for<mini_fn_ref<Ret(Args...)>> : std::true_type {
-  static constexpr auto invalid(i64 i) noexcept {
-    if (i == 0) {
-      return mini_fn_ref<Ret(Args...)>{::veg::internal::fnref::dummy{}};
-    }
-    terminate();
+  static constexpr auto invalid(i64 i) noexcept -> mini_fn_ref<Ret(Args...)> {
+    return VEG_ASSERT(i == 0),
+           mini_fn_ref<Ret(Args...)>{::veg::internal::fnref::dummy{}};
   }
   static constexpr auto id(mini_fn_ref<Ret(Args...)> arg) -> i64 {
     return arg.m_call == nullptr ? 0 : -1;

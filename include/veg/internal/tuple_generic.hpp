@@ -17,12 +17,9 @@ namespace internal {
 namespace tuple {
 
 template <typename T>
-auto get() = delete;
+void get() = delete;
 template <usize I, typename T>
-auto adl_get(T&& arg) noexcept(noexcept(get<I>(VEG_FWD(arg))))
-    -> decltype(auto) {
-  return get<I>(VEG_FWD(arg));
-}
+auto adl_get(T&& arg) VEG_DEDUCE_RET(get<I>(VEG_FWD(arg)));
 
 template <usize I, typename T>
 struct tuple_leaf : storage::storage<T> {
@@ -35,7 +32,8 @@ struct tuple_impl;
 template <usize... Is, typename... Ts>
 struct tuple_impl<meta::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
   constexpr tuple_impl() = default;
-  constexpr explicit tuple_impl(meta::remove_cv_t<Ts>&&... args)
+  constexpr explicit tuple_impl(Ts&&... args) noexcept(
+      meta::all_of({meta::nothrow_constructible<Ts, Ts&&>::value...}))
       : tuple_leaf<Is, Ts>{VEG_FWD(args)}... {}
 };
 
@@ -50,17 +48,20 @@ struct pack_ith_elem {
 };
 
 template <typename T>
-VEG_TRAIT_VAR is_tuple = false;
+struct is_tuple : std::false_type {};
 template <typename... Ts>
-VEG_TRAIT_VAR is_tuple<veg::tuple<Ts...>> = true;
+struct is_tuple<veg::tuple<Ts...>> : std::true_type {};
 
 template <typename T>
-auto get_inner(T&& tup) noexcept -> auto&& {
+auto get_inner(T&& tup) noexcept -> decltype((VEG_FWD(tup).m_impl))&& {
   return VEG_FWD(tup).m_impl;
 }
 
 template <usize I, typename... Ts>
-constexpr auto ith_impl(veg::tuple<Ts...>& tup) noexcept -> auto& {
+constexpr auto ith_impl(veg::tuple<Ts...>& tup) noexcept -> decltype(
+    internal::storage::get_inner<meta::category_e::ref_mut>::template with_idx<
+        usize,
+        internal::tuple::tuple_leaf>::template impl<I>(tuple::get_inner(tup))) {
 
   return internal::storage::get_inner<meta::category_e::ref_mut>::
       template with_idx<usize, internal::tuple::tuple_leaf>::template impl<I>(
@@ -68,13 +69,15 @@ constexpr auto ith_impl(veg::tuple<Ts...>& tup) noexcept -> auto& {
 }
 
 template <typename... Ts, typename... Us, usize... Is>
-constexpr void swap_impl(
+VEG_CPP14(constexpr)
+void swap_impl(
     veg::tuple<Ts...>& ts,
     veg::tuple<Us...>& us,
-    meta::index_sequence<Is...> /*seq*/) {
-
-  int dummy[] = {(tuple::ith_impl<Is>(ts).swap(tuple::ith_impl<Is>(us)), 0)...};
-  (void)dummy;
+    meta::index_sequence<
+        Is...> /*seq*/) noexcept(noexcept(meta::internal::int_arr{
+    (tuple::ith_impl<Is>(ts).swap(tuple::ith_impl<Is>(us)), 0)...})) {
+  (void)meta::internal::int_arr{
+      (tuple::ith_impl<Is>(ts).swap(tuple::ith_impl<Is>(us)), 0)...};
 }
 
 namespace adl {
@@ -85,27 +88,26 @@ struct tuple_base {};
 VEG_TEMPLATE(
     (usize I, typename T),
     requires(
-        is_tuple<meta::remove_cvref_t<T>> &&
+        is_tuple<meta::remove_cvref_t<T>>::value &&
         (I < std::tuple_size<meta::remove_cvref_t<T>>::value)),
     constexpr auto get,
     (tup, T&&))
-noexcept(meta::lvalue_reference<T>) -> decltype(auto) {
-  return internal::storage::get_inner<meta::value_category<T>::value>::
-      template with_idx<usize, internal::tuple::tuple_leaf>::template apply<I>(
-          tuple::get_inner(VEG_FWD(tup)));
-}
+VEG_DEDUCE_RET(
+    internal::storage::get_inner<meta::value_category<T>::value>::
+        template with_idx<usize, internal::tuple::tuple_leaf>::template apply<
+            I>(tuple::get_inner(VEG_FWD(tup))));
 
 VEG_TEMPLATE(
     (typename... Ts, typename... Us),
     requires //
     VEG_ALL_OF(
-        ((meta::reference<Ts> //
+        ((meta::reference<Ts>::value //
           && VEG_SAME_AS(Ts, Us)) ||
-         meta::is_swappable<Ts&, Us&>::value)),
-    constexpr void swap,
+         meta::swappable<Ts&, Us&>::value)),
+    VEG_CPP14(constexpr) void swap,
     (ts, veg::tuple<Ts...>&),
     (us, veg::tuple<Us...>&))
-noexcept(VEG_ALL_OF(meta::is_nothrow_swappable<
+noexcept(VEG_ALL_OF(meta::nothrow_swappable<
                     internal::storage::storage<Ts>&,
                     internal::storage::storage<Us>&>::value)) {
   return tuple::swap_impl(ts, us, meta::make_index_sequence<sizeof...(Ts)>{});
@@ -117,24 +119,24 @@ noexcept(VEG_ALL_OF(meta::is_nothrow_swappable<
 } // namespace internal
 
 template <typename... Ts>
-struct tuple : internal::tuple::adl::tuple_base<Ts...> {
+struct tuple : veg::internal::tuple::adl::tuple_base<Ts...> {
   constexpr tuple() = default;
   constexpr tuple /* NOLINT(hicpp-explicit-conversions) */
-      (meta::remove_cv_t<Ts>... args) noexcept
+      (Ts... args) noexcept
       : m_impl(VEG_FWD(args)...) {}
 
   VEG_CVREF_DUPLICATE(
       VEG_TEMPLATE(
           (i64 I),
           requires(I < sizeof...(Ts) && (I >= 0)),
-          constexpr auto
+          VEG_CPP14(constexpr) auto
           operator[],
           (/*arg*/, fix<I>)),
       internal::tuple::adl_get<I>,
       ());
 
   VEG_CVREF_DUPLICATE(
-      constexpr auto as_ref(),
+      VEG_CPP14(constexpr) auto as_ref(),
       tuple::as_ref_impl,
       (, meta::make_index_sequence<sizeof...(Ts)>{}));
 
@@ -143,7 +145,10 @@ private:
       m_impl;
 
   template <usize I, typename Self>
-  static constexpr auto ith_ref(Self&& tup) noexcept -> auto&& {
+  static constexpr auto ith_ref(Self&& tup) noexcept -> decltype(
+      internal::storage::get_inner<meta::value_category<Self&&>::value>::
+          template with_idx<usize, internal::tuple::tuple_leaf>::template apply<
+              I>(VEG_FWD(tup).m_impl))&& {
 
     return internal::storage::get_inner<meta::value_category<Self&&>::value>::
         template with_idx<usize, internal::tuple::tuple_leaf>::template apply<
@@ -152,13 +157,14 @@ private:
 
   template <typename Self, usize... Is>
   static constexpr auto
-  as_ref_impl(Self&& self, meta::index_sequence<Is...> /*seq*/) noexcept {
-    return tuple<decltype(tuple::ith_ref<Is>(VEG_FWD(self)))...>{
-        tuple::ith_ref<Is>(VEG_FWD(self))...};
+  as_ref_impl(Self&& self, meta::index_sequence<Is...> /*seq*/) noexcept
+      -> tuple<decltype(tuple::ith_ref<Is>(VEG_FWD(self)))...> {
+    return {tuple::ith_ref<Is>(VEG_FWD(self))...};
   }
 
   template <typename T>
-  friend auto internal::tuple::get_inner(T&& tup) noexcept -> auto&&;
+  friend auto internal::tuple::get_inner(T&& tup) noexcept
+      -> decltype((VEG_FWD(tup).m_impl))&&;
 };
 
 VEG_CPP17(template <typename... Ts> tuple(Ts...) -> tuple<Ts...>;)

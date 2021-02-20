@@ -56,34 +56,34 @@ public:
 
   VEG_TEMPLATE(
       (typename T),
-      requires((meta::constructible<T>)),
+      requires((meta::constructible<T>::value)),
       VEG_NODISCARD auto make_new,
       (/*unused*/, tag_t<T>),
       (len, i64),
       (align = alignof(T), i64))
-  noexcept(meta::nothrow_constructible<T>) -> option<dynamic_array<T>> {
+  noexcept(meta::nothrow_constructible<T>::value) -> option<dynamic_array<T>> {
     dynamic_array<T> get{*this, len, align, internal::dynstack::zero_init_fn{}};
     if (get.data() == nullptr) {
       return none;
     }
-    return {some, VEG_MOV(get)};
+    return {some, VEG_FWD(get)};
   }
 
   VEG_TEMPLATE(
       (typename T),
-      requires((meta::constructible<T>)),
+      requires((meta::constructible<T>::value)),
       VEG_NODISCARD auto make_new_for_overwrite,
       (/*unused*/, tag_t<T>),
       (len, i64),
       (align = alignof(T), i64))
 
-  noexcept(meta::nothrow_constructible<T>) -> option<dynamic_array<T>> {
+  noexcept(meta::nothrow_constructible<T>::value) -> option<dynamic_array<T>> {
     dynamic_array<T> get{
         *this, len, align, internal::dynstack::default_init_fn{}};
     if (get.data() == nullptr) {
       return none;
     }
-    return {some, VEG_MOV(get)};
+    return {some, VEG_FWD(get)};
   }
 
   template <typename T>
@@ -94,7 +94,7 @@ public:
     if (get.data() == nullptr) {
       return none;
     }
-    return {some, VEG_MOV(get)};
+    return {some, VEG_FWD(get)};
   }
 
 private:

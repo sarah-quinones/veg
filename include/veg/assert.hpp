@@ -35,15 +35,15 @@ namespace internal {
 
 struct string {
   struct layout {
-    char* ptr = nullptr;
-    i64 len = 0;
-    i64 cap = 0;
-  } self;
+    char* ptr;
+    i64 len;
+    i64 cap;
+  } self = {};
 
   ~string();
   string() = default;
-  constexpr string(string&& other) noexcept : self{other.self} {
-    other.self = {nullptr, 0, 0};
+  string(string&& other) noexcept : self{other.self} {
+    other.self = layout{nullptr, 0, 0};
   }
   string(string const&) = delete;
   auto operator=(string const&) -> string& = delete;
@@ -53,12 +53,8 @@ struct string {
   void copy(char const* data, i64 len);
   void insert(i64 pos, char const* data, i64 len);
 
-  VEG_NODISCARD constexpr auto data() const noexcept -> char* {
-    return self.ptr;
-  };
-  VEG_NODISCARD constexpr auto size() const noexcept -> i64 {
-    return self.len;
-  };
+  VEG_NODISCARD auto data() const noexcept -> char* { return self.ptr; };
+  VEG_NODISCARD auto size() const noexcept -> i64 { return self.len; };
 };
 
 struct char_string_ref {
@@ -73,8 +69,9 @@ struct char_string_ref {
       requires(
           (meta::constructible<
                char const*,
-               decltype(VEG_DECLVAL(T const&).data())> && //
-           meta::constructible<i64, decltype(VEG_DECLVAL(T const&).size())>)),
+               decltype(VEG_DECLVAL(T const&).data())>::value && //
+           meta::constructible<i64, decltype(VEG_DECLVAL(T const&).size())>::
+               value)),
 
       constexpr char_string_ref, // NOLINT(hicpp-explicit-conversions)
       (arg, T const&))
@@ -106,9 +103,8 @@ struct tag_invoke_print_ {
                .size())))));
 
   template <typename T>
-  static auto apply(T const* arg) {
-    return tag_invoke(tag<fn::to_string_fn>, *arg);
-  }
+  static auto apply(T const* arg)
+      VEG_DEDUCE_RET(tag_invoke(tag<fn::to_string_fn>, *arg));
 };
 template <typename T>
 struct tag_invoke_printable
@@ -120,28 +116,29 @@ auto to_string_primitive(T arg) -> assert::internal::string;
 
 template <typename T>
 using cast_up = meta::conditional_t<
-    meta::pointer<T>,     //
-    void const volatile*, //
+    meta::pointer<T>::value, //
+    void const volatile*,    //
     meta::conditional_t<
-        meta::floating_point<T>,
+        meta::floating_point<T>::value,
         long double,
         meta::conditional_t<
-            meta::signed_integral<T>,
+            meta::signed_integral<T>::value,
             signed long long,
             unsigned long long>>>;
 
 struct default_impl_print_ {
   template <typename T>
-  static auto apply(T const* arg) {
+  static auto apply(T const* arg) -> assert::internal::string {
     auto const upscaled = static_cast<cast_up<T>>(*arg);
     return internal::to_string_primitive(upscaled);
   }
 };
 
 template <typename T>
-struct is_ptr_non_fn
-    : meta::bool_constant<(
-          meta::pointer<T> && !meta::function<meta::remove_pointer_t<T>>)> {};
+struct is_ptr_non_fn : meta::bool_constant<(
+                           meta::pointer<T>::value &&
+                           !meta::function<meta::remove_pointer_t<T>>::value)> {
+};
 
 template <typename T>
 struct default_impl_printable
@@ -149,23 +146,24 @@ struct default_impl_printable
       default_impl_print_ {};
 
 struct bool_print_ {
-  static constexpr auto apply(bool const* arg)
+  static constexpr auto apply(bool const* arg) noexcept
       -> assert::internal::char_string_ref {
-    if (*arg) {
-      return {"true", sizeof("true") - 1};
-    }
-    return {"false", sizeof("false") - 1};
+    return (*arg)
+               ? assert::internal::char_string_ref{"true", sizeof("true") - 1}
+               : assert::internal::char_string_ref{
+                     "false", sizeof("false") - 1};
   }
 };
 template <typename T>
 struct bool_printable : meta::is_same<T, bool>, bool_print_ {};
 
 struct boolish_print_ {
-  static constexpr auto impl(bool arg) -> assert::internal::char_string_ref {
-    if (arg) {
-      return {"truthy", sizeof("truthy") - 1};
-    }
-    return {"falsy", sizeof("falsy") - 1};
+  static constexpr auto impl(bool arg) noexcept
+      -> assert::internal::char_string_ref {
+    return arg ? assert::internal::
+                     char_string_ref{"truthy", sizeof("truthy") - 1}
+               : assert::internal::char_string_ref{
+                     "falsy", sizeof("falsy") - 1};
   }
   template <typename T>
   static constexpr auto
@@ -175,7 +173,7 @@ struct boolish_print_ {
   }
 };
 template <typename T>
-struct boolish_printable : meta::is_constructible<bool, T>, boolish_print_ {};
+struct boolish_printable : meta::constructible<bool, T>, boolish_print_ {};
 
 struct unprintable_print_ {
   template <typename T>
@@ -201,8 +199,9 @@ struct print_impl : meta::disjunction<
 namespace fn {
 
 struct to_string_fn {
-  VEG_TEMPLATE((typename T), requires true, auto operator(), (arg, T const&))
-  const->decltype(auto) { return internal::print_impl<T>::apply(&arg); }
+  template <typename T>
+  auto operator()(T const& arg) const
+      VEG_DEDUCE_RET(internal::print_impl<T>::apply(&arg));
 };
 
 } // namespace fn
@@ -319,14 +318,16 @@ struct cleanup { // NOLINT(cppcoreguidelines-special-member-functions)
        : (::veg::assert::internal::cleanup{},                                  \
           ::veg::assert::internal::set_assert_params2(                         \
               ::veg::assert::internal::char_string_ref{                        \
-                  #__VA_ARGS__, sizeof(#__VA_ARGS__) - 1},                     \
+                  static_cast<char const*>(#__VA_ARGS__),                      \
+                  sizeof(#__VA_ARGS__) - 1},                                   \
               If_Fail),                                                        \
           ::veg::assert::internal::Callback(                                   \
               __LINE__,                                                        \
               ::veg::assert::internal::char_string_ref{                        \
-                  __FILE__, sizeof(__FILE__) - 1},                             \
+                  static_cast<char const*>(__FILE__), sizeof(__FILE__) - 1},   \
               ::veg::assert::internal::char_string_ref{                        \
-                  VEG_THIS_FUNCTION, sizeof(VEG_THIS_FUNCTION) - 1})))
+                  static_cast<char const*>(VEG_THIS_FUNCTION),                 \
+                  sizeof(VEG_THIS_FUNCTION) - 1})))
 
 #define VEG_ASSERT_ELSE(...)                                                   \
   VEG_IGNORE_SHIFT_PAREN_WARNING(                                              \
@@ -364,7 +365,7 @@ struct cleanup { // NOLINT(cppcoreguidelines-special-member-functions)
       ? true                                                                   \
       : ((void)(::veg::assert::internal::cleanup{}),                           \
          ::veg::assert::internal::set_assert_params2(                          \
-             {VEG_PP_STRINGIZE(VEG_PP_TAIL Elem),                              \
+             {static_cast<char const*>(VEG_PP_STRINGIZE(VEG_PP_TAIL Elem)),    \
               sizeof(VEG_PP_STRINGIZE(VEG_PP_TAIL Elem)) - 1},                 \
              VEG_PP_HEAD Elem),                                                \
          false),
@@ -374,8 +375,9 @@ struct cleanup { // NOLINT(cppcoreguidelines-special-member-functions)
        ? (void)(0)                                                             \
        : ::veg::assert::internal::Callback(                                    \
              __LINE__,                                                         \
-             {__FILE__, sizeof(__FILE__) - 1},                                 \
-             {VEG_THIS_FUNCTION, sizeof(VEG_THIS_FUNCTION) - 1}))
+             {static_cast<char const*>(__FILE__), sizeof(__FILE__) - 1},       \
+             {static_cast<char const*>(VEG_THIS_FUNCTION),                     \
+              sizeof(VEG_THIS_FUNCTION) - 1}))
 
 #define VEG_ASSERT_ALL_OF(...)                                                 \
   VEG_IGNORE_SHIFT_PAREN_WARNING(                                              \

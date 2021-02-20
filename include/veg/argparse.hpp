@@ -32,23 +32,28 @@ struct ternary {
     return a.val == b.val;
   }
 
-  template <typename CharT, typename Traits>
-  friend auto operator<<(std::basic_ostream<CharT, Traits>& out, ternary t)
-      -> std::basic_ostream<CharT, Traits>& {
+  friend constexpr auto
+  tag_invoke(tag_t<assert::fn::to_string_fn> /*tag*/, ternary t)
+      -> slice<char const> {
     switch (t.val) {
     case maybe:
-      out.write("none", 4);
-      break;
+      return {"none", 4};
     case yes:
-      out.write("yes", 3);
+      return {"yes", 3};
       break;
     case no:
-      out.write("no", 2);
+      return {"no", 2};
       break;
     default:
-      out.write("unknown", 7);
+      return {"unknown", 7};
     }
+  }
 
+  template <typename CharT, typename Traits>
+  friend auto operator<<(std::basic_ostream<CharT, Traits>& out, ternary arg)
+      -> std::basic_ostream<CharT, Traits>& {
+    auto str = tag_invoke(tag<assert::fn::to_string_fn>, arg);
+    out.write(str.data(), str.size());
     return out;
   }
 

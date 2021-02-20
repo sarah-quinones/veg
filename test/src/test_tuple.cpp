@@ -11,8 +11,8 @@ TEST(tuple, all) {
   veg::tuple<int, char, bool> tup{1, 'c', true};
   veg::tuple<int const, char const, bool> tup_c{1, 'c', true};
   veg::tuple<int, char, bool> const tup_c2{1, 'c', true};
-  veg::tuple<int, int const, char&&, char, bool&, bool const&> tup_ref{
-      1, 1, MOV(tup).as_ref()[1_c], 'c', get<2>(tup), get<2>(tup)};
+  veg::tuple<int, char&&, char, bool&, bool const&> tup_ref{
+      1, MOV(tup).as_ref()[1_c], 'c', get<2>(tup), get<2>(tup)};
 
   {
     static_assert(!std::is_copy_constructible<decltype(tup_ref)>::value);
@@ -20,8 +20,8 @@ TEST(tuple, all) {
     static_assert(std::is_copy_constructible<veg::tuple<int&, bool&>>::value);
     using val_tup = veg::tuple<int, bool>;
     using ref_tup = veg::tuple<int&, bool&>;
-    static_assert(veg::meta::is_swappable<ref_tup&, ref_tup&>::value);
-    static_assert(veg::meta::is_swappable<val_tup&, val_tup&>::value);
+    static_assert(veg::meta::swappable<ref_tup&, ref_tup&>::value);
+    static_assert(veg::meta::swappable<val_tup&, val_tup&>::value);
   }
   {
     using val_tup = veg::tuple<int, bool, int&>;
@@ -75,7 +75,6 @@ TEST(tuple, all) {
   ASSERT_SAME(
       decltype(tup_c.as_ref()), veg::tuple<int const&, char const&, bool&>);
   ASSERT_SAME(decltype(MOV(tup).as_ref()), veg::tuple<int&&, char&&, bool&&>);
-  ASSERT_SAME(decltype(MOV(tup_c).as_ref()), veg::tuple<int&&, char&&, bool&&>);
   ASSERT_SAME(
       decltype(MOV(tup_c2).as_ref()),
       veg::tuple<int const&, char const&, bool const&>);
@@ -87,20 +86,18 @@ TEST(tuple, all) {
   ASSERT_SAME(decltype((g)), bool&);
 
   ASSERT_SAME(decltype(tup_ref[0_c]), int&);
-  ASSERT_SAME(decltype(tup_ref[1_c]), int const&);
   ASSERT_SAME(decltype(MOV(tup_ref).as_ref()[0_c]), int&&);
-  ASSERT_SAME(decltype(MOV(tup_ref).as_ref()[1_c]), int&&);
 
+  ASSERT_SAME(decltype(tup_ref[1_c]), char&);
   ASSERT_SAME(decltype(tup_ref[2_c]), char&);
-  ASSERT_SAME(decltype(tup_ref[3_c]), char&);
-  ASSERT_SAME(decltype(MOV(tup_ref)[2_c]), char&&);
-  ASSERT_SAME(decltype(MOV(tup_ref)[3_c]), char);
-  ASSERT_SAME(decltype(MOV(tup_ref).as_ref()[3_c]), char&&);
+  ASSERT_SAME(decltype(MOV(tup_ref)[1_c]), char&&);
+  ASSERT_SAME(decltype(MOV(tup_ref)[2_c]), char);
+  ASSERT_SAME(decltype(MOV(tup_ref).as_ref()[2_c]), char&&);
 
-  ASSERT_SAME(decltype(tup_ref[4_c]), bool&);
-  ASSERT_SAME(decltype(tup_ref[5_c]), bool const&);
-  ASSERT_SAME(decltype(MOV(tup_ref)[4_c]), bool&);
-  ASSERT_SAME(decltype(MOV(tup_ref)[5_c]), bool const&);
+  ASSERT_SAME(decltype(tup_ref[3_c]), bool&);
+  ASSERT_SAME(decltype(tup_ref[4_c]), bool const&);
+  ASSERT_SAME(decltype(MOV(tup_ref)[3_c]), bool&);
+  ASSERT_SAME(decltype(MOV(tup_ref)[4_c]), bool const&);
 
 #if __cplusplus >= 201703L
   ASSERT_SAME(decltype(i), int);

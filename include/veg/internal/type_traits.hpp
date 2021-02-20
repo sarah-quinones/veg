@@ -26,6 +26,12 @@
       *static_cast<::veg::meta::remove_reference_t<__VA_ARGS__>*>(nullptr))
 #endif
 
+#define VEG_DEDUCE_RET(...)                                                    \
+  noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) {                     \
+    return __VA_ARGS__;                                                        \
+  }                                                                            \
+  static_assert(true, "")
+
 #define VEG_FWD(x) static_cast<decltype(x)&&>(x)
 
 // disallows moving const rvalues
@@ -61,12 +67,19 @@
 #define VEG_INSTANTIATE_CLASS(fn, ...) static_assert(true, "")
 #else
 #define VEG_INSTANTIATE(fn, ...)                                               \
+  VEG_IMPL_INSTANTIATE(                                                        \
+      fn,                                                                      \
+      VEG_PP_CAT(                                                              \
+          VEG_PP_CAT(_dummy_explicit_instantiation, __LINE__),                 \
+          VEG_PP_CAT(_, __COUNTER__)),                                         \
+      __VA_ARGS__)
+#define VEG_IMPL_INSTANTIATE(fn, name, ...)                                    \
   template <typename... Ts>                                                    \
-  struct VEG_PP_CAT(_dummy_explicit_instantiation, __LINE__) {                 \
+  struct name {                                                                \
     void apply(Ts&&... args) { fn(VEG_FWD(args)...); }                         \
   };                                                                           \
-  template struct VEG_PP_CAT(                                                  \
-      _dummy_explicit_instantiation, __LINE__)<__VA_ARGS__>
+  template struct name<__VA_ARGS__>
+
 #define VEG_INSTANTIATE_CLASS(class, ...) template struct class<__VA_ARGS__>
 #endif
 
@@ -77,16 +90,10 @@
 #define VEG_CPP20(...)
 #endif
 
-#if __cplusplus >= 201703L
-#define VEG_TRAIT_VAR inline constexpr auto
+#if __cplusplus >= 201402L
+#define VEG_CPP14(...) __VA_ARGS__
 #else
-#define VEG_TRAIT_VAR static constexpr auto
-#endif
-#ifdef __clang__
-// http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#605
-#define VEG_TRAIT_VAR_SPEC VEG_TRAIT_VAR
-#else
-#define VEG_TRAIT_VAR_SPEC constexpr auto
+#define VEG_CPP14(...)
 #endif
 
 #if __cplusplus >= 201703L
@@ -111,32 +118,31 @@
 #define VEG_NODISCARD
 #endif
 
+#if __cplusplus >= 201402L
+#define VEG_CPP11_DECLTYPE_AUTO(...)                                           \
+  noexcept(noexcept(__VA_ARGS__))->decltype(auto) { return __VA_ARGS__; }      \
+  static_assert(true, "")
+#else
+#define VEG_CPP11_DECLTYPE_AUTO(...)                                           \
+  noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) {                     \
+    return __VA_ARGS__;                                                        \
+  }                                                                            \
+  static_assert(true, "")
+#endif
+
 // deducing `this' please. :clauded:
 #define VEG_CVREF_DUPLICATE_2(decl, handler, args)                             \
-  decl const& noexcept(noexcept(handler(*this VEG_PP_REMOVE_PAREN(args))))     \
-      ->decltype(auto) {                                                       \
-    return handler(*this VEG_PP_REMOVE_PAREN(args));                           \
-  }                                                                            \
-  decl&& noexcept(noexcept(handler(VEG_MOV(*this) VEG_PP_REMOVE_PAREN(args)))) \
-      ->decltype(auto) {                                                       \
-    return handler(VEG_MOV(*this) VEG_PP_REMOVE_PAREN(args));                  \
-  }                                                                            \
-  static_assert(true, "")
+  decl const& VEG_CPP11_DECLTYPE_AUTO(                                         \
+      handler(*this VEG_PP_REMOVE_PAREN(args)));                               \
+  decl&& VEG_CPP11_DECLTYPE_AUTO(                                              \
+      handler(VEG_MOV(*this) VEG_PP_REMOVE_PAREN(args)))
 
 #define VEG_CVREF_DUPLICATE(decl, handler, args)                               \
-  decl const& noexcept(noexcept(handler(*this VEG_PP_REMOVE_PAREN(args))))     \
-      ->decltype(auto) {                                                       \
-    return handler(*this VEG_PP_REMOVE_PAREN(args));                           \
-  }                                                                            \
-  decl& noexcept(noexcept(handler(*this VEG_PP_REMOVE_PAREN(args))))           \
-      ->decltype(auto) {                                                       \
-    return handler(*this VEG_PP_REMOVE_PAREN(args));                           \
-  }                                                                            \
-  decl&& noexcept(noexcept(handler(VEG_MOV(*this) VEG_PP_REMOVE_PAREN(args)))) \
-      ->decltype(auto) {                                                       \
-    return handler(VEG_MOV(*this) VEG_PP_REMOVE_PAREN(args));                  \
-  }                                                                            \
-  static_assert(true, "")
+  decl const& VEG_CPP11_DECLTYPE_AUTO(                                         \
+      handler(*this VEG_PP_REMOVE_PAREN(args)));                               \
+  decl& VEG_CPP11_DECLTYPE_AUTO(handler(*this VEG_PP_REMOVE_PAREN(args)));     \
+  decl&& VEG_CPP11_DECLTYPE_AUTO(                                              \
+      handler(VEG_MOV(*this) VEG_PP_REMOVE_PAREN(args)))
 
 // const&, &&
 #define VEG_CVREF_DUPLICATE_TEMPLATE_2(                                        \
@@ -146,20 +152,14 @@
       requirement,                                                             \
       attr_name,                                                               \
       __VA_ARGS__)                                                             \
-  const& noexcept(noexcept(handler(*this VEG_PP_REMOVE_PAREN(args))))          \
-      ->decltype(auto) {                                                       \
-    return handler(*this VEG_PP_REMOVE_PAREN(args));                           \
-  }                                                                            \
+  const& VEG_CPP11_DECLTYPE_AUTO(handler(*this VEG_PP_REMOVE_PAREN(args)));    \
+                                                                               \
   VEG_TEMPLATE(                                                                \
       VEG_PP_APPEND(tparams, typename Self = self &&),                         \
       requirement,                                                             \
       attr_name,                                                               \
       __VA_ARGS__)                                                             \
-  &&noexcept(noexcept(handler(*this VEG_PP_REMOVE_PAREN(args))))               \
-        ->decltype(auto) {                                                     \
-    return handler(VEG_MOV(*this) VEG_PP_REMOVE_PAREN(args));                  \
-  }                                                                            \
-  static_assert(true, "")
+  &&VEG_CPP11_DECLTYPE_AUTO(handler(VEG_MOV(*this) VEG_PP_REMOVE_PAREN(args)))
 
 // const&, &, &&
 #define VEG_CVREF_DUPLICATE_TEMPLATE(                                          \
@@ -169,29 +169,21 @@
       requirement,                                                             \
       attr_name,                                                               \
       __VA_ARGS__)                                                             \
-  const& noexcept(noexcept(handler(*this VEG_PP_REMOVE_PAREN(args))))          \
-      ->decltype(auto) {                                                       \
-    return handler(*this VEG_PP_REMOVE_PAREN(args));                           \
-  }                                                                            \
+  const& VEG_CPP11_DECLTYPE_AUTO(handler(*this VEG_PP_REMOVE_PAREN(args)));    \
+                                                                               \
   VEG_TEMPLATE(                                                                \
       VEG_PP_APPEND(tparams, typename Self = self&),                           \
       requirement,                                                             \
       attr_name,                                                               \
       __VA_ARGS__)                                                             \
-  &noexcept(noexcept(handler(*this VEG_PP_REMOVE_PAREN(args))))                \
-       ->decltype(auto) {                                                      \
-    return handler(*this VEG_PP_REMOVE_PAREN(args));                           \
-  }                                                                            \
+  &VEG_CPP11_DECLTYPE_AUTO(handler(*this VEG_PP_REMOVE_PAREN(args)));          \
+                                                                               \
   VEG_TEMPLATE(                                                                \
       VEG_PP_APPEND(tparams, typename Self = self &&),                         \
       requirement,                                                             \
       attr_name,                                                               \
       __VA_ARGS__)                                                             \
-  &&noexcept(noexcept(handler(*this VEG_PP_REMOVE_PAREN(args))))               \
-        ->decltype(auto) {                                                     \
-    return handler(*this VEG_PP_REMOVE_PAREN(args));                           \
-  }                                                                            \
-  static_assert(true, "")
+  &&VEG_CPP11_DECLTYPE_AUTO(handler(*this VEG_PP_REMOVE_PAREN(args)))
 
 #define VEG_IMPL_PARAM_EXPAND(r, _, param)                                     \
   VEG_PP_COMMA_IF(VEG_PP_IS_BEGIN_PARENS(param))                               \
@@ -238,6 +230,17 @@
   ->decltype(__VA_ARGS__) { return __VA_ARGS__; }                              \
   static_assert(true, "")
 
+#define VEG_HAS_BUILTIN_OR_0(true, false) VEG_PP_REMOVE_PAREN(false)
+#define VEG_HAS_BUILTIN_OR_1(true, false) VEG_PP_REMOVE_PAREN(true)
+#define VEG_HAS_BUILTIN_OR(builtin, true, false)                               \
+  VEG_PP_CAT(VEG_HAS_BUILTIN_OR_, VEG_HAS_BUILTIN(builtin))(true, false)
+
+#define VEG_SAME_AS(T, U)                                                      \
+  VEG_HAS_BUILTIN_OR(                                                          \
+      __is_same,                                                               \
+      __is_same(VEG_PP_REMOVE_PAREN(T), VEG_PP_REMOVE_PAREN(U)),               \
+      (::veg::meta::same_as<VEG_PP_REMOVE_PAREN(T), VEG_PP_REMOVE_PAREN(U)>))
+
 namespace veg {
 
 // dev-only
@@ -252,6 +255,8 @@ template <bool B>
 struct bool_constant : std::integral_constant<bool, B> {};
 
 namespace internal {
+using int_arr = int[];
+
 template <typename T>
 struct static_const {
   static constexpr T value{};
@@ -260,36 +265,37 @@ template <typename T>
 constexpr T static_const<T>::value; // NOLINT(readability-redundant-declaration)
 } // namespace internal
 template <typename T>
-constexpr auto max2(T const& a, T const& b) {
+constexpr auto max2(T a, T b) noexcept -> T {
   return a > b ? a : b;
 }
 template <typename T>
-constexpr auto min2(T const& a, T const& b) {
+constexpr auto min2(T a, T b) noexcept -> T {
   return a < b ? a : b;
 }
+
+template <typename T>
+constexpr auto max_of_slice(T const* arr, i64 size) noexcept -> T {
+  return size == 1 ? arr[0]
+                   : meta::max2(arr[0], max_of_slice(arr + 1, size - 1));
+}
+
 template <typename T>
 constexpr auto max_of(std::initializer_list<T> lst) noexcept -> T {
-  T max_ = *(lst.begin());
-  for (auto x : lst) { // NOLINT
-    max_ = meta::max2(x, max_);
-  }
-  return max_;
+  return meta::max_of_slice(lst.begin(), static_cast<i64>(lst.size()));
+}
+
+constexpr auto all_of_slice(bool const* arr, i64 size) noexcept -> bool {
+  return size == 0 ? true : (arr[0] && meta::all_of_slice(arr + 1, size - 1));
 }
 constexpr auto all_of(std::initializer_list<bool> lst) noexcept -> bool {
-  for (auto b : lst) { // NOLINT
-    if (!b) {
-      return false;
-    }
-  }
-  return true;
+  return meta::all_of_slice(lst.begin(), static_cast<i64>(lst.size()));
+}
+
+constexpr auto any_of_slice(bool const* arr, i64 size) noexcept -> bool {
+  return size == 0 ? false : (arr[0] || meta::any_of_slice(arr + 1, size - 1));
 }
 constexpr auto any_of(std::initializer_list<bool> lst) noexcept -> bool {
-  for (auto b : lst) { // NOLINT
-    if (b) {
-      return true;
-    }
-  }
-  return false;
+  return meta::any_of_slice(lst.begin(), static_cast<i64>(lst.size()));
 }
 
 using std::is_convertible;
@@ -420,72 +426,104 @@ template <typename To, typename From>
 using collapse_category_t = typename internal::apply_categ<
     value_category<From>::value>::template type<To>;
 
+namespace internal {
+struct wrapper_base {
+  static auto test(void*) -> std::false_type;
+};
+template <typename T>
+struct wrapper : wrapper_base {
+  using wrapper_base::test;
+  static auto test(wrapper<T>*) -> std::true_type;
+};
+} // namespace internal
+
 template <typename T, typename U>
-VEG_TRAIT_VAR same_as = false;
-template <typename T>
-VEG_TRAIT_VAR_SPEC same_as<T, T> = true;
+using same_as = decltype(
+    internal::wrapper<T>::test(static_cast<internal::wrapper<U>*>(nullptr)));
 
 template <typename T>
-VEG_TRAIT_VAR void_ = false;
-template <>
-VEG_TRAIT_VAR_SPEC void_<void> = true;
+using void_ = same_as<T, void>;
+
+namespace internal {
+template <typename T>
+struct is_const : std::false_type {};
+template <typename T>
+struct is_const<T const> : std::true_type {};
+template <typename T>
+struct is_pointer : std::false_type {};
+template <typename T>
+struct is_pointer<T*> : std::true_type {};
+template <typename T>
+struct is_lvalue_ref : std::false_type {};
+template <typename T>
+struct is_lvalue_ref<T&> : std::true_type {};
+template <typename T>
+struct is_rvalue_ref : std::false_type {};
+template <typename T>
+struct is_rvalue_ref<T&&> : std::true_type {};
+} // namespace internal
 
 template <typename T>
-VEG_TRAIT_VAR const_ = false;
-template <typename T>
-VEG_TRAIT_VAR_SPEC const_<T const> = true;
+using const_ = VEG_HAS_BUILTIN_OR(
+    __is_const, bool_constant<__is_const(T)>, internal::is_const<T>);
 
 template <typename T>
-VEG_TRAIT_VAR pointer = false;
+constexpr auto foo() -> bool {
+  static_assert(sizeof(T) < 0, "");
+  return true;
+}
+
+// can't use __is_pointer because of <bits/cpp_type_traits.h> header
 template <typename T>
-VEG_TRAIT_VAR_SPEC pointer<T*> = false;
+using pointer = internal::is_pointer<T>;
 
 template <typename T>
-VEG_TRAIT_VAR lvalue_reference = false;
-template <typename T>
-VEG_TRAIT_VAR_SPEC lvalue_reference<T&> = true;
+using lvalue_reference = VEG_HAS_BUILTIN_OR(
+    __is_lvalue_reference,
+    bool_constant<__is_lvalue_reference(T)>,
+    internal::is_lvalue_ref<T>);
 
 template <typename T>
-VEG_TRAIT_VAR rvalue_reference = false;
-template <typename T>
-VEG_TRAIT_VAR_SPEC rvalue_reference<T&&> = true;
+using rvalue_reference = VEG_HAS_BUILTIN_OR(
+    __is_rvalue_reference,
+    bool_constant<__is_rvalue_reference(T)>,
+    internal::is_rvalue_ref<T>);
 
 template <typename T>
-VEG_TRAIT_VAR reference = lvalue_reference<T> || rvalue_reference<T>;
+using reference = bool_constant<VEG_HAS_BUILTIN_OR(
+    __is_reference,
+    __is_reference(T),
+    internal::is_lvalue_ref<T>::value || internal::is_rvalue_ref<T>::value)>;
 
 template <typename T>
-VEG_TRAIT_VAR signed_integral =
-    std::is_integral<T>::value&& std::is_signed<T>::value;
+using signed_integral =
+    bool_constant<std::is_integral<T>::value && std::is_signed<T>::value>;
 
 template <typename T>
-VEG_TRAIT_VAR unsigned_integral =
-    std::is_integral<T>::value&& std::is_unsigned<T>::value;
+using unsigned_integral =
+    bool_constant<std::is_integral<T>::value && std::is_unsigned<T>::value>;
 
 template <typename T>
-VEG_TRAIT_VAR integral = signed_integral<T> || unsigned_integral<T>;
+using integral =
+    bool_constant<signed_integral<T>::value || unsigned_integral<T>::value>;
 
 template <typename T>
-VEG_TRAIT_VAR floating_point = false;
-template <>
-VEG_TRAIT_VAR_SPEC floating_point<float> = true;
-template <>
-VEG_TRAIT_VAR_SPEC floating_point<double> = true;
-template <>
-VEG_TRAIT_VAR_SPEC floating_point<long double> = true;
+using floating_point = bool_constant<
+    VEG_SAME_AS(T, float) || VEG_SAME_AS(T, double) ||
+    VEG_SAME_AS(T, long double)>;
 
 template <typename T>
-VEG_TRAIT_VAR arithmetic = integral<T> || floating_point<T>;
+using arithmetic =
+    bool_constant<integral<T>::value || floating_point<T>::value>;
 
 template <typename T>
-struct is_scalar : disjunction<
-                       std::is_arithmetic<T>,
-                       std::is_pointer<T>,
-                       std::is_scalar<T>> {};
-template <typename T>
-VEG_TRAIT_VAR scalar = is_scalar<T>::value;
+struct scalar : disjunction<
+                    std::is_arithmetic<T>,
+                    std::is_pointer<T>,
+                    std::is_scalar<T>> {};
 
 template <typename T>
-VEG_TRAIT_VAR function = !const_<T> && !reference<T>;
+using function = bool_constant<!const_<T>::value && !reference<T>::value>;
 
 namespace internal {
 template <typename T>
@@ -516,10 +554,10 @@ template <typename T>
 using make_unsigned_t = typename internal::make_unsigned<T>::type;
 
 template <typename T>
-struct is_bounded_array : std::false_type {};
+struct bounded_array : std::false_type {};
 
 template <typename T, usize N>
-struct is_bounded_array<T[N]> : std::true_type {};
+struct bounded_array<T[N]> : std::true_type {};
 
 template <typename T>
 using remove_extent_t = typename std::remove_extent<T>::type;
@@ -584,156 +622,142 @@ template <typename T, typename... Args>
 using uniform_ctor = decltype(static_cast<void>(T{VEG_DECLVAL(Args)...}));
 
 template <typename Enable, typename T, typename... Args>
-struct is_uniform_init_constructible_impl
+struct uniform_init_constructible_impl
     : is_detected<internal::uniform_ctor, T, Args...> {};
 
 } // namespace internal
 
 template <typename T, typename... Args>
-struct is_uniform_init_constructible
-    : internal::is_uniform_init_constructible_impl<void, T, Args&&...> {};
+struct uniform_init_constructible
+    : internal::uniform_init_constructible_impl<void, T, Args&&...> {};
 
 template <typename... Ts>
 struct dependent_true : std::true_type {};
 
 namespace internal {
-template <typename, typename T, typename... Args>
-VEG_TRAIT_VAR is_constructible_impl = false;
+
 template <typename T, typename... Args>
-VEG_TRAIT_VAR_SPEC
-    is_constructible_impl<decltype(void(T(VEG_DECLVAL(Args)...))), T, Args...> =
-        true;
+using ctor_t =
+    decltype(void(new (static_cast<void*>(nullptr)) T(VEG_DECLVAL(Args)...)));
+template <typename T, typename U>
+using assign_t = decltype(void(VEG_DECLVAL(T) = VEG_DECLVAL(U)));
+
+template <bool Reference, typename T, typename... Args>
+struct is_nothrow_constructible_impl2 //
+    : bool_constant<noexcept(T(VEG_DECLVAL_NOEXCEPT(Args)...))> {};
+template <typename T, typename... Args>
+struct is_nothrow_constructible_impl2<false, T, Args...> //
+    : bool_constant<noexcept(new (static_cast<void*>(nullptr))
+                                 T(VEG_DECLVAL_NOEXCEPT(Args)...))> {};
 
 template <bool Constructible, typename T, typename... Args>
-VEG_TRAIT_VAR is_nothrow_constructible_impl //
-    = noexcept(T(VEG_DECLVAL_NOEXCEPT(Args)...));
+struct is_nothrow_constructible_impl //
+    : is_nothrow_constructible_impl2<reference<T>::value, T, Args...> {};
 template <typename T, typename... Args>
-VEG_TRAIT_VAR_SPEC is_nothrow_constructible_impl<false, T, Args...> = false;
+struct is_nothrow_constructible_impl<false, T, Args...> : std::false_type {};
 
 template <bool Assignable, typename T, typename U>
-VEG_TRAIT_VAR is_nothrow_assignable_impl =
-    noexcept(VEG_DECLVAL_NOEXCEPT(T&&) = VEG_DECLVAL_NOEXCEPT(U &&));
+struct is_nothrow_assignable_impl
+    : bool_constant<noexcept(
+          VEG_DECLVAL_NOEXCEPT(T&&) = VEG_DECLVAL_NOEXCEPT(U &&))> {};
 
 template <typename T, typename U>
-VEG_TRAIT_VAR_SPEC is_nothrow_assignable_impl<false, T, U> = false;
+struct is_nothrow_assignable_impl<false, T, U> : std::false_type {};
 
-template <typename T, typename U, typename = void>
-struct is_assignable_impl : std::false_type {};
-
-template <typename T, typename U>
-struct is_assignable_impl<
-    T,
-    U,
-    decltype(void(VEG_DECLVAL(T&&) = VEG_DECLVAL(U &&)))> : std::true_type {};
 } // namespace internal
-
-#define VEG_HAS_BUILTIN_OR_0(true, false) VEG_PP_REMOVE_PAREN(false)
-#define VEG_HAS_BUILTIN_OR_1(true, false) VEG_PP_REMOVE_PAREN(true)
-#define VEG_HAS_BUILTIN_OR(builtin, true, false)                               \
-  VEG_PP_CAT(VEG_HAS_BUILTIN_OR_, VEG_HAS_BUILTIN(builtin))(true, false)
-
-#define VEG_SAME_AS(T, U)                                                      \
-  VEG_HAS_BUILTIN_OR(                                                          \
-      __is_same,                                                               \
-      __is_same(VEG_PP_REMOVE_PAREN(T), VEG_PP_REMOVE_PAREN(U)),               \
-      (::veg::meta::same_as<VEG_PP_REMOVE_PAREN(T), VEG_PP_REMOVE_PAREN(U)>))
 
 template <typename T, typename U>
 struct is_same : bool_constant<VEG_SAME_AS(T, U)> {};
 
 template <typename T>
-VEG_TRAIT_VAR trivially_copy_constructible = VEG_HAS_BUILTIN_OR(
+using trivially_copy_constructible = VEG_HAS_BUILTIN_OR(
     __is_trivially_constructible,
-    (__is_trivially_constructible(T, T const&)),
-    (std::is_trivially_copy_constructible<T>::value));
+    (bool_constant<__is_trivially_constructible(T, T const&)>),
+    (std::is_trivially_copy_constructible<T>));
 
 template <typename T>
-VEG_TRAIT_VAR trivially_move_constructible = VEG_HAS_BUILTIN_OR(
+using trivially_move_constructible = VEG_HAS_BUILTIN_OR(
     __is_trivially_constructible,
-    (__is_trivially_constructible(T, T&&)),
-    (std::is_trivially_move_constructible<T>::value));
+    (bool_constant<__is_trivially_constructible(T, T&&)>),
+    (std::is_trivially_move_constructible<T>));
 
 template <typename T>
-VEG_TRAIT_VAR trivially_copy_assignable = VEG_HAS_BUILTIN_OR(
+using trivially_copy_assignable = VEG_HAS_BUILTIN_OR(
     __is_trivially_assignable,
-    (__is_trivially_assignable(T&, T const&)),
-    (std::is_trivially_copy_assignable<T>::value));
+    (bool_constant<__is_trivially_assignable(T&, T const&)>),
+    (std::is_trivially_copy_assignable<T>));
 
 template <typename T>
-VEG_TRAIT_VAR trivially_move_assignable = VEG_HAS_BUILTIN_OR(
+using trivially_move_assignable = VEG_HAS_BUILTIN_OR(
     __is_trivially_assignable,
-    (__is_trivially_assignable(T&, T&&)),
-    (std::is_trivially_move_assignable<T>::value));
+    (bool_constant<__is_trivially_assignable(T&, T&&)>),
+    (std::is_trivially_move_assignable<T>));
 
 template <typename T>
-VEG_TRAIT_VAR trivially_copyable = VEG_HAS_BUILTIN_OR(
+using trivially_copyable = VEG_HAS_BUILTIN_OR(
     __is_trivially_copyable,
-    (__is_trivially_copyable(T)),
-    (std::is_trivially_copyable<T>::value));
+    (bool_constant<__is_trivially_copyable(T)>),
+    (std::is_trivially_copyable<T>));
 
 template <typename T>
-VEG_TRAIT_VAR mostly_trivial = VEG_HAS_BUILTIN_OR(
-    __is_trivial, (__is_trivial(T)), (std::is_trivial<T>::value));
+struct mostly_trivial : VEG_HAS_BUILTIN_OR(
+                            __is_trivial,
+                            (bool_constant<__is_trivial(T)>),
+                            (std::is_trivial<T>)) {};
 
 template <typename T>
-VEG_TRAIT_VAR trivially_destructible = VEG_HAS_BUILTIN_OR(
+using trivially_destructible = VEG_HAS_BUILTIN_OR(
     __has_trivial_destructor,
-    (__has_trivial_destructor(T)),
-    (std::is_trivially_destructible<T>::value));
+    (bool_constant<__has_trivial_destructor(T)>),
+    (std::is_trivially_destructible<T>));
 
 template <typename T, typename U>
-VEG_TRAIT_VAR assignable = VEG_HAS_BUILTIN_OR(
+using assignable = VEG_HAS_BUILTIN_OR(
     __is_assignable,
-    (__is_assignable(T&&, U&&)),
-    (internal::is_assignable_impl<T&&, &&>));
+    (bool_constant<__is_assignable(T&&, U&&)>),
+    (is_detected<internal::assign_t, T&&, &&>));
 
 template <typename T, typename U>
-VEG_TRAIT_VAR nothrow_assignable = VEG_HAS_BUILTIN_OR(
+using nothrow_assignable = VEG_HAS_BUILTIN_OR(
     __is_nothrow_assignable,
-    (__is_nothrow_assignable(T&&, U&&)),
-    (internal::is_nothrow_assignable_impl<assignable<T&&, U&&>, T&&, U&&>));
-
-template <typename T, typename... Ts>
-VEG_TRAIT_VAR constructible = VEG_HAS_BUILTIN_OR(
-    __is_constructible,
-    (__is_constructible(T, Ts&&...)),
-    (internal::is_constructible_impl<void, T, Ts&&...>));
-
-template <typename T, typename... Ts>
-VEG_TRAIT_VAR nothrow_constructible = VEG_HAS_BUILTIN_OR(
-    __is_nothrow_constructible,
-    (__is_nothrow_constructible(T, Ts&&...)),
+    (bool_constant<__is_nothrow_assignable(T&&, U&&)>),
     (internal::
-         is_nothrow_constructible_impl<constructible<T, Ts&&...>, T, Ts&&...>));
+         is_nothrow_assignable_impl<assignable<T&&, U&&>::value, T&&, U&&>));
+
+template <typename T, typename... Ts>
+using constructible = VEG_HAS_BUILTIN_OR(
+    __is_constructible,
+    (bool_constant<__is_constructible(T, Ts&&...)>),
+    (is_detected<internal::ctor_t, T, Ts&&...>));
+
+template <typename T, typename... Ts>
+using nothrow_constructible = VEG_HAS_BUILTIN_OR(
+    __is_nothrow_constructible,
+    (bool_constant<__is_nothrow_constructible(T, Ts&&...)>),
+    (internal::is_nothrow_constructible_impl<
+        constructible<T, Ts&&...>::value,
+        T,
+        Ts&&...>));
 
 template <typename From, typename To>
-VEG_TRAIT_VAR convertible_to = VEG_HAS_BUILTIN_OR(
+using convertible_to = VEG_HAS_BUILTIN_OR(
     __is_convertible,
-    (__is_convertible(From, To)),
-    (std::is_convertible<From, To>::value));
+    (bool_constant<__is_convertible(From, To)>),
+    (std::is_convertible<From, To>));
 
 template <typename T>
-VEG_TRAIT_VAR move_constructible = constructible<T, T&&>;
+using nothrow_move_constructible = nothrow_constructible<T, T&&>;
 template <typename T>
-VEG_TRAIT_VAR nothrow_move_constructible = nothrow_constructible<T, T&&>;
-template <typename T>
-VEG_TRAIT_VAR nothrow_move_assignable = nothrow_assignable<T&, T&&>;
-
-template <typename T, typename... Ts>
-struct is_constructible : bool_constant<constructible<T, Ts...>> {};
-
-template <typename T, typename... Args>
-struct is_nothrow_constructible
-    : bool_constant<nothrow_constructible<T, Args...>> {};
+using nothrow_move_assignable = nothrow_assignable<T&, T&&>;
 
 template <typename T>
-struct is_move_constructible : is_constructible<T, T&&> {};
+using move_constructible = constructible<T, T&&>;
 
 template <typename T>
-struct is_nothrow_move_constructible : is_nothrow_constructible<T, T&&> {};
+struct is_nothrow_move_constructible : nothrow_constructible<T, T&&> {};
 
 template <typename T>
-struct is_copy_constructible : is_constructible<T, T const&> {};
+struct is_copy_constructible : constructible<T, T const&> {};
 
 namespace internal {
 struct callable {
@@ -741,10 +765,8 @@ struct callable {
   using apply_t = decltype(VEG_DECLVAL(Fn)(VEG_DECLVAL(Args)...));
 
   template <typename Fn, typename... Args>
-  static constexpr auto apply(Fn&& fn, Args&&... args) noexcept(
-      noexcept(VEG_FWD(fn)(VEG_FWD(args)...))) -> decltype(auto) {
-    return VEG_FWD(fn)(VEG_FWD(args)...);
-  }
+  static constexpr auto apply(Fn&& fn, Args&&... args)
+      VEG_DEDUCE_RET(VEG_FWD(fn)(VEG_FWD(args)...));
 };
 struct mem_fn_callable {
   template <typename Fn, typename T, typename... Args>
@@ -752,10 +774,8 @@ struct mem_fn_callable {
       decltype((VEG_DECLVAL(T).*VEG_DECLVAL(Fn))(VEG_DECLVAL(Args)...));
 
   template <typename Fn, typename T, typename... Args>
-  static constexpr auto apply(Fn&& fn, T&& t, Args&&... args) noexcept(
-      noexcept((VEG_FWD(t).*VEG_FWD(fn))(VEG_FWD(args)...))) -> decltype(auto) {
-    return (VEG_FWD(t).*VEG_FWD(fn))(VEG_FWD(args)...);
-  }
+  static constexpr auto apply(Fn&& fn, T&& t, Args&&... args)
+      VEG_DEDUCE_RET((VEG_FWD(t).*VEG_FWD(fn))(VEG_FWD(args)...));
 };
 template <typename Fn, typename... Args>
 struct is_mem_fn_callable_
@@ -771,19 +791,15 @@ struct tag_workaround {
       ::veg::meta::internal::tag_workaround<tuple>::type::_
 } // namespace internal
 template <typename Fn, typename... Args>
-struct is_callable : is_detected<internal::callable::apply_t, Fn, Args&&...>,
-                     internal::callable {};
+struct callable : is_detected<internal::callable::apply_t, Fn, Args&&...>,
+                  internal::callable {};
 
 template <typename Fn, typename... Args>
-struct is_invocable : disjunction<
-                          is_callable<Fn, Args&&...>,
-                          internal::is_mem_fn_callable_<Fn, Args&&...>> {};
-
-template <typename Fn, typename... Args>
-VEG_TRAIT_VAR invocable = is_invocable<Fn, Args...>::value;
+struct invocable : disjunction<
+                       callable<Fn, Args&&...>,
+                       internal::is_mem_fn_callable_<Fn, Args&&...>> {};
 
 namespace internal {
-
 template <bool B, typename T>
 struct defer_if : T {};
 template <typename T>
@@ -792,11 +808,11 @@ struct defer_if<false, T> {};
 template <typename Fn, typename... Args>
 struct is_invocable_impl {
   using type =
-      typename is_invocable<Fn&&, Args&&...>::template apply_t<Fn&&, Args&&...>;
+      typename invocable<Fn&&, Args&&...>::template apply_t<Fn&&, Args&&...>;
 };
 template <typename Fn, typename... Args>
 struct is_nothrow_invocable_impl
-    : bool_constant<noexcept(is_invocable<Fn&&, Args&&...>::apply(
+    : bool_constant<noexcept(invocable<Fn&&, Args&&...>::apply(
           VEG_DECLVAL_NOEXCEPT(Fn), VEG_DECLVAL_NOEXCEPT(Args)...))> {};
 
 } // namespace internal
@@ -810,7 +826,7 @@ using identity_t = typename identity<T>::type;
 
 template <typename Fn, typename... Args>
 struct call_result : internal::defer_if<
-                         is_callable<Fn&&, Args&&...>::value,
+                         callable<Fn&&, Args&&...>::value,
                          detector<
                              internal::none,
                              internal::callable::apply_t,
@@ -818,7 +834,7 @@ struct call_result : internal::defer_if<
                              Args&&...>> {};
 template <typename Fn, typename... Args>
 struct invoke_result : internal::defer_if<
-                           is_invocable<Fn&&, Args&&...>::value,
+                           invocable<Fn&&, Args&&...>::value,
                            internal::is_invocable_impl<Fn&&, Args&&...>> {};
 template <typename Fn, typename... Args>
 using call_result_t = typename call_result<Fn&&, Args&&...>::type;
@@ -826,12 +842,11 @@ template <typename Fn, typename... Args>
 using invoke_result_t = typename invoke_result<Fn&&, Args&&...>::type;
 
 template <typename Fn, typename... Args>
-VEG_TRAIT_VAR nothrow_invocable = conjunction<
-    is_invocable<Fn&&, Args&&...>,
-    internal::is_nothrow_invocable_impl<Fn&&, Args&&...>>::value;
+using nothrow_invocable = conjunction<
+    invocable<Fn&&, Args&&...>,
+    internal::is_nothrow_invocable_impl<Fn&&, Args&&...>>;
 
 namespace internal {
-
 template <typename A, typename B, typename Enable = void>
 struct is_equality_comparable_impl : std::false_type {};
 template <typename A, typename B>
@@ -869,16 +884,16 @@ template <typename A, typename B>
 struct is_equality_comparable_with
     : meta::disjunction<
           meta::bool_constant<
-              (arithmetic<A> && arithmetic<B>) ||
-              (VEG_SAME_AS(A, B) && scalar<A>)>,
+              (arithmetic<A>::value && arithmetic<B>::value) ||
+              (VEG_SAME_AS(A, B) && scalar<A>::value)>,
           internal::is_equality_comparable_impl<A, B>> {};
 
 template <typename A, typename B>
 struct is_partially_ordered_with
     : meta::disjunction<
           meta::bool_constant<
-              (arithmetic<A> && arithmetic<B>) ||
-              (VEG_SAME_AS(A, B) && scalar<A>)>,
+              (arithmetic<A>::value && arithmetic<B>::value) ||
+              (VEG_SAME_AS(A, B) && scalar<A>::value)>,
           internal::is_less_than_comparable_impl<A, B>> {};
 
 } // namespace meta
@@ -887,14 +902,14 @@ namespace fn {
 struct invoke_fn {
   VEG_TEMPLATE(
       (typename Fn, typename... Args),
-      requires(meta::is_invocable<Fn&&, Args&&...>::value),
+      requires(meta::invocable<Fn&&, Args&&...>::value),
       constexpr auto
       operator(),
       (fn, Fn&&),
       (... args, Args&&))
-  const noexcept(meta::nothrow_invocable<Fn&&, Args&&...>)
+  const noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
       ->meta::invoke_result_t<Fn&&, Args&&...> {
-    return meta::is_invocable<Fn&&, Args&&...>::apply(
+    return meta::invocable<Fn&&, Args&&...>::apply(
         VEG_FWD(fn), VEG_FWD(args)...);
   }
 };
@@ -934,7 +949,6 @@ struct safety_tag_t<safety_e::unsafe>
   using typename std::integral_constant<safety_e, safety_e::unsafe>::value_type;
   using typename std::integral_constant<safety_e, safety_e::unsafe>::type;
   using std::integral_constant<safety_e, safety_e::unsafe>::operator value_type;
-  using std::integral_constant<safety_e, safety_e::unsafe>::operator();
 
   constexpr
   operator safe_t() const noexcept // NOLINT(hicpp-explicit-conversions)
@@ -966,14 +980,7 @@ namespace fn {
 struct tag_invoke_fn {
   template <typename CP, typename... Args>
   constexpr auto operator()(tag_t<CP> tag, Args&&... args) const
-
-      noexcept(noexcept(tag_invoke(tag, VEG_FWD(args)...)))
-
-          -> decltype(tag_invoke(tag, VEG_FWD(args)...))
-
-  {
-    return tag_invoke(tag, VEG_FWD(args)...);
-  }
+      VEG_DEDUCE_RET(tag_invoke(tag, VEG_FWD(args)...));
 };
 } // namespace fn
 VEG_ODR_VAR(tag_invoke, fn::tag_invoke_fn);
@@ -1004,8 +1011,8 @@ struct mem_fn_swap {
   using type = decltype(VEG_DECLVAL(U &&).swap(VEG_DECLVAL(V &&)));
 
   template <typename U, typename V>
-  static constexpr void
-  apply(U&& u, V&& v) noexcept(noexcept(VEG_FWD(u).swap(VEG_FWD(v)))) {
+  static VEG_CPP14(constexpr) void apply(U&& u, V&& v) noexcept(
+      noexcept(VEG_FWD(u).swap(VEG_FWD(v)))) {
     VEG_FWD(u).swap(VEG_FWD(v));
   }
 };
@@ -1015,8 +1022,8 @@ struct adl_fn_swap {
   using type = decltype(swap(VEG_DECLVAL(U &&), (VEG_DECLVAL(V &&))));
 
   template <typename U, typename V>
-  static constexpr void
-  apply(U&& u, V&& v) noexcept(noexcept(swap(VEG_FWD(u), VEG_FWD(v)))) {
+  static VEG_CPP14(constexpr) void apply(U&& u, V&& v) noexcept(
+      noexcept(swap(VEG_FWD(u), VEG_FWD(v)))) {
     swap(VEG_FWD(u), (VEG_FWD(v)));
   }
 };
@@ -1025,12 +1032,12 @@ struct mov_fn_swap {
   using type = void;
 
   template <typename U>
-  static constexpr void
-  apply(U& u, U& v) noexcept(std::is_nothrow_move_constructible<U>::value&&
-                                 std::is_nothrow_move_assignable<U>::value) {
-    auto tmp = VEG_MOV(u);
-    u = VEG_MOV(v);
-    v = VEG_MOV(tmp);
+  static VEG_CPP14(constexpr) void apply(U& u, U& v) noexcept(
+      std::is_nothrow_move_constructible<U>::value&&
+          std::is_nothrow_move_assignable<U>::value) {
+    auto tmp = static_cast<U&&>(u);
+    u = static_cast<U&&>(v);
+    v = static_cast<U&&>(tmp);
   }
 };
 
@@ -1066,18 +1073,20 @@ struct no_throw_swap : meta::bool_constant<noexcept(swap_impl<U, V>::apply(
 namespace meta {
 
 template <typename U, typename V>
-struct is_swappable
-    : bool_constant<veg::internal::swap_::swap_impl<U, V>::value> {};
+struct swappable : bool_constant<veg::internal::swap_::swap_impl<U, V>::value> {
+};
 
 template <typename U, typename V>
-struct is_nothrow_swappable : conjunction<
-                                  is_swappable<U, V>,
-                                  veg::internal::swap_::no_throw_swap<U, V>> {};
+struct nothrow_swappable
+    : conjunction<swappable<U, V>, veg::internal::swap_::no_throw_swap<U, V>> {
+};
 
 template <typename T>
 struct value_sentinel_for : std::integral_constant<i64, 0> {
-  static constexpr void invalid(i64 /*unused*/) noexcept {}
-  static constexpr auto id(T const& /*unused*/) noexcept -> i64 { return -1; }
+  static VEG_CPP14(constexpr) void invalid(i64 /*unused*/) noexcept {}
+  static VEG_CPP14(constexpr) auto id(T const& /*unused*/) noexcept -> i64 {
+    return -1;
+  }
 };
 
 } // namespace meta
@@ -1086,12 +1095,12 @@ namespace fn {
 struct swap_fn {
   VEG_TEMPLATE(
       (typename U, typename V),
-      requires(meta::is_swappable<U, V>::value),
-      constexpr void
+      requires(meta::swappable<U, V>::value),
+      VEG_CPP14(constexpr) void
       operator(),
       (u, U&&),
       (v, V&&))
-  const noexcept(meta::is_nothrow_swappable<U, V>::value) {
+  const noexcept(meta::nothrow_swappable<U, V>::value) {
     internal::swap_::swap_impl<U, V>::apply(VEG_FWD(u), VEG_FWD(v));
   }
 };
@@ -1105,10 +1114,12 @@ struct VEG_NODISCARD finally {
   finally(finally&&) noexcept(meta::is_nothrow_move_constructible<Fn>::value) =
       default;
   auto operator=(finally const&) -> finally& = default;
-  auto operator=(finally&&) noexcept(meta::nothrow_move_assignable<Fn>)
+  auto operator=(finally&&) noexcept(meta::nothrow_move_assignable<Fn>::value)
       -> finally& = default;
   VEG_CPP20(constexpr)
-  ~finally() noexcept(noexcept(meta::nothrow_invocable<Fn&&>)) { invoke(fn); }
+  ~finally() noexcept(noexcept(meta::nothrow_invocable<Fn&&>::value)) {
+    invoke(fn);
+  }
 };
 VEG_CPP17(
 
@@ -1121,14 +1132,13 @@ namespace fn {
 struct finally_fn {
   VEG_TEMPLATE(
       typename Fn,
-      requires(
-          (meta::is_move_constructible<Fn>::value &&
-           meta::is_invocable<Fn&&>::value)),
-      constexpr auto
+      requires((
+          meta::move_constructible<Fn>::value && meta::invocable<Fn&&>::value)),
+      VEG_CPP20(constexpr) auto
       operator(),
       (fn, Fn))
   const noexcept(meta::is_nothrow_move_constructible<Fn>::value)->finally<Fn> {
-    return {VEG_MOV(fn)};
+    return {VEG_FWD(fn)};
   }
 };
 } // namespace fn

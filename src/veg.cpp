@@ -250,6 +250,7 @@ auto next_tk(char_string_ref& code_str, bool extended_char_set = false)
   TOKEN_RETURN(volatile, qual);
   TOKEN_RETURN(mutable, qual);
   TOKEN_RETURN(struct, qual);
+  TOKEN_RETURN(typename, qual);
 
   TOKEN_RETURN(static, keyword);
   TOKEN_RETURN(inline, keyword);
@@ -336,7 +337,7 @@ struct parse_type_result_t {
 auto parse_type_loop(char_string_ref& code_str) -> parse_type_result_t {
 
   constexpr token_t newline = {{"\n", 1}, whitespace};
-  constexpr token_t indent = {{"│ ", 2}, whitespace};
+  constexpr token_t indent = {{"| ", 2}, whitespace};
 
   struct state { // NOLINT(cppcoreguidelines-pro-type-member-init)
     size_t indent_level;
@@ -350,7 +351,6 @@ auto parse_type_loop(char_string_ref& code_str) -> parse_type_result_t {
   stack.push({0, 0, {empty_str, {}}, false, {}, true});
 
   while (true) {
-  loop:
     bool continue_ = false;
     char const* begin = code_str.data();
 
@@ -396,11 +396,11 @@ auto parse_type_loop(char_string_ref& code_str) -> parse_type_result_t {
         if (entering) {
           ++state->indent_level;
         }
-        while (!entering || (token.text.size() > 0 ||
-                             token.text == char_string_ref{">", 1})) {
+        while (!entering || (token.text.size() > 0 &&
+                             !(token.text == char_string_ref{">", 1}))) {
 
           if (entering) {
-            stack.push({state->indent_level, 0, token, need_newline, {}, true});
+            stack.push({state->indent_level, 0, token, false, {}, true});
             continue_ = true;
             break;
           }

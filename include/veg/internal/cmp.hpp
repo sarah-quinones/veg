@@ -15,13 +15,9 @@ enum struct which {
 template <which Signedness /* same_sign */>
 struct cmp_impl {
   template <typename A, typename B>
-  static constexpr auto eq(A const& a, B const& b) noexcept(noexcept(a == b)) {
-    return a == b;
-  }
+  static constexpr auto eq(A const& a, B const& b) VEG_DEDUCE_RET(a == b);
   template <typename A, typename B>
-  static constexpr auto lt(A const& a, B const& b) noexcept(noexcept(a < b)) {
-    return a < b;
-  }
+  static constexpr auto lt(A const& a, B const& b) VEG_DEDUCE_RET(a < b);
 };
 
 template <>
@@ -59,26 +55,14 @@ struct cmp_equal_fn {
       operator(),
       (a, A const&),
       (b, B const&))
-  const noexcept(noexcept(
-
+  const VEG_DEDUCE_RET(
       internal::cmp::cmp_impl<
           (meta::is_integral<A>::value && meta::is_integral<B>::value &&
            meta::is_signed<A>::value != meta::is_signed<B>::value)
               ? (meta::is_signed<A>::value
                      ? internal::cmp::which::int_signed_unsigned
                      : internal::cmp::which::int_unsigned_signed)
-              : internal::cmp::which::generic>::eq(a, b)
-
-          )) {
-    return internal::cmp::cmp_impl <
-                   (meta::is_integral<A>::value &&
-                    meta::is_integral<B>::value &&
-                    meta::is_signed<A>::value != meta::is_signed<B>::value)
-               ? (meta::is_signed<A>::value
-                      ? internal::cmp::which::int_signed_unsigned
-                      : internal::cmp::which::int_unsigned_signed)
-               : internal::cmp::which::generic > ::eq(a, b);
-  }
+              : internal::cmp::which::generic>::eq(a, b));
 };
 
 struct cmp_not_equal_fn {
@@ -89,9 +73,7 @@ struct cmp_not_equal_fn {
       operator(),
       (a, A const&),
       (b, B const&))
-  const noexcept(noexcept(!cmp_equal_fn{}(a, b))) {
-    return !cmp_equal_fn{}(a, b);
-  }
+  const VEG_DEDUCE_RET(!cmp_equal_fn{}(a, b));
 };
 
 struct cmp_less_fn {
@@ -102,26 +84,14 @@ struct cmp_less_fn {
       operator(),
       (a, A const&),
       (b, B const&))
-  const noexcept(noexcept(
-
+  const VEG_DEDUCE_RET(
       internal::cmp::cmp_impl<
           (meta::is_integral<A>::value && meta::is_integral<B>::value &&
            meta::is_signed<A>::value != meta::is_signed<B>::value)
               ? (meta::is_signed<A>::value
                      ? internal::cmp::which::int_signed_unsigned
                      : internal::cmp::which::int_unsigned_signed)
-              : internal::cmp::which::generic>::lt(a, b)
-
-          )) {
-    return internal::cmp::cmp_impl <
-                   (meta::is_integral<A>::value &&
-                    meta::is_integral<B>::value &&
-                    meta::is_signed<A>::value != meta::is_signed<B>::value)
-               ? (meta::is_signed<A>::value
-                      ? internal::cmp::which::int_signed_unsigned
-                      : internal::cmp::which::int_unsigned_signed)
-               : internal::cmp::which::generic > ::lt(a, b);
-  }
+              : internal::cmp::which::generic>::lt(a, b));
 };
 
 struct cmp_greater_fn {
@@ -132,7 +102,7 @@ struct cmp_greater_fn {
       operator(),
       (a, A const&),
       (b, B const&))
-  const noexcept(noexcept(cmp_less_fn{}(b, a))) { return cmp_less_fn{}(b, a); }
+  const VEG_DEDUCE_RET(cmp_less_fn{}(b, a));
 };
 
 struct cmp_less_equal_fn {
@@ -143,9 +113,7 @@ struct cmp_less_equal_fn {
       operator(),
       (a, A const&),
       (b, B const&))
-  const noexcept(noexcept(!cmp_less_fn{}(b, a))) {
-    return !cmp_less_fn{}(b, a);
-  }
+  const VEG_DEDUCE_RET(!cmp_less_fn{}(b, a));
 };
 
 struct cmp_greater_equal_fn {
@@ -156,9 +124,7 @@ struct cmp_greater_equal_fn {
       operator(),
       (a, A const&),
       (b, B const&))
-  const noexcept(noexcept(!cmp_less_fn{}(a, b))) {
-    return !cmp_less_fn{}(a, b);
-  }
+  const VEG_DEDUCE_RET(!cmp_less_fn{}(a, b));
 };
 
 } // namespace fn

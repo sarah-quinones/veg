@@ -12,7 +12,7 @@ template <typename To>
 struct narrow_fn {
   VEG_TEMPLATE(
       (typename From),
-      requires meta::arithmetic<From>&& meta::arithmetic<To>,
+      requires meta::arithmetic<From>::value&& meta::arithmetic<To>::value,
       constexpr auto
       operator(),
       (from, From))
@@ -21,14 +21,12 @@ struct narrow_fn {
 template <typename To>
 VEG_TEMPLATE(
     (typename From),
-    requires meta::arithmetic<From>&& meta::arithmetic<To>,
+    requires meta::arithmetic<From>::value&& meta::arithmetic<To>::value,
     constexpr auto narrow_fn<To>::operator(),
     (from, From))
 const noexcept -> To {
-  To to = static_cast<To>(from);
-  From from_roundtrip = static_cast<From>(to);
-  VEG_ASSERT(from_roundtrip == from);
-  return static_cast<To>(from);
+  return VEG_ASSERT(static_cast<From>(static_cast<To>(from)) == from),
+         static_cast<To>(from);
 }
 } // namespace fn
 template <typename To>
@@ -72,19 +70,20 @@ struct boolean<maybe> {
     return m_val;
   }
 
-  friend auto constexpr tag_invoke(
-      tag_t<assert::fn::to_string_fn> /*tag*/, boolean arg) noexcept
+  friend auto VEG_CPP14(constexpr)
+      tag_invoke(tag_t<assert::fn::to_string_fn> /*tag*/, boolean arg) noexcept
       -> assert::internal::char_string_ref {
     constexpr auto const& yes_str = "maybe(true)";
     constexpr auto const& no_str = "maybe(false)";
-    auto str = arg.m_val ? yes_str : no_str;
+    char const* str = arg.m_val ? yes_str : no_str;
     auto len = i64(arg.m_val ? sizeof(yes_str) : sizeof(no_str)) - 1;
 
     return {str, len};
   }
 
   template <typename CharT, typename Traits>
-  friend auto operator<<(std::basic_ostream<CharT, Traits>& out, boolean arg)
+  friend auto
+  operator<<(std::basic_ostream<CharT, Traits>& out, boolean arg) noexcept
       -> std::basic_ostream<CharT, Traits>& {
     auto str = tag_invoke(tag<assert::fn::to_string_fn>, arg);
     out.write(str.data(), str.size());
@@ -113,7 +112,7 @@ struct boolean {
     return T == yes;
   }
 
-  friend auto constexpr tag_invoke(
+  friend auto VEG_CPP14(constexpr) tag_invoke(
       tag_t<assert::fn::to_string_fn> /*tag*/, boolean /*arg*/) noexcept
       -> assert::internal::char_string_ref {
     constexpr auto const& yes_str = "maybe(true)";
@@ -125,7 +124,8 @@ struct boolean {
   }
 
   template <typename CharT, typename Traits>
-  friend auto operator<<(std::basic_ostream<CharT, Traits>& out, boolean arg)
+  friend auto
+  operator<<(std::basic_ostream<CharT, Traits>& out, boolean arg) noexcept
       -> std::basic_ostream<CharT, Traits>& {
     auto str = tag_invoke(tag<assert::fn::to_string_fn>, arg);
     out.write(str.data(), str.size());
@@ -139,13 +139,16 @@ struct fix;
 
 } // namespace int_c
 namespace meta {
+namespace internal {
+template <typename T>
+struct is_fix : std::false_type {};
+template <i64 N>
+struct is_fix<int_c::fix<N>> : std::true_type {};
+} // namespace internal
 
 template <typename T>
-VEG_TRAIT_VAR meta_int = false;
-template <>
-VEG_TRAIT_VAR_SPEC meta_int<int_c::dyn> = true;
-template <i64 N>
-VEG_TRAIT_VAR_SPEC meta_int<int_c::fix<N>> = true;
+using meta_int =
+    bool_constant<VEG_SAME_AS(T, int_c::dyn) || internal::is_fix<T>::value>;
 
 } // namespace meta
 
@@ -180,7 +183,8 @@ struct dyn {
   }
 
   template <typename CharT, typename Traits>
-  friend auto operator<<(std::basic_ostream<CharT, Traits>& out, dyn arg)
+  friend auto
+  operator<<(std::basic_ostream<CharT, Traits>& out, dyn arg) noexcept
       -> std::basic_ostream<CharT, Traits>& {
     auto str = tag_invoke(tag<assert::fn::to_string_fn>, arg);
     out.write(str.data(), str.size());
@@ -220,7 +224,8 @@ struct fix {
   }
 
   template <typename CharT, typename Traits>
-  friend auto operator<<(std::basic_ostream<CharT, Traits>& out, fix arg)
+  friend auto
+  operator<<(std::basic_ostream<CharT, Traits>& out, fix arg) noexcept
       -> std::basic_ostream<CharT, Traits>& {
     auto str = tag_invoke(tag<assert::fn::to_string_fn>, arg);
     out.write(str.data(), str.size());
@@ -231,22 +236,22 @@ struct fix {
 namespace _ {
 
 struct error {
-  constexpr auto operator()(u64 const* fail = nullptr) const -> u64 {
+  constexpr auto operator()(u64 const* fail = nullptr) const noexcept -> u64 {
     return *fail;
   }
 };
 
 using parser = auto (*)(char, error) -> u64;
-constexpr auto parse_digit_2(char c, error e) -> u64 {
+constexpr auto parse_digit_2(char c, error e) noexcept -> u64 {
   return (c == '0') ? 0 : (c == '1' ? 1 : e());
 }
-constexpr auto parse_digit_8(char c, error e) -> u64 {
+constexpr auto parse_digit_8(char c, error e) noexcept -> u64 {
   return (c >= '0' && c <= '7') ? u64(c - '0') : e();
 }
-constexpr auto parse_digit_10(char c, error e) -> u64 {
+constexpr auto parse_digit_10(char c, error e) noexcept -> u64 {
   return (c >= '0' && c <= '9') ? u64(c - '0') : e();
 }
-constexpr auto parse_digit_16(char c, error e) -> u64 {
+constexpr auto parse_digit_16(char c, error e) noexcept -> u64 {
   return (c >= '0' && c <= '9') //
              ? u64(c - '0')
              : (c >= 'a' && c <= 'f') //
@@ -256,7 +261,7 @@ constexpr auto parse_digit_16(char c, error e) -> u64 {
                          : e();
 }
 
-constexpr auto parse_digit(u64 radix) -> parser {
+constexpr auto parse_digit(u64 radix) noexcept -> parser {
   return radix == 2
              ? parse_digit_2
              : (radix == 8
@@ -265,13 +270,14 @@ constexpr auto parse_digit(u64 radix) -> parser {
                                    : (radix == 16 ? parse_digit_16 : nullptr)));
 }
 
-constexpr auto parse_num(char const* str, u64 len, u64 radix, error e) -> u64 {
+constexpr auto parse_num(char const* str, u64 len, u64 radix, error e) noexcept
+    -> u64 {
   return (len == 0) ? 0
                     : radix * parse_num(str, len - 1, radix, e) +
                           (parse_digit(radix)(str[len - 1], e));
 }
 
-constexpr auto parse_int(char const* str, u64 len, error e) -> u64 {
+constexpr auto parse_int(char const* str, u64 len, error e) noexcept -> u64 {
   return (len == 0) //
              ? e()
              : ((str[0] == '0')   //
@@ -285,7 +291,7 @@ constexpr auto parse_int(char const* str, u64 len, error e) -> u64 {
                     : parse_num(str, len, 10, e));
 }
 
-constexpr auto init_parse_int(std::initializer_list<char> str) -> u64 {
+constexpr auto init_parse_int(std::initializer_list<char> str) noexcept -> u64 {
   return parse_int(str.begin(), str.size(), error{});
 }
 
@@ -360,7 +366,7 @@ template <>
 struct binary_traits<dyn, dyn> {
   template <i64 I>
   struct dims {
-    constexpr dims(dyn r, dyn c) : m_rows(r), m_cols(c) {}
+    constexpr dims(dyn r, dyn c) noexcept : m_rows(r), m_cols(c) {}
     VEG_NODISCARD constexpr auto nrows() const noexcept -> dyn {
       return m_rows;
     }
@@ -414,7 +420,7 @@ template <i64 N>
 struct binary_traits<fix<N>, dyn> : binary_traits<dyn, dyn> {
   template <i64 I>
   struct dims {
-    constexpr dims(fix<N> /*r*/, dyn c) : m_cols(c) {}
+    constexpr dims(fix<N> /*r*/, dyn c) noexcept : m_cols(c) {}
     VEG_NODISCARD constexpr auto nrows() const noexcept -> fix<N> { return {}; }
     VEG_NODISCARD constexpr auto ncols() const noexcept -> dyn {
       return m_cols;
@@ -427,7 +433,7 @@ template <>
 struct binary_traits<fix<0>, dyn> : binary_traits<dyn, dyn> {
   template <i64 I>
   struct dims {
-    constexpr dims(fix<0> /*r*/, dyn c) : m_cols(c) {}
+    constexpr dims(fix<0> /*r*/, dyn c) noexcept : m_cols(c) {}
     VEG_NODISCARD constexpr auto nrows() const noexcept -> fix<0> { return {}; }
     VEG_NODISCARD auto ncols() const noexcept -> dyn { return m_cols; }
     dyn m_cols;
@@ -444,7 +450,7 @@ template <i64 N>
 struct binary_traits<dyn, fix<N>> : binary_traits<dyn, dyn> {
   template <i64 I>
   struct dims {
-    constexpr dims(dyn r, fix<N> /*c*/) : m_rows(r) {}
+    constexpr dims(dyn r, fix<N> /*c*/) noexcept : m_rows(r) {}
     VEG_NODISCARD constexpr auto nrows() const noexcept -> dyn {
       return m_rows;
     }
@@ -474,73 +480,60 @@ struct binary_traits<dyn, fix<N>> : binary_traits<dyn, dyn> {
 
 VEG_TEMPLATE(
     (typename L, typename R),
-    requires meta::meta_int<L>&& meta::meta_int<R>,
+    requires meta::meta_int<L>::value&& meta::meta_int<R>::value,
     VEG_NODISCARD constexpr auto
     operator+,
     (a, L),
     (b, R))
-noexcept {
-  return _::binary_traits<L, R>::add_fn(a, b);
-}
+VEG_DEDUCE_RET(_::binary_traits<L, R>::add_fn(a, b));
 
 VEG_TEMPLATE(
     (typename L, typename R),
-    requires meta::meta_int<L>&& meta::meta_int<R>,
+    requires meta::meta_int<L>::value&& meta::meta_int<R>::value,
     VEG_NODISCARD constexpr auto
     operator-,
     (a, L),
     (b, R))
-noexcept {
-  return _::binary_traits<L, R>::sub_fn(a, b);
-}
+VEG_DEDUCE_RET(_::binary_traits<L, R>::sub_fn(a, b));
 
 VEG_TEMPLATE(
     (typename L, typename R),
-    requires meta::meta_int<L>&& meta::meta_int<R>,
+    requires meta::meta_int<L>::value&& meta::meta_int<R>::value,
     VEG_NODISCARD constexpr auto
     operator*,
     (a, L),
     (b, R))
-noexcept {
-  return _::binary_traits<L, R>::mul_fn(a, b);
-}
+VEG_DEDUCE_RET(_::binary_traits<L, R>::mul_fn(a, b));
 
 VEG_TEMPLATE(
     (typename L, typename R),
-    requires(meta::meta_int<L>&& meta::meta_int<R>&&
-                 meta::meta_int<typename _::binary_traits<L, R>::div>),
+    requires(meta::meta_int<L>::value&& meta::meta_int<R>::value&&
+                 meta::meta_int<typename _::binary_traits<L, R>::div>::value),
     VEG_NODISCARD constexpr auto
     operator/,
     (a, L),
     (b, R))
-noexcept {
-  return _::binary_traits<L, R>::div_fn(a, b);
-}
+VEG_DEDUCE_RET(_::binary_traits<L, R>::div_fn(a, b));
 
 VEG_TEMPLATE(
     (typename L, typename R),
-    requires(meta::meta_int<L>&& meta::meta_int<R>&&
-                 meta::meta_int<typename _::binary_traits<L, R>::mod>),
+    requires(meta::meta_int<L>::value&& meta::meta_int<R>::value&&
+                 meta::meta_int<typename _::binary_traits<L, R>::mod>::value),
     VEG_NODISCARD constexpr auto
     operator%,
     (a, L),
     (b, R))
-noexcept {
-  return _::binary_traits<L, R>::mod_fn(a, b);
-}
+VEG_DEDUCE_RET(_::binary_traits<L, R>::mod_fn(a, b));
 
 #define VEG_CMP(Name, Op)                                                      \
   VEG_TEMPLATE(                                                                \
       (typename L, typename R),                                                \
-      requires meta::meta_int<L>&& meta::meta_int<R>,                          \
+      requires meta::meta_int<L>::value&& meta::meta_int<R>::value,            \
       VEG_NODISCARD constexpr auto                                             \
       operator Op,                                                             \
       (a, L),                                                                  \
       (b, R))                                                                  \
-  noexcept {                                                                   \
-    return _::binary_traits<L, R>::cmp_##Name##_fn(a, b);                      \
-  }                                                                            \
-  static_assert(true, "")
+  VEG_DEDUCE_RET(_::binary_traits<L, R>::cmp_##Name##_fn(a, b))
 
 VEG_CMP(eq, ==);
 VEG_CMP(neq, !=);

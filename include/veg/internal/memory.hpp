@@ -2,7 +2,6 @@
 #define VEG_NEW_HPP_43XG2FSKS
 
 #include "veg/internal/type_traits.hpp"
-
 #include "veg/internal/std.hpp"
 
 #if VEG_HAS_BUILTIN(__builtin_launder) || __GNUC__ >= 7
@@ -16,10 +15,6 @@
 namespace veg {
 namespace mem {
 
-auto malloc(i64 sz) noexcept -> void*;
-auto realloc(void* ptr, i64 sz) noexcept -> void*;
-void free(void* ptr) noexcept;
-
 #if !(VEG_HAS_BUILTIN(__builtin_addressof) || __cplusplus >= 201703L)
 
 namespace _addr {
@@ -28,7 +23,7 @@ struct member_addr {
   using type = decltype(void(VEG_DECLVAL(T&).operator&()));
 
   template <typename T>
-  static auto apply(T& var) -> T* {
+  static auto apply(T& var) noexcept -> T* {
     using char_ref = char&;
     return static_cast<T*>(static_cast<void*>(&char_ref(var)));
   }
@@ -39,7 +34,7 @@ struct adl_addr : member_addr {
 };
 struct builtin_addr : std::true_type {
   template <typename T>
-  static constexpr auto apply(T& var) -> T* {
+  static constexpr auto apply(T& var) noexcept -> T* {
     return &var;
   }
 };
@@ -61,13 +56,15 @@ namespace _ctor_at {
 
 struct uniform_init_ctor {
   template <typename T, typename... Args>
-  static auto apply(T* mem, Args&&... args) -> T* {
+  static auto apply(T* mem, Args&&... args) noexcept(noexcept(new (mem) T{
+      VEG_FWD(args)...})) -> T* {
     return new (mem) T{VEG_FWD(args)...};
   }
 };
 struct ctor {
   template <typename T, typename... Args>
-  static VEG_CPP20(constexpr) auto apply(T* mem, Args&&... args) -> T* {
+  static VEG_CPP20(constexpr) auto apply(T* mem, Args&&... args) noexcept(
+      meta::nothrow_constructible<T, Args&&...>::value) -> T* {
 #if __cplusplus >= 202002L
     return ::std::construct_at(mem, VEG_FWD(args)...);
 #else
@@ -77,11 +74,10 @@ struct ctor {
 };
 
 template <typename T, typename... Args>
-struct uniform_constructible
-    : meta::is_uniform_init_constructible<T, Args&&...>,
-      uniform_init_ctor {};
+struct uniform_constructible : meta::uniform_init_constructible<T, Args&&...>,
+                               uniform_init_ctor {};
 template <typename T, typename... Args>
-struct constructible : meta::is_constructible<T, Args&&...>, ctor {};
+struct constructible : meta::constructible<T, Args&&...>, ctor {};
 
 template <typename T, typename... Args>
 struct ctor_at_impl : meta::disjunction<
@@ -91,8 +87,8 @@ struct ctor_at_impl : meta::disjunction<
 template <typename Fn>
 struct fn_to_convertible {
   Fn&& fn;
-  constexpr explicit operator meta::invoke_result_t<Fn&&>() && noexcept(
-      meta::nothrow_invocable<Fn&&>) {
+  constexpr explicit operator meta::invoke_result_t<Fn&&>() const
+      noexcept(meta::nothrow_invocable<Fn&&>::value) {
     return VEG_FWD(fn)();
   }
 };
@@ -103,13 +99,13 @@ struct construct_at_fn {
   VEG_TEMPLATE(
       (typename T, typename... Args),
       requires(meta::disjunction<
-               meta::is_constructible<T, Args&&...>,
-               meta::is_uniform_init_constructible<T, Args&&...>>::value),
+               meta::constructible<T, Args&&...>,
+               meta::uniform_init_constructible<T, Args&&...>>::value),
       VEG_CPP20(constexpr) auto
       operator(),
       (mem, T*),
       (... args, Args&&))
-  const noexcept(meta::is_nothrow_constructible<T, Args&&...>::value)->T* {
+  const noexcept(meta::nothrow_constructible<T, Args&&...>::value)->T* {
     return _ctor_at::ctor_at_impl<T, Args&&...>::apply(mem, VEG_FWD(args)...);
   }
 };
@@ -122,7 +118,7 @@ struct construct_with_fn {
       operator(),
       (mem, T*),
       (fn, Fn&&))
-  const noexcept(meta::nothrow_invocable<Fn&&>)->T* {
+  const noexcept(meta::nothrow_invocable<Fn&&>::value)->T* {
 #if __cplusplus >= 202002L
     return ::std::construct_at(
         mem, _ctor_at::fn_to_convertible<Fn&&>{VEG_FWD(fn)});

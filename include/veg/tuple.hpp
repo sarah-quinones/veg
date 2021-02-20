@@ -48,21 +48,15 @@ struct member_get {
   template <usize I, typename T>
   using type = decltype(void(VEG_DECLVAL(T).template get<I>()));
   template <usize I, typename T>
-  static constexpr auto
-  apply(T&& arg) noexcept(noexcept(VEG_FWD(arg).template get<I>()))
-      -> decltype(auto) {
-    return VEG_FWD(arg).template get<I>();
-  }
+  static constexpr auto apply(T&& arg)
+      VEG_DEDUCE_RET(VEG_FWD(arg).template get<I>());
 };
 struct adl_get {
   template <usize I, typename T>
   using type = decltype(void(get<I>(VEG_DECLVAL(T))));
 
   template <usize I, typename T>
-  static constexpr auto apply(T&& arg) noexcept(noexcept(get<I>(VEG_FWD(arg))))
-      -> decltype(auto) {
-    return get<I>(VEG_FWD(arg));
-  }
+  static constexpr auto apply(T&& arg) VEG_DEDUCE_RET(get<I>(VEG_FWD(arg)));
 };
 
 template <usize I, typename T>
@@ -85,10 +79,9 @@ struct get_fn {
       constexpr auto
       operator(),
       (arg, T&&))
-  const noexcept->decltype(auto) {
-    return internal::get::get_impl<static_cast<usize>(I), T>::template apply<I>(
-        VEG_FWD(arg));
-  }
+  const VEG_DEDUCE_RET(
+      internal::get::get_impl<static_cast<usize>(I), T>::template apply<I>(
+          VEG_FWD(arg)));
 };
 } // namespace fn
 namespace { /* NOLINT */
@@ -102,16 +95,45 @@ namespace fn {
 struct tuple_fn {
   VEG_TEMPLATE(
       typename... Ts,
-      requires_all(meta::move_constructible<meta::remove_cvref_t<Ts>>),
+      requires_all(meta::constructible<meta::decay_t<Ts>, Ts&&>::value),
       constexpr auto
       operator(),
       (... args, Ts&&))
-  const noexcept->tuple<meta::remove_cvref_t<Ts>...> {
+  const noexcept(
+      meta::all_of(
+          {meta::nothrow_constructible<meta::decay_t<Ts>, Ts&&>::value...}))
+      ->tuple<meta::decay_t<Ts>...> {
+    return {VEG_FWD(args)...};
+  }
+};
+
+struct tuple_ref_fn {
+  VEG_TEMPLATE(
+      typename... Ts,
+      requires true,
+      constexpr auto
+      operator(),
+      (... args, Ts&&))
+  const noexcept->tuple<Ts&&...> { return {VEG_FWD(args)...}; }
+};
+
+struct tuple_fwd_fn {
+  VEG_TEMPLATE(
+      typename... Ts,
+      requires_all(meta::constructible<Ts, Ts&&>::value),
+      constexpr auto
+      operator(),
+      (... args, Ts&&))
+  const noexcept(
+      meta::all_of({meta::nothrow_constructible<Ts, Ts&&>::value...}))
+      ->tuple<Ts...> {
     return {VEG_FWD(args)...};
   }
 };
 } // namespace fn
 VEG_ODR_VAR(tuple, fn::tuple_fn);
+VEG_ODR_VAR(tuple_ref, fn::tuple_ref_fn);
+VEG_ODR_VAR(tuple_fwd, fn::tuple_fwd_fn);
 
 } // namespace make
 } // namespace veg

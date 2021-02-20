@@ -8,7 +8,8 @@ namespace veg {
 
 template <typename T, i64 N>
 struct array {
-  T self[N];
+  static_assert(N > 0, "");
+  T self[static_cast<usize>(N)];
 
   VEG_NODISCARD auto data() noexcept -> T* { return self; }
   VEG_NODISCARD auto data() const noexcept -> T const* { return self; }
@@ -53,11 +54,11 @@ struct member_fn_data_size {
   using stype = decltype(void(static_cast<i64>(VEG_DECLVAL(T&).size())));
 
   template <typename T>
-  static constexpr auto d(T& arg) noexcept -> decltype(auto) {
+  static constexpr auto d(T& arg) noexcept -> decltype(arg.data()) {
     return arg.data();
   }
   template <typename T>
-  static constexpr auto s(T& arg) noexcept -> decltype(auto) {
+  static constexpr auto s(T& arg) noexcept -> i64 {
     return i64(arg.size());
   }
 };
@@ -75,11 +76,11 @@ struct has_members : meta::conjunction<
 
 struct array_data_size {
   template <typename T>
-  static constexpr auto d(T& arg) noexcept -> decltype(auto) {
+  static constexpr auto d(T& arg) noexcept -> decltype(+arg) {
     return +arg;
   }
   template <typename T, usize N>
-  static constexpr auto s(T (&/*arg*/)[N]) noexcept -> decltype(auto) {
+  static constexpr auto s(T (&/*arg*/)[N]) noexcept -> i64 {
     return i64(N);
   }
 };
@@ -92,11 +93,11 @@ struct has_array_data2
 
 template <typename R, typename T>
 struct has_array_data_r
-    : meta::conjunction<meta::is_bounded_array<T>, has_array_data2<R, T>>,
+    : meta::conjunction<meta::bounded_array<T>, has_array_data2<R, T>>,
       array_data_size {};
 
 template <typename T>
-struct has_array_data : meta::is_bounded_array<T>, array_data_size {};
+struct has_array_data : meta::bounded_array<T>, array_data_size {};
 
 template <typename R, typename T>
 struct has_data_r
@@ -111,12 +112,11 @@ struct slice_ctor_common {
   slice_ctor_common() noexcept = default;
 
   constexpr slice_ctor_common(T* data, i64 count) noexcept
-      : m_begin{data}, m_count{count} {
-    VEG_DEBUG_ASSERT(count >= 0);
-    if (data == nullptr) {
-      VEG_DEBUG_ASSERT(count == 0);
-    }
-  }
+      : m_begin{(
+            VEG_DEBUG_ASSERT(count >= 0),
+            (count > 0 ? VEG_DEBUG_ASSERT(data) : void(0)),
+            data)},
+        m_count{count} {}
 
   // COMPAT: check if slice_ctor_common is a base of Rng
   VEG_TEMPLATE(
@@ -160,14 +160,15 @@ struct slice : private internal::slice_ctor<T> {
     return internal::slice_ctor_common<T>::m_count;
   }
   VEG_NODISCARD constexpr auto operator[](i64 i) const noexcept -> T& {
-    VEG_ASSERT_ALL_OF( //
-        (i >= 0),
-        (i < size()));
-    return *(data() + i);
+    return VEG_ASSERT_ALL_OF( //
+               (i >= 0),
+               (i < size())),
+           *(data() + i);
   }
-  VEG_NODISCARD constexpr auto at(i64 i) const noexcept -> option<T&> {
+  VEG_NODISCARD VEG_CPP14(constexpr) auto at(i64 i) const noexcept
+      -> option<T&> {
     if (i > 0 || i <= size()) {
-      return {some, *(data() + size())};
+      return {some, *(data() + i)};
     }
     return none;
   }
@@ -179,22 +180,26 @@ struct slice<void> : slice<unsigned char> {
 
   VEG_TEMPLATE(
       (typename T),
-      requires !meta::const_<T> && meta::trivially_copyable<T>,
+      requires !meta::const_<T>::value && meta::trivially_copyable<T>::value,
       slice, /* NOLINT(hicpp-explicit-conversions) */
       (s, slice<T>))
   noexcept
-      : slice(s.data(), s.size() * static_cast<i64>(sizeof(T))) {}
+      : slice(
+            reinterpret_cast<unsigned char*>(s.data()),
+            s.size() * static_cast<i64>(sizeof(T))) {}
 };
 template <>
 struct slice<void const> : slice<unsigned char const> {
   using slice<unsigned char const>::slice;
   VEG_TEMPLATE(
       (typename T),
-      requires meta::trivially_copyable<T>,
+      requires meta::trivially_copyable<T>::value,
       slice, /* NOLINT(hicpp-explicit-conversions) */
       (s, slice<T>))
   noexcept
-      : slice{s.data(), s.size() * static_cast<i64>(sizeof(T))} {}
+      : slice{
+            reinterpret_cast<unsigned char const*>(s.data()),
+            s.size() * static_cast<i64>(sizeof(T))} {}
 };
 
 namespace make {
@@ -206,7 +211,7 @@ struct slice_fn {
                slice<meta::remove_pointer_t<
                    decltype(internal::has_data<meta::remove_cvref_t<Rng>>::d(
                        VEG_DECLVAL(Rng&)))>>,
-               Rng&&>),
+               Rng&&>::value),
       auto
       operator(),
       (rng, Rng&&))

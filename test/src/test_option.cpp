@@ -100,7 +100,7 @@ TEST(option, all) {
     ASSERT_FALSE(flag.as_ref().unwrap());
 
     opt = {some, 3};
-    flag = {};
+    flag = none;
     opt.as_ref().map_or_else(
         [&](int /*unused*/) {
           flag = {some, true};
@@ -121,8 +121,8 @@ TEST(option, all) {
     static_assert(opt == some(1));
   }
   {
-    static_assert(meta::mostly_trivial<int>);
-    static_assert(meta::mostly_trivial<option<int>>);
+    static_assert(meta::mostly_trivial<int>::value);
+    static_assert(meta::mostly_trivial<option<int>>::value);
     constexpr auto opt = [&] {
       option<option<int>> x;
       x.emplace([&] { return some(1); });

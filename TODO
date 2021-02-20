@@ -1,10 +1,5 @@
 1. tuple operator<=>
-2. print -> dbg
 3. option print
 
 4. result<T, E>
 5. result<void, E>
-
-(give up on std::ranges?)
-6. rng: for_each( fn(refernce<rng>) -> /* ignored */ ) -> void
-7. rng: try_for_each( fn(refernce<rng>) -> result<void, E> ) -> result<void, E>
