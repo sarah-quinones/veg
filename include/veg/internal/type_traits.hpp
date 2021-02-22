@@ -37,7 +37,7 @@
 // disallows moving const rvalues
 #define VEG_MOV(x)                                                             \
   static_cast<typename ::std::remove_cv<                                       \
-      typename ::std::remove_reference<decltype(x)>::type&&>::type>(x)
+      typename ::std::remove_reference<decltype(x)>::type>::type&&>(x)
 
 #define VEG_PP_LPAREN() (
 #define VEG_PP_RPAREN() )
