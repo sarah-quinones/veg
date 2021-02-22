@@ -289,13 +289,11 @@ struct relocate_n_fn {
       meta::nothrow_constructible<T, T const&>::value) {
     namespace impl = internal::_reloc;
     impl::reloc_impl<
-        meta::trivially_relocatable<T>::value
-            ? impl::which::trivial
-            : meta::nothrow_move_constructible<T>::value
-                  ? impl::which::nothrow_move
-                  : meta::constructible<T, T const&>::value
-                        ? impl::which::copy
-                        : impl::which::throw_move>::apply(dest, src, n);
+        meta::trivially_relocatable<T>::value        ? impl::which::trivial
+        : meta::nothrow_move_constructible<T>::value ? impl::which::nothrow_move
+        : meta::constructible<T, T const&>::value
+            ? impl::which::copy
+            : impl::which::throw_move>::apply(dest, src, n);
   }
 };
 } // namespace fn
