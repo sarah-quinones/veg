@@ -10,11 +10,6 @@ endif()
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
-if(ENABLE_DOCS_ONLY)
-  add_subdirectory("docs")
-  return()
-endif()
-
 if(top_level AND ENABLE_TESTING)
   set(CMAKE_CXX_STANDARD 17)
   set(CMAKE_CXX_EXTENSIONS OFF)
@@ -68,5 +63,4 @@ if(top_level AND ENABLE_TESTING)
 
   enable_testing()
   add_subdirectory(test)
-  add_subdirectory(benchmark)
 endif()

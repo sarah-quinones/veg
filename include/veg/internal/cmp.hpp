@@ -50,7 +50,7 @@ namespace fn {
 struct cmp_equal_fn {
   VEG_TEMPLATE(
       (typename A, typename B),
-      requires(meta::is_equality_comparable_with<A, B>::value),
+      requires(meta::equality_comparable_with<A, B>::value),
       constexpr auto
       operator(),
       (a, A const&),
@@ -68,7 +68,7 @@ struct cmp_equal_fn {
 struct cmp_not_equal_fn {
   VEG_TEMPLATE(
       (typename A, typename B),
-      requires(meta::is_equality_comparable_with<A, B>::value),
+      requires(meta::equality_comparable_with<A, B>::value),
       constexpr auto
       operator(),
       (a, A const&),
@@ -79,7 +79,7 @@ struct cmp_not_equal_fn {
 struct cmp_less_fn {
   VEG_TEMPLATE(
       (typename A, typename B),
-      requires(meta::is_partially_ordered_with<A, B>::value),
+      requires(meta::partially_ordered_with<A, B>::value),
       constexpr auto
       operator(),
       (a, A const&),
@@ -97,7 +97,7 @@ struct cmp_less_fn {
 struct cmp_greater_fn {
   VEG_TEMPLATE(
       (typename A, typename B),
-      requires(meta::is_partially_ordered_with<B, A>::value),
+      requires(meta::partially_ordered_with<B, A>::value),
       constexpr auto
       operator(),
       (a, A const&),
@@ -108,7 +108,7 @@ struct cmp_greater_fn {
 struct cmp_less_equal_fn {
   VEG_TEMPLATE(
       (typename A, typename B),
-      requires(meta::is_partially_ordered_with<B, A>::value),
+      requires(meta::partially_ordered_with<B, A>::value),
       constexpr auto
       operator(),
       (a, A const&),
@@ -119,7 +119,7 @@ struct cmp_less_equal_fn {
 struct cmp_greater_equal_fn {
   VEG_TEMPLATE(
       (typename A, typename B),
-      requires(meta::is_partially_ordered_with<A, B>::value),
+      requires(meta::partially_ordered_with<A, B>::value),
       constexpr auto
       operator(),
       (a, A const&),

@@ -842,53 +842,50 @@ using nothrow_invocable = conjunction<
 
 namespace internal {
 template <typename A, typename B, typename Enable = void>
-struct is_equality_comparable_impl : std::false_type {};
+struct equality_comparable_impl : std::false_type {};
 template <typename A, typename B>
-struct is_equality_comparable_impl<
+struct equality_comparable_impl<
     A,
     B,
     decltype(void(static_cast<bool>(
         VEG_DECLVAL(remove_reference_t<A> const&) ==
         VEG_DECLVAL(remove_reference_t<B> const&))))>
 
-    : meta::disjunction<
-          meta::is_same<A, B>,
-          meta::negation<meta::disjunction<std::is_enum<A>, std::is_enum<B>>>> {
-};
+    : meta::bool_constant<(
+          VEG_SAME_AS(A, B) || (!std::is_enum<A>::value && //
+                                !std::is_enum<B>::value))> {};
 
 template <typename A, typename B, typename Enable = void>
-struct is_less_than_comparable_impl : std::false_type {};
+struct less_than_comparable_impl : std::false_type {};
 template <typename A, typename B>
-struct is_less_than_comparable_impl<
+struct less_than_comparable_impl<
     A,
     B,
     decltype(void(static_cast<bool>(
         VEG_DECLVAL(remove_reference_t<A> const&) <
         VEG_DECLVAL(remove_reference_t<B> const&))))> :
 
-    meta::bool_constant<
-        (std::is_enum<A>::value && std::is_same<A, B>::value) ||
-
-        (!std::is_enum<A>::value && //
-         !std::is_enum<B>::value)> {};
+    meta::bool_constant<(
+        VEG_SAME_AS(A, B) || (!std::is_enum<A>::value && //
+                              !std::is_enum<B>::value))> {};
 
 } // namespace internal
 
 template <typename A, typename B>
-struct is_equality_comparable_with
+struct equality_comparable_with
     : meta::disjunction<
           meta::bool_constant<
               (arithmetic<A>::value && arithmetic<B>::value) ||
               (VEG_SAME_AS(A, B) && scalar<A>::value)>,
-          internal::is_equality_comparable_impl<A, B>> {};
+          internal::equality_comparable_impl<A, B>> {};
 
 template <typename A, typename B>
-struct is_partially_ordered_with
+struct partially_ordered_with
     : meta::disjunction<
           meta::bool_constant<
               (arithmetic<A>::value && arithmetic<B>::value) ||
               (VEG_SAME_AS(A, B) && scalar<A>::value)>,
-          internal::is_less_than_comparable_impl<A, B>> {};
+          internal::less_than_comparable_impl<A, B>> {};
 
 } // namespace meta
 

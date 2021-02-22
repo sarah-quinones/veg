@@ -157,6 +157,8 @@ using kind_v = std::integral_constant<
 template <typename T, kind = kind_v<T>::value>
 // trivial
 struct option_storage_base {
+  static_assert(meta::trivially_copyable<T>::value, "");
+
   storage::storage<T> some = {};
   unsigned char engaged = 0;
 
@@ -465,7 +467,7 @@ struct option_copy_ctor_base<T, false> : option_storage_base<T> {
   option_copy_ctor_base /* NOLINT */ (option_copy_ctor_base&&) = default;
   auto operator=(option_copy_ctor_base const&)
       -> option_copy_ctor_base& = default;
-  auto operator= /* NOLINT */(option_copy_ctor_base&&)
+  auto operator= /* NOLINT */(option_copy_ctor_base &&)
       -> option_copy_ctor_base& = default;
 };
 
@@ -495,7 +497,7 @@ struct option_move_ctor_base<T, false> : option_copy_ctor_base<T> {
   }
   auto operator=(option_move_ctor_base const&)
       -> option_move_ctor_base& = default;
-  auto operator= /* NOLINT */(option_move_ctor_base&&)
+  auto operator= /* NOLINT */(option_move_ctor_base &&)
       -> option_move_ctor_base& = default;
 };
 
@@ -534,7 +536,7 @@ struct option_copy_assign_base<T, false> : option_move_ctor_base<T> {
     }
     return *this;
   }
-  auto operator= /* NOLINT */(option_copy_assign_base&&)
+  auto operator= /* NOLINT */(option_copy_assign_base &&)
       -> option_copy_assign_base& = default;
 };
 
@@ -619,74 +621,44 @@ auto cmp(option<T> const& lhs, option<U> const& rhs, Fn fn) noexcept -> bool {
   return (static_cast<bool>(lhs) == static_cast<bool>(rhs));
 }
 
-#define VEG_CMP(op, fn, ...)                                                   \
-  VEG_TEMPLATE(                                                                \
-      (typename T, typename U),                                                \
-      requires(__VA_ARGS__),                                                   \
-      VEG_NODISCARD VEG_CPP14(constexpr) auto                                  \
-      operator op,                                                             \
-      (lhs, option<T> const&),                                                 \
-      (rhs, option<U> const&))                                                 \
-  noexcept->bool {                                                             \
-    return option_::cmp(lhs, rhs, fn);                                         \
-  }                                                                            \
+#define VEG_CMP(op, fn, ...)                                                                                                                                 \
+  VEG_TEMPLATE(                                                                                                                                              \
+      (typename T, typename U), requires(__VA_ARGS__), VEG_NODISCARD VEG_CPP14(constexpr) auto operator op,(lhs, option<T> const&), (rhs, option<U> const&)) \
+  noexcept->bool {                                                                                                                                           \
+    return option_::cmp(lhs, rhs, fn);                                                                                                                       \
+  }                                                                                                                                                          \
   static_assert(true, "")
 
-VEG_CMP(==, cmp_equal, meta::is_equality_comparable_with<T, U>::value);
-VEG_CMP(<, cmp_less, meta::is_partially_ordered_with<T, U>::value);
-VEG_CMP(>, cmp_greater, meta::is_partially_ordered_with<U, T>::value);
-VEG_CMP(<=, cmp_less_equal, meta::is_partially_ordered_with<U, T>::value);
-VEG_CMP(>=, cmp_greater_equal, meta::is_partially_ordered_with<T, U>::value);
+VEG_CMP(==, cmp_equal, meta::equality_comparable_with<T, U>::value);
+VEG_CMP(<, cmp_less, meta::partially_ordered_with<T, U>::value);
+VEG_CMP(>, cmp_greater, meta::partially_ordered_with<U, T>::value);
+VEG_CMP(<=, cmp_less_equal, meta::partially_ordered_with<U, T>::value);
+VEG_CMP(>=, cmp_greater_equal, meta::partially_ordered_with<T, U>::value);
 
 #undef VEG_CMP
 
 VEG_TEMPLATE(
-    (typename T, typename U),
-    requires(meta::is_equality_comparable_with<T, U>::value),
-    VEG_CPP14(constexpr) auto
-    operator!=,
-    (a, option<T> const&),
-    (b, option<U> const&))
-noexcept(noexcept(option_::cmp(a, b, cmp_equal))) -> bool {
+    (typename T, typename U), requires(meta::equality_comparable_with<T, U>::value), VEG_CPP14(constexpr) auto operator!=,(a, option<T> const&), (b, option<U> const&))
+noexcept -> bool {
   return !option_::cmp(a, b, cmp_equal);
 }
 VEG_TEMPLATE(
-    (typename T),
-    requires(true),
-    VEG_CPP14(constexpr) auto
-    operator==,
-    (lhs, option<T> const&),
-    (/*rhs*/, none_t))
+    (typename T), requires(true), VEG_CPP14(constexpr) auto operator==,(lhs, option<T> const&), (/*rhs*/, none_t))
 noexcept -> bool {
   return !static_cast<bool>(lhs);
 }
 VEG_TEMPLATE(
-    (typename T),
-    requires(true),
-    VEG_CPP14(constexpr) auto
-    operator==,
-    (/*lhs*/, none_t),
-    (rhs, option<T> const&))
+    (typename T), requires(true), VEG_CPP14(constexpr) auto operator==,(/*lhs*/, none_t), (rhs, option<T> const&))
 noexcept -> bool {
   return !static_cast<bool>(rhs);
 }
 VEG_TEMPLATE(
-    (typename T),
-    requires(true),
-    VEG_CPP14(constexpr) auto
-    operator!=,
-    (lhs, option<T> const&),
-    (/*rhs*/, none_t))
+    (typename T), requires(true), VEG_CPP14(constexpr) auto operator!=,(lhs, option<T> const&), (/*rhs*/, none_t))
 noexcept -> bool {
   return static_cast<bool>(lhs);
 }
 VEG_TEMPLATE(
-    (typename T),
-    requires(true),
-    VEG_CPP14(constexpr) auto
-    operator!=,
-    (/*lhs*/, none_t),
-    (rhs, option<T> const&))
+    (typename T), requires(true), VEG_CPP14(constexpr) auto operator!=,(/*lhs*/, none_t), (rhs, option<T> const&))
 noexcept -> bool {
   return static_cast<bool>(rhs);
 }
@@ -706,7 +678,7 @@ struct option_flatten_base<option<T>> {
   }
 };
 
-template <typename T, bool = meta::is_equality_comparable_with<T, T>::value>
+template <typename T, bool = meta::equality_comparable_with<T, T>::value>
 struct eq_cmp_base {
   VEG_NODISCARD
   VEG_CPP14(constexpr)
@@ -934,7 +906,7 @@ private:
 VEG_CPP17(
 
     template <typename T> option(some_t, T) -> option<T>;
-    template <typename T> option(some_ref_t, T&&) -> option<T&&>;
+    template <typename T> option(some_ref_t, T &&) -> option<T&&>;
 
 )
 

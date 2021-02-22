@@ -13,6 +13,13 @@ TEST(function_ref, no_args) {
     return i;
   };
 
+  void (*p)(){};
+  using T = decltype(p);
+
+  static_assert(noexcept(p == nullptr));
+  static_assert(
+      meta::internal::equality_comparable_impl<T, std::nullptr_t>::value);
+
   void (*inc_fn_ptr)() = +[] { ++global; };
   auto inc2_global_lambda = [] { global += 2; };
   auto returns_fn_ptr = +[] {

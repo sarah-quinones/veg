@@ -14,12 +14,13 @@
 
 namespace veg {
 namespace internal {
-auto opaque_memcpy(void* dest, void const* src, usize n) noexcept -> void*;
+auto opaque_memmove(void* dest, void const* src, usize n) noexcept -> void*;
 } // namespace internal
 namespace mem {
 
 #if !(VEG_HAS_BUILTIN(__builtin_addressof) || __cplusplus >= 201703L)
 
+namespace internal {
 namespace _addr {
 struct member_addr {
   template <typename T>
@@ -52,9 +53,11 @@ struct addr_impl
     : meta::disjunction<has_member_addr<T>, has_adl_addr<T>, builtin_addr> {};
 
 } // namespace _addr
+} // namespace internal
 
 #endif
 
+namespace internal {
 namespace _ctor_at {
 
 struct uniform_init_ctor {
@@ -96,27 +99,32 @@ struct fn_to_convertible {
   }
 };
 } // namespace _ctor_at
+} // namespace internal
 
 namespace fn {
 struct construct_at_fn {
   VEG_TEMPLATE(
       (typename T, typename... Args),
-      requires(meta::disjunction<
-               meta::constructible<T, Args&&...>,
-               meta::uniform_init_constructible<T, Args&&...>>::value),
+      requires(
+          !meta::const_<T>::value &&
+          meta::disjunction<
+              meta::constructible<T, Args&&...>,
+              meta::uniform_init_constructible<T, Args&&...>>::value),
       VEG_CPP20(constexpr) auto
       operator(),
       (mem, T*),
       (... args, Args&&))
   const noexcept(meta::nothrow_constructible<T, Args&&...>::value)->T* {
-    return _ctor_at::ctor_at_impl<T, Args&&...>::apply(mem, VEG_FWD(args)...);
+    return internal::_ctor_at::ctor_at_impl<T, Args&&...>::apply(
+        mem, VEG_FWD(args)...);
   }
 };
 
 struct construct_with_fn {
   VEG_TEMPLATE(
       (typename T, typename Fn),
-      requires VEG_SAME_AS(T, (meta::detected_t<meta::invoke_result_t, Fn&&>)),
+      requires !meta::const_<T>::value &&
+          VEG_SAME_AS(T, (meta::detected_t<meta::invoke_result_t, Fn&&>)),
       VEG_CPP20(constexpr) auto
       operator(),
       (mem, T*),
@@ -124,7 +132,7 @@ struct construct_with_fn {
   const noexcept(meta::nothrow_invocable<Fn&&>::value)->T* {
 #if __cplusplus >= 202002L
     return ::std::construct_at(
-        mem, _ctor_at::fn_to_convertible<Fn&&>{VEG_FWD(fn)});
+        mem, internal::_ctor_at::fn_to_convertible<Fn&&>{VEG_FWD(fn)});
 #else
     return new (mem) T(VEG_FWD(fn)());
 #endif
@@ -132,11 +140,13 @@ struct construct_with_fn {
 };
 
 struct destroy_at_fn {
-  template <typename T, typename... Args>
-  VEG_CPP20(constexpr)
-  void operator()(T* mem) const noexcept {
-    mem->~T();
-  }
+  VEG_TEMPLATE(
+      (typename T, typename... Args),
+      requires !meta::const_<T>::value,
+      VEG_CPP20(constexpr) void
+      operator(),
+      (mem, T*))
+  const noexcept { mem->~T(); }
 };
 
 struct addressof_fn {
@@ -155,12 +165,139 @@ struct addressof_fn {
 
 #else
 
-    return _addr::addr_impl<T>::apply(var);
+    return internal::_addr::addr_impl<T>::apply(var);
 
 #endif
   }
 };
 
+namespace internal {
+namespace _reloc {
+
+enum struct which {
+  trivial,
+  nothrow_move,
+  copy,
+  throw_move,
+};
+
+template <which Which>
+struct reloc_impl;
+
+template <>
+struct reloc_impl<which::trivial> {
+  template <typename T>
+  static VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) noexcept {
+    static_assert(meta::nothrow_move_constructible<T>::value, "");
+
+    VEG_CPP20(
+
+        if (std::is_constant_evaluated()) {
+          reloc_impl<which::nothrow_move>::apply(dest, src, n);
+        } else
+
+    )
+
+    {
+      veg::internal::opaque_memcpy(
+          dest, src, static_cast<usize>(n) * sizeof(T));
+    }
+  }
+};
+
+template <>
+struct reloc_impl<which::nothrow_move> {
+  template <typename T>
+  static VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) noexcept {
+    T* end = dest + n;
+    for (; dest < end; ++dest, ++src) {
+      fn::construct_at_fn{}(dest, static_cast<T&&>(*src));
+      fn::destroy_at_fn{}(*src);
+    }
+  }
+};
+
+template <typename T>
+struct destroy_range_fn {
+  bool const& success;
+  T* const& cleanup_ptr;
+  i64 const& size;
+
+  VEG_CPP20(constexpr)
+  auto operator()() const noexcept {
+    if (!success) {
+      for (i64 i = 0; i < size; ++i) {
+        fn::destroy_at_fn{}(cleanup_ptr + i);
+      }
+    }
+  }
+};
+
+template <typename Cast, typename T>
+static VEG_CPP20(constexpr) void reloc_fallible(
+    T* dest,
+    T* src,
+    i64 n) noexcept(meta::nothrow_constructible<T, T const&>::value) {
+
+  bool success = false;
+  T* cleanup_ptr = dest;
+  i64 i = 0;
+  auto fn = make::finally(destroy_range_fn<T>{});
+
+  for (; i < n; ++i) {
+    fn::construct_at_fn{}(dest + i, static_cast<Cast>(src[i]));
+  }
+
+  success = true;
+  cleanup_ptr = src;
+}
+
+template <>
+struct reloc_impl<which::copy> {
+  template <typename T>
+  static VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) noexcept(
+      meta::nothrow_constructible<T, T const&>::value) {
+    _reloc::reloc_fallible<T const&>(dest, src, n);
+  }
+};
+
+template <>
+struct reloc_impl<which::throw_move> {
+  template <typename T>
+  static VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) //
+      noexcept(false) {
+    _reloc::reloc_fallible<T&&>(dest, src, n);
+  }
+};
+
+} // namespace _reloc
+} // namespace internal
+
+struct relocate_n_fn {
+  VEG_TEMPLATE(
+      (typename T),
+      requires !meta::const_<T>::value &&
+          (meta::move_constructible<T>::value ||
+           meta::constructible<T, T const&>::value),
+      VEG_CPP20(constexpr) void
+      operator(),
+      (dest, T*),
+      (src, T*),
+      (n, i64))
+  const noexcept(
+      meta::nothrow_move_constructible<T>::value ||
+      meta::nothrow_constructible<T, T const&>::value) {
+    namespace impl = internal::_reloc;
+    impl::reloc_impl<
+        meta::trivially_relocatable<T>::value
+            ? impl::which::trivial
+            : meta::nothrow_move_constructible<T>::value
+                  ? impl::which::nothrow_move
+                  : meta::constructible<T, T const&>::value
+                        ? impl::which::copy
+                        : impl::which::throw_move>::apply(dest, src, n);
+  }
+};
 } // namespace fn
 
 VEG_ODR_VAR(construct_at, fn::construct_at_fn);

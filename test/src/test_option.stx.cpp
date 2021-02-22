@@ -63,8 +63,8 @@ struct MoveOnly {
 
   void done() const {}
 
-  auto operator==(MoveOnly const& /*unused*/) const -> bool { return true; }
-  auto operator!=(MoveOnly const& /*unused*/) const -> bool { return false; }
+  auto operator==(MoveOnly const& /*unused*/) const noexcept -> bool { return true; }
+  auto operator!=(MoveOnly const& /*unused*/) const noexcept -> bool { return false; }
 };
 
 template <size_t id>
@@ -76,13 +76,13 @@ struct NotEq {};
 
 static_assert(std::is_swappable_v<MoveOnly<0>>);
 static_assert(
-    meta::is_equality_comparable_with<MoveOnly<0>, MoveOnly<0>>::value);
-static_assert(meta::is_equality_comparable_with<
+    meta::equality_comparable_with<MoveOnly<0>, MoveOnly<0>>::value);
+static_assert(meta::equality_comparable_with<
               option<MoveOnly<0>>,
               option<MoveOnly<0>>>::value);
-static_assert(!meta::is_equality_comparable_with<NotEq, NotEq>::value);
+static_assert(!meta::equality_comparable_with<NotEq, NotEq>::value);
 static_assert(
-    !meta::is_equality_comparable_with<option<NotEq>, option<NotEq>>::value);
+    !meta::equality_comparable_with<option<NotEq>, option<NotEq>>::value);
 
 struct FnMut {
   int call_times{};
