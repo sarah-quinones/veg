@@ -53,7 +53,7 @@ struct MoveOnly {
         "\t>> MoveOnly<" + to_string(ID) + ">::copy_construct called", false);
   }
   MoveOnly(MoveOnly&&) noexcept = default;
-  auto operator=(MoveOnly const& /*unused*/) -> MoveOnly& { // NOLINT
+  auto operator=(MoveOnly const & /*unused*/) -> MoveOnly& { // NOLINT
     VEG_ASSERT(
         "\t>> MoveOnly<" + to_string(ID) + ">::copy_assign called", false);
     return *this;
@@ -369,111 +369,45 @@ TEST(OptionLifetimeTest, Unwrap) {
 //  EXPECT_EQ(d, none);
 //}
 
-// TEST(OptionLifetimeTest, Map) {
-//  auto a = option({some, make_mv<0>()});
-//  EXPECT_NO_THROW(move(a).map([](auto r) { return r; }).unwrap().done());
-//}
+TEST(OptionLifetimeTest, Map) {
+  auto a = option{some, make_mv<0>()};
+  EXPECT_NO_DEATH(move(a).map([](auto r) { return r; }).unwrap().done(););
+}
 
-// TEST(OptionTest, FnMutMap) {
-//  auto fnmut_a = FnMut();
-//  auto a1_ = option({some, 90}).map(fnmut_a);
-//  auto a2_ = option({some, 90}).map(fnmut_a);
+TEST(OptionTest, FnMutMap) {
+  auto fnmut_a = FnMut();
+  auto a1_ = option{some, 90}.map(fnmut_a);
+  auto a2_ = option{some, 90}.map(fnmut_a);
 
-//  EXPECT_EQ(fnmut_a.call_times, 2);
+  EXPECT_EQ(fnmut_a.call_times, 2);
 
-//  auto const fnmut_b = FnMut();
-//  auto b1_ = option({some, 90}).map(fnmut_b);
-//  auto b2_ = option({some, 90}).map(fnmut_b);
-//  EXPECT_EQ(fnmut_b.call_times, 0);
+  auto const fnmut_b = FnMut();
+  auto b1_ = option{some, 90}.map(fnmut_b);
+  auto b2_ = option{some, 90}.map(fnmut_b);
+  EXPECT_EQ(fnmut_b.call_times, 0);
 
-//  auto fnconst = FnConst();
-//  auto c = option({some, 90}).map(fnconst);
-//}
+  auto fnconst = FnConst();
+  auto c = option{some, 90}.map(fnconst);
 
-// TEST(OptionTest, MapOrElse) {
-//  auto&& a = option({some, 90})
-//                 .map_or_else(
-//                     [](int&& x) -> int { return x + 90; },
-//                     []() -> int { return 90; });
-//  EXPECT_EQ(a, 180);
+  (void)a1_, (void)a2_, (void)b1_, (void)b2_, (void)c;
+}
 
-//  auto&& b = option<int>(none).map_or_else(
-//      [](int&& x) -> int { return x + 90; }, []() -> int { return 90; });
-//  EXPECT_EQ(b, 90);
-//}
+TEST(OptionTest, MapOrElse) {
+  auto&& a = option{some, 90}.map_or_else(
+      [](int&& x) -> int { return x + 90; }, []() -> int { return 90; });
+  EXPECT_EQ(a, 180);
 
-// TEST(OptionLifetimeTest, MapOrElse) {
-//  auto a = option({some, make_mv<0>()});
-//  auto fn = [](auto) { return make_mv<0>(); }; // NOLINT
-//  auto fn_b = []() { return make_mv<0>(); };   // NOLINT
-//  EXPECT_NO_THROW(move(a).map_or_else(fn, fn_b).done());
-//}
+  auto&& b = option<int>(none).map_or_else(
+      [](int&& x) -> int { return x + 90; }, []() -> int { return 90; });
+  EXPECT_EQ(b, 90);
+}
 
-// TEST(OptionTest, OkOr) {
-//  enum class TestError { Good, Bad };
-//  EXPECT_EQ(option({some, 90}).ok_or(TestError::Bad).unwrap(), 90);
-//  EXPECT_EQ(
-//      option<int>(none).ok_or(TestError::Bad).unwrap_err(), TestError::Bad);
-
-//  EXPECT_EQ(
-//      option({some, vector{1, 2, 3, 4, 5}}).ok_or(TestError::Bad).unwrap(),
-//      (vector{1, 2, 3, 4, 5}));
-//  EXPECT_EQ(
-//      option<vector<int>>(none).ok_or(TestError::Bad).unwrap_err(),
-//      TestError::Bad);
-
-//  EXPECT_EQ(option({some, 90}).ok_or(vector{-1, -2, -3, -4, -5}).unwrap(),
-//  90); EXPECT_EQ(
-//      option<int>(none).ok_or(vector{-1, -2, -3, -4, -5}).unwrap_err(),
-//      (vector{-1, -2, -3, -4, -5}));
-
-//  EXPECT_EQ(
-//      option({some, vector{1, 2, 3, 4, 5}})
-//          .ok_or(vector{-1, -2, -3, -4, -5})
-//          .unwrap(),
-//      (vector{1, 2, 3, 4, 5}));
-//  EXPECT_EQ(
-//      option<vector<int>>(none).ok_or(vector{-1, -2, -3, -4,
-//      -5}).unwrap_err(), (vector{-1, -2, -3, -4, -5}));
-//}
-
-// TEST(OptionLifetimeTest, OkOr) {
-//  auto a = option({some, make_mv<0>()});
-//  EXPECT_NO_THROW(move(a).ok_or(make_mv<1>()).unwrap().done());
-//}
-
-// TEST(OptionTest, OkOrElse) {
-//  enum class TestError { Good, Bad };
-//  auto fn = []() { return TestError::Bad; };
-//  EXPECT_EQ(option({some, 90}).ok_or_else(fn).unwrap(), 90);
-//  EXPECT_EQ(make_none<int>().ok_or_else(fn).unwrap_err(), TestError::Bad);
-
-//  EXPECT_EQ(
-//      option({some, vector{1, 2, 3, 4, 5}}).ok_or_else(fn).unwrap(),
-//      (vector{1, 2, 3, 4, 5}));
-//  EXPECT_EQ(
-//      option<vector<int>>(none).ok_or_else(fn).unwrap_err(), TestError::Bad);
-
-//  auto fnv = []() { return vector{-1, -2, -3, -4, -5}; }; // NOLINT
-//  EXPECT_EQ(option({some, 90}).ok_or_else(fnv).unwrap(), 90);
-//  EXPECT_EQ(
-//      make_none<int>().ok_or_else(fnv).unwrap_err(),
-//      (vector{-1, -2, -3, -4, -5}));
-
-//  EXPECT_EQ(
-//      option({some, vector{1, 2, 3, 4, 5}}).ok_or_else(fnv).unwrap(),
-//      (vector{1, 2, 3, 4, 5}));
-//  EXPECT_EQ(
-//      option<vector<int>>(none).ok_or_else(fnv).unwrap_err(),
-//      (vector{-1, -2, -3, -4, -5}));
-//}
-
-// TEST(OptionLifetimeTest, OkOrElse) {
-//  enum class Err { OOM };
-//  auto a = option({some, make_mv<0>()});
-//  auto fn = []() { return make_mv<2>(); };
-//  EXPECT_NO_THROW(move(a).ok_or_else(fn).unwrap().done());
-//}
+TEST(OptionLifetimeTest, MapOrElse) {
+  auto a = option{some, make_mv<0>()};
+  auto fn = [](auto) { return make_mv<0>(); };
+  auto fn_b = []() { return make_mv<0>(); };
+  EXPECT_NO_DEATH(move(a).map_or_else(fn, fn_b).done(););
+}
 
 // TEST(OptionTest, And) {
 //  auto&& a = option({some, 90}).AND(option({some, 90.0f}));
@@ -518,29 +452,29 @@ TEST(OptionLifetimeTest, Unwrap) {
 //  //
 //}
 
-// TEST(OptionTest, Filter) {
-//  auto is_even = [](int const& num) { return num % 2 == 0; };
-//  auto is_odd = [&](int const& num) { return !(is_even(num)); };
+TEST(OptionTest, Filter) {
+  auto is_even = [](int const& num) { return num % 2 == 0; };
+  auto is_odd = [&](int const& num) { return !(is_even(num)); };
 
-//  EXPECT_EQ(option({some, 90}).filter(is_even).unwrap(), 90);
-//  EXPECT_EQ(option({some, 99}).filter(is_odd).unwrap(), 99);
+  EXPECT_EQ((option{some, 90}.filter(is_even).unwrap()), 90);
+  EXPECT_EQ((option{some, 99}.filter(is_odd).unwrap()), 99);
 
-//  EXPECT_EQ(make_none<int>().filter(is_even), none);
-//  EXPECT_EQ(make_none<int>().filter(is_even), none);
+  EXPECT_EQ(option<int>(none).filter(is_even), none);
+  EXPECT_EQ(option<int>(none).filter(is_even), none);
 
-//  auto all_odd = [&](vector<int> const& vec) {
-//    return all_of(vec.begin(), vec.end(), is_odd);
-//  };
+  auto all_odd = [&](vector<int> const& vec) {
+    return all_of(vec.begin(), vec.end(), is_odd);
+  };
 
-//  EXPECT_EQ(
-//      option({some, vector{1, 3, 5, 7, 2, 4, 6, 8}}).filter(all_odd), none);
-//  EXPECT_EQ(
-//      option({some, vector{1, 3, 5, 7}}).filter(all_odd).unwrap(),
-//      (vector{1, 3, 5, 7}));
+  EXPECT_EQ(
+      (option{some, vector{1, 3, 5, 7, 2, 4, 6, 8}}.filter(all_odd)), none);
+  EXPECT_EQ(
+      (option{some, vector{1, 3, 5, 7}}.filter(all_odd).unwrap()),
+      (vector{1, 3, 5, 7}));
 
-//  EXPECT_EQ(option<vector<int>>(none).filter(all_odd), none);
-//  EXPECT_EQ(option<vector<int>>(none).filter(all_odd), none);
-//}
+  EXPECT_EQ(option<vector<int>>(none).filter(all_odd), none);
+  EXPECT_EQ(option<vector<int>>(none).filter(all_odd), none);
+}
 
 // TEST(OptionTest, FilterNot) {
 //  auto is_even = [](int const& num) { return num % 2 == 0; };
@@ -611,24 +545,24 @@ TEST(OptionLifetimeTest, Unwrap) {
 //  EXPECT_EQ(f, none);
 //}
 
-// TEST(OptionTest, Take) {
-//  auto a = option({some, 9});
-//  EXPECT_EQ(a.take().unwrap(), 9);
-//  EXPECT_EQ(a, none);
+TEST(OptionTest, Take) {
+  auto a = option{some, 9};
+  EXPECT_EQ(a.take().unwrap(), 9);
+  EXPECT_EQ(a, none);
 
-//  auto b = option<int>(none);
-//  EXPECT_EQ(b.take(), none);
-//  EXPECT_EQ(b, none);
+  auto b = option<int>(none);
+  EXPECT_EQ(b.take(), none);
+  EXPECT_EQ(b, none);
 
-//  auto c = option({some, vector{-1, -2, -4, -8, -16}});
-//  auto ca = c.take();
-//  EXPECT_EQ(ca, {some, vector{-1, -2, -4, -8, -16}});
-//  EXPECT_EQ(c, none);
+  auto c = option{some, vector{-1, -2, -4, -8, -16}};
+  auto ca = c.take();
+  EXPECT_EQ(ca, (option{some, vector{-1, -2, -4, -8, -16}}));
+  EXPECT_EQ(c, none);
 
-//  auto d = option<vector<int>>(none);
-//  EXPECT_EQ(d.take(), none);
-//  EXPECT_EQ(d, none);
-//}
+  auto d = option<vector<int>>(none);
+  EXPECT_EQ(d.take(), none);
+  EXPECT_EQ(d, none);
+}
 
 // TEST(OptionTest, Replace) {
 //  auto a = option({some, 9});
@@ -648,128 +582,42 @@ TEST(OptionLifetimeTest, Unwrap) {
 //  EXPECT_EQ(d, {some, vector<int>{1, 2, 3, 4, 5}});
 //}
 
-// TEST(OptionTest, Clone) {
-//  auto a = option({some, 9});
-//  EXPECT_EQ(a.clone(), {some, 9});
-//  EXPECT_EQ(a, {some, 9});
+TEST(OptionTest, Clone) {
+  auto a = option{some, 9};
+  EXPECT_EQ(a.clone(), (option{some, 9}));
+  EXPECT_EQ(a, (option{some, 9}));
 
-//  auto b = option, {some, int* > (nullptr)};
-//  EXPECT_EQ, b.clone(), {some, int* > (nullptr)};
-//  EXPECT_EQ, b, {some, int* > (nullptr)};
+  auto b = option{some, static_cast<int*>(nullptr)};
+  EXPECT_EQ(b.clone(), (option{some, static_cast<int*>(nullptr)}));
+  EXPECT_EQ(b, (option{some, static_cast<int*>(nullptr)}));
 
-//  auto c = option({some, vector<int>{1, 2, 3, 4, 5}});
-//  EXPECT_EQ(c.clone(), {some, vector<int>{1, 2, 3, 4, 5}});
-//  EXPECT_EQ(c, {some, vector<int>{1, 2, 3, 4, 5}});
-//}
+  auto c = option{some, vector<int>{1, 2, 3, 4, 5}};
+  EXPECT_EQ(c.clone(), (option{some, vector<int>{1, 2, 3, 4, 5}}));
+  EXPECT_EQ(c, (option{some, vector<int>{1, 2, 3, 4, 5}}));
+}
 
-// TEST(OptionTest, OrElse) {
-//  auto&& a = option({some, 90.0f}).or_else([]() {
-//    return option({sSome, 0.5f});
-//  });
-//  EXPECT_FLOAT_EQ(move(a).unwrap(), 90.0f);
+TEST(OptionTest, OrElse) {
+  auto&& a = option{some, 90.0F}.or_else([]() { return option{some, 0.5f}; });
+  EXPECT_FLOAT_EQ(move(a).unwrap(), 90.0F);
 
-//  auto&& b = option<float>(none).or_else([]() {
-//    return option({sSome, 0.5f});
-//  });
-//  EXPECT_FLOAT_EQ(move(b).unwrap(), 0.5f);
+  auto&& b = option<float>(none).or_else([]() { return option{some, 0.5f}; });
+  EXPECT_FLOAT_EQ(move(b).unwrap(), 0.5F);
 
-//  auto&& c = option<float>(none).or_else([]() { return option<float>(none);
-//  }); EXPECT_EQ(c, none);
-//  //
-//  //
-//  auto&& d = option({some, vector{1, 2, 3, 4, 5}}).or_else([]() {
-//    return option({some, vector{6, 7, 8, 9, 10}});
-//  });
-//  EXPECT_EQ(move(d).unwrap(), (vector{1, 2, 3, 4, 5}));
+  auto&& c = option<float>(none).or_else([]() { return option<float>(none); });
+  EXPECT_EQ(c, none);
+  //
+  //
+  auto&& d = option{some, vector{1, 2, 3, 4, 5}}.or_else([]() {
+    return option{some, vector{6, 7, 8, 9, 10}};
+  });
+  EXPECT_EQ(move(d).unwrap(), (vector{1, 2, 3, 4, 5}));
 
-//  auto&& e = option<vector<int>>(none).or_else([]() {
-//    return option({some, vector{6, 7, 8, 9, 10}});
-//  });
-//  EXPECT_EQ(move(e).unwrap(), (vector{6, 7, 8, 9, 10}));
+  auto&& e = option<vector<int>>(none).or_else([]() {
+    return option{some, vector{6, 7, 8, 9, 10}};
+  });
+  EXPECT_EQ(move(e).unwrap(), (vector{6, 7, 8, 9, 10}));
 
-//  auto&& f = option<vector<int>>(none).or_else(
-//      []() { return option<vector<int>>(none); });
-//  EXPECT_EQ(f, none);
-//}
-
-// TEST(OptionTest, ExpectNone) {
-//  EXPECT_DEATH_IF_SUPPORTED(option({some, 56}).expect_none("===TEST==="),
-//  ".*"); EXPECT_NO_THROW(option<int>(none).expect_none("===TEST==="));
-
-//  EXPECT_DEATH_IF_SUPPORTED(
-//      option({some, vector<int>{1, 2, 3, 4, 5}}).expect_none("===TEST==="),
-//      ".*");
-//  EXPECT_NO_THROW(option<vector<int>>(none).expect_none("===TEST==="));
-//}
-
-// TEST(OptionTest, UnwrapNone) {
-//  EXPECT_DEATH_IF_SUPPORTED(option({some, 56}).unwrap_none(), ".*");
-//  EXPECT_NO_THROW(option<int>(none).unwrap_none());
-
-//  EXPECT_DEATH_IF_SUPPORTED(
-//      option({some, vector<int>{1, 2, 3, 4, 5}}).unwrap_none(), ".*");
-//  EXPECT_NO_THROW(option<vector<int>>(none).unwrap_none());
-//}
-
-// TEST(OptionTest, UnwrapOrDefault) {
-//  EXPECT_EQ(option({some, 0}).unwrap_or_default(), 0);
-//  EXPECT_EQ(option<int>(none).unwrap_or_default(), 0);
-
-//  EXPECT_EQ(
-//      option({some, vector{1, 2, 3, 4, 5}}).unwrap_or_default(),
-//      (vector{1, 2, 3, 4, 5}));
-//  EXPECT_EQ(option<vector<int>>(none).unwrap_or_default(), (vector<int>{}));
-//}
-
-// TEST(OptionTest, Match) {
-//  auto v = option({some, 98})
-//               .match([](auto some) { return some + 2; }, []() { return 5; });
-//  EXPECT_EQ(v, 100);
-
-//  auto&& a = option({some, 90})
-//                 .match([](int&& x) { return x + 10; }, []() { return -1; });
-//  EXPECT_EQ(a, 100);
-
-//  auto&& b = option<int>(none).match(
-//      [](auto&& x) { return x + 10; }, []() { return -1; });
-//  EXPECT_EQ(b, -1);
-
-//  auto&& c = option({some(vector{1, 2, 3, 4, 5}))
-//                 .match(
-//                     [](auto&& x) {
-//      return accumulate(x.begin(), x.end(), 0); },
-//                     []() {
-//      return -1; });
-//    EXPECT_EQ(c, 15);
-
-//    auto&& d = option<vector<int>>(none).match(
-//        [](auto&& x) { return accumulate(x.begin(), x.end(), 0); },
-//        []() { return -1; });
-//    EXPECT_EQ(d, -1);
-//}
-
-// auto opt_try_b(int x) -> option<int> {
-//    if (x > 0) {
-//      return { some(std::move(x)); }
-//      else {
-//        return none;
-//      }
-//    }
-
-//    auto opt_try_a(int m)->option<int> {
-//      // clang-format off
-//  TRY_SOME(x, opt_try_b(m)); TRY_SOME(const y, opt_try_b(m));
-//  TRY_SOME(volatile z, opt_try_b(m)); auto opt = opt_try_b(m); TRY_SOME(w,
-//  std::move(opt));
-//      // clang-format on
-//      x += 60;
-//      return { some(std::move(x)); }
-
-//      TEST(OptionTest, TrySome) {
-//  EXPECT_EQ(opt_try_a(10), {some(70));
-//  EXPECT_EQ(opt_try_a(100'000), {some(100'060));
-//            EXPECT_EQ(opt_try_a(-1), none);
-//            EXPECT_EQ(opt_try_a(-10), none);
-//}
-
-// TEST(OptionTest, Docs) {}
+  auto&& f = option<vector<int>>(none).or_else(
+      []() { return option<vector<int>>(none); });
+  EXPECT_EQ(f, none);
+}
