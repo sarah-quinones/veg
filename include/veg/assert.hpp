@@ -4,8 +4,6 @@
 #include "veg/internal/typedefs.hpp"
 #include "veg/internal/type_traits.hpp"
 #include "veg/internal/cmp.hpp"
-#include "veg/internal/.external/boostpp.h"
-#include "veg/internal/.external/hedley.h"
 
 #if HEDLEY_HAS_WARNING("-Woverloaded-shift-op-parentheses")
 #define VEG_IGNORE_SHIFT_PAREN_WARNING(Macro, ...)                             \

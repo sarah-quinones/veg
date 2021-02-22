@@ -25,7 +25,13 @@ include(cmake/static_analyzers.cmake)
 include(cmake/sanitizers.cmake)
 include(cmake/conan.cmake)
 
-add_library(veg src/veg.cpp src/argparse.cpp)
+add_library(_veg_ub ${CMAKE_CURRENT_SOURCE_DIR}/src/ub.cpp)
+set_property(TARGET _veg_ub PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
+add_library(
+  veg ${CMAKE_CURRENT_SOURCE_DIR}/src/veg.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/argparse.cpp
+)
+target_link_libraries(veg PRIVATE _veg_ub)
 target_include_directories(veg PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 if(top_level AND ENABLE_TESTING)

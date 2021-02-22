@@ -13,6 +13,8 @@ namespace meta {
 template <typename T>
 struct mostly_trivial<option<T>> : mostly_trivial<T> {};
 template <typename T>
+struct trivially_relocatable<option<T>> : trivially_relocatable<T> {};
+template <typename T>
 struct is_option : std::false_type {};
 template <typename T>
 struct is_option<veg::option<T>> : std::true_type {};

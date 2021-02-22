@@ -14,6 +14,7 @@ TEST(tuple, all) {
       1, MOV(tup).as_ref()[1_c], 'c', get<2>(tup), get<2>(tup)};
 
   {
+    static_assert(veg::meta::trivially_relocatable<decltype(tup)>::value);
     static_assert(!std::is_copy_constructible<decltype(tup_ref)>::value);
     static_assert(std::is_copy_constructible<decltype(tup)>::value);
     static_assert(std::is_copy_constructible<veg::tuple<int&, bool&>>::value);

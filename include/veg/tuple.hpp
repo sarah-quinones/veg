@@ -136,6 +136,15 @@ VEG_ODR_VAR(tuple_ref, fn::tuple_ref_fn);
 VEG_ODR_VAR(tuple_fwd, fn::tuple_fwd_fn);
 
 } // namespace make
+namespace meta {
+template <typename... Ts>
+struct trivially_relocatable<tuple<Ts...>>
+    : bool_constant<all_of({trivially_relocatable<Ts>::value...})> {};
+
+template <typename... Ts>
+struct mostly_trivial<tuple<Ts...>>
+    : bool_constant<all_of({mostly_trivial<Ts>::value...})> {};
+} // namespace meta
 } // namespace veg
 
 namespace std {

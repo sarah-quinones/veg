@@ -13,6 +13,9 @@
 #endif
 
 namespace veg {
+namespace internal {
+auto opaque_memcpy(void* dest, void const* src, usize n) noexcept -> void*;
+} // namespace internal
 namespace mem {
 
 #if !(VEG_HAS_BUILTIN(__builtin_addressof) || __cplusplus >= 201703L)

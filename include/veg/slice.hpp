@@ -224,6 +224,10 @@ struct slice_fn {
 VEG_ODR_VAR(slice, fn::slice_fn);
 } // namespace make
 
+namespace meta {
+template <typename T>
+struct mostly_trivial<slice<T>> : bool_constant<true> {};
+} // namespace meta
 } // namespace veg
 
 #endif /* end of include guard VEG_SPAN_HPP_CBT4079WS */

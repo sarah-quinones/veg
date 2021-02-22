@@ -2,9 +2,9 @@
 #define VEG_TYPE_TRAITS_HPP_Z3FBQSJ2S
 
 #include "veg/internal/std.hpp"
-#include "veg/internal/.external/hedley.h"
 #include "veg/internal/typedefs.hpp"
-#include "veg/internal/.external/boostpp.h"
+#include "veg/internal/.external/hedley.ext.h"
+#include "veg/internal/.external/boostpp.ext.h"
 
 #define VEG_ODR_VAR(name, obj)                                                 \
   namespace { /* NOLINT */                                                     \
@@ -700,12 +700,6 @@ using trivially_copyable = VEG_HAS_BUILTIN_OR(
     (std::is_trivially_copyable<T>));
 
 template <typename T>
-struct mostly_trivial : VEG_HAS_BUILTIN_OR(
-                            __is_trivial,
-                            (bool_constant<__is_trivial(T)>),
-                            (std::is_trivial<T>)) {};
-
-template <typename T>
 using trivially_destructible = VEG_HAS_BUILTIN_OR(
     __has_trivial_destructor,
     (bool_constant<__has_trivial_destructor(T)>),
@@ -1146,6 +1140,20 @@ VEG_ODR_VAR(finally, fn::finally_fn);
 } // namespace make
 
 [[noreturn]] void terminate() noexcept;
+
+namespace meta {
+// unsafe trait: trivial copy/move ctor/assignment, trivial dtor,
+// default ctor (value initialization) must not have any observable side effects
+// (usually sets to zero)
+template <typename T>
+struct mostly_trivial : VEG_HAS_BUILTIN_OR(
+                            __is_trivial,
+                            (bool_constant<__is_trivial(T)>),
+                            (std::is_trivial<T>)) {};
+
+template <typename T>
+struct trivially_relocatable : trivially_copyable<T> {};
+} // namespace meta
 } // namespace veg
 
 #endif /* end of include guard VEG_TYPE_TRAITS_HPP_Z3FBQSJ2S */
