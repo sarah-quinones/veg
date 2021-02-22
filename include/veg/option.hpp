@@ -708,7 +708,7 @@ template <typename T, bool = meta::is_equality_comparable_with<T, T>::value>
 struct eq_cmp_base {
   VEG_NODISCARD
   VEG_CPP14(constexpr)
-  auto contains(meta::remove_cvref_t<T> const& val) const noexcept -> bool {
+  auto contains(T const& val) const noexcept -> bool {
     auto& self = static_cast<option<T> const&>(*this);
     if (self) {
       return self.as_ref().unwrap_unchecked(unsafe) == val;
@@ -860,17 +860,13 @@ struct VEG_NODISCARD option
       (typename Fn),
       requires(meta::constructible<
                bool,
-               meta::detected_t<
-                   meta::invoke_result_t,
-                   Fn,
-                   meta::remove_cvref_t<T> const&>>::value&&
+               meta::detected_t<meta::invoke_result_t, Fn, T const&>>::value&&
                    meta::move_constructible<T>::value),
       VEG_NODISCARD VEG_CPP14(constexpr) auto filter,
       (fn, Fn&&))
 
-  &&noexcept(
-        (meta::nothrow_invocable<Fn&&, meta::remove_cvref_t<T> const&>::value &&
-         meta::nothrow_move_constructible<T>::value))
+  &&noexcept((meta::nothrow_invocable<Fn&&, T const&>::value &&
+              meta::nothrow_move_constructible<T>::value))
         ->option<T> {
     if (*this) {
       if (invoke(VEG_FWD(fn), as_cref().unwrap_unchecked(unsafe))) {
