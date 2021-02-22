@@ -10,7 +10,6 @@ TEST(tuple, all) {
 
   veg::tuple<int, char, bool> tup{1, 'c', true};
   veg::tuple<int const, char const, bool> tup_c{1, 'c', true};
-  veg::tuple<int, char, bool> const tup_c2{1, 'c', true};
   veg::tuple<int, char&&, char, bool&, bool const&> tup_ref{
       1, MOV(tup).as_ref()[1_c], 'c', get<2>(tup), get<2>(tup)};
 
@@ -75,9 +74,6 @@ TEST(tuple, all) {
   ASSERT_SAME(
       decltype(tup_c.as_ref()), veg::tuple<int const&, char const&, bool&>);
   ASSERT_SAME(decltype(MOV(tup).as_ref()), veg::tuple<int&&, char&&, bool&&>);
-  ASSERT_SAME(
-      decltype(MOV(tup_c2).as_ref()),
-      veg::tuple<int const&, char const&, bool const&>);
 
   ASSERT_SAME(decltype(e), int&&);
   ASSERT_SAME(decltype((e)), int&);
