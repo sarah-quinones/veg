@@ -7,8 +7,8 @@
  * in the LICENSE file.
  */
 
-#ifndef VEG_ARGPARSE_HPP_CQUZWBHFS
-#define VEG_ARGPARSE_HPP_CQUZWBHFS
+#ifndef __VEG_ARGPARSE_HPP_CQUZWBHFS
+#define __VEG_ARGPARSE_HPP_CQUZWBHFS
 
 #include "veg/assert.hpp"
 #include "veg/internal/type_traits.hpp"
@@ -33,7 +33,7 @@ struct ternary {
   }
 
   friend constexpr auto
-  tag_invoke(tag_t<assert::fn::to_string_fn> /*tag*/, ternary t)
+  tag_invoke(tag_t<assert::fn::to_string> /*tag*/, ternary t)
       -> slice<char const> {
     switch (t.val) {
     case maybe:
@@ -52,7 +52,7 @@ struct ternary {
   template <typename CharT, typename Traits>
   friend auto operator<<(std::basic_ostream<CharT, Traits>& out, ternary arg)
       -> std::basic_ostream<CharT, Traits>& {
-    auto str = tag_invoke(tag<assert::fn::to_string_fn>, arg);
+    auto str = tag_invoke(tag<assert::fn::to_string>, arg);
     out.write(str.data(), str.size());
     return out;
   }
@@ -68,29 +68,29 @@ using argparse_callback = fn_ref<int(argparse*, argparse_option const*)>;
 namespace _argparse {
 
 template <typename T>
-struct is_supported : meta::bool_constant<                       //
-                          VEG_SAME_AS(std::nullptr_t, T) ||      //
-                          VEG_SAME_AS(char const**, T) ||        //
-                          VEG_SAME_AS(ternary*, T) ||            //
-                          VEG_SAME_AS(bool*, T) ||               //
-                                                                 //
-                          VEG_SAME_AS(char*, T) ||               //
-                                                                 //
-                          VEG_SAME_AS(char signed*, T) ||        //
-                          VEG_SAME_AS(short signed*, T) ||       //
-                          VEG_SAME_AS(int signed*, T) ||         //
-                          VEG_SAME_AS(long signed*, T) ||        //
-                          VEG_SAME_AS(long long signed*, T) ||   //
-                                                                 //
-                          VEG_SAME_AS(char unsigned*, T) ||      //
-                          VEG_SAME_AS(short unsigned*, T) ||     //
-                          VEG_SAME_AS(int unsigned*, T) ||       //
-                          VEG_SAME_AS(long unsigned*, T) ||      //
-                          VEG_SAME_AS(long long unsigned*, T) || //
-                                                                 //
-                          VEG_SAME_AS(float*, T) ||              //
-                          VEG_SAME_AS(double*, T) ||             //
-                          VEG_SAME_AS(long double*, T)           //
+struct is_supported : meta::bool_constant<                         //
+                          __VEG_SAME_AS(std::nullptr_t, T) ||      //
+                          __VEG_SAME_AS(char const**, T) ||        //
+                          __VEG_SAME_AS(ternary*, T) ||            //
+                          __VEG_SAME_AS(bool*, T) ||               //
+                                                                   //
+                          __VEG_SAME_AS(char*, T) ||               //
+                                                                   //
+                          __VEG_SAME_AS(char signed*, T) ||        //
+                          __VEG_SAME_AS(short signed*, T) ||       //
+                          __VEG_SAME_AS(int signed*, T) ||         //
+                          __VEG_SAME_AS(long signed*, T) ||        //
+                          __VEG_SAME_AS(long long signed*, T) ||   //
+                                                                   //
+                          __VEG_SAME_AS(char unsigned*, T) ||      //
+                          __VEG_SAME_AS(short unsigned*, T) ||     //
+                          __VEG_SAME_AS(int unsigned*, T) ||       //
+                          __VEG_SAME_AS(long unsigned*, T) ||      //
+                          __VEG_SAME_AS(long long unsigned*, T) || //
+                                                                   //
+                          __VEG_SAME_AS(float*, T) ||              //
+                          __VEG_SAME_AS(double*, T) ||             //
+                          __VEG_SAME_AS(long double*, T)           //
                           > {};
 
 enum struct argparse_option_type {
@@ -373,4 +373,4 @@ static const argparse_option help = argparse_option{
      OPT_NONEG}};
 
 } // namespace veg
-#endif /* end of include guard VEG_ARGPARSE_HPP_CQUZWBHFS */
+#endif /* end of include guard __VEG_ARGPARSE_HPP_CQUZWBHFS */

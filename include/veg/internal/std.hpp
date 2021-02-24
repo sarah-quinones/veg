@@ -1,10 +1,10 @@
-#ifndef VEG_STD_HPP_NS3C5ON6S
-#define VEG_STD_HPP_NS3C5ON6S
+#ifndef __VEG_STD_HPP_NS3C5ON6S
+#define __VEG_STD_HPP_NS3C5ON6S
 
 #ifdef __has_include
-#define VEG_HAS_INCLUDE(x) __has_include(x)
+#define __VEG_HAS_INCLUDE(x) __has_include(x)
 #else
-#define VEG_HAS_INCLUDE(x) 0
+#define __VEG_HAS_INCLUDE(x) 0
 #endif
 
 #include <cstddef>          // maybe unneeded
@@ -14,7 +14,7 @@
 
 // clang-format off
 // construct_at, destroy_at, addressof
-#if VEG_HAS_INCLUDE(<bits/stl_construct.h>) && VEG_HAS_INCLUDE(<bits/move.h>)
+#if __VEG_HAS_INCLUDE(<bits/stl_construct.h>) && __VEG_HAS_INCLUDE(<bits/move.h>)
 #include <bits/stl_construct.h>
 #include <bits/move.h>
 #else
@@ -25,4 +25,4 @@
 #include <type_traits> // lots
 #include <iosfwd>      // basic_ostream
 
-#endif /* end of include guard VEG_STD_HPP_NS3C5ON6S */
+#endif /* end of include guard __VEG_STD_HPP_NS3C5ON6S */

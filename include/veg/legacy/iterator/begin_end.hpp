@@ -1,5 +1,5 @@
-#ifndef VEG_BEGIN_END_HPP_LH1IYIZBS
-#define VEG_BEGIN_END_HPP_LH1IYIZBS
+#ifndef __VEG_BEGIN_END_HPP_LH1IYIZBS
+#define __VEG_BEGIN_END_HPP_LH1IYIZBS
 
 #include "veg/internal/type_traits.hpp"
 
@@ -12,7 +12,7 @@ namespace begin_end {
 struct member_begin_end {
   template <typename T>
   using type =
-      decltype((void(VEG_DECLVAL(T).begin()), void(VEG_DECLVAL(T).end())));
+      decltype((void(__VEG_DECLVAL(T).begin()), void(__VEG_DECLVAL(T).end())));
   template <typename T>
   static constexpr auto b(T&& arg) noexcept(noexcept(VEG_FWD(arg).begin()))
       -> decltype(auto) {
@@ -27,7 +27,7 @@ struct member_begin_end {
 struct adl_begin_end {
   template <typename T>
   using type =
-      decltype((void(begin(VEG_DECLVAL(T))), void(end(VEG_DECLVAL(T)))));
+      decltype((void(begin(__VEG_DECLVAL(T))), void(end(__VEG_DECLVAL(T)))));
   template <typename T>
   static constexpr auto b(T&& arg) noexcept(noexcept(begin(VEG_FWD(arg))))
       -> decltype(auto) {
@@ -57,7 +57,7 @@ template <typename T>
 struct has_adl_begin_end : meta::is_detected<adl_begin_end::type, T&&>,
                            adl_begin_end {};
 template <typename T>
-struct has_array_begin_end : meta::is_bounded_array<meta::remove_cvref_t<T>>,
+struct has_array_begin_end : meta::bounded_array<meta::remove_cvref_t<T>>,
                              array_begin_end {};
 
 template <typename T>
@@ -77,7 +77,7 @@ struct has_end : has_begin<T> {};
 } // namespace tt
 
 namespace fn {
-struct begin_fn {
+struct begin {
   VEG_TEMPLATE(
       (typename T),
       requires tt::has_begin<T>::value,
@@ -90,7 +90,7 @@ struct begin_fn {
     return internal::begin_end::has_begin_end<T&&>::b(VEG_FWD(rng));
   }
 };
-struct end_fn {
+struct end {
   VEG_TEMPLATE(
       (typename T),
       requires tt::has_end<T>::value,
@@ -104,10 +104,10 @@ struct end_fn {
   }
 };
 } // namespace fn
-VEG_ODR_VAR(begin, fn::begin_fn);
-VEG_ODR_VAR(end, fn::end_fn);
+__VEG_ODR_VAR(begin, fn::begin);
+__VEG_ODR_VAR(end, fn::end);
 
 } // namespace legacy
 } // namespace veg
 
-#endif /* end of include guard VEG_BEGIN_END_HPP_LH1IYIZBS */
+#endif /* end of include guard __VEG_BEGIN_END_HPP_LH1IYIZBS */

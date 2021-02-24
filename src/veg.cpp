@@ -124,20 +124,6 @@ cleanup::~cleanup() noexcept {
   failed_asserts.clear();
 }
 
-template <typename T>
-struct finally_t {
-  T callback;
-
-  finally_t // NOLINT(hicpp-explicit-conversions)
-      (T callable)
-      : callback{static_cast<T&&>(callable)} {}
-  finally_t(finally_t const&) = delete;
-  finally_t(finally_t&&) = delete;
-  auto operator=(finally_t const&) -> finally_t& = delete;
-  auto operator=(finally_t&&) -> finally_t& = delete;
-  ~finally_t() { callback(); }
-};
-
 auto split_at(char_string_ref& text, i64 n) -> char_string_ref {
   char_string_ref token = {text.data_, n};
   text = {text.data_ + n, text.len_ - n};
@@ -738,7 +724,7 @@ auto on_fail(
     long line, char_string_ref file, char_string_ref func, bool is_fatal)
     -> std::string {
   auto _clear = [&] { failed_asserts.clear(); };
-  finally_t<decltype(_clear)> clear(_clear);
+  auto&& clear = make::defer(_clear);
 
   std::string output;
 
@@ -844,7 +830,7 @@ void set_assert_params1( //
     }
   };
 
-  finally_t<decltype(_clear)> clear(_clear);
+  auto&& clear = make::defer(_clear);
 
   failed_asserts.push_back({
       false,

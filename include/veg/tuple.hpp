@@ -1,21 +1,21 @@
-#ifndef VEG_TUPLE_HPP_B8PHUNWES
-#define VEG_TUPLE_HPP_B8PHUNWES
+#ifndef __VEG_TUPLE_HPP_B8PHUNWES
+#define __VEG_TUPLE_HPP_B8PHUNWES
 
 #include "veg/internal/tuple_generic.hpp"
 #include <utility> // std::tuple_{size,element}
 
 /******************************************************************************/
-#define VEG_IMPL_BIND(r, Tuple, Index, Identifier)                             \
+#define __VEG_IMPL_BIND(r, Tuple, Index, Identifier)                           \
   auto&& Identifier = ::veg::get<Index>(VEG_FWD(Tuple));
 
-#define VEG_IMPL_BIND_ID_SEQ(CV_Auto, Identifiers, Tuple, SeqSize, TupleId)    \
+#define __VEG_IMPL_BIND_ID_SEQ(CV_Auto, Identifiers, Tuple, SeqSize, TupleId)  \
   CV_Auto TupleId = Tuple;                                                     \
   static_assert(                                                               \
       ::std::tuple_size<                                                       \
           typename ::std::remove_const<typename ::std::remove_reference<       \
               decltype(TupleId)>::type>::type>::value == SeqSize,              \
       "Wrong number of identifiers.");                                         \
-  VEG_PP_SEQ_FOR_EACH_I(VEG_IMPL_BIND, TupleId, Identifiers)                   \
+  __VEG_PP_SEQ_FOR_EACH_I(__VEG_IMPL_BIND, TupleId, Identifiers)               \
   static_assert(true, "")
 
 // example: difference vs c++17 structure bindings
@@ -29,12 +29,12 @@
 //                                     lvalue, rvalue otherwise.
 //
 #define VEG_BIND(CV_Auto, Identifiers, Tuple)                                  \
-  VEG_IMPL_BIND_ID_SEQ(                                                        \
+  __VEG_IMPL_BIND_ID_SEQ(                                                      \
       CV_Auto,                                                                 \
-      VEG_PP_TUPLE_TO_SEQ(Identifiers),                                        \
+      __VEG_PP_TUPLE_TO_SEQ(Identifiers),                                      \
       Tuple,                                                                   \
-      VEG_PP_TUPLE_SIZE(Identifiers),                                          \
-      VEG_PP_CAT(_dummy_tuple_variable_id_, __LINE__))
+      __VEG_PP_TUPLE_SIZE(Identifiers),                                        \
+      __VEG_PP_CAT(_dummy_tuple_variable_id_, __LINE__))
 /******************************************************************************/
 
 namespace veg {
@@ -46,17 +46,18 @@ void get() = delete;
 
 struct member_get {
   template <usize I, typename T>
-  using type = decltype(void(VEG_DECLVAL(T).template get<I>()));
+  using type = decltype(void(__VEG_DECLVAL(T).template get<I>()));
   template <usize I, typename T>
-  static constexpr auto apply(T&& arg)
-      VEG_DEDUCE_RET(VEG_FWD(arg).template get<I>());
+  HEDLEY_ALWAYS_INLINE static constexpr auto apply(T&& arg)
+      __VEG_DEDUCE_RET(VEG_FWD(arg).template get<I>());
 };
 struct adl_get {
   template <usize I, typename T>
-  using type = decltype(void(get<I>(VEG_DECLVAL(T))));
+  using type = decltype(void(get<I>(__VEG_DECLVAL(T))));
 
   template <usize I, typename T>
-  static constexpr auto apply(T&& arg) VEG_DEDUCE_RET(get<I>(VEG_FWD(arg)));
+  HEDLEY_ALWAYS_INLINE static constexpr auto apply(T&& arg)
+      __VEG_DEDUCE_RET(get<I>(VEG_FWD(arg)));
 };
 
 template <usize I, typename T>
@@ -72,14 +73,14 @@ struct get_impl : meta::disjunction<has_member_get<I, T>, has_adl_get<I, T>> {};
 
 namespace fn {
 template <i64 I>
-struct get_fn {
+struct get {
   VEG_TEMPLATE(
       typename T,
       requires(internal::get::get_impl<static_cast<usize>(I), T>::value),
-      constexpr auto
+      HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (arg, T&&))
-  const VEG_DEDUCE_RET(
+  const __VEG_DEDUCE_RET(
       internal::get::get_impl<static_cast<usize>(I), T>::template apply<I>(
           VEG_FWD(arg)));
 };
@@ -87,12 +88,12 @@ struct get_fn {
 namespace { /* NOLINT */
 template <i64 I>
 constexpr auto const& get /* NOLINT */ =
-    ::veg::meta::internal::static_const<fn::get_fn<I>>::value;
+    ::veg::meta::internal::static_const<fn::get<I>>::value;
 }
 
 namespace make {
 namespace fn {
-struct tuple_fn {
+struct tuple {
   VEG_TEMPLATE(
       typename... Ts,
       requires_all(meta::constructible<meta::decay_t<Ts>, Ts&&>::value),
@@ -102,22 +103,22 @@ struct tuple_fn {
   const noexcept(
       meta::all_of(
           {meta::nothrow_constructible<meta::decay_t<Ts>, Ts&&>::value...}))
-      ->tuple<meta::decay_t<Ts>...> {
+      ->veg::tuple<meta::decay_t<Ts>...> {
     return {VEG_FWD(args)...};
   }
 };
 
-struct tuple_ref_fn {
+struct tuple_ref {
   VEG_TEMPLATE(
       typename... Ts,
       requires true,
-      constexpr auto
+      HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (... args, Ts&&))
-  const noexcept->tuple<Ts&&...> { return {VEG_FWD(args)...}; }
+  const noexcept->veg::tuple<Ts&&...> { return {VEG_FWD(args)...}; }
 };
 
-struct tuple_fwd_fn {
+struct tuple_fwd {
   VEG_TEMPLATE(
       typename... Ts,
       requires_all(meta::constructible<Ts, Ts&&>::value),
@@ -126,14 +127,14 @@ struct tuple_fwd_fn {
       (... args, Ts&&))
   const noexcept(
       meta::all_of({meta::nothrow_constructible<Ts, Ts&&>::value...}))
-      ->tuple<Ts...> {
+      ->veg::tuple<Ts...> {
     return {VEG_FWD(args)...};
   }
 };
 } // namespace fn
-VEG_ODR_VAR(tuple, fn::tuple_fn);
-VEG_ODR_VAR(tuple_ref, fn::tuple_ref_fn);
-VEG_ODR_VAR(tuple_fwd, fn::tuple_fwd_fn);
+__VEG_ODR_VAR(tuple, fn::tuple);
+__VEG_ODR_VAR(tuple_ref, fn::tuple_ref);
+__VEG_ODR_VAR(tuple_fwd, fn::tuple_fwd);
 
 } // namespace make
 namespace meta {
@@ -159,4 +160,4 @@ struct tuple_element<I, veg::tuple<Ts...>> {
 };
 } // namespace std
 
-#endif /* end of include guard VEG_TUPLE_HPP_B8PHUNWES */
+#endif /* end of include guard __VEG_TUPLE_HPP_B8PHUNWES */

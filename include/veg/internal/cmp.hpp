@@ -1,5 +1,5 @@
-#ifndef VEG_CMP_HPP_6QBW4XNOS
-#define VEG_CMP_HPP_6QBW4XNOS
+#ifndef __VEG_CMP_HPP_6QBW4XNOS
+#define __VEG_CMP_HPP_6QBW4XNOS
 
 #include "veg/internal/type_traits.hpp"
 
@@ -15,19 +15,23 @@ enum struct which {
 template <which Signedness /* same_sign */>
 struct cmp_impl {
   template <typename A, typename B>
-  static constexpr auto eq(A const& a, B const& b) VEG_DEDUCE_RET(a == b);
+  HEDLEY_ALWAYS_INLINE static constexpr auto eq(A const& a, B const& b)
+      __VEG_DEDUCE_RET(a == b);
   template <typename A, typename B>
-  static constexpr auto lt(A const& a, B const& b) VEG_DEDUCE_RET(a < b);
+  HEDLEY_ALWAYS_INLINE static constexpr auto lt(A const& a, B const& b)
+      __VEG_DEDUCE_RET(a < b);
 };
 
 template <>
 struct cmp_impl<which::int_signed_unsigned> {
   template <typename A, typename B>
-  static constexpr auto eq(A const& a, B const& b) noexcept -> bool {
+  HEDLEY_ALWAYS_INLINE static constexpr auto eq(A const& a, B const& b) noexcept
+      -> bool {
     return (a >= 0) && (static_cast<meta::make_unsigned_t<A>>(a) == b);
   }
   template <typename A, typename B>
-  static constexpr auto lt(A const& a, B const& b) noexcept -> bool {
+  HEDLEY_ALWAYS_INLINE static constexpr auto lt(A const& a, B const& b) noexcept
+      -> bool {
     return (a < 0) || (static_cast<meta::make_unsigned_t<A>>(a) < b);
   }
 };
@@ -35,11 +39,13 @@ struct cmp_impl<which::int_signed_unsigned> {
 template <>
 struct cmp_impl<which::int_unsigned_signed> {
   template <typename A, typename B>
-  static constexpr auto eq(A const& a, B const& b) noexcept -> bool {
+  HEDLEY_ALWAYS_INLINE static constexpr auto eq(A const& a, B const& b) noexcept
+      -> bool {
     return cmp_impl<which::int_signed_unsigned>::eq(b, a);
   }
   template <typename A, typename B>
-  static constexpr auto lt(A const& a, B const& b) noexcept -> bool {
+  HEDLEY_ALWAYS_INLINE static constexpr auto lt(A const& a, B const& b) noexcept
+      -> bool {
     return (b >= 0) && (static_cast<meta::make_unsigned_t<B>>(b) < a);
   }
 };
@@ -47,15 +53,15 @@ struct cmp_impl<which::int_unsigned_signed> {
 } // namespace internal
 
 namespace fn {
-struct cmp_equal_fn {
+struct cmp_equal {
   VEG_TEMPLATE(
       (typename A, typename B),
       requires(meta::equality_comparable_with<A, B>::value),
-      constexpr auto
+      HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (a, A const&),
       (b, B const&))
-  const VEG_DEDUCE_RET(
+  const __VEG_DEDUCE_RET(
       internal::cmp::cmp_impl<
           (meta::is_integral<A>::value && meta::is_integral<B>::value &&
            meta::is_signed<A>::value != meta::is_signed<B>::value)
@@ -65,26 +71,26 @@ struct cmp_equal_fn {
               : internal::cmp::which::generic>::eq(a, b));
 };
 
-struct cmp_not_equal_fn {
+struct cmp_not_equal {
   VEG_TEMPLATE(
       (typename A, typename B),
       requires(meta::equality_comparable_with<A, B>::value),
-      constexpr auto
+      HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (a, A const&),
       (b, B const&))
-  const VEG_DEDUCE_RET(!cmp_equal_fn{}(a, b));
+  const __VEG_DEDUCE_RET(!cmp_equal{}(a, b));
 };
 
-struct cmp_less_fn {
+struct cmp_less {
   VEG_TEMPLATE(
       (typename A, typename B),
       requires(meta::partially_ordered_with<A, B>::value),
-      constexpr auto
+      HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (a, A const&),
       (b, B const&))
-  const VEG_DEDUCE_RET(
+  const __VEG_DEDUCE_RET(
       internal::cmp::cmp_impl<
           (meta::is_integral<A>::value && meta::is_integral<B>::value &&
            meta::is_signed<A>::value != meta::is_signed<B>::value)
@@ -94,47 +100,47 @@ struct cmp_less_fn {
               : internal::cmp::which::generic>::lt(a, b));
 };
 
-struct cmp_greater_fn {
+struct cmp_greater {
   VEG_TEMPLATE(
       (typename A, typename B),
       requires(meta::partially_ordered_with<B, A>::value),
-      constexpr auto
+      HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (a, A const&),
       (b, B const&))
-  const VEG_DEDUCE_RET(cmp_less_fn{}(b, a));
+  const __VEG_DEDUCE_RET(cmp_less{}(b, a));
 };
 
-struct cmp_less_equal_fn {
+struct cmp_less_equal {
   VEG_TEMPLATE(
       (typename A, typename B),
       requires(meta::partially_ordered_with<B, A>::value),
-      constexpr auto
+      HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (a, A const&),
       (b, B const&))
-  const VEG_DEDUCE_RET(!cmp_less_fn{}(b, a));
+  const __VEG_DEDUCE_RET(!cmp_less{}(b, a));
 };
 
-struct cmp_greater_equal_fn {
+struct cmp_greater_equal {
   VEG_TEMPLATE(
       (typename A, typename B),
       requires(meta::partially_ordered_with<A, B>::value),
-      constexpr auto
+      HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (a, A const&),
       (b, B const&))
-  const VEG_DEDUCE_RET(!cmp_less_fn{}(a, b));
+  const __VEG_DEDUCE_RET(!cmp_less{}(a, b));
 };
 
 } // namespace fn
-VEG_ODR_VAR(cmp_equal, fn::cmp_equal_fn);
-VEG_ODR_VAR(cmp_not_equal, fn::cmp_not_equal_fn);
-VEG_ODR_VAR(cmp_less, fn::cmp_less_fn);
-VEG_ODR_VAR(cmp_greater, fn::cmp_greater_fn);
-VEG_ODR_VAR(cmp_less_equal, fn::cmp_less_equal_fn);
-VEG_ODR_VAR(cmp_greater_equal, fn::cmp_greater_equal_fn);
+__VEG_ODR_VAR(cmp_equal, fn::cmp_equal);
+__VEG_ODR_VAR(cmp_not_equal, fn::cmp_not_equal);
+__VEG_ODR_VAR(cmp_less, fn::cmp_less);
+__VEG_ODR_VAR(cmp_greater, fn::cmp_greater);
+__VEG_ODR_VAR(cmp_less_equal, fn::cmp_less_equal);
+__VEG_ODR_VAR(cmp_greater_equal, fn::cmp_greater_equal);
 
 } // namespace veg
 
-#endif /* end of include guard VEG_CMP_HPP_6QBW4XNOS */
+#endif /* end of include guard __VEG_CMP_HPP_6QBW4XNOS */

@@ -1,5 +1,5 @@
-#ifndef VEG_TUPLE_GENERIC_HPP_DUSBI7AJS
-#define VEG_TUPLE_GENERIC_HPP_DUSBI7AJS
+#ifndef __VEG_TUPLE_GENERIC_HPP_DUSBI7AJS
+#define __VEG_TUPLE_GENERIC_HPP_DUSBI7AJS
 
 #include "veg/internal/type_traits.hpp"
 #include "veg/internal/integer_seq.hpp"
@@ -15,11 +15,13 @@ struct tuple;
 
 namespace internal {
 namespace tuple {
+struct hidden_tag {};
 
 template <typename T>
 void get() = delete;
 template <usize I, typename T>
-auto adl_get(T&& arg) VEG_DEDUCE_RET(get<I>(VEG_FWD(arg)));
+HEDLEY_ALWAYS_INLINE auto adl_get(T&& arg)
+    __VEG_DEDUCE_RET(get<I>(VEG_FWD(arg)));
 
 template <usize I, typename T>
 struct tuple_leaf : storage::storage<T> {
@@ -32,9 +34,16 @@ struct tuple_impl;
 template <usize... Is, typename... Ts>
 struct tuple_impl<meta::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
   constexpr tuple_impl() = default;
-  constexpr explicit tuple_impl(Ts&&... args) noexcept(
+  HEDLEY_ALWAYS_INLINE constexpr explicit tuple_impl(Ts&&... args) noexcept(
       meta::all_of({meta::nothrow_constructible<Ts, Ts&&>::value...}))
       : tuple_leaf<Is, Ts>{VEG_FWD(args)}... {}
+
+  template <typename... Fn>
+  HEDLEY_ALWAYS_INLINE constexpr explicit tuple_impl(
+      hidden_tag /*unused*/,
+      Fn&&... fns) noexcept(meta::all_of({meta::nothrow_invocable<Fn&&>::
+                                              value...}))
+      : tuple_leaf<Is, Ts>{0, VEG_FWD(fns)}... {}
 };
 
 template <usize I>
@@ -43,7 +52,7 @@ struct pack_ith_elem {
   using type = decltype(
       storage::get_inner<meta::category_e::own>::
           template with_idx<usize, tuple_leaf>::template get_type<
-              I>(VEG_DECLVAL(
+              I>(__VEG_DECLVAL(
               tuple_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>)));
 };
 
@@ -53,12 +62,14 @@ template <typename... Ts>
 struct is_tuple<veg::tuple<Ts...>> : std::true_type {};
 
 template <typename T>
-auto get_inner(T&& tup) noexcept -> decltype((VEG_FWD(tup).m_impl))&& {
+HEDLEY_ALWAYS_INLINE auto get_inner(T&& tup) noexcept
+    -> decltype((VEG_FWD(tup).m_impl))&& {
   return VEG_FWD(tup).m_impl;
 }
 
 template <usize I, typename... Ts>
-constexpr auto ith_impl(veg::tuple<Ts...>& tup) noexcept -> decltype(
+HEDLEY_ALWAYS_INLINE constexpr auto
+ith_impl(veg::tuple<Ts...>& tup) noexcept -> decltype(
     internal::storage::get_inner<meta::category_e::ref_mut>::template with_idx<
         usize,
         internal::tuple::tuple_leaf>::template impl<I>(tuple::get_inner(tup))) {
@@ -69,7 +80,7 @@ constexpr auto ith_impl(veg::tuple<Ts...>& tup) noexcept -> decltype(
 }
 
 template <typename... Ts, typename... Us, usize... Is>
-VEG_CPP14(constexpr)
+__VEG_CPP14(constexpr)
 void swap_impl(
     veg::tuple<Ts...>& ts,
     veg::tuple<Us...>& us,
@@ -90,9 +101,9 @@ VEG_TEMPLATE(
     requires(
         is_tuple<meta::remove_cvref_t<T>>::value &&
         (I < std::tuple_size<meta::remove_cvref_t<T>>::value)),
-    constexpr auto get,
+    HEDLEY_ALWAYS_INLINE constexpr auto get,
     (tup, T&&))
-VEG_DEDUCE_RET(
+__VEG_DEDUCE_RET(
     internal::storage::get_inner<meta::value_category<T>::value>::
         template with_idx<usize, internal::tuple::tuple_leaf>::template apply<
             I>(tuple::get_inner(VEG_FWD(tup))));
@@ -100,16 +111,16 @@ VEG_DEDUCE_RET(
 VEG_TEMPLATE(
     (typename... Ts, typename... Us),
     requires //
-    VEG_ALL_OF(
+    __VEG_ALL_OF(
         ((meta::reference<Ts>::value //
-          && VEG_SAME_AS(Ts, Us)) ||
+          && __VEG_SAME_AS(Ts, Us)) ||
          meta::swappable<Ts&, Us&>::value)),
-    VEG_CPP14(constexpr) void swap,
+    HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void swap,
     (ts, veg::tuple<Ts...>&),
     (us, veg::tuple<Us...>&))
-noexcept(VEG_ALL_OF(meta::nothrow_swappable<
-                    internal::storage::storage<Ts>&,
-                    internal::storage::storage<Us>&>::value)) {
+noexcept(meta::all_of({(meta::nothrow_swappable<
+                        internal::storage::storage<Ts>&,
+                        internal::storage::storage<Us>&>::value)...})) {
   return tuple::swap_impl(ts, us, meta::make_index_sequence<sizeof...(Ts)>{});
 }
 
@@ -121,22 +132,35 @@ noexcept(VEG_ALL_OF(meta::nothrow_swappable<
 template <typename... Ts>
 struct tuple : veg::internal::tuple::adl::tuple_base<Ts...> {
   constexpr tuple() = default;
-  constexpr tuple /* NOLINT(hicpp-explicit-conversions) */
-      (Ts... args) noexcept
+  HEDLEY_ALWAYS_INLINE constexpr tuple /* NOLINT(hicpp-explicit-conversions) */
+      (Ts... args) noexcept(
+          meta::all_of({meta::nothrow_move_constructible<Ts>::value...}))
       : m_impl(VEG_FWD(args)...) {}
 
-  VEG_CVREF_DUPLICATE(
+  VEG_TEMPLATE(
+      (typename... Fns),
+      requires __VEG_ALL_OF((
+          meta::invocable<Fns&&>::value && //
+          __VEG_SAME_AS(Ts, (meta::detected_t<meta::invoke_result_t, Fns&&>)))),
+      HEDLEY_ALWAYS_INLINE constexpr tuple // NOLINT(hicpp-explicit-conversions)
+      ,
+      (/*tag*/, inplace_t),
+      (... fns, Fns&&))
+  noexcept
+      : m_impl(internal::tuple::hidden_tag{}, VEG_FWD(fns)...) {}
+
+  __VEG_CVREF_DUPLICATE(
       VEG_TEMPLATE(
           (i64 I),
           requires(I < sizeof...(Ts) && (I >= 0)),
-          VEG_CPP14(constexpr) auto
+          HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
           operator[],
           (/*arg*/, fix<I>)),
       internal::tuple::adl_get<I>,
       ());
 
-  VEG_CVREF_DUPLICATE(
-      VEG_CPP14(constexpr) auto as_ref(),
+  __VEG_CVREF_DUPLICATE(
+      HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto as_ref(),
       tuple::as_ref_impl,
       (, meta::make_index_sequence<sizeof...(Ts)>{}));
 
@@ -145,7 +169,8 @@ private:
       m_impl;
 
   template <usize I, typename Self>
-  static constexpr auto ith_ref(Self&& tup) noexcept -> decltype(
+  HEDLEY_ALWAYS_INLINE static constexpr auto
+  ith_ref(Self&& tup) noexcept -> decltype(
       internal::storage::get_inner<meta::value_category<Self&&>::value>::
           template with_idx<usize, internal::tuple::tuple_leaf>::template apply<
               I>(VEG_FWD(tup).m_impl))&& {
@@ -156,7 +181,7 @@ private:
   }
 
   template <typename Self, usize... Is>
-  static constexpr auto
+  static constexpr auto HEDLEY_ALWAYS_INLINE
   as_ref_impl(Self&& self, meta::index_sequence<Is...> /*seq*/) noexcept
       -> tuple<decltype(tuple::ith_ref<Is>(VEG_FWD(self)))...> {
     return {tuple::ith_ref<Is>(VEG_FWD(self))...};
@@ -167,8 +192,8 @@ private:
       -> decltype((VEG_FWD(tup).m_impl))&&;
 };
 
-VEG_CPP17(template <typename... Ts> tuple(Ts...) -> tuple<Ts...>;)
+__VEG_CPP17(template <typename... Ts> tuple(Ts...) -> tuple<Ts...>;)
 
 } // namespace veg
 
-#endif /* end of include guard VEG_TUPLE_GENERIC_HPP_DUSBI7AJS */
+#endif /* end of include guard __VEG_TUPLE_GENERIC_HPP_DUSBI7AJS */

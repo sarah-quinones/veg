@@ -149,3 +149,46 @@ TEST(dynamic_stack, alignment) {
   }
   EXPECT_EQ(T::n_instances(), 0);
 }
+
+struct throwing {
+private:
+  static auto n_instances_mut() -> std::atomic<int>& {
+    static std::atomic<int> var{0};
+    return var;
+  }
+
+public:
+  static auto n_instances() -> int { return n_instances_mut(); }
+
+  throwing(throwing const&) = delete;
+  throwing(throwing&&) = delete;
+  auto operator=(throwing const&) -> throwing& = delete;
+  auto operator=(throwing&&) -> throwing& = delete;
+  throwing() {
+    if (n_instances() == 5) {
+      throw 0;
+    }
+    ++n_instances_mut();
+  }
+  ~throwing() { --n_instances_mut(); }
+};
+
+TEST(dynamic_stack, throwing) {
+  unsigned char buf[4096];
+  dynamic_stack_view stack{slice<void>(buf)};
+
+  EXPECT_EQ(throwing::n_instances(), 0);
+  auto s1 = stack.make_new(tag<throwing>, 3);
+  (void)s1;
+
+  EXPECT_EQ(throwing::n_instances(), 3);
+  EXPECT_EQ(stack.remaining_bytes(), 4093);
+  try {
+    auto s2 = stack.make_new(tag<throwing>, 7);
+    (void)s2;
+    ASSERT_TRUE(false); // must not be reached
+  } catch (int) {
+    EXPECT_EQ(throwing::n_instances(), 3);
+    EXPECT_EQ(stack.remaining_bytes(), 4093);
+  }
+}

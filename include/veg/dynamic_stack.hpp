@@ -12,6 +12,7 @@ namespace veg {
 namespace internal {
 namespace dynstack {
 
+struct cleanup;
 auto align_next(i64 alignment, i64 size, void*& ptr, i64& space) noexcept
     -> void*;
 
@@ -105,7 +106,28 @@ private:
   friend struct dynamic_alloc;
   template <typename T>
   friend struct dynamic_array;
+  friend struct internal::dynstack::cleanup;
 };
+
+namespace internal {
+namespace dynstack {
+
+struct cleanup {
+  bool const& success;
+  dynamic_stack_view& parent;
+  void* old_data;
+  i64 old_rem_bytes;
+
+  HEDLEY_ALWAYS_INLINE auto operator()() const noexcept {
+    if (!success) {
+      parent.m_data = old_data;
+      parent.m_rem_bytes = old_rem_bytes;
+    }
+  }
+};
+
+} // namespace dynstack
+} // namespace internal
 
 template <typename T>
 struct dynamic_alloc {
@@ -142,15 +164,25 @@ private:
       noexcept(T()))
       : m_parent(parent), m_old_pos(parent.m_data) {
 
-    void* data = internal::dynstack::align_next(
+    void* const parent_data = m_parent.m_data;
+    i64 const parent_bytes = m_parent.m_rem_bytes;
+
+    void* const data = internal::dynstack::align_next(
         align,
         len * narrow<i64>(sizeof(T)),
         m_parent.m_data,
         m_parent.m_rem_bytes);
 
     if (data != nullptr) {
+      bool success = false;
+      auto&& cleanup = make::defer(internal::dynstack::cleanup{
+          success, m_parent, parent_data, parent_bytes});
+      (void)cleanup;
+
       m_len = len;
       m_data = fn.template make<T>(data, len);
+
+      success = true;
     }
   }
 };

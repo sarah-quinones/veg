@@ -1,5 +1,5 @@
-#ifndef VEG_SPAN_HPP_CBT4079WS
-#define VEG_SPAN_HPP_CBT4079WS
+#ifndef __VEG_SPAN_HPP_CBT4079WS
+#define __VEG_SPAN_HPP_CBT4079WS
 
 #include "veg/assert.hpp"
 #include "veg/option.hpp"
@@ -45,13 +45,13 @@ namespace internal {
 struct member_fn_data_size {
   template <typename R, typename T>
   using dtype_r = decltype(void(static_cast<R* const*>(
-      static_cast<decltype(VEG_DECLVAL(T&).data()) const*>(nullptr))));
+      static_cast<decltype(__VEG_DECLVAL(T&).data()) const*>(nullptr))));
 
   template <typename T>
-  using dtype = decltype(void(VEG_DECLVAL(T&).data()));
+  using dtype = decltype(void(__VEG_DECLVAL(T&).data()));
 
   template <typename T>
-  using stype = decltype(void(static_cast<i64>(VEG_DECLVAL(T&).size())));
+  using stype = decltype(void(static_cast<i64>(__VEG_DECLVAL(T&).size())));
 
   template <typename T>
   static constexpr auto d(T& arg) noexcept -> decltype(arg.data()) {
@@ -89,7 +89,7 @@ template <typename R, typename T>
 struct has_array_data2
     : meta::is_convertible<
           T&,
-          R (&)[sizeof(T) / sizeof(decltype(VEG_DECLVAL(T)[0]))]> {};
+          R (&)[sizeof(T) / sizeof(decltype(__VEG_DECLVAL(T)[0]))]> {};
 
 template <typename R, typename T>
 struct has_array_data_r
@@ -165,7 +165,7 @@ struct slice : private internal::slice_ctor<T> {
                (i < size())),
            *(data() + i);
   }
-  VEG_NODISCARD VEG_CPP14(constexpr) auto at(i64 i) const noexcept
+  VEG_NODISCARD __VEG_CPP14(constexpr) auto at(i64 i) const noexcept
       -> option<T&> {
     if (i > 0 || i <= size()) {
       return {some, *(data() + i)};
@@ -204,24 +204,24 @@ struct slice<void const> : slice<unsigned char const> {
 
 namespace make {
 namespace fn {
-struct slice_fn {
+struct slice {
   VEG_TEMPLATE(
       (typename Rng),
       requires(meta::constructible< //
-               slice<meta::remove_pointer_t<
+               veg::slice<meta::remove_pointer_t<
                    decltype(internal::has_data<meta::remove_cvref_t<Rng>>::d(
-                       VEG_DECLVAL(Rng&)))>>,
+                       __VEG_DECLVAL(Rng&)))>>,
                Rng&&>::value),
       auto
       operator(),
       (rng, Rng&&))
-  const noexcept->slice<meta::remove_pointer_t<decltype(
+  const noexcept->veg::slice<meta::remove_pointer_t<decltype(
       internal::has_data<meta::remove_cvref_t<Rng>>::d(rng))>> {
     return {VEG_FWD(rng)};
   }
 };
 } // namespace fn
-VEG_ODR_VAR(slice, fn::slice_fn);
+__VEG_ODR_VAR(slice, fn::slice);
 } // namespace make
 
 namespace meta {
@@ -230,4 +230,4 @@ struct mostly_trivial<slice<T>> : bool_constant<true> {};
 } // namespace meta
 } // namespace veg
 
-#endif /* end of include guard VEG_SPAN_HPP_CBT4079WS */
+#endif /* end of include guard __VEG_SPAN_HPP_CBT4079WS */

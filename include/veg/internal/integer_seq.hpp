@@ -1,5 +1,5 @@
-#ifndef VEG_INTEGER_SEQ_HPP_JBT0EKAQS
-#define VEG_INTEGER_SEQ_HPP_JBT0EKAQS
+#ifndef __VEG_INTEGER_SEQ_HPP_JBT0EKAQS
+#define __VEG_INTEGER_SEQ_HPP_JBT0EKAQS
 
 #include "veg/internal/type_traits.hpp"
 
@@ -15,7 +15,7 @@ struct integer_sequence {
 template <usize... Nums>
 using index_sequence = integer_sequence<usize, Nums...>;
 
-#if VEG_HAS_BUILTIN(__make_integer_seq)
+#if __VEG_HAS_BUILTIN(__make_integer_seq)
 
 template <typename T, T N>
 using make_integer_sequence = __make_integer_seq<integer_sequence, T, N>;
@@ -86,4 +86,4 @@ using make_index_sequence = make_integer_sequence<usize, N>;
 } // namespace meta
 } // namespace veg
 
-#endif /* end of include guard VEG_INTEGER_SEQ_HPP_JBT0EKAQS */
+#endif /* end of include guard __VEG_INTEGER_SEQ_HPP_JBT0EKAQS */

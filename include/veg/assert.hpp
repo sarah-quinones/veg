@@ -1,32 +1,32 @@
-#ifndef VEG_ASSERT_HPP_VQDAJ2IBS
-#define VEG_ASSERT_HPP_VQDAJ2IBS
+#ifndef __VEG_ASSERT_HPP_VQDAJ2IBS
+#define __VEG_ASSERT_HPP_VQDAJ2IBS
 
 #include "veg/internal/typedefs.hpp"
 #include "veg/internal/type_traits.hpp"
 #include "veg/internal/cmp.hpp"
 
 #if HEDLEY_HAS_WARNING("-Woverloaded-shift-op-parentheses")
-#define VEG_IGNORE_SHIFT_PAREN_WARNING(Macro, ...)                             \
+#define __VEG_IGNORE_SHIFT_PAREN_WARNING(Macro, ...)                           \
   HEDLEY_DIAGNOSTIC_PUSH _Pragma(                                              \
       "clang diagnostic ignored \"-Woverloaded-shift-op-parentheses\" ")       \
       Macro(__VA_ARGS__) HEDLEY_DIAGNOSTIC_POP
 #else
-#define VEG_IGNORE_SHIFT_PAREN_WARNING(Macro, ...) Macro(__VA_ARGS__)
+#define __VEG_IGNORE_SHIFT_PAREN_WARNING(Macro, ...) Macro(__VA_ARGS__)
 #endif
 
 #if defined(__GNUC__)
-#define VEG_THIS_FUNCTION __PRETTY_FUNCTION__
+#define __VEG_THIS_FUNCTION __PRETTY_FUNCTION__
 #elif defined(HEDLEY_MSVC_VERSION)
-#define VEG_THIS_FUNCTION __FUNCSIG__
+#define __VEG_THIS_FUNCTION __FUNCSIG__
 #else
-#define VEG_THIS_FUNCTION __func__
+#define __VEG_THIS_FUNCTION __func__
 #endif
 
 namespace veg {
 namespace assert {
 
 namespace fn {
-struct to_string_fn;
+struct to_string;
 } // namespace fn
 
 namespace internal {
@@ -40,7 +40,7 @@ struct string {
 
   ~string();
   string() = default;
-  string(string&& other) noexcept : self{other.self} {
+  HEDLEY_ALWAYS_INLINE string(string&& other) noexcept : self{other.self} {
     other.self = layout{nullptr, 0, 0};
   }
   string(string const&) = delete;
@@ -51,12 +51,17 @@ struct string {
   void copy(char const* data, i64 len);
   void insert(i64 pos, char const* data, i64 len);
 
-  VEG_NODISCARD auto data() const noexcept -> char* { return self.ptr; };
-  VEG_NODISCARD auto size() const noexcept -> i64 { return self.len; };
+  VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto data() const noexcept -> char* {
+    return self.ptr;
+  };
+  VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto size() const noexcept -> i64 {
+    return self.len;
+  };
 };
 
 struct char_string_ref {
-  constexpr char_string_ref(char const* data, i64 len) noexcept
+  HEDLEY_ALWAYS_INLINE constexpr char_string_ref(
+      char const* data, i64 len) noexcept
       : data_{data}, len_{len} {};
 
   char_string_ref // NOLINT(hicpp-explicit-conversions)
@@ -67,11 +72,11 @@ struct char_string_ref {
       requires(
           (meta::constructible<
                char const*,
-               decltype(VEG_DECLVAL(T const&).data())>::value && //
-           meta::constructible<i64, decltype(VEG_DECLVAL(T const&).size())>::
+               decltype(__VEG_DECLVAL(T const&).data())>::value && //
+           meta::constructible<i64, decltype(__VEG_DECLVAL(T const&).size())>::
                value)),
 
-      constexpr char_string_ref, // NOLINT(hicpp-explicit-conversions)
+      HEDLEY_ALWAYS_INLINE constexpr char_string_ref, // NOLINT(hicpp-explicit-conversions)
       (arg, T const&))
   noexcept
       : char_string_ref{
@@ -81,12 +86,18 @@ struct char_string_ref {
   char const* data_;
   i64 len_;
 
-  VEG_NODISCARD constexpr auto data() const noexcept -> char const* {
+  VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto data() const noexcept
+      -> char const* {
     return data_;
   }
-  VEG_NODISCARD constexpr auto size() const noexcept -> i64 { return len_; }
-  VEG_NODISCARD auto starts_with(char_string_ref other) const noexcept -> bool;
-  VEG_NODISCARD auto operator==(char_string_ref other) const noexcept -> bool;
+  VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto size() const noexcept
+      -> i64 {
+    return len_;
+  }
+  VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto
+  starts_with(char_string_ref other) const noexcept -> bool;
+  VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto
+  operator==(char_string_ref other) const noexcept -> bool;
 };
 static constexpr char_string_ref empty_str = {"", 0};
 
@@ -94,15 +105,15 @@ struct tag_invoke_print_ {
   template <typename T>
   using type = decltype(
       (void(static_cast<char const*>(
-           VEG_DECLVAL(meta::tag_invoke_result_t<fn::to_string_fn, T const&>)
+           __VEG_DECLVAL(meta::tag_invoke_result_t<fn::to_string, T const&>)
                .data())),
        (void(static_cast<i64>(
-           VEG_DECLVAL(meta::tag_invoke_result_t<fn::to_string_fn, T const&>)
+           __VEG_DECLVAL(meta::tag_invoke_result_t<fn::to_string, T const&>)
                .size())))));
 
   template <typename T>
-  static auto apply(T const* arg)
-      VEG_DEDUCE_RET(tag_invoke(tag<fn::to_string_fn>, *arg));
+  HEDLEY_ALWAYS_INLINE static auto apply(T const* arg)
+      __VEG_DEDUCE_RET(tag_invoke(tag<fn::to_string>, *arg));
 };
 template <typename T>
 struct tag_invoke_printable
@@ -126,7 +137,8 @@ using cast_up = meta::conditional_t<
 
 struct default_impl_print_ {
   template <typename T>
-  static auto apply(T const* arg) -> assert::internal::string {
+  HEDLEY_ALWAYS_INLINE static auto apply(T const* arg)
+      -> assert::internal::string {
     auto const upscaled = static_cast<cast_up<T>>(*arg);
     return internal::to_string_primitive(upscaled);
   }
@@ -144,7 +156,7 @@ struct default_impl_printable
       default_impl_print_ {};
 
 struct bool_print_ {
-  static constexpr auto apply(bool const* arg) noexcept
+  HEDLEY_ALWAYS_INLINE static constexpr auto apply(bool const* arg) noexcept
       -> assert::internal::char_string_ref {
     return (*arg)
                ? assert::internal::char_string_ref{"true", sizeof("true") - 1}
@@ -164,7 +176,7 @@ struct boolish_print_ {
                      "falsy", sizeof("falsy") - 1};
   }
   template <typename T>
-  static constexpr auto
+  HEDLEY_ALWAYS_INLINE static constexpr auto
   apply(T const* arg) noexcept(noexcept(static_cast<bool>(*arg)))
       -> assert::internal::char_string_ref {
     return boolish_print_::impl(static_cast<bool>(*arg));
@@ -175,7 +187,8 @@ struct boolish_printable : meta::constructible<bool, T>, boolish_print_ {};
 
 struct unprintable_print_ {
   template <typename T>
-  static constexpr auto apply(void volatile const* /*arg*/) noexcept
+  HEDLEY_ALWAYS_INLINE static constexpr auto
+  apply(void volatile const* /*arg*/) noexcept
       -> assert::internal::char_string_ref {
     return {"{?}", sizeof("{?}") - 1};
   }
@@ -196,14 +209,14 @@ struct print_impl : meta::disjunction<
 
 namespace fn {
 
-struct to_string_fn {
+struct to_string {
   template <typename T>
-  auto operator()(T const& arg) const
-      VEG_DEDUCE_RET(internal::print_impl<T>::apply(&arg));
+  HEDLEY_ALWAYS_INLINE auto operator()(T const& arg) const
+      __VEG_DEDUCE_RET(internal::print_impl<T>::apply(&arg));
 };
 
 } // namespace fn
-VEG_ODR_VAR(to_string, fn::to_string_fn);
+__VEG_ODR_VAR(to_string, fn::to_string);
 
 namespace internal {
 
@@ -240,12 +253,13 @@ struct lhs_all_of_t {
   T const& lhs;
 
   template <typename U>
-  void on_assertion_fail(U const& rhs, char_string_ref op_str) const {
+  HEDLEY_ALWAYS_INLINE void
+  on_assertion_fail(U const& rhs, char_string_ref op_str) const {
     internal::set_assert_params1(
         op_str, internal::to_string(lhs), internal::to_string(rhs));
   }
 
-#define VEG_CMP(Op, Fn)                                                        \
+#define __VEG_CMP(Op, Fn)                                                      \
   template <typename U>                                                        \
   HEDLEY_ALWAYS_INLINE constexpr auto operator Op(U const& rhs) const->bool {  \
     return process_op(                                                         \
@@ -253,32 +267,32 @@ struct lhs_all_of_t {
   }                                                                            \
   static_assert(true, "")
 
-#define VEG_DISABLE(Op)                                                        \
+#define __VEG_DISABLE(Op)                                                      \
   template <typename U>                                                        \
   void operator Op(U const& rhs) = delete
 
-  VEG_DISABLE(<<);
-  VEG_DISABLE(>>);
-  VEG_DISABLE(&);
-  VEG_DISABLE(|);
-  VEG_DISABLE(+);
-  VEG_DISABLE(-);
-  VEG_DISABLE(*);
-  VEG_DISABLE(/);
-  VEG_DISABLE(%);
-  VEG_DISABLE(^);
+  __VEG_DISABLE(<<);
+  __VEG_DISABLE(>>);
+  __VEG_DISABLE(&);
+  __VEG_DISABLE(|);
+  __VEG_DISABLE(+);
+  __VEG_DISABLE(-);
+  __VEG_DISABLE(*);
+  __VEG_DISABLE(/);
+  __VEG_DISABLE(%);
+  __VEG_DISABLE(^);
 
   // if a VEG_ASSERT fails during the evaluation of the comparison result, the
   // behavior is undefined (potential recursion)
-  VEG_CMP(==, ::veg::cmp_equal);
-  VEG_CMP(!=, ::veg::cmp_not_equal);
-  VEG_CMP(<, ::veg::cmp_less);
-  VEG_CMP(>, ::veg::cmp_greater);
-  VEG_CMP(<=, ::veg::cmp_less_equal);
-  VEG_CMP(>=, ::veg::cmp_greater_equal);
+  __VEG_CMP(==, ::veg::cmp_equal);
+  __VEG_CMP(!=, ::veg::cmp_not_equal);
+  __VEG_CMP(<, ::veg::cmp_less);
+  __VEG_CMP(>, ::veg::cmp_greater);
+  __VEG_CMP(<=, ::veg::cmp_less_equal);
+  __VEG_CMP(>=, ::veg::cmp_greater_equal);
 
-#undef VEG_CMP
-#undef VEG_DISABLE
+#undef __VEG_CMP
+#undef __VEG_DISABLE
 
   HEDLEY_ALWAYS_INLINE explicit constexpr
   operator bool() const { // NOLINT(hicpp-explicit-conversions)
@@ -310,7 +324,7 @@ struct cleanup { // NOLINT(cppcoreguidelines-special-member-functions)
 };
 } // namespace internal
 
-#define VEG_IMPL_ASSERT_IMPL(Callback, If_Fail, ...)                           \
+#define __VEG_IMPL_ASSERT_IMPL(Callback, If_Fail, ...)                         \
   ((::veg::assert::internal::decomposer{} << __VA_ARGS__)                      \
        ? (void)(0)                                                             \
        : (::veg::assert::internal::cleanup{},                                  \
@@ -324,87 +338,88 @@ struct cleanup { // NOLINT(cppcoreguidelines-special-member-functions)
               ::veg::assert::internal::char_string_ref{                        \
                   static_cast<char const*>(__FILE__), sizeof(__FILE__) - 1},   \
               ::veg::assert::internal::char_string_ref{                        \
-                  static_cast<char const*>(VEG_THIS_FUNCTION),                 \
-                  sizeof(VEG_THIS_FUNCTION) - 1})))
+                  static_cast<char const*>(__VEG_THIS_FUNCTION),               \
+                  sizeof(__VEG_THIS_FUNCTION) - 1})))
 
 #define VEG_ASSERT_ELSE(...)                                                   \
-  VEG_IGNORE_SHIFT_PAREN_WARNING(                                              \
-      VEG_IMPL_ASSERT_IMPL, on_assert_fail, __VA_ARGS__)
+  __VEG_IGNORE_SHIFT_PAREN_WARNING(                                            \
+      __VEG_IMPL_ASSERT_IMPL, on_assert_fail, __VA_ARGS__)
 #define VEG_EXPECT_ELSE(...)                                                   \
-  VEG_IGNORE_SHIFT_PAREN_WARNING(                                              \
-      VEG_IMPL_ASSERT_IMPL, on_expect_fail, __VA_ARGS__)
+  __VEG_IGNORE_SHIFT_PAREN_WARNING(                                            \
+      __VEG_IMPL_ASSERT_IMPL, on_expect_fail, __VA_ARGS__)
 
 #define VEG_ASSERT(...)                                                        \
-  VEG_IGNORE_SHIFT_PAREN_WARNING(                                              \
-      VEG_IMPL_ASSERT_IMPL,                                                    \
+  __VEG_IGNORE_SHIFT_PAREN_WARNING(                                            \
+      __VEG_IMPL_ASSERT_IMPL,                                                  \
       on_assert_fail,                                                          \
       (::veg::assert::internal::empty_str),                                    \
       __VA_ARGS__)
 
 #define VEG_EXPECT(...)                                                        \
-  VEG_IGNORE_SHIFT_PAREN_WARNING(                                              \
-      VEG_IMPL_ASSERT_IMPL,                                                    \
+  __VEG_IGNORE_SHIFT_PAREN_WARNING(                                            \
+      __VEG_IMPL_ASSERT_IMPL,                                                  \
       on_expect_fail,                                                          \
       (::veg::assert::internal::empty_str),                                    \
       __VA_ARGS__)
 
-#define VEG_IMPL_ALL_OF_1(Ftor, Decomposer, Callback, ...)                     \
-  VEG_IMPL_ALL_OF_2(                                                           \
-      Ftor, Decomposer, Callback, VEG_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+#define __VEG_IMPL_ALL_OF_1(Ftor, Decomposer, Callback, ...)                   \
+  __VEG_IMPL_ALL_OF_2(                                                         \
+      Ftor, Decomposer, Callback, __VEG_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
-#define VEG_IMPL_ASSERT_FTOR_EMPTY(_, Decomposer, Elem)                        \
-  VEG_IMPL_ASSERT_FTOR(                                                        \
+#define __VEG_IMPL_ASSERT_FTOR_EMPTY(_, Decomposer, Elem)                      \
+  __VEG_IMPL_ASSERT_FTOR(                                                      \
       _,                                                                       \
       Decomposer,                                                              \
-      (::veg::assert::internal::empty_str, VEG_PP_REMOVE_PARENS(Elem)))
+      (::veg::assert::internal::empty_str, __VEG_PP_REMOVE_PARENS(Elem)))
 
-#define VEG_IMPL_ASSERT_FTOR(_, Decomposer, Elem)                              \
-  (::veg::assert::internal::Decomposer{} << VEG_PP_TAIL Elem)                  \
+#define __VEG_IMPL_ASSERT_FTOR(_, Decomposer, Elem)                            \
+  (::veg::assert::internal::Decomposer{} << __VEG_PP_TAIL Elem)                \
       ? true                                                                   \
       : ((void)(::veg::assert::internal::cleanup{}),                           \
          ::veg::assert::internal::set_assert_params2(                          \
-             {static_cast<char const*>(VEG_PP_STRINGIZE(VEG_PP_TAIL Elem)),    \
-              sizeof(VEG_PP_STRINGIZE(VEG_PP_TAIL Elem)) - 1},                 \
-             VEG_PP_HEAD Elem),                                                \
+             {static_cast<char const*>(                                        \
+                  __VEG_PP_STRINGIZE(__VEG_PP_TAIL Elem)),                     \
+              sizeof(__VEG_PP_STRINGIZE(__VEG_PP_TAIL Elem)) - 1},             \
+             __VEG_PP_HEAD Elem),                                              \
          false),
 
-#define VEG_IMPL_ALL_OF_2(Ftor, Decomposer, Callback, Seq)                     \
-  (::veg::meta::all_of({VEG_PP_SEQ_FOR_EACH(Ftor, Decomposer, Seq)})           \
+#define __VEG_IMPL_ALL_OF_2(Ftor, Decomposer, Callback, Seq)                   \
+  (::veg::meta::all_of({__VEG_PP_SEQ_FOR_EACH(Ftor, Decomposer, Seq)})         \
        ? (void)(0)                                                             \
        : ::veg::assert::internal::Callback(                                    \
              __LINE__,                                                         \
              {static_cast<char const*>(__FILE__), sizeof(__FILE__) - 1},       \
-             {static_cast<char const*>(VEG_THIS_FUNCTION),                     \
-              sizeof(VEG_THIS_FUNCTION) - 1}))
+             {static_cast<char const*>(__VEG_THIS_FUNCTION),                   \
+              sizeof(__VEG_THIS_FUNCTION) - 1}))
 
 #define VEG_ASSERT_ALL_OF(...)                                                 \
-  VEG_IGNORE_SHIFT_PAREN_WARNING(                                              \
-      VEG_IMPL_ALL_OF_1,                                                       \
-      VEG_IMPL_ASSERT_FTOR_EMPTY,                                              \
+  __VEG_IGNORE_SHIFT_PAREN_WARNING(                                            \
+      __VEG_IMPL_ALL_OF_1,                                                     \
+      __VEG_IMPL_ASSERT_FTOR_EMPTY,                                            \
       decomposer,                                                              \
       on_assert_fail,                                                          \
       __VA_ARGS__)
 
 #define VEG_EXPECT_ALL_OF(...)                                                 \
-  VEG_IGNORE_SHIFT_PAREN_WARNING(                                              \
-      VEG_IMPL_ALL_OF_1,                                                       \
-      VEG_IMPL_ASSERT_FTOR_EMPTY,                                              \
+  __VEG_IGNORE_SHIFT_PAREN_WARNING(                                            \
+      __VEG_IMPL_ALL_OF_1,                                                     \
+      __VEG_IMPL_ASSERT_FTOR_EMPTY,                                            \
       decomposer,                                                              \
       on_expect_fail,                                                          \
       __VA_ARGS__)
 
 #define VEG_ASSERT_ALL_OF_ELSE(...)                                            \
-  VEG_IGNORE_SHIFT_PAREN_WARNING(                                              \
-      VEG_IMPL_ALL_OF_1,                                                       \
-      VEG_IMPL_ASSERT_FTOR,                                                    \
+  __VEG_IGNORE_SHIFT_PAREN_WARNING(                                            \
+      __VEG_IMPL_ALL_OF_1,                                                     \
+      __VEG_IMPL_ASSERT_FTOR,                                                  \
       decomposer,                                                              \
       on_assert_fail,                                                          \
       __VA_ARGS__)
 
 #define VEG_EXPECT_ALL_OF_ELSE(...)                                            \
-  VEG_IGNORE_SHIFT_PAREN_WARNING(                                              \
-      VEG_IMPL_ALL_OF_1,                                                       \
-      VEG_IMPL_ASSERT_FTOR,                                                    \
+  __VEG_IGNORE_SHIFT_PAREN_WARNING(                                            \
+      __VEG_IMPL_ALL_OF_1,                                                     \
+      __VEG_IMPL_ASSERT_FTOR,                                                  \
       decomposer,                                                              \
       on_expect_fail,                                                          \
       __VA_ARGS__)
@@ -412,7 +427,7 @@ struct cleanup { // NOLINT(cppcoreguidelines-special-member-functions)
 } // namespace assert
 } // namespace veg
 
-#endif /* end of include guard VEG_ASSERT_HPP_VQDAJ2IBS */
+#endif /* end of include guard __VEG_ASSERT_HPP_VQDAJ2IBS */
 
 #ifdef VEG_DEBUG_ASSERT
 #undef VEG_DEBUG_ASSERT

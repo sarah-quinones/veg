@@ -1,5 +1,5 @@
-#ifndef VEG_FN_REF_HPP_IDVWA3EYS
-#define VEG_FN_REF_HPP_IDVWA3EYS
+#ifndef __VEG_FN_REF_HPP_IDVWA3EYS
+#define __VEG_FN_REF_HPP_IDVWA3EYS
 
 #include "veg/assert.hpp"
 
@@ -31,7 +31,7 @@ template <typename Ret, typename... Args>
 struct is_fn_ptr<Ret (*)(Args...)> : std::true_type {};
 
 template <typename T>
-using unary_plus = decltype(+VEG_DECLVAL(T));
+using unary_plus = decltype(+__VEG_DECLVAL(T));
 
 template <typename T>
 struct is_convertible_to_fn_ptr_with_unary_plus
@@ -156,7 +156,7 @@ struct fn_ref_impl<fn_kind_e::fn_ptr> {
   template <typename State, typename Fn, typename Ret, typename... Args>
   static auto call(State state, Args... args) -> Ret {
     return discard_void<Ret>::apply(
-        reinterpret_cast<decltype(+VEG_DECLVAL(Fn&))>(state.fn),
+        reinterpret_cast<decltype(+__VEG_DECLVAL(Fn&))>(state.fn),
         VEG_FWD(args)...);
   }
 };
@@ -189,7 +189,7 @@ struct fn_ref_impl<fn_kind_e::mem_fn_ptr> {
   template <typename State, typename Fn, typename Ret, typename... Args>
   static auto call(State state, Args... args) -> Ret {
     return discard_void<Ret>::apply(
-        reinterpret_cast<decltype(VEG_DECLVAL(Fn&))>(state.mem_fn),
+        reinterpret_cast<decltype(__VEG_DECLVAL(Fn&))>(state.mem_fn),
         VEG_FWD(args)...);
   }
 };
@@ -306,4 +306,4 @@ struct meta::value_sentinel_for<mini_fn_ref<Ret(Args...)>> : std::true_type {
 
 } // namespace veg
 
-#endif /* end of include guard VEG_FN_REF_HPP_IDVWA3EYS */
+#endif /* end of include guard __VEG_FN_REF_HPP_IDVWA3EYS */

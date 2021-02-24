@@ -1,6 +1,6 @@
 import sys
 
-MACRO_PREFIX = "VEG"
+MACRO_PREFIX = "__VEG"
 
 
 def main():

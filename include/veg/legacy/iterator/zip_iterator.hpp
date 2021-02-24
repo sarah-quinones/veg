@@ -1,5 +1,5 @@
-#ifndef VEG_ZIP_ITERATOR_HPP_NK26HCX0S
-#define VEG_ZIP_ITERATOR_HPP_NK26HCX0S
+#ifndef __VEG_ZIP_ITERATOR_HPP_NK26HCX0S
+#define __VEG_ZIP_ITERATOR_HPP_NK26HCX0S
 
 #include "veg/internal/type_traits.hpp"
 #include "veg/legacy/iterator/begin_end.hpp"
@@ -44,7 +44,7 @@ namespace legacy {
 
 template <typename... Iters>
 struct zip_proxy {
-  tuple<decltype(*VEG_DECLVAL(Iters))...> m_proxies;
+  tuple<decltype(*__VEG_DECLVAL(Iters))...> m_proxies;
 
 public:
   VEG_TEMPLATE(
@@ -267,4 +267,4 @@ template <typename... Ts>
 struct std::tuple_size<veg::legacy::zip_iterator<Ts...>>
     : integral_constant<veg::usize, sizeof...(Ts)> {};
 
-#endif /* end of include guard VEG_ZIP_ITERATOR_HPP_NK26HCX0S */
+#endif /* end of include guard __VEG_ZIP_ITERATOR_HPP_NK26HCX0S */
