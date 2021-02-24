@@ -35,10 +35,12 @@ template <typename T, bool = meta::constructible<T>::value>
 struct storage_base {
   T inner_val = {};
   constexpr storage_base() = default;
-  template <typename Fn>
-  HEDLEY_ALWAYS_INLINE constexpr storage_base(int /*unused*/, Fn&& fn) noexcept(
-      meta::nothrow_invocable<Fn&&>::value)
-      : inner_val(VEG_FWD(fn)()) {}
+  template <typename Fn, typename... Args>
+  HEDLEY_ALWAYS_INLINE constexpr storage_base(
+      int /*unused*/,
+      Fn&& fn,
+      Args&&... args) noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
+      : inner_val(invoke(VEG_FWD(fn), VEG_FWD(args)...)) {}
   HEDLEY_ALWAYS_INLINE explicit constexpr storage_base(T&& arg) noexcept(
       meta::nothrow_move_constructible<T>::value)
       : inner_val{static_cast<T&&>(arg)} {}
@@ -50,10 +52,12 @@ struct storage_base {
 template <typename T>
 struct storage_base<T, false> {
   T inner_val;
-  template <typename Fn>
-  HEDLEY_ALWAYS_INLINE constexpr storage_base(int /*unused*/, Fn&& fn) noexcept(
-      meta::nothrow_invocable<Fn&&>::value)
-      : inner_val(VEG_FWD(fn)()) {}
+  template <typename Fn, typename... Args>
+  HEDLEY_ALWAYS_INLINE constexpr storage_base(
+      int /*unused*/,
+      Fn&& fn,
+      Args&&... args) noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
+      : inner_val(invoke(VEG_FWD(fn), VEG_FWD(args)...)) {}
   HEDLEY_ALWAYS_INLINE explicit constexpr storage_base(T&& arg)
       : inner_val{static_cast<T&&>(arg)} {}
   HEDLEY_ALWAYS_INLINE explicit constexpr storage_base(T const& arg)
@@ -124,10 +128,12 @@ struct storage<T&> {
 
   HEDLEY_ALWAYS_INLINE explicit constexpr storage(T& arg) noexcept
       : inner_ptr{mem::addressof(arg)} {}
-  template <typename Fn>
-  HEDLEY_ALWAYS_INLINE constexpr storage(int /*unused*/, Fn&& fn) noexcept(
-      meta::nothrow_invocable<Fn&&>::value)
-      : inner_ptr(mem::addressof(VEG_FWD(fn)())) {}
+  template <typename Fn, typename... Args>
+  HEDLEY_ALWAYS_INLINE constexpr storage(
+      int /*unused*/,
+      Fn&& fn,
+      Args&&... args) noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
+      : inner_ptr(mem::addressof(invoke(VEG_FWD(fn), VEG_FWD(args)...))) {}
 
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() const noexcept -> T& {
     return *inner_ptr;
@@ -164,11 +170,13 @@ struct storage<T&&> : delete_copy {
   storage() = default;
   HEDLEY_ALWAYS_INLINE explicit constexpr storage(T&& arg) noexcept
       : inner_ptr{mem::addressof(arg)} {}
-  template <typename Fn>
-  HEDLEY_ALWAYS_INLINE constexpr storage(int /*unused*/, Fn&& fn) noexcept(
-      meta::nothrow_invocable<Fn&&>::value)
-      : inner_ptr(mem::addressof(internal::storage::as_lvalue(VEG_FWD(fn)()))) {
-  }
+  template <typename Fn, typename... Args>
+  HEDLEY_ALWAYS_INLINE constexpr storage(
+      int /*unused*/,
+      Fn&& fn,
+      Args&&... args) noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
+      : inner_ptr(mem::addressof(internal::storage::as_lvalue(
+            invoke(VEG_FWD(fn), VEG_FWD(args)...)))) {}
 
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() const noexcept -> T& {
     return *inner_ptr;

@@ -257,6 +257,8 @@ template <typename... Types, typename... Args>
 auto show_types(Args&&...) -> incomplete_t<Types..., Args...>;
 
 namespace meta {
+using std::false_type;
+using std::true_type;
 
 template <bool B>
 struct bool_constant : std::integral_constant<bool, B> {};
@@ -355,7 +357,7 @@ template <typename... Preds>
 struct disjunction;
 
 template <>
-struct disjunction<> : std::false_type {};
+struct disjunction<> : false_type {};
 
 template <typename First, typename... Preds>
 struct disjunction<First, Preds...>
@@ -366,7 +368,7 @@ template <typename... Preds>
 struct conjunction;
 
 template <>
-struct conjunction<> : std::true_type {};
+struct conjunction<> : true_type {};
 
 template <typename First, typename... Preds>
 struct conjunction<First, Preds...>
@@ -435,12 +437,12 @@ using collapse_category_t = typename internal::apply_categ<
 
 namespace internal {
 struct wrapper_base {
-  static auto test(void*) -> std::false_type;
+  static auto test(void*) -> false_type;
 };
 template <typename T>
 struct wrapper : wrapper_base {
   using wrapper_base::test;
-  static auto test(wrapper<T>*) -> std::true_type;
+  static auto test(wrapper<T>*) -> true_type;
 };
 } // namespace internal
 
@@ -453,21 +455,21 @@ using void_ = same_as<T, void>;
 
 namespace internal {
 template <typename T>
-struct is_const : std::false_type {};
+struct is_const : false_type {};
 template <typename T>
-struct is_const<T const> : std::true_type {};
+struct is_const<T const> : true_type {};
 template <typename T>
-struct is_pointer : std::false_type {};
+struct is_pointer : false_type {};
 template <typename T>
-struct is_pointer<T*> : std::true_type {};
+struct is_pointer<T*> : true_type {};
 template <typename T>
-struct is_lvalue_ref : std::false_type {};
+struct is_lvalue_ref : false_type {};
 template <typename T>
-struct is_lvalue_ref<T&> : std::true_type {};
+struct is_lvalue_ref<T&> : true_type {};
 template <typename T>
-struct is_rvalue_ref : std::false_type {};
+struct is_rvalue_ref : false_type {};
 template <typename T>
-struct is_rvalue_ref<T&&> : std::true_type {};
+struct is_rvalue_ref<T&&> : true_type {};
 } // namespace internal
 
 template <typename T>
@@ -555,10 +557,10 @@ template <typename T>
 using make_unsigned_t = typename internal::make_unsigned<T>::type;
 
 template <typename T>
-struct bounded_array : std::false_type {};
+struct bounded_array : false_type {};
 
 template <typename T, usize N>
-struct bounded_array<T[N]> : std::true_type {};
+struct bounded_array<T[N]> : true_type {};
 
 template <typename T>
 using remove_extent_t = typename std::remove_extent<T>::type;
@@ -573,12 +575,12 @@ template <
     class Ftor,
     typename... Args>
 struct detector {
-  using found = std::false_type;
+  using found = false_type;
   using type = Default;
 };
 template <typename Default, template <typename...> class Ftor, typename... Args>
 struct detector<void_t<Ftor<Args...>>, Default, Ftor, Args...> {
-  using found = std::true_type;
+  using found = true_type;
   using type = Ftor<Args...>;
 };
 
@@ -590,7 +592,7 @@ template <
     usize I,
     typename... Args>
 struct detector_i {
-  using found = std::false_type;
+  using found = false_type;
   using type = Default;
 };
 template <
@@ -600,7 +602,7 @@ template <
     usize I,
     typename... Args>
 struct detector_i<void_t<Ftor<I, Args...>>, Default, Ftor, I, Args...> {
-  using found = std::true_type;
+  using found = true_type;
   using type = Ftor<I, Args...>;
 };
 } // namespace internal
@@ -633,7 +635,7 @@ struct uniform_init_constructible
     : internal::uniform_init_constructible_impl<void, T, Args&&...> {};
 
 template <typename... Ts>
-struct dependent_true : std::true_type {};
+struct dependent_true : true_type {};
 
 namespace internal {
 
@@ -655,7 +657,7 @@ template <bool Constructible, typename T, typename... Args>
 struct is_nothrow_constructible_impl //
     : is_nothrow_constructible_impl2<reference<T>::value, T, Args...> {};
 template <typename T, typename... Args>
-struct is_nothrow_constructible_impl<false, T, Args...> : std::false_type {};
+struct is_nothrow_constructible_impl<false, T, Args...> : false_type {};
 
 template <bool Assignable, typename T, typename U>
 struct is_nothrow_assignable_impl
@@ -663,7 +665,7 @@ struct is_nothrow_assignable_impl
           __VEG_DECLVAL_NOEXCEPT(T&&) = __VEG_DECLVAL_NOEXCEPT(U &&))> {};
 
 template <typename T, typename U>
-struct is_nothrow_assignable_impl<false, T, U> : std::false_type {};
+struct is_nothrow_assignable_impl<false, T, U> : false_type {};
 
 } // namespace internal
 
@@ -741,18 +743,24 @@ using convertible_to = __VEG_HAS_BUILTIN_OR(
     (std::is_convertible<From, To>));
 
 template <typename T>
+using move_constructible = constructible<T, T&&>;
+template <typename T>
 using nothrow_move_constructible = nothrow_constructible<T, T&&>;
+
+template <typename T>
+using move_assignable = assignable<T&, T&&>;
 template <typename T>
 using nothrow_move_assignable = nothrow_assignable<T&, T&&>;
 
 template <typename T>
-using move_constructible = constructible<T, T&&>;
+using copy_constructible = constructible<T, T const&>;
+template <typename T>
+using nothrow_copy_constructible = nothrow_constructible<T, T const&>;
 
 template <typename T>
-struct is_nothrow_move_constructible : nothrow_constructible<T, T&&> {};
-
+using copy_assignable = assignable<T&, T const&>;
 template <typename T>
-struct is_copy_constructible : constructible<T, T const&> {};
+using nothrow_copy_assignable = nothrow_assignable<T&, T const&>;
 
 namespace internal {
 struct callable {
@@ -841,7 +849,7 @@ using nothrow_invocable = conjunction<
 
 namespace internal {
 template <typename A, typename B, typename Enable = void>
-struct equality_comparable_impl : std::false_type {};
+struct equality_comparable_impl : false_type {};
 template <typename A, typename B>
 struct equality_comparable_impl<
     A,
@@ -855,7 +863,7 @@ struct equality_comparable_impl<
                                   !std::is_enum<B>::value))> {};
 
 template <typename A, typename B, typename Enable = void>
-struct less_than_comparable_impl : std::false_type {};
+struct less_than_comparable_impl : false_type {};
 template <typename A, typename B>
 struct less_than_comparable_impl<
     A,
@@ -992,10 +1000,10 @@ using tag_invoke_result_t =
 
 namespace internal {
 template <typename Enable, typename CP, typename... Args>
-struct tag_invocable_impl : std::false_type {};
+struct tag_invocable_impl : false_type {};
 template <typename CP, typename... Args>
 struct tag_invocable_impl<void_t<tag_invoke_result_t<CP, Args...>>, CP, Args...>
-    : std::true_type {};
+    : true_type {};
 
 } // namespace internal
 template <typename CP, typename... Args>
@@ -1032,9 +1040,9 @@ struct mov_fn_swap {
   using type = void;
 
   template <typename U>
-  HEDLEY_ALWAYS_INLINE static __VEG_CPP14(constexpr) void apply(
-      U& u, U& v) noexcept(std::is_nothrow_move_constructible<U>::value&&
-                               std::is_nothrow_move_assignable<U>::value) {
+  HEDLEY_ALWAYS_INLINE static __VEG_CPP14(constexpr) void apply(U& u, U& v) noexcept(
+      (meta::nothrow_move_constructible<U>::value &&
+       meta::nothrow_move_assignable<U>::value)) {
     auto tmp = static_cast<U&&>(u);
     u = static_cast<U&&>(v);
     v = static_cast<U&&>(tmp);
@@ -1049,11 +1057,11 @@ struct has_adl_swap : meta::is_detected<adl_fn_swap::type, U&&, V&&>,
                       adl_fn_swap {};
 
 template <typename U, typename V>
-struct has_mov_swap : std::false_type {};
+struct has_mov_swap : meta::false_type {};
 template <typename U>
 struct has_mov_swap<U&, U&> : meta::bool_constant<
-                                  std::is_move_constructible<U>::value &&
-                                  std::is_move_assignable<U>::value>,
+                                  meta::move_constructible<U>::value &&
+                                  meta::move_assignable<U>::value>,
                               mov_fn_swap {};
 
 template <typename U, typename V>
@@ -1134,7 +1142,7 @@ struct defer {
       HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) auto
       operator(),
       (fn, Fn))
-  const noexcept(meta::is_nothrow_move_constructible<Fn>::value)
+  const noexcept(meta::nothrow_move_constructible<Fn>::value)
       ->veg::defer<Fn> {
     return {VEG_FWD(fn)};
   }

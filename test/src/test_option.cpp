@@ -47,6 +47,7 @@ TEST(option, all) {
   constexpr option<int> i = {some, 3};
   constexpr option<int> j = none;
   static_assert(i.as_ref().and_then(A{}).unwrap() == 1000. / 3);
+  static_assert(option<int>{some, inplace, [&]{return 0;}});
   static_assert(i.as_ref().map(B{}).unwrap() == 2000. / 3);
 
   static_assert(i.as_ref().map_or_else(B{}, C{}) == 2000. / 3);
@@ -80,6 +81,7 @@ TEST(option, all) {
             .as_ref()
             .unwrap() == 3);
     static_assert(opt.clone().unwrap().unwrap().unwrap() == 3);
+    static_assert(opt.clone().flatten().flatten().unwrap() == 3);
     static_assert(!opt2.clone().unwrap().unwrap());
     static_assert(!opt2.clone().flatten().flatten());
     static_assert(opt2.clone().flatten());
