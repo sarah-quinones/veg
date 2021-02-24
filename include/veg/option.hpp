@@ -727,6 +727,30 @@ struct option_move_interface_base {
     VEG_ASSERT(self);
     return static_cast<option<T>&&>(self).unwrap_unchecked(unsafe);
   }
+
+  VEG_TEMPLATE(
+      (typename Fn),
+      requires(meta::constructible<
+               bool,
+               meta::detected_t<
+                   meta::invoke_result_t,
+                   Fn,
+                   meta::remove_cvref_t<T> const&>>::value),
+      VEG_NODISCARD __VEG_CPP14(constexpr) auto filter,
+      (fn, Fn&&)) &&
+
+      noexcept(
+          (meta::nothrow_invocable<Fn&&, meta::remove_cvref_t<T> const&>::
+               value &&
+           meta::nothrow_move_constructible<T>::value)) -> option<T> {
+    auto&& self = static_cast<option<T>&&>(*this);
+    if (self) {
+      if (invoke(VEG_FWD(fn), self.as_cref().unwrap_unchecked(unsafe))) {
+        return {some, VEG_FWD(self).as_ref().unwrap_unchecked(unsafe)};
+      }
+    }
+    return none;
+  }
 };
 
 template <typename T, bool = meta::copy_constructible<T>::value>
@@ -1033,32 +1057,6 @@ struct VEG_NODISCARD option
           some, static_cast<option&&>(*this).as_ref().unwrap_unchecked(unsafe)};
     }
     return invoke(VEG_FWD(fn));
-  }
-
-  VEG_TEMPLATE(
-      (typename Fn),
-      requires(meta::constructible<
-               bool,
-               meta::detected_t<
-                   meta::invoke_result_t,
-                   Fn,
-                   meta::remove_cvref_t<T> const&>>::value&&
-                   meta::move_constructible<T>::value),
-      VEG_NODISCARD __VEG_CPP14(constexpr) auto filter,
-      (fn, Fn&&)) &&
-
-      noexcept(
-          (meta::nothrow_invocable<Fn&&, meta::remove_cvref_t<T> const&>::
-               value &&
-           meta::nothrow_move_constructible<T>::value)) -> option<T> {
-    if (*this) {
-      if (invoke(VEG_FWD(fn), as_cref().unwrap_unchecked(unsafe))) {
-        return {
-            some,
-            static_cast<option&&>(*this).as_ref().unwrap_unchecked(unsafe)};
-      }
-    }
-    return none;
   }
 
   VEG_NODISCARD HEDLEY_ALWAYS_INLINE
