@@ -16,6 +16,8 @@ TEST(tuple, all) {
 
   {
     static_assert(veg::meta::trivially_relocatable<decltype(tup)>::value);
+    static_assert(veg::meta::trivially_copyable<decltype(tup)>::value);
+    static_assert(veg::meta::trivially_copyable<decltype(tup_ref)>::value);
     static_assert(!std::is_copy_constructible<decltype(tup_ref)>::value);
     static_assert(std::is_copy_constructible<decltype(tup)>::value);
     static_assert(std::is_copy_constructible<veg::tuple<int&, bool&>>::value);
@@ -45,6 +47,7 @@ TEST(tuple, all) {
   }
   {
     using ref_tup = veg::tuple<int&>;
+    static_assert(veg::meta::trivially_copyable<ref_tup>::value);
     int i = 13;
     int j = 12;
     ref_tup const a{i};
