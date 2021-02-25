@@ -46,6 +46,11 @@ struct tuple_impl<meta::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
       : tuple_leaf<Is, Ts>{0, VEG_FWD(fns)}... {}
 };
 
+template <>
+struct tuple_impl<meta::index_sequence<>> {
+  constexpr tuple_impl() = default;
+};
+
 VEG_TEMPLATE(
     (usize... Is, typename... Ts, typename... Us),
     requires __VEG_ALL_OF(meta::assignable<Ts, Us>::value),
@@ -190,12 +195,10 @@ noexcept(noexcept(internal::tuple::impl::swap( //
 } // namespace adl
 
 template <typename... Ts>
-struct tuple_interface : veg::internal::tuple::adl::tuple_base<Ts...> {
-  constexpr tuple_interface() = default;
-  HEDLEY_ALWAYS_INLINE constexpr tuple_interface /* NOLINT(hicpp-explicit-conversions)
-                                                  */
-      (Ts... args) noexcept(
-          meta::all_of({meta::nothrow_move_constructible<Ts>::value...}))
+struct tuple_ctor_base : veg::internal::tuple::adl::tuple_base<Ts...> {
+  constexpr tuple_ctor_base() = default;
+  HEDLEY_ALWAYS_INLINE constexpr explicit tuple_ctor_base(Ts... args) noexcept(
+      meta::all_of({meta::nothrow_move_constructible<Ts>::value...}))
       : m_impl(VEG_FWD(args)...) {}
 
   VEG_TEMPLATE(
@@ -203,20 +206,35 @@ struct tuple_interface : veg::internal::tuple::adl::tuple_base<Ts...> {
       requires __VEG_ALL_OF((
           meta::invocable<Fns&&>::value && //
           __VEG_SAME_AS(Ts, (meta::detected_t<meta::invoke_result_t, Fns&&>)))),
-      HEDLEY_ALWAYS_INLINE constexpr tuple_interface // NOLINT(hicpp-explicit-conversions)
-      ,
+      HEDLEY_ALWAYS_INLINE constexpr explicit tuple_ctor_base,
       (/*tag*/, inplace_t),
       (... fns, Fns&&))
   noexcept
       : m_impl(internal::tuple::hidden_tag{}, VEG_FWD(fns)...) {}
 
+  internal::tuple::tuple_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>
+      m_impl;
+};
+
+template <>
+struct tuple_ctor_base<> : veg::internal::tuple::adl::tuple_base<> {
+  constexpr tuple_ctor_base() = default;
+
+  HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base // NOLINT(hicpp-explicit-conversions)
+      (inplace_t /*tag*/) noexcept
+      : tuple_ctor_base{} {}
+
+  internal::tuple::tuple_impl<meta::index_sequence<>> m_impl;
+};
+
+template <typename... Ts>
+struct tuple_interface : tuple_ctor_base<Ts...> {
+  using tuple_ctor_base<Ts...>::tuple_ctor_base;
+
   __VEG_CVREF_DUPLICATE(
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto as_ref(),
       tuple_interface::as_ref_impl,
       (, meta::make_index_sequence<sizeof...(Ts)>{}));
-
-  internal::tuple::tuple_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>
-      m_impl;
 
   template <usize I, typename Self>
   HEDLEY_ALWAYS_INLINE static constexpr auto
@@ -234,7 +252,8 @@ struct tuple_interface : veg::internal::tuple::adl::tuple_base<Ts...> {
   static constexpr auto HEDLEY_ALWAYS_INLINE
   as_ref_impl(Self&& self, meta::index_sequence<Is...> /*seq*/) noexcept
       -> veg::tuple<decltype(tuple_interface::ith_ref<Is>(VEG_FWD(self)))...> {
-    return {tuple_interface::ith_ref<Is>(VEG_FWD(self))...};
+    return veg::tuple<decltype(tuple_interface::ith_ref<Is>(VEG_FWD(self)))...>{
+        tuple_interface::ith_ref<Is>(VEG_FWD(self))...};
   }
 
   template <typename T>

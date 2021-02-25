@@ -104,7 +104,7 @@ struct tuple {
       meta::all_of(
           {meta::nothrow_constructible<meta::decay_t<Ts>, Ts&&>::value...}))
       ->veg::tuple<meta::decay_t<Ts>...> {
-    return {VEG_FWD(args)...};
+    return veg::tuple<meta::decay_t<Ts>...>{VEG_FWD(args)...};
   }
 };
 
@@ -115,7 +115,9 @@ struct tuple_ref {
       HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (... args, Ts&&))
-  const noexcept->veg::tuple<Ts&&...> { return {VEG_FWD(args)...}; }
+  const noexcept->veg::tuple<Ts&&...> {
+    return veg::tuple<Ts&&...>{VEG_FWD(args)...};
+  }
 };
 
 struct tuple_fwd {
@@ -128,7 +130,7 @@ struct tuple_fwd {
   const noexcept(
       meta::all_of({meta::nothrow_constructible<Ts, Ts&&>::value...}))
       ->veg::tuple<Ts...> {
-    return {VEG_FWD(args)...};
+    return veg::tuple<Ts...>{VEG_FWD(args)...};
   }
 };
 } // namespace fn

@@ -189,9 +189,16 @@ struct reloc_impl;
 
 template <>
 struct reloc_impl<which::trivial> {
-  template <typename T>
-  static __VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) noexcept {
-    static_assert(meta::nothrow_move_constructible<T>::value, "");
+  VEG_TEMPLATE(
+      typename T,
+      requires sizeof(T) >= 1,
+      static __VEG_CPP20(constexpr) void apply,
+      (dest, T*),
+      (src, T*),
+      (n, i64))
+
+  noexcept {
+    static_assert(meta::nothrow_move_constructible<T>::value, "is T really trivially relocatable?");
 
     __VEG_CPP20(
 

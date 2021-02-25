@@ -41,11 +41,13 @@ struct storage_base {
       Fn&& fn,
       Args&&... args) noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
       : inner_val(invoke(VEG_FWD(fn), VEG_FWD(args)...)) {}
-  HEDLEY_ALWAYS_INLINE explicit constexpr storage_base(T&& arg) noexcept(
-      meta::nothrow_move_constructible<T>::value)
-      : inner_val{static_cast<T&&>(arg)} {}
+
+  template <typename U>
+  HEDLEY_ALWAYS_INLINE explicit constexpr storage_base(U&& arg) noexcept(
+      meta::nothrow_constructible<T, U&&>::value)
+      : inner_val{VEG_FWD(arg)} {}
   HEDLEY_ALWAYS_INLINE explicit constexpr storage_base(T const& arg) noexcept(
-      meta::nothrow_constructible<T, T const&>::value)
+      meta::nothrow_copy_constructible<T>::value)
       : inner_val{arg} {}
 };
 

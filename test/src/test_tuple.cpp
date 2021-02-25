@@ -159,7 +159,7 @@ TEST(tuple, all) {
 
 TEST(tuple, nested) {
   using namespace veg;
-  tuple<int, tuple<int, float>> tup{1, {2, 3.0F}};
+  tuple<int, tuple<int, float>> tup{1, make::tuple(2, 3.0F)};
   ASSERT_EQ(tup[0_c], 1);
 
   ASSERT_EQ(tup[1_c][1_c], 3.0F);
@@ -167,4 +167,11 @@ TEST(tuple, nested) {
   ASSERT_SAME(decltype(tup[1_c][0_c]), int&);
   ASSERT_SAME(decltype(tup[1_c][0_c]), int&);
   ASSERT_SAME(decltype(VEG_MOV(tup)[1_c][0_c]), int);
+}
+
+TEST(tuple, empty) {
+  using namespace veg;
+  tuple<> t1;
+  tuple<> t2(inplace);
+  (void)t1, (void)t2;
 }
