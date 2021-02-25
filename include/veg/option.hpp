@@ -196,9 +196,9 @@ struct option_storage_base {
 
   template <typename U>
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void assign(U&& rhs) noexcept(
-      noexcept(some.assign(VEG_FWD(rhs)))) {
+      noexcept(some.get_mut() = VEG_FWD(rhs))) {
     VEG_DEBUG_ASSERT(engaged);
-    some.assign(VEG_FWD(rhs));
+    some.get_mut() = VEG_FWD(rhs);
   }
 
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void destroy() noexcept {
@@ -229,6 +229,8 @@ struct option_storage_base<T, has_sentinel> {
 
   static_assert(meta::trivially_destructible<T>::value, "um");
   static_assert(meta::trivially_copyable<storage::storage<T>>::value, "err");
+  static_assert(meta::move_constructible<storage::storage<T>>::value, "err");
+  static_assert(meta::move_assignable<storage::storage<T>>::value, "err");
 
   storage::storage<T> some = sentinel_traits::invalid(0);
 
@@ -257,9 +259,9 @@ struct option_storage_base<T, has_sentinel> {
 
   template <typename U>
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void assign(U&& rhs) noexcept(
-      noexcept(some.assign(VEG_FWD(rhs)))) {
+      noexcept(some.get_mut() = VEG_FWD(rhs))) {
     VEG_DEBUG_ASSERT(is_engaged());
-    some.assign(VEG_FWD(rhs));
+    some.get_mut() = VEG_FWD(rhs);
   }
 
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void destroy() noexcept {
@@ -337,7 +339,7 @@ struct option_storage_base<option<T>, has_sentinel>
 
   template <typename U>
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void assign(U&& rhs) noexcept(
-      noexcept(some.assign(VEG_FWD(rhs)))) {
+      noexcept(some = VEG_FWD(rhs))) {
     VEG_DEBUG_ASSERT(is_engaged());
     some = VEG_FWD(rhs);
   }
@@ -463,9 +465,9 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
 
   template <typename U>
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void assign(U&& rhs) noexcept(
-      noexcept(some.assign(VEG_FWD(rhs)))) {
+      noexcept(some.get_mut() = VEG_FWD(rhs))) {
     VEG_DEBUG_ASSERT(is_engaged());
-    some.assign(VEG_FWD(rhs));
+    some.get_mut() = VEG_FWD(rhs);
   }
 
   template <typename Fn>

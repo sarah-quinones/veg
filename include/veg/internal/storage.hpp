@@ -64,24 +64,10 @@ struct storage_base<T, false> {
       : inner_val{arg} {}
 };
 
-template <typename T>
+template <typename T, bool Rebind = true>
 struct storage : storage_base<T> {
   using storage_base<T>::storage_base;
   using storage_base<T>::inner_val;
-
-  HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
-  operator=(T const& val) noexcept(meta::nothrow_assignable<T, T const&>::value)
-      -> storage& {
-    inner_val = val;
-    return *this;
-  }
-  __VEG_CPP14(constexpr)
-  HEDLEY_ALWAYS_INLINE auto
-  operator=(T&& val) noexcept(meta::nothrow_assignable<T, T&&>::value)
-      -> storage& {
-    inner_val = VEG_FWD(val);
-    return *this;
-  }
 
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() const noexcept
       -> T const& {
@@ -97,33 +83,73 @@ struct storage : storage_base<T> {
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov() && noexcept -> T {
     return static_cast<T&&>(inner_val);
   }
+};
+
+template <typename T>
+struct storage_reference_base {
+  T&& inner_ref = nullptr;
+
+  HEDLEY_ALWAYS_INLINE explicit constexpr storage_reference_base(
+      T&& arg) noexcept
+      : inner_ref{VEG_FWD(arg)} {}
+  template <typename Fn, typename... Args>
+  HEDLEY_ALWAYS_INLINE constexpr storage_reference_base(
+      int /*unused*/,
+      Fn&& fn,
+      Args&&... args) noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
+      : inner_ref(invoke(VEG_FWD(fn), VEG_FWD(args)...)) {}
+
+  HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() const noexcept -> T& {
+    return inner_ref;
+  }
+  HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mut() noexcept -> T& {
+    return inner_ref;
+  }
+  HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov_ref() && noexcept
+      -> T&& {
+    return VEG_FWD(inner_ref);
+  }
+  HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov() && noexcept -> T&& {
+    return VEG_FWD(inner_ref);
+  }
 
   template <typename U>
-  HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void assign(U&& rhs) noexcept(
-      meta::nothrow_assignable<T&, U&&>::value) {
-    inner_val = VEG_FWD(rhs);
-  }
+  HEDLEY_ALWAYS_INLINE
+      __VEG_CPP14(constexpr) void assign(U&& u) & noexcept = delete;
 
-  VEG_TEMPLATE(
-      (typename V),
-      requires(
-          meta::swappable<T&, V&>::value && //
-          !meta::reference<V>::value),
-      HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void swap,
-      (v, storage<V>&))
-  noexcept(meta::nothrow_swappable<T&, V&>::value) {
-    fn::swap{}(get_mut(), v.get_mut());
+  template <typename U>
+  HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void assign(
+      U&& u) const& noexcept(meta::nothrow_assignable<T&&, U&&>::value) {
+    VEG_FWD(inner_ref) = VEG_FWD(u);
   }
+  template <typename U>
+  HEDLEY_ALWAYS_INLINE
+      __VEG_CPP14(constexpr) void swap(U&& u) & noexcept = delete;
+  template <typename U>
+  HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void swap(U&& u) const& noexcept(
+      meta::nothrow_swappable<T&&, U>::value) {
+    veg::swap(VEG_FWD(inner_ref), VEG_FWD(u));
+  }
+};
+
+template <typename T>
+struct storage<T&, false> : storage_reference_base<T&> {
+  using storage_reference_base<T&>::storage_reference_base;
+};
+
+template <typename T>
+struct storage<T&&, false> : storage_reference_base<T&&> {
+  using storage_reference_base<T&&>::storage_reference_base;
 };
 
 template <typename T>
 HEDLEY_ALWAYS_INLINE auto as_lvalue(T&& arg) noexcept -> T& {
   return arg;
 }
-
 struct null_key {};
+
 template <typename T>
-struct storage<T&> {
+struct storage<T&, true> {
   T* inner_ptr = nullptr;
 
   HEDLEY_ALWAYS_INLINE explicit constexpr storage(T& arg) noexcept
@@ -149,10 +175,6 @@ struct storage<T&> {
     return *inner_ptr;
   }
 
-  HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void swap(storage& v) noexcept {
-    swap_::mov_fn_swap::apply(inner_ptr, v.inner_ptr);
-  }
-
 private:
   HEDLEY_ALWAYS_INLINE explicit constexpr storage(
       null_key /*unused*/) noexcept {};
@@ -164,7 +186,7 @@ private:
 };
 
 template <typename T>
-struct storage<T&&> : delete_copy {
+struct storage<T&&, true> : delete_copy {
   T* inner_ptr = nullptr;
 
   storage() = default;
@@ -193,10 +215,6 @@ struct storage<T&&> : delete_copy {
     return static_cast<T&&>(*inner_ptr);
   }
 
-  HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void swap(storage& v) noexcept {
-    swap_::mov_fn_swap::apply(inner_ptr, v.inner_ptr);
-  }
-
 private:
   HEDLEY_ALWAYS_INLINE explicit constexpr storage(
       null_key /*unused*/) noexcept {};
@@ -209,16 +227,18 @@ private:
 
 // intentionally unsupported. please don't
 template <typename T>
-struct storage<T const&&>;
+struct storage<T const&&, true>;
+template <typename T>
+struct storage<T const&&, false>;
 
 template <meta::category_e C>
 struct get_inner;
 
 template <>
 struct get_inner<meta::category_e::own> {
-  template <typename T>
-  HEDLEY_ALWAYS_INLINE static constexpr auto apply(storage<T>&& arg)
-      __VEG_DEDUCE_RET(static_cast<storage<T>&&>(arg).get_mov());
+  template <typename T, bool Rebind>
+  HEDLEY_ALWAYS_INLINE static constexpr auto apply(storage<T, Rebind>&& arg)
+      __VEG_DEDUCE_RET(static_cast<storage<T, Rebind>&&>(arg).get_mov());
 
   template <typename Idx, template <Idx, typename> class Indexed>
   struct with_idx {
@@ -227,15 +247,15 @@ struct get_inner<meta::category_e::own> {
     get_type(Indexed<I, T> const& arg) noexcept -> T;
     template <Idx I, typename T>
     HEDLEY_ALWAYS_INLINE static constexpr auto apply(Indexed<I, T>&& arg)
-        __VEG_DEDUCE_RET(static_cast<storage<T>&&>(arg).get_mov());
+        __VEG_DEDUCE_RET(static_cast<storage<T, false>&&>(arg).get_mov());
   };
 };
 
 template <>
 struct get_inner<meta::category_e::ref> {
-  template <typename T>
+  template <typename T, bool Rebind>
   HEDLEY_ALWAYS_INLINE static constexpr auto
-  apply(storage<T> const& arg) noexcept -> T const& {
+  apply(storage<T, Rebind> const& arg) noexcept -> T const& {
     return arg._get();
   }
 
@@ -256,9 +276,9 @@ struct get_inner<meta::category_e::ref> {
 };
 template <>
 struct get_inner<meta::category_e::ref_mut> {
-  template <typename T>
-  HEDLEY_ALWAYS_INLINE static constexpr auto apply(storage<T>& arg) noexcept
-      -> T& {
+  template <typename T, bool Rebind>
+  HEDLEY_ALWAYS_INLINE static constexpr auto
+  apply(storage<T, Rebind>& arg) noexcept -> T& {
     return arg.get_mut();
   }
 
@@ -279,9 +299,9 @@ struct get_inner<meta::category_e::ref_mut> {
 };
 template <>
 struct get_inner<meta::category_e::ref_mov> {
-  template <typename T>
-  static constexpr auto apply(storage<T>&& arg) noexcept -> T&& {
-    return static_cast<storage<T>&&>(arg).get_mov_ref();
+  template <typename T, bool Rebind>
+  static constexpr auto apply(storage<T, Rebind>&& arg) noexcept -> T&& {
+    return static_cast<storage<T, Rebind>&&>(arg).get_mov_ref();
   }
 
   template <typename Idx, template <Idx, typename> class Indexed>
@@ -289,7 +309,7 @@ struct get_inner<meta::category_e::ref_mov> {
     template <Idx I, typename T>
     HEDLEY_ALWAYS_INLINE static constexpr auto
     apply(Indexed<I, T>&& arg) noexcept -> T&& {
-      return static_cast<storage<T>&&>(arg).get_mov_ref();
+      return static_cast<storage<T, false>&&>(arg).get_mov_ref();
     }
   };
 };

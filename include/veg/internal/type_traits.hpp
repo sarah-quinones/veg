@@ -190,9 +190,9 @@
 
 #define __VEG_IMPL_PARAM_EXPAND(r, _, param)                                   \
   __VEG_PP_COMMA_IF(__VEG_PP_IS_BEGIN_PARENS(param))                           \
-  __VEG_PP_IF(                                                                 \
+  __VEG_PP_REMOVE_PAREN(__VEG_PP_IF(                                           \
       __VEG_PP_IS_BEGIN_PARENS(param),                                         \
-      __VEG_PP_TAIL param __VEG_PP_HEAD param, )
+      (__VEG_PP_TAIL param)__VEG_PP_HEAD param, ))
 
 #define VEG_TEMPLATE(tparams, requirement, attr_name, ...)                     \
   __VEG_IMPL_TEMPLATE(                                                         \
@@ -1142,8 +1142,7 @@ struct defer {
       HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) auto
       operator(),
       (fn, Fn))
-  const noexcept(meta::nothrow_move_constructible<Fn>::value)
-      ->veg::defer<Fn> {
+  const noexcept(meta::nothrow_move_constructible<Fn>::value)->veg::defer<Fn> {
     return {VEG_FWD(fn)};
   }
 };
