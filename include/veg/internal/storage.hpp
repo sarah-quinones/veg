@@ -114,24 +114,6 @@ struct storage_reference_base {
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov() && noexcept -> T&& {
     return VEG_FWD(inner_ref);
   }
-
-  template <typename U>
-  HEDLEY_ALWAYS_INLINE
-      __VEG_CPP14(constexpr) void assign(U&& u) & noexcept = delete;
-
-  template <typename U>
-  HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void assign(
-      U&& u) const& noexcept(meta::nothrow_assignable<T&&, U&&>::value) {
-    VEG_FWD(inner_ref) = VEG_FWD(u);
-  }
-  template <typename U>
-  HEDLEY_ALWAYS_INLINE
-      __VEG_CPP14(constexpr) void swap(U&& u) & noexcept = delete;
-  template <typename U>
-  HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void swap(U&& u) const& noexcept(
-      meta::nothrow_swappable<T&&, U>::value) {
-    veg::swap(VEG_FWD(inner_ref), VEG_FWD(u));
-  }
 };
 
 template <typename T>

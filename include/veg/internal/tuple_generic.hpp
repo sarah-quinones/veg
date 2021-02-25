@@ -67,10 +67,11 @@ noexcept(meta::all_of({meta::nothrow_assignable<Ts, Us>::value...})) {
       0,
       (static_cast<storage::storage<Ts, false>&&>(
            static_cast<tuple_leaf<Is, Ts>&&>(lhs))
-           .assign( //
-               static_cast<storage::storage<Us, false>&&>(
-                   static_cast<tuple_leaf<Is, Us>&&>(VEG_FWD(rhs)))
-                   .get_mov_ref()),
+           .get_mov_ref() =
+
+           static_cast<storage::storage<Us, false>&&>(
+               static_cast<tuple_leaf<Is, Us>&&>(VEG_FWD(rhs)))
+               .get_mov_ref(),
        0)...};
 }
 
@@ -88,12 +89,14 @@ noexcept(meta::all_of({meta::nothrow_swappable<Ts, Us>::value...})) {
 
   (void)meta::internal::int_arr{
       0,
-      (static_cast<storage::storage<Ts, false>&&>(
-           static_cast<tuple_leaf<Is, Ts>&&>(lhs))
-           .swap( //
-               static_cast<storage::storage<Us, false>&&>(
-                   static_cast<tuple_leaf<Is, Us>&&>(VEG_FWD(rhs)))
-                   .get_mov_ref()),
+      (veg::swap(
+           static_cast<storage::storage<Ts, false>&&>(
+               static_cast<tuple_leaf<Is, Ts>&&>(lhs))
+               .get_mov_ref(),
+
+           static_cast<storage::storage<Us, false>&&>(
+               static_cast<tuple_leaf<Is, Us>&&>(VEG_FWD(rhs)))
+               .get_mov_ref()),
        0)...};
 }
 
