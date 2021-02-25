@@ -316,14 +316,14 @@ struct tuple_assignment_base
       requires __VEG_ALL_OF(
           (meta::reference<Ts>::value &&
            meta::assignable<Ts&, Us const&>::value)),
-      HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
+      auto
       operator=,
       (rhs, veg::tuple<Us...> const&)) & noexcept -> void = delete;
   VEG_TEMPLATE(
       (typename... Us),
       requires __VEG_ALL_OF(
           (meta::reference<Ts>::value && meta::assignable<Ts&, Us&&>::value)),
-      HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
+      auto
       operator=,
       (rhs, veg::tuple<Us...>&&)) & noexcept -> void = delete;
 

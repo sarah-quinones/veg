@@ -216,18 +216,19 @@
 #define __VEG_IMPL_TEMPLATE2(                                                  \
     attr_name, tparams, requirement, first_param, args)                        \
   template <__VEG_PP_REMOVE_PAREN(tparams)>                                    \
-  requires(requirement)                                                        \
-      attr_name(__VEG_PP_TAIL first_param __VEG_PP_HEAD first_param            \
-                    __VEG_PP_SEQ_FOR_EACH(__VEG_IMPL_PARAM_EXPAND, _, args))
+  requires(requirement) attr_name /* NOLINT */ (                               \
+      __VEG_PP_TAIL first_param __VEG_PP_HEAD first_param                      \
+          __VEG_PP_SEQ_FOR_EACH(__VEG_IMPL_PARAM_EXPAND, _, args))
 #define __VEG_IMPL_REQUIRES_HANDLER_ALL(...) (__VA_ARGS__) && ...
 #else
 #define __VEG_IMPL_TEMPLATE2(                                                  \
     attr_name, tparams, requirement, first_param, args)                        \
   template <__VEG_PP_REMOVE_PAREN(tparams)>                                    \
-  attr_name(::veg::meta::discard_1st<                                          \
-            ::veg::meta::enable_if_t<(requirement)>,                           \
-            __VEG_PP_TAIL first_param> __VEG_PP_HEAD first_param               \
-                __VEG_PP_SEQ_FOR_EACH(__VEG_IMPL_PARAM_EXPAND, _, args))
+  attr_name /* NOLINT */ (                                                     \
+      ::veg::meta::discard_1st<                                                \
+          ::veg::meta::enable_if_t<(requirement)>,                             \
+          __VEG_PP_TAIL first_param> __VEG_PP_HEAD first_param                 \
+          __VEG_PP_SEQ_FOR_EACH(__VEG_IMPL_PARAM_EXPAND, _, args))
 
 #define __VEG_IMPL_REQUIRES_HANDLER_ALL(...) (__VA_ARGS__)
 #endif
