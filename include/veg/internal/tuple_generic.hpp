@@ -568,11 +568,8 @@ struct tuple
           (i64 I),
           requires(
               I < sizeof...(Ts) && (I >= 0) &&
-              meta::constructible<
-                  typename internal::tuple::pack_ith_elem<I>::template type<
-                      Ts...>,
-                  typename internal::tuple::pack_ith_elem<I>::template type<
-                      Ts...>&&>::value),
+              meta::move_constructible<typename internal::tuple::pack_ith_elem<
+                  I>::template type<Ts...>>::value),
           HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
           operator[],
           (/*arg*/, fix<I>)),
@@ -582,10 +579,8 @@ struct tuple
       (i64 I),
       requires(
           I < sizeof...(Ts) && (I >= 0) &&
-          !meta::constructible<
-              typename internal::tuple::pack_ith_elem<I>::template type<Ts...>,
-              typename internal::tuple::pack_ith_elem<I>::template type<
-                  Ts...>&&>::value),
+          !meta::move_constructible<typename internal::tuple::pack_ith_elem<
+              I>::template type<Ts...>>::value),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator[],
       (/*arg*/, fix<I>)) = delete;
