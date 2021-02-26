@@ -20,6 +20,11 @@ include(cmake/static_analyzers.cmake)
 include(cmake/sanitizers.cmake)
 include(cmake/conan.cmake)
 
+if(VEG_BUILD_DOCS)
+  add_subdirectory("docs")
+  return()
+endif()
+
 add_library(_veg_ub ${CMAKE_CURRENT_SOURCE_DIR}/src/ub.cpp)
 set_property(TARGET _veg_ub PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
 add_library(
