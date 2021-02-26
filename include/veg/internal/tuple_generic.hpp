@@ -12,6 +12,23 @@ namespace veg {
 template <typename... Ts>
 struct tuple;
 
+struct elems_t {
+  VEG_TEMPLATE(
+      typename... Ts,
+      requires_all(meta::constructible<meta::decay_t<Ts>, Ts&&>::value),
+      constexpr auto
+      operator(),
+      (... args, Ts&&))
+  const noexcept(
+      meta::all_of(
+          {meta::nothrow_constructible<meta::decay_t<Ts>, Ts&&>::value...}))
+      ->veg::tuple<meta::decay_t<Ts>...> {
+    return veg::tuple<meta::decay_t<Ts>...>{VEG_FWD(args)...};
+  }
+};
+
+__VEG_ODR_VAR(elems, elems_t);
+
 namespace internal {
 namespace tuple {
 struct hidden_tag1 {};
@@ -378,8 +395,15 @@ noexcept -> bool {
 template <bool Movable, typename... Ts>
 struct tuple_ctor_base : veg::internal::tuple::adl::tuple_base<Ts...> {
   constexpr tuple_ctor_base() = default;
-  HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base(Ts... args) noexcept(
+
+  HEDLEY_ALWAYS_INLINE constexpr explicit tuple_ctor_base(Ts... args) noexcept(
       meta::all_of({meta::nothrow_move_constructible<Ts>::value...}))
+      : m_impl(VEG_FWD(args)...) {}
+
+  HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base(
+      elems_t /*tag*/,
+      Ts... args) noexcept(meta::all_of({meta::nothrow_move_constructible<Ts>::
+                                             value...}))
       : m_impl(VEG_FWD(args)...) {}
 
   VEG_TEMPLATE(
@@ -402,9 +426,24 @@ struct tuple_ctor_base : veg::internal::tuple::adl::tuple_base<Ts...> {
       noexcept(meta::all_of({meta::nothrow_constructible<Ts, Us&&>::value...}))
       : m_impl(hidden_tag2{}, VEG_FWD(tup).m_impl){})
 
+  __VEG_DEFAULTS(tuple_ctor_base);
+
+private:
   internal::tuple::tuple_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>
       m_impl;
-  __VEG_DEFAULTS(tuple_ctor_base);
+  template <bool Const_Self_Assign, typename... Us>
+  friend struct tuple_assignment_base_copy;
+  template <bool Const_Self_Assign, typename... Us>
+  friend struct tuple_assignment_base_move;
+  template <typename... Us>
+  friend struct veg::tuple;
+  template <bool, typename...>
+  friend struct tuple_ctor_base;
+  friend struct impl;
+
+  template <typename T>
+  friend auto constexpr internal::tuple::get_inner(T&& tup) noexcept
+      -> decltype((VEG_FWD(tup).m_impl))&&;
 };
 
 template <typename... Ts>
@@ -442,7 +481,11 @@ private:
   friend struct tuple_assignment_base_copy;
   template <bool Const_Self_Assign, typename... Us>
   friend struct tuple_assignment_base_move;
-  friend struct veg::tuple<Ts...>;
+  template <typename... Us>
+  friend struct veg::tuple;
+  template <bool, typename...>
+  friend struct tuple_ctor_base;
+  friend struct impl;
 
   template <typename T>
   friend auto constexpr internal::tuple::get_inner(T&& tup) noexcept
@@ -466,7 +509,11 @@ private:
   friend struct tuple_assignment_base_copy;
   template <bool Const_Self_Assign, typename... Us>
   friend struct tuple_assignment_base_move;
-  friend struct veg::tuple<>;
+  template <typename... Us>
+  friend struct veg::tuple;
+  template <bool, typename...>
+  friend struct tuple_ctor_base;
+  friend struct impl;
 
   template <typename T>
   friend auto constexpr internal::tuple::get_inner(T&& tup) noexcept

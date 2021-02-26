@@ -93,20 +93,7 @@ constexpr auto const& get /* NOLINT */ =
 
 namespace make {
 namespace fn {
-struct tuple {
-  VEG_TEMPLATE(
-      typename... Ts,
-      requires_all(meta::constructible<meta::decay_t<Ts>, Ts&&>::value),
-      constexpr auto
-      operator(),
-      (... args, Ts&&))
-  const noexcept(
-      meta::all_of(
-          {meta::nothrow_constructible<meta::decay_t<Ts>, Ts&&>::value...}))
-      ->veg::tuple<meta::decay_t<Ts>...> {
-    return veg::tuple<meta::decay_t<Ts>...>{VEG_FWD(args)...};
-  }
-};
+struct tuple : elems_t {};
 
 struct tuple_ref {
   VEG_TEMPLATE(
@@ -137,6 +124,9 @@ struct tuple_fwd {
 __VEG_ODR_VAR(tuple, fn::tuple);
 __VEG_ODR_VAR(tuple_ref, fn::tuple_ref);
 __VEG_ODR_VAR(tuple_fwd, fn::tuple_fwd);
+
+struct elems_t {};
+__VEG_ODR_VAR(elems, elems_t);
 
 } // namespace make
 namespace meta {
