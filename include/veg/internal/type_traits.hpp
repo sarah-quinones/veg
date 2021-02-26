@@ -6,6 +6,13 @@
 #include "veg/internal/.external/hedley.ext.h"
 #include "veg/internal/.external/boostpp.ext.h"
 
+#define __VEG_DEFAULTS(class_name)                                             \
+  ~class_name() = default;                                                     \
+  class_name /* NOLINT */ (class_name &&) = default;                           \
+  class_name(class_name const&) = default;                                     \
+  auto operator= /* NOLINT */(class_name&&)&->class_name& = default;           \
+  auto operator=(class_name const&)&->class_name& = default
+
 #define __VEG_ODR_VAR(name, obj)                                               \
   namespace { /* NOLINT */                                                     \
   constexpr auto const& name /* NOLINT */ =                                    \
@@ -84,7 +91,8 @@
   };                                                                           \
   template struct name<__VA_ARGS__>
 
-#define VEG_INSTANTIATE_CLASS(class, ...) template struct class<__VA_ARGS__>
+#define VEG_INSTANTIATE_CLASS(class_name, ...)                                 \
+  template struct class_name<__VA_ARGS__>
 #endif
 
 // macros
@@ -201,6 +209,32 @@
 #define VEG_TEMPLATE(tparams, requirement, attr_name, ...)                     \
   __VEG_IMPL_TEMPLATE(                                                         \
       attr_name, tparams, requirement, __VEG_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+
+#if __cplusplus >= 202002L
+#define VEG_TEMPLATE_EXPLICIT(cond, tparams, requirement, attr_name, ...)      \
+  __VEG_IMPL_TEMPLATE(                                                         \
+      explicit(cond) attr_name,                                                \
+      tparams,                                                                 \
+      requirement,                                                             \
+      __VEG_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+#else
+#define VEG_TEMPLATE_EXPLICIT(                                                 \
+    cond, tparams, requirement, attr_name, args, ...)                          \
+  VEG_TEMPLATE(                                                                \
+      (__VEG_PP_REMOVE_PAREN tparams,                                          \
+       ::veg::meta::enable_if_t<(cond), int*> = nullptr),                      \
+      requirement,                                                             \
+      explicit attr_name,                                                      \
+      __VEG_PP_REMOVE_PAREN(args))                                             \
+  __VA_ARGS__                                                                  \
+  VEG_TEMPLATE(                                                                \
+      (__VEG_PP_REMOVE_PAREN tparams,                                          \
+       ::veg::meta::enable_if_t<!(cond), unsigned*> = nullptr),                \
+      requirement,                                                             \
+      attr_name,                                                               \
+      __VEG_PP_REMOVE_PAREN(args))                                             \
+  __VA_ARGS__
+#endif
 
 #define __VEG_IMPL_TEMPLATE(attr_name, tparams, requirement, args)             \
   __VEG_IMPL_TEMPLATE2(                                                        \
@@ -478,51 +512,56 @@ struct is_rvalue_ref<T&&> : true_type {};
 } // namespace internal
 
 template <typename T>
-using const_ = __VEG_HAS_BUILTIN_OR(
-    __is_const, bool_constant<__is_const(T)>, internal::is_const<T>);
+struct const_
+    : __VEG_HAS_BUILTIN_OR(
+          __is_const, bool_constant<__is_const(T)>, internal::is_const<T>) {};
 
 // can't use __is_pointer because of <bits/cpp_type_traits.h> header
 template <typename T>
-using pointer = internal::is_pointer<T>;
+struct pointer : internal::is_pointer<T> {};
 
 template <typename T>
-using lvalue_reference = __VEG_HAS_BUILTIN_OR(
-    __is_lvalue_reference,
-    bool_constant<__is_lvalue_reference(T)>,
-    internal::is_lvalue_ref<T>);
+struct lvalue_reference : __VEG_HAS_BUILTIN_OR(
+                              __is_lvalue_reference,
+                              bool_constant<__is_lvalue_reference(T)>,
+                              internal::is_lvalue_ref<T>) {};
 
 template <typename T>
-using rvalue_reference = __VEG_HAS_BUILTIN_OR(
-    __is_rvalue_reference,
-    bool_constant<__is_rvalue_reference(T)>,
-    internal::is_rvalue_ref<T>);
+struct rvalue_reference : __VEG_HAS_BUILTIN_OR(
+                              __is_rvalue_reference,
+                              bool_constant<__is_rvalue_reference(T)>,
+                              internal::is_rvalue_ref<T>) {};
 
 template <typename T>
-using reference = bool_constant<__VEG_HAS_BUILTIN_OR(
-    __is_reference,
-    __is_reference(T),
-    internal::is_lvalue_ref<T>::value || internal::is_rvalue_ref<T>::value)>;
+struct reference : bool_constant<__VEG_HAS_BUILTIN_OR(
+                       __is_reference,
+                       __is_reference(T),
+                       internal::is_lvalue_ref<T>::value ||
+                           internal::is_rvalue_ref<T>::value)> {};
 
 template <typename T>
-using signed_integral =
-    bool_constant<std::is_integral<T>::value && std::is_signed<T>::value>;
+struct signed_integral
+    : bool_constant<std::is_integral<T>::value && std::is_signed<T>::value> {};
 
 template <typename T>
-using unsigned_integral =
-    bool_constant<std::is_integral<T>::value && std::is_unsigned<T>::value>;
+struct unsigned_integral
+    : bool_constant<std::is_integral<T>::value && std::is_unsigned<T>::value> {
+};
 
 template <typename T>
-using integral =
-    bool_constant<signed_integral<T>::value || unsigned_integral<T>::value>;
+struct integral
+    : bool_constant<signed_integral<T>::value || unsigned_integral<T>::value> {
+};
 
 template <typename T>
-using floating_point = bool_constant<
-    __VEG_SAME_AS(T, float) || __VEG_SAME_AS(T, double) ||
-    __VEG_SAME_AS(T, long double)>;
+struct floating_point
+    : bool_constant<
+          __VEG_SAME_AS(T, float) || __VEG_SAME_AS(T, double) ||
+          __VEG_SAME_AS(T, long double)> {};
 
 template <typename T>
-using arithmetic =
-    bool_constant<integral<T>::value || floating_point<T>::value>;
+struct arithmetic
+    : bool_constant<integral<T>::value || floating_point<T>::value> {};
 
 template <typename T>
 struct scalar : disjunction<
@@ -531,7 +570,7 @@ struct scalar : disjunction<
                     std::is_scalar<T>> {};
 
 template <typename T>
-using function = bool_constant<!const_<T>::value && !reference<T>::value>;
+struct function : bool_constant<!const_<T>::value && !reference<T>::value> {};
 
 namespace internal {
 template <typename T>
@@ -678,94 +717,103 @@ template <typename T, typename U>
 struct is_same : bool_constant<__VEG_SAME_AS(T, U)> {};
 
 template <typename T>
-using trivially_copy_constructible = __VEG_HAS_BUILTIN_OR(
-    __is_trivially_constructible,
-    (bool_constant<__is_trivially_constructible(T, T const&)>),
-    (std::is_trivially_copy_constructible<T>));
+struct trivially_copy_constructible
+    : __VEG_HAS_BUILTIN_OR(
+          __is_trivially_constructible,
+          (bool_constant<__is_trivially_constructible(T, T const&)>),
+          (std::is_trivially_copy_constructible<T>)) {};
 
 template <typename T>
-using trivially_move_constructible = __VEG_HAS_BUILTIN_OR(
-    __is_trivially_constructible,
-    (bool_constant<__is_trivially_constructible(T, T&&)>),
-    (std::is_trivially_move_constructible<T>));
+struct trivially_move_constructible
+    : __VEG_HAS_BUILTIN_OR(
+          __is_trivially_constructible,
+          (bool_constant<__is_trivially_constructible(T, T&&)>),
+          (std::is_trivially_move_constructible<T>)) {};
 
 template <typename T>
-using trivially_copy_assignable = __VEG_HAS_BUILTIN_OR(
-    __is_trivially_assignable,
-    (bool_constant<__is_trivially_assignable(T&, T const&)>),
-    (std::is_trivially_copy_assignable<T>));
+struct trivially_copy_assignable
+    : __VEG_HAS_BUILTIN_OR(
+          __is_trivially_assignable,
+          (bool_constant<__is_trivially_assignable(T&, T const&)>),
+          (std::is_trivially_copy_assignable<T>)) {};
 
 template <typename T>
-using trivially_move_assignable = __VEG_HAS_BUILTIN_OR(
-    __is_trivially_assignable,
-    (bool_constant<__is_trivially_assignable(T&, T&&)>),
-    (std::is_trivially_move_assignable<T>));
+struct trivially_move_assignable
+    : __VEG_HAS_BUILTIN_OR(
+          __is_trivially_assignable,
+          (bool_constant<__is_trivially_assignable(T&, T&&)>),
+          (std::is_trivially_move_assignable<T>)) {};
 
 template <typename T>
-using trivially_copyable = __VEG_HAS_BUILTIN_OR(
-    __is_trivially_copyable,
-    (bool_constant<__is_trivially_copyable(T)>),
-    (std::is_trivially_copyable<T>));
+struct trivially_copyable : __VEG_HAS_BUILTIN_OR(
+                                __is_trivially_copyable,
+                                (bool_constant<__is_trivially_copyable(T)>),
+                                (std::is_trivially_copyable<T>)) {};
 
 template <typename T>
-using trivially_destructible = __VEG_HAS_BUILTIN_OR(
-    __has_trivial_destructor,
-    (bool_constant<__has_trivial_destructor(T)>),
-    (std::is_trivially_destructible<T>));
+struct trivially_destructible
+    : __VEG_HAS_BUILTIN_OR(
+          __has_trivial_destructor,
+          (bool_constant<__has_trivial_destructor(T)>),
+          (std::is_trivially_destructible<T>)) {};
 
 template <typename T, typename U>
-using assignable = __VEG_HAS_BUILTIN_OR(
-    __is_assignable,
-    (bool_constant<__is_assignable(T&&, U&&)>),
-    (is_detected<internal::assign_t, T&&, &&>));
+struct assignable : __VEG_HAS_BUILTIN_OR(
+                        __is_assignable,
+                        (bool_constant<__is_assignable(T&&, U&&)>),
+                        (is_detected<internal::assign_t, T&&, &&>)) {};
 
 template <typename T, typename U>
-using nothrow_assignable = __VEG_HAS_BUILTIN_OR(
-    __is_nothrow_assignable,
-    (bool_constant<__is_nothrow_assignable(T&&, U&&)>),
-    (internal::
-         is_nothrow_assignable_impl<assignable<T&&, U&&>::value, T&&, U&&>));
+struct nothrow_assignable
+    : __VEG_HAS_BUILTIN_OR(
+          __is_nothrow_assignable,
+          (bool_constant<__is_nothrow_assignable(T&&, U&&)>),
+          (internal::is_nothrow_assignable_impl<
+              assignable<T&&, U&&>::value,
+              T&&,
+              U&&>)) {};
 
 template <typename T, typename... Ts>
-using constructible = __VEG_HAS_BUILTIN_OR(
-    __is_constructible,
-    (bool_constant<__is_constructible(T, Ts&&...)>),
-    (is_detected<internal::ctor_t, T, Ts&&...>));
+struct constructible : __VEG_HAS_BUILTIN_OR(
+                           __is_constructible,
+                           (bool_constant<__is_constructible(T, Ts&&...)>),
+                           (is_detected<internal::ctor_t, T, Ts&&...>)) {};
 
 template <typename T, typename... Ts>
-using nothrow_constructible = __VEG_HAS_BUILTIN_OR(
-    __is_nothrow_constructible,
-    (bool_constant<__is_nothrow_constructible(T, Ts&&...)>),
-    (internal::is_nothrow_constructible_impl<
-        constructible<T, Ts&&...>::value,
-        T,
-        Ts&&...>));
+struct nothrow_constructible
+    : __VEG_HAS_BUILTIN_OR(
+          __is_nothrow_constructible,
+          (bool_constant<__is_nothrow_constructible(T, Ts&&...)>),
+          (internal::is_nothrow_constructible_impl<
+              constructible<T, Ts&&...>::value,
+              T,
+              Ts&&...>)) {};
 
 template <typename From, typename To>
-using convertible_to = __VEG_HAS_BUILTIN_OR(
-    __is_convertible,
-    (bool_constant<__is_convertible(From, To)>),
-    (std::is_convertible<From, To>));
+struct convertible_to : __VEG_HAS_BUILTIN_OR(
+                            __is_convertible,
+                            (bool_constant<__is_convertible(From, To)>),
+                            (std::is_convertible<From, To>)) {};
 
 template <typename T>
-using move_constructible = constructible<T, T&&>;
+struct move_constructible : constructible<T, T&&> {};
 template <typename T>
-using nothrow_move_constructible = nothrow_constructible<T, T&&>;
+struct nothrow_move_constructible : nothrow_constructible<T, T&&> {};
 
 template <typename T>
-using move_assignable = assignable<T&, T&&>;
+struct move_assignable : assignable<T&, T&&> {};
 template <typename T>
-using nothrow_move_assignable = nothrow_assignable<T&, T&&>;
+struct nothrow_move_assignable : nothrow_assignable<T&, T&&> {};
 
 template <typename T>
-using copy_constructible = constructible<T, T const&>;
+struct copy_constructible : constructible<T, T const&> {};
 template <typename T>
-using nothrow_copy_constructible = nothrow_constructible<T, T const&>;
+struct nothrow_copy_constructible : nothrow_constructible<T, T const&> {};
 
 template <typename T>
-using copy_assignable = assignable<T&, T const&>;
+struct copy_assignable : assignable<T&, T const&> {};
 template <typename T>
-using nothrow_copy_assignable = nothrow_assignable<T&, T const&>;
+struct nothrow_copy_assignable : nothrow_assignable<T&, T const&> {};
 
 namespace internal {
 struct callable {

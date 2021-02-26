@@ -64,7 +64,8 @@ struct storage {
       -> T&& {
     return static_cast<T&&>(inner_val);
   }
-  HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov() && noexcept -> T {
+  HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov() && noexcept(
+      meta::nothrow_move_constructible<T>::value) -> T {
     return static_cast<T&&>(inner_val);
   }
 };
@@ -214,9 +215,14 @@ struct get_inner<meta::category_e::own> {
     template <Idx I, typename T>
     HEDLEY_ALWAYS_INLINE static constexpr auto
     get_type(Indexed<I, T> const& arg) noexcept -> T;
-    template <Idx I, typename T>
-    HEDLEY_ALWAYS_INLINE static constexpr auto apply(Indexed<I, T>&& arg)
-        __VEG_DEDUCE_RET(static_cast<storage<T, false>&&>(arg).get_mov());
+    VEG_TEMPLATE(
+        (Idx I, typename T),
+        requires meta::move_constructible<T>::value,
+        HEDLEY_ALWAYS_INLINE static constexpr auto apply,
+        (arg, Indexed<I, T>&&))
+    noexcept(meta::nothrow_move_constructible<T>::value) -> T {
+      return static_cast<storage<T, false>&&>(arg).get_mov();
+    }
   };
 };
 

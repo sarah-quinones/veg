@@ -77,6 +77,7 @@ TEST(tuple, all) {
     int j = 12;
     ref_tup a{i};
     rref_tup b{VEG_FWD(j)};
+
     veg::internal::tuple::swap_( //
         a.as_ref().m_impl,
         b.as_ref().m_impl);
@@ -166,7 +167,7 @@ TEST(tuple, all) {
 
 TEST(tuple, nested) {
   using namespace veg;
-  tuple<int, tuple<int, float>> tup{1, make::tuple(2, 3.0F)};
+  tuple<int, tuple<int, float>> tup{1, {2, 3.0F}};
   ASSERT_EQ(tup[0_c], 1);
 
   ASSERT_EQ(tup[1_c][1_c], 3.0F);
@@ -193,4 +194,22 @@ TEST(tuple, cvt) {
   EXPECT_EQ(t1, t4);
   t1 = t2;
   EXPECT_EQ(t1, t2);
+}
+
+struct S {
+  S() = default;
+  S(S&&) = delete;
+  S(S const&) = delete;
+};
+
+TEST(tuple, non_movable) {
+  using namespace veg;
+  {
+    tuple<S> s{};
+    (void)s;
+  }
+  {
+    tuple<S> s{inplace, [] { return S{}; }};
+    (void)s;
+  }
 }

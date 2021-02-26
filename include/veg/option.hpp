@@ -926,19 +926,10 @@ struct VEG_NODISCARD option
       public internal::option_::option_copymove_interface_base<T>,
       public internal::option_::option_flatten_base<T>,
       public internal::option_::eq_cmp_base<T> {
-  static_assert(meta::move_constructible<T>::value, "err");
 
-  option() = default;
-  ~option() = default;
-  option(option const&) = default;
-  option(option&&) noexcept(meta::nothrow_move_constructible<T>::value) =
-      default;
   using internal::option_::option_move_ctor_base2<T>::option_move_ctor_base2;
-
-  auto operator=(option const&) & -> option& = default;
-  auto operator=(option&&) & noexcept(
-      (meta::nothrow_move_constructible<T>::value &&
-       meta::nothrow_move_assignable<T>::value)) -> option& = default;
+  option() = default;
+  __VEG_DEFAULTS(option);
 
   __VEG_CPP14(constexpr)
   option // NOLINT(hicpp-explicit-conversions)
