@@ -302,7 +302,11 @@ VEG_TEMPLATE(
     (rhs, veg::tuple<Us...> const&))
 noexcept -> bool {
   return cmp_impl<sizeof...(Ts) != 0>::apply(
-      &cmp_equal, &lhs.m_impl, &rhs.m_impl);
+      &cmp_equal,
+      &storage::as_lvalue(
+          veg::tuple<meta::remove_cvref_t<Ts> const&...>(lhs).m_impl),
+      &storage::as_lvalue(
+          veg::tuple<meta::remove_cvref_t<Us> const&...>(rhs).m_impl));
 }
 VEG_TEMPLATE(
     (typename... Ts, typename... Us),
@@ -313,7 +317,11 @@ VEG_TEMPLATE(
     (rhs, veg::tuple<Us...> const&))
 noexcept -> bool {
   return !cmp_impl<sizeof...(Ts) != 0>::apply(
-      &cmp_equal, &lhs.m_impl, &rhs.m_impl);
+      &cmp_equal,
+      &storage::as_lvalue(
+          veg::tuple<meta::remove_cvref_t<Ts> const&...>(lhs).m_impl),
+      &storage::as_lvalue(
+          veg::tuple<meta::remove_cvref_t<Us> const&...>(rhs).m_impl));
 }
 
 VEG_TEMPLATE(
@@ -325,7 +333,11 @@ VEG_TEMPLATE(
     (rhs, veg::tuple<Us...> const&))
 noexcept -> bool {
   return cmp_impl<sizeof...(Ts) != 0>::apply(
-      &cmp_less, &lhs.m_impl, &rhs.m_impl);
+      &cmp_less,
+      &storage::as_lvalue(
+          veg::tuple<meta::remove_cvref_t<Ts> const&...>(lhs).m_impl),
+      &storage::as_lvalue(
+          veg::tuple<meta::remove_cvref_t<Us> const&...>(rhs).m_impl));
 }
 VEG_TEMPLATE(
     (typename... Ts, typename... Us),
@@ -336,7 +348,11 @@ VEG_TEMPLATE(
     (rhs, veg::tuple<Us...> const&))
 noexcept -> bool {
   return !cmp_impl<sizeof...(Ts) != 0>::apply(
-      &cmp_less, &lhs.m_impl, &rhs.m_impl);
+      &cmp_less,
+      &storage::as_lvalue(
+          veg::tuple<meta::remove_cvref_t<Ts> const&...>(lhs).m_impl),
+      &storage::as_lvalue(
+          veg::tuple<meta::remove_cvref_t<Us> const&...>(rhs).m_impl));
 }
 
 VEG_TEMPLATE(
@@ -348,7 +364,11 @@ VEG_TEMPLATE(
     (rhs, veg::tuple<Us...> const&))
 noexcept -> bool {
   return cmp_impl<sizeof...(Ts) != 0>::apply(
-      &cmp_less, &rhs.m_impl, &lhs.m_impl);
+      &cmp_less,
+      &storage::as_lvalue(
+          veg::tuple<meta::remove_cvref_t<Us> const&...>(rhs).m_impl),
+      &storage::as_lvalue(
+          veg::tuple<meta::remove_cvref_t<Ts> const&...>(lhs).m_impl));
 }
 VEG_TEMPLATE(
     (typename... Ts, typename... Us),
@@ -359,7 +379,11 @@ VEG_TEMPLATE(
     (rhs, veg::tuple<Us...> const&))
 noexcept -> bool {
   return !cmp_impl<sizeof...(Ts) != 0>::apply(
-      &cmp_less, &rhs.m_impl, &lhs.m_impl);
+      &cmp_less,
+      &storage::as_lvalue(
+          veg::tuple<meta::remove_cvref_t<Us> const&...>(rhs).m_impl),
+      &storage::as_lvalue(
+          veg::tuple<meta::remove_cvref_t<Ts> const&...>(lhs).m_impl));
 }
 
 } // namespace adl
