@@ -105,7 +105,7 @@ struct boolean {
   HEDLEY_ALWAYS_INLINE constexpr boolean /* NOLINT(hicpp-explicit-conversions)
                                           */
       (boolean<maybe> b, safe_t /*tag*/ = {}) noexcept
-      : boolean((VEG_ASSERT(b.m_val == (T == yes)), b), unsafe) {}
+      : boolean(((void)VEG_ASSERT(b.m_val == (T == yes)), b), unsafe) {}
 
   VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr friend auto
   operator!(boolean /*arg*/) noexcept -> boolean<T == yes ? no : yes> {

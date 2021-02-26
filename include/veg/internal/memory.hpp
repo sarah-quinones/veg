@@ -188,6 +188,18 @@ template <which Which>
 struct reloc_impl;
 
 template <>
+struct reloc_impl<which::nothrow_move> {
+  template <typename T>
+  static __VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) noexcept {
+    T* end = dest + n;
+    for (; dest < end; ++dest, ++src) {
+      fn::construct_at{}(dest, static_cast<T&&>(*src));
+      fn::destroy_at{}(*src);
+    }
+  }
+};
+
+template <>
 struct reloc_impl<which::trivial> {
   VEG_TEMPLATE(
       typename T,
@@ -198,7 +210,9 @@ struct reloc_impl<which::trivial> {
       (n, i64))
 
   noexcept {
-    static_assert(meta::nothrow_move_constructible<T>::value, "is T really trivially relocatable?");
+    static_assert(
+        meta::nothrow_move_constructible<T>::value,
+        "is T really trivially relocatable?");
 
     __VEG_CPP20(
 
@@ -211,18 +225,6 @@ struct reloc_impl<which::trivial> {
     {
       veg::internal::opaque_memmove(
           dest, src, static_cast<usize>(n) * sizeof(T));
-    }
-  }
-};
-
-template <>
-struct reloc_impl<which::nothrow_move> {
-  template <typename T>
-  static __VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) noexcept {
-    T* end = dest + n;
-    for (; dest < end; ++dest, ++src) {
-      fn::construct_at{}(dest, static_cast<T&&>(*src));
-      fn::destroy_at{}(*src);
     }
   }
 };

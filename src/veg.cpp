@@ -854,7 +854,7 @@ void set_assert_params2(        //
 
 #define TO_STRING(type, fmt, arg_)                                             \
   template <>                                                                  \
-  auto to_string_primitive(type arg)->assert::internal::string {               \
+  auto to_string_primitive_impl(type arg)->assert::internal::string {          \
     assert::internal::string str;                                              \
     int n = std::snprintf(nullptr, 0, "%" fmt, arg_) + 1;                      \
     str.resize(n);                                                             \
@@ -864,6 +864,9 @@ void set_assert_params2(        //
   }                                                                            \
   static_assert(true, "")
 
+template <typename T>
+auto to_string_primitive_impl(T arg) -> assert::internal::string;
+
 TO_STRING(long long signed, "lld", arg);
 TO_STRING(long long unsigned, "llu", arg);
 TO_STRING(long double, "Lf", arg);
@@ -871,6 +874,17 @@ TO_STRING(
     void const volatile*,
     "p",
     const_cast<void*>(arg)); // NOLINT(cppcoreguidelines-pro-type-const-cast)
+
+template <typename T>
+auto to_string_primitive(T arg) -> assert::internal::string {
+  return to_string_primitive_impl(arg);
+}
+template auto to_string_primitive(long long signed) -> assert::internal::string;
+template auto to_string_primitive(long long unsigned)
+    -> assert::internal::string;
+template auto to_string_primitive(long double) -> assert::internal::string;
+template auto to_string_primitive(void const volatile*)
+    -> assert::internal::string;
 
 } // namespace internal
 } // namespace assert

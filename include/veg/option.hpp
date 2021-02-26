@@ -173,13 +173,14 @@ struct option_storage_base {
   __VEG_CPP14(constexpr) option_storage_base() = default;
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) explicit option_storage_base(
       T&& val) noexcept(meta::nothrow_move_constructible<T>::value)
-      : some(VEG_FWD(val)), engaged(1) {}
+      : some(storage::hidden_tag2{}, VEG_FWD(val)), engaged(1) {}
 
   template <typename Fn, typename... Args>
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) explicit option_storage_base(
       hidden_tag /*unused*/, Fn&& fn, Args&&... args) //
       noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
-      : some(0, VEG_FWD(fn), VEG_FWD(args)...), engaged(1) {}
+      : some(storage::hidden_tag1{}, VEG_FWD(fn), VEG_FWD(args)...),
+        engaged(1) {}
 
   VEG_NODISCARD HEDLEY_ALWAYS_INLINE
   __VEG_CPP14(constexpr) auto is_engaged() const noexcept -> bool {
@@ -190,7 +191,7 @@ struct option_storage_base {
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void _emplace(Fn&& fn) noexcept(
       meta::nothrow_invocable<Fn&&>::value) {
     VEG_DEBUG_ASSERT(!engaged);
-    some = storage::storage<T>(veg::invoke(VEG_FWD(fn)));
+    some = storage::storage<T>(storage::hidden_tag1{}, VEG_FWD(fn));
     engaged = 1;
   }
 
@@ -237,13 +238,13 @@ struct option_storage_base<T, has_sentinel> {
   __VEG_CPP14(constexpr) option_storage_base() = default;
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) explicit option_storage_base(
       T&& val) noexcept(meta::nothrow_move_constructible<T>::value)
-      : some(VEG_FWD(val)) {}
+      : some(storage::hidden_tag2{}, VEG_FWD(val)) {}
 
   template <typename Fn, typename... Args>
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) explicit option_storage_base(
       hidden_tag /*unused*/, Fn&& fn, Args&&... args) //
       noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
-      : some(0, VEG_FWD(fn), VEG_FWD(args)...) {}
+      : some(storage::hidden_tag1{}, VEG_FWD(fn), VEG_FWD(args)...) {}
 
   VEG_NODISCARD HEDLEY_ALWAYS_INLINE
   __VEG_CPP14(constexpr) auto is_engaged() const noexcept -> bool {
@@ -254,7 +255,7 @@ struct option_storage_base<T, has_sentinel> {
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void _emplace(Fn&& fn) noexcept(
       meta::nothrow_invocable<Fn&&>::value) {
     VEG_DEBUG_ASSERT(!is_engaged());
-    some = storage::storage<T>(veg::invoke(VEG_FWD(fn)));
+    some = storage::storage<T>(storage::hidden_tag1{}, VEG_FWD(fn));
   }
 
   template <typename U>
@@ -309,7 +310,7 @@ struct option_storage_base_option_emplace<T, false> {
       meta::nothrow_invocable<Fn&&>::value) {
     auto& self = *static_cast<option_storage_base<option<T>>*>(this);
     VEG_DEBUG_ASSERT(!self.is_engaged());
-    // mem::destroy_at(mem::addressof(some)); // no-op
+    // mem::destroy_at(mem::addressof(self.some)); // no-op
     mem::construct_with(mem::addressof(self.some), VEG_FWD(fn));
   }
 };
@@ -389,14 +390,15 @@ struct option_storage_nontrivial_base {
   __VEG_CPP14(constexpr)
   explicit option_storage_nontrivial_base(T&& val) //
       noexcept(meta::nothrow_move_constructible<T>::value)
-      : some(VEG_FWD(val)), engaged(1) {}
+      : some(storage::hidden_tag2{}, VEG_FWD(val)), engaged(1) {}
 
   template <typename Fn, typename... Args>
   HEDLEY_ALWAYS_INLINE
   __VEG_CPP14(constexpr) explicit option_storage_nontrivial_base(
       hidden_tag /*unused*/, Fn&& fn, Args&&... args) //
       noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
-      : some(0, VEG_FWD(fn), VEG_FWD(args)...), engaged(1) {}
+      : some(storage::hidden_tag1{}, VEG_FWD(fn), VEG_FWD(args)...),
+        engaged(1) {}
 
   VEG_NODISCARD HEDLEY_ALWAYS_INLINE
   __VEG_CPP14(constexpr) auto is_engaged() const noexcept -> bool {
@@ -426,14 +428,15 @@ struct
   __VEG_CPP14(constexpr)
   explicit option_storage_nontrivial_base(T&& val) //
       noexcept(meta::nothrow_move_constructible<T>::value)
-      : some(VEG_FWD(val)), engaged(1) {}
+      : some(storage::hidden_tag2{}, VEG_FWD(val)), engaged(1) {}
 
   template <typename Fn, typename... Args>
   HEDLEY_ALWAYS_INLINE
   __VEG_CPP14(constexpr) explicit option_storage_nontrivial_base(
       hidden_tag /*unused*/, Fn&& fn, Args&&... args) //
       noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
-      : some(0, VEG_FWD(fn), VEG_FWD(args)...), engaged(1) {}
+      : some(storage::hidden_tag1{}, VEG_FWD(fn), VEG_FWD(args)...),
+        engaged(1) {}
 
   VEG_NODISCARD HEDLEY_ALWAYS_INLINE
   __VEG_CPP14(constexpr) auto is_engaged() const noexcept -> bool {
@@ -478,7 +481,8 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
 
     defer<do_if<make_none>> guard{{true, {mem::addressof(none)}}};
 
-    mem::construct_at(mem::addressof(some), 0, VEG_FWD(fn));
+    mem::construct_at(
+        mem::addressof(some), storage::hidden_tag1{}, VEG_FWD(fn));
 
     guard.fn.cond = false;
     set_engaged(true);

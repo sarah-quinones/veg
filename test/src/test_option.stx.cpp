@@ -53,7 +53,7 @@ struct MoveOnly {
         "\t>> MoveOnly<" + to_string(ID) + ">::copy_construct called", false);
   }
   MoveOnly(MoveOnly&&) noexcept = default;
-  auto operator=(MoveOnly const & /*unused*/) -> MoveOnly& { // NOLINT
+  auto operator=(MoveOnly const& /*unused*/) -> MoveOnly& { // NOLINT
     VEG_ASSERT(
         "\t>> MoveOnly<" + to_string(ID) + ">::copy_assign called", false);
     return *this;
@@ -63,8 +63,12 @@ struct MoveOnly {
 
   void done() const {}
 
-  auto operator==(MoveOnly const& /*unused*/) const noexcept -> bool { return true; }
-  auto operator!=(MoveOnly const& /*unused*/) const noexcept -> bool { return false; }
+  auto operator==(MoveOnly const& /*unused*/) const noexcept -> bool {
+    return true;
+  }
+  auto operator!=(MoveOnly const& /*unused*/) const noexcept -> bool {
+    return false;
+  }
 };
 
 template <size_t id>
@@ -75,8 +79,7 @@ auto make_mv() -> MoveOnly<id> {
 struct NotEq {};
 
 static_assert(std::is_swappable_v<MoveOnly<0>>);
-static_assert(
-    meta::equality_comparable_with<MoveOnly<0>, MoveOnly<0>>::value);
+static_assert(meta::equality_comparable_with<MoveOnly<0>, MoveOnly<0>>::value);
 static_assert(meta::equality_comparable_with<
               option<MoveOnly<0>>,
               option<MoveOnly<0>>>::value);
@@ -136,6 +139,7 @@ TEST(OptionTest, CopyConstructionTest) {
 
   option<vector<int>> d = none;
   option<vector<int>> e = d;
+
   EXPECT_EQ(d, e);
 
   option f = {some, vector{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}};

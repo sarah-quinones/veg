@@ -26,6 +26,10 @@
       *static_cast<::veg::meta::remove_reference_t<__VA_ARGS__>*>(nullptr))
 #endif
 
+#define __VEG_DEDUCE_NOEXCEPT(type, ...)                                       \
+  noexcept(noexcept(__VA_ARGS__))->type { return __VA_ARGS__; }                \
+  static_assert(true, "")
+
 #define __VEG_DEDUCE_RET(...)                                                  \
   noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) {                     \
     return __VA_ARGS__;                                                        \
@@ -855,9 +859,8 @@ template <typename A, typename B>
 struct equality_comparable_impl<
     A,
     B,
-    decltype(void(static_cast<bool>(
-        __VEG_DECLVAL(remove_reference_t<A> const&) ==
-        __VEG_DECLVAL(remove_reference_t<B> const&))))>
+    decltype(void(
+        static_cast<bool>(__VEG_DECLVAL(A const&) == __VEG_DECLVAL(B const&))))>
 
     : meta::bool_constant<(
           __VEG_SAME_AS(A, B) || (!std::is_enum<A>::value && //
@@ -870,8 +873,7 @@ struct less_than_comparable_impl<
     A,
     B,
     decltype(void(static_cast<bool>(
-        __VEG_DECLVAL(remove_reference_t<A> const&) <
-        __VEG_DECLVAL(remove_reference_t<B> const&))))> :
+        __VEG_DECLVAL(A const&) < __VEG_DECLVAL(B const&))))> :
 
     meta::bool_constant<(
         __VEG_SAME_AS(A, B) || (!std::is_enum<A>::value && //
@@ -883,17 +885,25 @@ template <typename A, typename B>
 struct equality_comparable_with
     : meta::disjunction<
           meta::bool_constant<
-              (arithmetic<A>::value && arithmetic<B>::value) ||
-              (__VEG_SAME_AS(A, B) && scalar<A>::value)>,
-          internal::equality_comparable_impl<A, B>> {};
+              (arithmetic<remove_cvref_t<A>>::value &&
+               arithmetic<remove_cvref_t<B>>::value) ||
+              (__VEG_SAME_AS(remove_cvref_t<A>, remove_cvref_t<B>) &&
+               scalar<remove_cvref_t<A>>::value)>,
+          internal::
+              equality_comparable_impl<remove_cvref_t<A>, remove_cvref_t<B>>> {
+};
 
 template <typename A, typename B>
 struct partially_ordered_with
     : meta::disjunction<
           meta::bool_constant<
-              (arithmetic<A>::value && arithmetic<B>::value) ||
-              (__VEG_SAME_AS(A, B) && scalar<A>::value)>,
-          internal::less_than_comparable_impl<A, B>> {};
+              (arithmetic<remove_cvref_t<A>>::value &&
+               arithmetic<remove_cvref_t<B>>::value) ||
+              (__VEG_SAME_AS(remove_cvref_t<A>, remove_cvref_t<B>) &&
+               scalar<remove_cvref_t<A>>::value)>,
+          internal::
+              less_than_comparable_impl<remove_cvref_t<A>, remove_cvref_t<B>>> {
+};
 
 } // namespace meta
 

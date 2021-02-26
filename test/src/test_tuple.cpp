@@ -44,6 +44,9 @@ TEST(tuple, all) {
     EXPECT_EQ(b[0_c], 5);
     EXPECT_EQ(a[1_c], false);
     EXPECT_EQ(b[1_c], true);
+
+    EXPECT_EQ(a, (val_tup{3, false}));
+    EXPECT_EQ(b, (val_tup{5, true}));
   }
   {
     using ref_tup = veg::tuple<int&>;
@@ -176,5 +179,17 @@ TEST(tuple, empty) {
   using namespace veg;
   tuple<> t1;
   tuple<> t2(inplace);
-  (void)t1, (void)t2;
+  EXPECT_EQ(t1, t2);
+}
+
+TEST(tuple, cvt) {
+  using namespace veg;
+  tuple<int, float> t1{1, 1.5F};
+  tuple<long, double> t2(3, 2.5);
+  tuple<long, double> t3(t1);
+  tuple<int, float> t4(t3);
+
+  EXPECT_EQ(t1, t4);
+  t1 = t2;
+  EXPECT_EQ(t1, t2);
 }

@@ -53,16 +53,16 @@ struct string {
 
   VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto data() const noexcept -> char* {
     return self.ptr;
-  };
+  }
   VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto size() const noexcept -> i64 {
     return self.len;
-  };
+  }
 };
 
 struct char_string_ref {
   HEDLEY_ALWAYS_INLINE constexpr char_string_ref(
       char const* data, i64 len) noexcept
-      : data_{data}, len_{len} {};
+      : data_{data}, len_{len} {}
 
   char_string_ref // NOLINT(hicpp-explicit-conversions)
       (char const* str) noexcept;
@@ -325,21 +325,23 @@ struct cleanup { // NOLINT(cppcoreguidelines-special-member-functions)
 } // namespace internal
 
 #define __VEG_IMPL_ASSERT_IMPL(Callback, If_Fail, ...)                         \
-  ((::veg::assert::internal::decomposer{} << __VA_ARGS__)                      \
-       ? (void)(0)                                                             \
-       : (::veg::assert::internal::cleanup{},                                  \
-          ::veg::assert::internal::set_assert_params2(                         \
-              ::veg::assert::internal::char_string_ref{                        \
-                  static_cast<char const*>(#__VA_ARGS__),                      \
-                  sizeof(#__VA_ARGS__) - 1},                                   \
-              If_Fail),                                                        \
-          ::veg::assert::internal::Callback(                                   \
-              __LINE__,                                                        \
-              ::veg::assert::internal::char_string_ref{                        \
-                  static_cast<char const*>(__FILE__), sizeof(__FILE__) - 1},   \
-              ::veg::assert::internal::char_string_ref{                        \
-                  static_cast<char const*>(__VEG_THIS_FUNCTION),               \
-                  sizeof(__VEG_THIS_FUNCTION) - 1})))
+  static_cast<void>(                                                           \
+      (::veg::assert::internal::decomposer{} << __VA_ARGS__)                   \
+          ? (void)(0)                                                          \
+          : (::veg::assert::internal::cleanup{},                               \
+             ::veg::assert::internal::set_assert_params2(                      \
+                 ::veg::assert::internal::char_string_ref{                     \
+                     static_cast<char const*>(#__VA_ARGS__),                   \
+                     sizeof(#__VA_ARGS__) - 1},                                \
+                 If_Fail),                                                     \
+             ::veg::assert::internal::Callback(                                \
+                 __LINE__,                                                     \
+                 ::veg::assert::internal::char_string_ref{                     \
+                     static_cast<char const*>(__FILE__),                       \
+                     sizeof(__FILE__) - 1},                                    \
+                 ::veg::assert::internal::char_string_ref{                     \
+                     static_cast<char const*>(__VEG_THIS_FUNCTION),            \
+                     sizeof(__VEG_THIS_FUNCTION) - 1})))
 
 #define VEG_ASSERT_ELSE(...)                                                   \
   __VEG_IGNORE_SHIFT_PAREN_WARNING(                                            \
