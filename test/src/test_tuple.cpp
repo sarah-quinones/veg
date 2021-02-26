@@ -50,9 +50,10 @@ TEST(tuple, all) {
   }
   {
     using ref_tup = veg::tuple<int&>;
+    using val_tup = veg::tuple<int>;
     static_assert(veg::meta::trivially_copyable<ref_tup>::value);
     int i = 13;
-    int j = 12;
+    val_tup j{12};
     ref_tup const a{i};
     ref_tup const b{j};
     veg::internal::tuple::swap_( //
@@ -60,11 +61,11 @@ TEST(tuple, all) {
         b.as_ref().m_impl);
 
     EXPECT_EQ(i, 12);
-    EXPECT_EQ(j, 13);
+    EXPECT_EQ(j[0_c], 13);
 
     a = b;
     EXPECT_EQ(i, 13);
-    EXPECT_EQ(j, 13);
+    EXPECT_EQ(j[0_c], 13);
 
     static_assert(veg::meta::assignable<ref_tup const&, ref_tup const&>::value);
   }

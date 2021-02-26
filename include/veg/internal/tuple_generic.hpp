@@ -408,19 +408,27 @@ struct tuple_ctor_base : veg::internal::tuple::adl::tuple_base<Ts...> {
 
   VEG_TEMPLATE(
       (typename... Us),
-      requires __VEG_ALL_OF(meta::constructible<Ts, Us const&>::value),
-      HEDLEY_ALWAYS_INLINE constexpr explicit tuple_ctor_base,
-      (tup, veg::tuple<Us...> const&))
-  noexcept(meta::all_of({meta::nothrow_constructible<Ts, Us const&>::value...}))
-      : m_impl(hidden_tag2{}, tup.m_impl) {}
-
-  VEG_TEMPLATE(
-      (typename... Us),
       requires __VEG_ALL_OF(meta::constructible<Ts, Us&&>::value),
       HEDLEY_ALWAYS_INLINE constexpr explicit tuple_ctor_base,
       (tup, veg::tuple<Us...>&&))
   noexcept(meta::all_of({meta::nothrow_constructible<Ts, Us&&>::value...}))
       : m_impl(hidden_tag2{}, VEG_FWD(tup).m_impl) {}
+
+  VEG_TEMPLATE(
+      (typename... Us),
+      requires __VEG_ALL_OF(meta::constructible<Ts, Us const&>::value),
+      HEDLEY_ALWAYS_INLINE constexpr explicit tuple_ctor_base,
+      (tup, veg::tuple<Us...> const&))
+  noexcept(meta::all_of({meta::nothrow_constructible<Ts, Us const&>::value...}))
+      : tuple_ctor_base(tup.as_ref()) {}
+
+  VEG_TEMPLATE(
+      (typename... Us),
+      requires __VEG_ALL_OF(meta::constructible<Ts, Us&>::value),
+      HEDLEY_ALWAYS_INLINE constexpr explicit tuple_ctor_base,
+      (tup, veg::tuple<Us...>&))
+  noexcept(meta::all_of({meta::nothrow_constructible<Ts, Us&>::value...}))
+      : tuple_ctor_base(tup.as_ref()) {}
 
   internal::tuple::tuple_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>
       m_impl;
