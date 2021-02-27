@@ -10,8 +10,6 @@ tuple
 
   .. cpp:function:: constexpr tuple(tuple const&) = default;
   .. cpp:function:: constexpr tuple(tuple&&) = default;
-  .. cpp:function:: constexpr auto operator=(tuple const&) & -> tuple& = default;
-  .. cpp:function:: constexpr auto operator=(tuple&&) & -> tuple& = default;
   .. cpp:function:: constexpr tuple() noexcept(conditionally)
 
     | default constructor: each member is default or value initialized
@@ -115,7 +113,7 @@ tuple
     .. tab:: copy
 
       .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...> const& tup) & noexcept(conditionally);
+                        constexpr auto operator=(tuple<Us...> const& tup) & noexcept(conditionally) -> tuple&;
 
         | assignment operator: assigns to each member ``elem_i = tup.elem_i``
         | viable if `assignable<Ti&, Ui const&>
@@ -131,7 +129,7 @@ tuple
     .. tab:: forwarding
 
       .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...>&& tup) & noexcept(conditionally);
+                        constexpr auto operator=(tuple<Us...>&& tup) & noexcept(conditionally) -> tuple&;
 
         | forwarding assignment operator: assigns to each member ``elem_i =
           static_cast<Ui&&>(tup.elem_i)``
@@ -145,6 +143,15 @@ tuple
 
         | prevents implicit conversions
 
+    .. tab:: copy\|move
+
+      .. cpp:function:: constexpr auto operator=(tuple const&) & noexcept(conditionally) -> tuple&;
+
+      .. cpp:function:: constexpr auto operator=(tuple&&) & noexcept(conditionally) -> tuple&;
+
+        | equivalent to the last two overloads
+        | default compiler-generated functions are used when none of the ``Ti`` is a reference
+
   .. centered:: proxy assignment operators
 
   .. tabs::
@@ -152,7 +159,7 @@ tuple
     .. tab:: copy
 
       .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...> const& tup) const& noexcept(conditionally);
+                        constexpr auto operator=(tuple<Us...> const& tup) const& noexcept(conditionally) -> tuple const&;
 
         | proxy assignment operator: assigns to each member ``elem_i = tup.elem_i``
         | viable if `assignable<Ti const&, Ui const&>
@@ -168,7 +175,7 @@ tuple
     .. tab:: forwarding
 
       .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...>&& tup) const& noexcept(conditionally);
+                        constexpr auto operator=(tuple<Us...>&& tup) const& noexcept(conditionally) -> tuple const&;
 
         | forwarding proxy assignment operator: assigns to each member ``elem_i =
           static_cast<Ui&&>(tup.elem_i)``
@@ -189,7 +196,7 @@ tuple
     .. tab:: copy
 
       .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...> const& tup) && noexcept(conditionally);
+                        constexpr auto operator=(tuple<Us...> const& tup) && noexcept(conditionally) -> tuple&&;
 
         | proxy assignment operator: assigns to each member ``elem_i = tup.elem_i``
         | viable if `assignable<Ti&&, Ui const&>
@@ -205,7 +212,7 @@ tuple
     .. tab:: forwarding
 
       .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...>&& tup) && noexcept(conditionally);
+                        constexpr auto operator=(tuple<Us...>&& tup) && noexcept(conditionally) -> tuple&&;
 
         | forwarding proxy assignment operator: assigns to each member ``elem_i =
           static_cast<Ui&&>(tup.elem_i)``

@@ -506,53 +506,87 @@ private:
 };
 
 template <bool Any_Of_Is_Ref, typename... Ts>
-struct deep_assign_base
-    : internal::tuple::tuple_ctor_base<
+struct deep_assign_copy
+    : tuple_ctor_base<
           meta::all_of({meta::move_constructible<Ts>::value...}),
           Ts...> {
-  using internal::tuple::tuple_ctor_base<
+  using tuple_ctor_base<
       meta::all_of({meta::move_constructible<Ts>::value...}),
       Ts...>::tuple_ctor_base;
 
-  ~deep_assign_base() = default;
-  deep_assign_base(deep_assign_base const&) = default;
-  deep_assign_base /* NOLINT */ (deep_assign_base&&) = default;
+  ~deep_assign_copy() = default;
+  deep_assign_copy(deep_assign_copy const&) = default;
+  deep_assign_copy /* NOLINT */ (deep_assign_copy&&) = default;
 
   auto operator= // NOLINT(cert-oop54-cpp)
-      (deep_assign_base const& rhs) & noexcept(
+      (deep_assign_copy const& rhs) & noexcept(
           meta::all_of({meta::nothrow_assignable<Ts&, Ts const&>::value...}))
-          -> deep_assign_base& {
+          -> deep_assign_copy& {
     auto& self = static_cast<veg::tuple<Ts...>&>(*this);
     tuple::assign_(VEG_FWD(self).as_ref().m_impl, VEG_FWD(rhs).as_ref().m_impl);
     return *this;
   }
-  auto operator=(deep_assign_base&& rhs) & noexcept(meta::all_of(
-      {meta::nothrow_assignable<Ts&&, Ts&&>::value...})) -> deep_assign_base& {
+  auto operator=(deep_assign_copy&& rhs) & -> deep_assign_copy& = default;
+};
+template <typename... Ts>
+struct deep_assign_copy<false, Ts...>
+    : tuple_ctor_base<
+          meta::all_of({meta::move_constructible<Ts>::value...}),
+          Ts...> {
+  using tuple_ctor_base<
+      meta::all_of({meta::move_constructible<Ts>::value...}),
+      Ts...>::tuple_ctor_base;
+  __VEG_DEFAULTS(deep_assign_copy);
+};
+
+template <bool Any_Of_Is_Ref, typename... Ts>
+struct deep_assign_move
+    : deep_assign_copy<
+          (meta::all_of({meta::copy_assignable<Ts>::value...}) &&
+           meta::any_of({meta::reference<Ts>::value...})),
+          Ts...> {
+  using deep_assign_copy<
+      (meta::all_of({meta::copy_assignable<Ts>::value...}) &&
+       meta::any_of({meta::reference<Ts>::value...})),
+      Ts...>::deep_assign_copy;
+
+  ~deep_assign_move() = default;
+  deep_assign_move(deep_assign_move const&) = default;
+  deep_assign_move /* NOLINT */ (deep_assign_move&&) = default;
+
+  auto operator=(deep_assign_move const& rhs) & -> deep_assign_move& = default;
+  auto operator=(deep_assign_move&& rhs) & noexcept(meta::all_of(
+      {meta::nothrow_assignable<Ts&&, Ts&&>::value...})) -> deep_assign_move& {
     auto& self = static_cast<veg::tuple<Ts...>&>(*this);
     tuple::assign_(VEG_FWD(self).as_ref().m_impl, VEG_FWD(rhs).as_ref().m_impl);
     return *this;
   }
 };
-
 template <typename... Ts>
-struct deep_assign_base<false, Ts...>
-    : internal::tuple::tuple_ctor_base<
-          meta::all_of({meta::move_constructible<Ts>::value...}),
+struct deep_assign_move<false, Ts...>
+    : deep_assign_copy<
+          (meta::all_of({meta::copy_assignable<Ts>::value...}) &&
+           meta::any_of({meta::reference<Ts>::value...})),
           Ts...> {
-  using internal::tuple::tuple_ctor_base<
-      meta::all_of({meta::move_constructible<Ts>::value...}),
-      Ts...>::tuple_ctor_base;
+  using deep_assign_copy<
+      (meta::all_of({meta::copy_assignable<Ts>::value...}) &&
+       meta::any_of({meta::reference<Ts>::value...})),
+      Ts...>::deep_assign_copy;
+  __VEG_DEFAULTS(deep_assign_move);
 };
 
 } // namespace tuple
 } // namespace internal
 
 template <typename... Ts>
-struct tuple : internal::tuple::deep_assign_base<
-                         meta::any_of({meta::reference<Ts>::value...}),
-                         Ts...> {
-  using base = internal::tuple::
-      deep_assign_base<meta::any_of({meta::reference<Ts>::value...}), Ts...>;
+struct tuple : internal::tuple::deep_assign_move<
+                   (meta::all_of({meta::move_assignable<Ts>::value...}) &&
+                    meta::any_of({meta::reference<Ts>::value...})),
+                   Ts...> {
+  using base = internal::tuple::deep_assign_move<
+      (meta::all_of({meta::move_assignable<Ts>::value...}) &&
+       meta::any_of({meta::reference<Ts>::value...})),
+      Ts...>;
   using base::base;
   using base::operator=;
 
@@ -664,7 +698,7 @@ struct tuple : internal::tuple::deep_assign_base<
           -> veg::tuple<Ts...> const& {
     internal::tuple::assign_(
         static_cast<tuple&&>(*this).as_ref().m_impl, rhs.as_ref().m_impl);
-    return static_cast<veg::tuple<Ts...> const&>(*this);
+    return static_cast<tuple&&>(*this);
   }
 
   VEG_TEMPLATE(
@@ -675,10 +709,10 @@ struct tuple : internal::tuple::deep_assign_base<
       (rhs, veg::tuple<Us...>&&)) &&
 
       noexcept(meta::all_of({meta::nothrow_assignable<Ts&&, Us&&>::value...}))
-          -> veg::tuple<Ts...> const& {
+          -> veg::tuple<Ts...>&& {
     internal::tuple::assign_(
         static_cast<tuple&&>(*this).as_ref().m_impl, rhs.as_ref().m_impl);
-    return static_cast<veg::tuple<Ts...> const&>(*this);
+    return static_cast<tuple&&>(*this);
   }
 
   VEG_TEMPLATE(
@@ -693,7 +727,7 @@ struct tuple : internal::tuple::deep_assign_base<
                    {meta::nothrow_assignable<Ts const&, Us const&>::value...}))
           ->veg::tuple<Ts...> const& {
     internal::tuple::assign_(this->as_ref().m_impl, rhs.as_ref().m_impl);
-    return static_cast<veg::tuple<Ts...> const&>(*this);
+    return *this;
   }
 
   VEG_TEMPLATE(
@@ -708,7 +742,7 @@ struct tuple : internal::tuple::deep_assign_base<
           meta::all_of({meta::nothrow_assignable<Ts const&, Us&&>::value...}))
           ->veg::tuple<Ts...> const& {
     internal::tuple::assign_(this->as_ref().m_impl, rhs.as_ref().m_impl);
-    return static_cast<veg::tuple<Ts...> const&>(*this);
+    return *this;
   }
 
   __VEG_CVREF_DUPLICATE(
