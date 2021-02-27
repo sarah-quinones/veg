@@ -11,5 +11,5 @@ extensions = [
 templates_path = ["_templates"]
 exclude_patterns = ["_build"]
 html_static_path = []
-html_theme = "pydata_sphinx_theme"
+html_theme = "sphinx_rtd_theme"
 cpp_index_common_prefix = ["veg::"]

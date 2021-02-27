@@ -17,14 +17,14 @@ TEST(tuple, all) {
   {
     static_assert(veg::meta::trivially_relocatable<decltype(tup)>::value);
     static_assert(veg::meta::trivially_copyable<decltype(tup)>::value);
-    static_assert(veg::meta::trivially_copyable<decltype(tup_ref)>::value);
+    static_assert(!veg::meta::trivially_copyable<decltype(tup_ref)>::value);
     static_assert(!std::is_copy_constructible<decltype(tup_ref)>::value);
     static_assert(std::is_copy_constructible<decltype(tup)>::value);
     static_assert(std::is_copy_constructible<veg::tuple<int&, bool&>>::value);
     using val_tup = veg::tuple<int, bool>;
     using ref_tup = veg::tuple<int&, bool&>;
 
-    static_assert(!veg::meta::swappable<ref_tup&, ref_tup&>::value);
+    static_assert(veg::meta::swappable<ref_tup&, ref_tup&>::value);
     static_assert(!veg::meta::swappable<ref_tup&, ref_tup const&>::value);
     static_assert(!veg::meta::swappable<ref_tup const&, ref_tup&>::value);
     static_assert(veg::meta::swappable<ref_tup const&, ref_tup const&>::value);
@@ -38,6 +38,11 @@ TEST(tuple, all) {
     using val_tup = veg::tuple<int, bool>;
     val_tup a{5, true};
     val_tup b{3, false};
+    static_assert(
+        veg::meta::constructible<veg::tuple<long, bool>, val_tup>::value);
+    static_assert(
+        veg::meta::constructible<veg::tuple<long, bool>, val_tup const&>::
+            value);
 
     veg::swap(a, b);
     EXPECT_EQ(a[0_c], 3);
@@ -51,7 +56,6 @@ TEST(tuple, all) {
   {
     using ref_tup = veg::tuple<int&>;
     using val_tup = veg::tuple<int>;
-    static_assert(veg::meta::trivially_copyable<ref_tup>::value);
     int i = 13;
     val_tup j{12};
     ref_tup const a{i};
@@ -71,6 +75,13 @@ TEST(tuple, all) {
   {
     using ref_tup = veg::tuple<int&>;
     using rref_tup = veg::tuple<int&&>;
+    static_assert(!veg::meta::trivially_copyable<ref_tup>::value);
+    static_assert(!veg::meta::trivially_copyable<rref_tup>::value);
+    static_assert(veg::meta::constructible<ref_tup, ref_tup>::value);
+    static_assert(veg::meta::constructible<ref_tup, ref_tup&>::value);
+    static_assert(veg::meta::constructible<ref_tup, rref_tup&>::value);
+    static_assert(veg::meta::constructible<ref_tup, rref_tup const&>::value);
+    static_assert(!veg::meta::constructible<ref_tup, rref_tup&&>::value);
     int i = 13;
     int j = 12;
     ref_tup a{i};
@@ -115,8 +126,8 @@ TEST(tuple, all) {
 
   static_assert(std::is_copy_assignable<veg::tuple<int, char>>(), "fail");
   static_assert(std::is_trivially_copyable<veg::tuple<int, char>>(), "fail");
-  static_assert(!std::is_copy_assignable<veg::tuple<int&, char&>>(), "fail");
-  static_assert(!std::is_copy_assignable<veg::tuple<int&>>(), "fail");
+  static_assert(std::is_copy_assignable<veg::tuple<int&, char&>>(), "fail");
+  static_assert(std::is_copy_assignable<veg::tuple<int&>>(), "fail");
   static_assert(
       std::is_copy_assignable<veg::tuple<int&, char&> const>(), "fail");
   static_assert(std::is_copy_assignable<veg::tuple<int&> const>(), "fail");
@@ -192,13 +203,12 @@ TEST(tuple, cvt) {
   EXPECT_EQ(t1, t2);
 }
 
-struct S {
-  S() = default;
-  S(S&&) = delete;
-  S(S const&) = delete;
-};
-
 TEST(tuple, non_movable) {
+  struct S {
+    S() = default;
+    S(S&&) = delete;
+    S(S const&) = delete;
+  };
   using namespace veg;
   {
     tuple<S> s{};
@@ -210,7 +220,7 @@ TEST(tuple, non_movable) {
   }
 }
 
-TEST(tuple,get) {
+TEST(tuple, get) {
   using namespace veg;
   int arr[] = {1, 2, 3};
   get<0>(arr);

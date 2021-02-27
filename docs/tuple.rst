@@ -6,7 +6,7 @@ tuple
 ``constexpr`` support is provided starting from c++14
 
 .. cpp:namespace:: veg
-.. cpp:class:: template <typename... Ts> tuple
+.. cpp:class:: template <typename... Ts> tuple : __::tuple_base
 
   .. cpp:function:: constexpr tuple(tuple const&) = default;
   .. cpp:function:: constexpr tuple(tuple&&) = default;
@@ -104,10 +104,9 @@ tuple
     .. tab:: forwarding (deleted)
 
       .. cpp:function:: template <typename... Us>\
-                       constexpr tuple(tuple<Us...>&&) = delete;
+                        constexpr tuple(tuple<Us...> const&&) = delete;
 
-        | prevents selecting the const overload
-        | viable when the previous constructor is not
+        | prevents implicit ``rvalue -> lvalue`` conversions
 
   .. centered:: assignment operators
 
@@ -119,18 +118,15 @@ tuple
                         constexpr auto operator=(tuple<Us...> const& tup) & noexcept(conditionally);
 
         | assignment operator: assigns to each member ``elem_i = tup.elem_i``
-        | viable if ``Ti`` is not a reference and `assignable<Ti&, Ui const&>
+        | viable if `assignable<Ti&, Ui const&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all `i`
         | ``noexcept`` if `nothrow_assignable<Ti&, Ui const&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
 
-    .. tab:: copy (deleted)
-
       .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...> const& tup) & = delete;
+                        void operator=(__::tuple_base<Us...> const& tup) & = delete;
 
-        | prevents selecting the proxy overload
-        | viable if the previous assignment operator is not
+        | prevents implicit conversions
 
     .. tab:: forwarding
 
@@ -139,18 +135,15 @@ tuple
 
         | forwarding assignment operator: assigns to each member ``elem_i =
           static_cast<Ui&&>(tup.elem_i)``
-        | viable if ``Ti`` is not a reference and `assignable<Ti&, U&&>
+        | viable if `assignable<Ti&, U&&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all `i`
         | ``noexcept`` if `nothrow_assignable<Ti&, Ui&&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
 
-    .. tab:: forwarding (deleted)
-
       .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...>&& tup) & = delete;
+                        void operator=(__::tuple_base<Us...>&& tup) & = delete;
 
-        | prevents selecting the proxy overload
-        | viable if the previous assignment operator is not
+        | prevents implicit conversions
 
   .. centered:: proxy assignment operators
 
@@ -167,6 +160,11 @@ tuple
         | ``noexcept`` if `nothrow_assignable<Ti const&, Ui const&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
 
+      .. cpp:function:: template <typename... Us>\
+                        void operator=(__::tuple_base<Us...> const& tup) const& = delete;
+
+        | prevents implicit conversions
+
     .. tab:: forwarding
 
       .. cpp:function:: template <typename... Us>\
@@ -179,13 +177,47 @@ tuple
         | ``noexcept`` if `nothrow_assignable<Ti const&, Ui&&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
 
-    .. tab:: forwarding (deleted)
+      .. cpp:function:: template <typename... Us>\
+                        void operator=(__::tuple_base<Us...>&& tup) const& = delete;
+
+        | prevents implicit conversions
+
+  .. centered:: forwarding proxy assignment operators
+
+  .. tabs::
+
+    .. tab:: copy
 
       .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...>&& tup) const& = delete;
+                        constexpr auto operator=(tuple<Us...> const& tup) && noexcept(conditionally);
 
-        | prevents selecting the const overload
-        | viable if the previous assignment operator is not
+        | proxy assignment operator: assigns to each member ``elem_i = tup.elem_i``
+        | viable if `assignable<Ti&&, Ui const&>
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all `i`
+        | ``noexcept`` if `nothrow_assignable<Ti&&, Ui const&>
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
+
+      .. cpp:function:: template <typename... Us>\
+                        void operator=(__::tuple_base<Us...> const& tup) && = delete;
+
+        | prevents implicit conversions
+
+    .. tab:: forwarding
+
+      .. cpp:function:: template <typename... Us>\
+                        constexpr auto operator=(tuple<Us...>&& tup) && noexcept(conditionally);
+
+        | forwarding proxy assignment operator: assigns to each member ``elem_i =
+          static_cast<Ui&&>(tup.elem_i)``
+        | viable if `assignable<Ti&&, U&&>
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all `i`
+        | ``noexcept`` if `nothrow_assignable<Ti&&, Ui&&>
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
+
+      .. cpp:function:: template <typename... Us>\
+                        void operator=(__::tuple_base<Us...>&& tup) && = delete;
+
+        | prevents implicit conversions
 
   .. centered:: access operator
 
