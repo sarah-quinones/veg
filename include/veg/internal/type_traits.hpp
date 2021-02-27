@@ -789,11 +789,11 @@ struct nothrow_constructible
               T,
               Ts&&...>)) {};
 
-template <typename From, typename To>
+template <typename To, typename From>
 struct convertible_to : __VEG_HAS_BUILTIN_OR(
                             __is_convertible,
-                            (bool_constant<__is_convertible(From, To)>),
-                            (std::is_convertible<From, To>)) {};
+                            (bool_constant<__is_convertible(To, From)>),
+                            (std::is_convertible<To, From>)) {};
 
 template <typename T>
 struct move_constructible : constructible<T, T&&> {};
@@ -976,12 +976,6 @@ __VEG_ODR_VAR(invoke, fn::invoke);
 template <typename T>
 struct tag_t {};
 
-template <typename T>
-constexpr tag_t<T> tag{};
-
-struct init_list_t {};
-struct inplace_t {};
-
 enum struct safety_e { safe, unsafe };
 
 template <safety_e S>
@@ -1032,8 +1026,6 @@ namespace { // NOLINT(cert-dcl59-cpp)
 constexpr auto const& unsafe /* NOLINT */ = internal::make_unsafe<void>::value;
 } // namespace
 __VEG_ODR_VAR(safe, safe_t);
-__VEG_ODR_VAR(init_list, init_list_t);
-__VEG_ODR_VAR(inplace, inplace_t);
 
 namespace internal {
 template <typename CP, typename... Args>
@@ -1224,6 +1216,142 @@ struct mostly_trivial : __VEG_HAS_BUILTIN_OR(
 template <typename T>
 struct trivially_relocatable : trivially_copyable<T> {};
 } // namespace meta
+
+namespace internal {
+namespace get {
+
+template <typename T>
+void get() = delete;
+
+struct array_get {
+  template <usize I, typename T>
+  using type = decltype(void(__VEG_DECLVAL(T).template get<I>()));
+  template <usize I, typename T>
+  HEDLEY_ALWAYS_INLINE static constexpr auto apply(T&& arr)
+      __VEG_DEDUCE_RET(VEG_FWD(arr)[I]);
+};
+
+struct member_get {
+  template <usize I, typename T>
+  using type = decltype(void(__VEG_DECLVAL(T).template get<I>()));
+  template <usize I, typename T>
+  HEDLEY_ALWAYS_INLINE static constexpr auto apply(T&& arg)
+      __VEG_DEDUCE_RET(VEG_FWD(arg).template get<I>());
+};
+struct adl_get {
+  template <usize I, typename T>
+  using type = decltype(void(get<I>(__VEG_DECLVAL(T))));
+
+  template <usize I, typename T>
+  HEDLEY_ALWAYS_INLINE static constexpr auto apply(T&& arg)
+      __VEG_DEDUCE_RET(get<I>(VEG_FWD(arg)));
+};
+
+template <usize I, typename T>
+struct has_array_get : meta::bounded_array<meta::remove_cvref_t<T>>,
+                       array_get {};
+
+template <usize I, typename T>
+struct has_member_get : meta::is_detected_i<member_get::type, I, T&&>,
+                        member_get {};
+template <usize I, typename T>
+struct has_adl_get : meta::is_detected_i<adl_get::type, I, T&&>, adl_get {};
+
+template <usize I, typename T>
+struct get_impl : meta::disjunction<
+                      has_array_get<I, T>,
+                      has_member_get<I, T>,
+                      has_adl_get<I, T>> {};
+} // namespace get
+} // namespace internal
+
+namespace fn {
+template <i64 I>
+struct get {
+  VEG_TEMPLATE(
+      typename T,
+      requires(internal::get::get_impl<static_cast<usize>(I), T>::value),
+      HEDLEY_ALWAYS_INLINE constexpr auto
+      operator(),
+      (arg, T&&))
+  const __VEG_DEDUCE_RET(
+      internal::get::get_impl<static_cast<usize>(I), T>::template apply<I>(
+          VEG_FWD(arg)));
+};
+} // namespace fn
+
+template <typename... Ts>
+struct tuple;
+
+struct elems_t {
+  VEG_TEMPLATE(
+      typename... Ts,
+      requires_all(meta::constructible<meta::decay_t<Ts>, Ts&&>::value),
+      constexpr auto
+      operator(),
+      (... args, Ts&&))
+  const noexcept(
+      meta::all_of(
+          {meta::nothrow_constructible<meta::decay_t<Ts>, Ts&&>::value...}))
+      ->veg::tuple<meta::decay_t<Ts>...> {
+    return veg::tuple<meta::decay_t<Ts>...>{VEG_FWD(args)...};
+  }
+};
+struct init_list_t {};
+struct inplace_t {};
+struct none_t {
+  friend constexpr auto operator==(none_t /*lhs*/, none_t /*rhs*/) noexcept
+      -> bool {
+    return true;
+  }
+  friend constexpr auto operator!=(none_t /*lhs*/, none_t /*rhs*/) noexcept
+      -> bool {
+    return false;
+  }
+
+private:
+  constexpr none_t() = default;
+  constexpr explicit none_t(none_t* /*unused*/) noexcept {}
+  template <typename T>
+  friend struct meta::internal::static_const;
+};
+template <typename T>
+struct option;
+struct some_t {
+  VEG_TEMPLATE(
+      (typename T),
+      requires(meta::constructible<meta::remove_cvref_t<T>, T&&>::value),
+      __VEG_CPP14(constexpr) auto
+      operator(),
+      (arg, T&&))
+  const noexcept(
+      meta::nothrow_constructible<meta::remove_cvref_t<T>, T&&>::value)
+      ->option<meta::remove_cvref_t<T>> {
+    return {*this, VEG_FWD(arg)};
+  }
+
+private:
+  constexpr some_t() = default;
+  constexpr explicit some_t(some_t* /*unused*/) noexcept {}
+  template <typename T>
+  friend struct meta::internal::static_const;
+};
+
+namespace { /* NOLINT */
+template <i64 I>
+constexpr auto const& get /* NOLINT */ =
+    ::veg::meta::internal::static_const<fn::get<I>>::value;
+
+template <typename T>
+constexpr auto const& tag =
+    ::veg::meta::internal::static_const<tag_t<T>>::value;
+} // namespace
+__VEG_ODR_VAR(some, some_t);
+__VEG_ODR_VAR(init_list, init_list_t);
+__VEG_ODR_VAR(inplace, inplace_t);
+__VEG_ODR_VAR(elems, elems_t);
+__VEG_ODR_VAR(none, none_t);
+
 } // namespace veg
 
 #endif /* end of include guard __VEG_TYPE_TRAITS_HPP_Z3FBQSJ2S */

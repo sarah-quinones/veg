@@ -13,17 +13,13 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 if(top_level AND ENABLE_TESTING)
   set(CMAKE_CXX_STANDARD 17)
   set(CMAKE_CXX_EXTENSIONS OFF)
+  add_subdirectory("docs")
 endif()
 
 include(cmake/compiler_warnings.cmake)
 include(cmake/static_analyzers.cmake)
 include(cmake/sanitizers.cmake)
 include(cmake/conan.cmake)
-
-if(VEG_BUILD_DOCS)
-  add_subdirectory("docs")
-  return()
-endif()
 
 add_library(_veg_ub ${CMAKE_CURRENT_SOURCE_DIR}/src/ub.cpp)
 set_property(TARGET _veg_ub PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)

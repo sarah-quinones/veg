@@ -209,3 +209,10 @@ TEST(tuple, non_movable) {
     (void)s;
   }
 }
+
+TEST(tuple,get) {
+  using namespace veg;
+  int arr[] = {1, 2, 3};
+  get<0>(arr);
+  get<0>(VEG_FWD(arr));
+}

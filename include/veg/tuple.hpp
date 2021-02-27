@@ -38,58 +38,6 @@
 /******************************************************************************/
 
 namespace veg {
-namespace internal {
-namespace get {
-
-template <typename T>
-void get() = delete;
-
-struct member_get {
-  template <usize I, typename T>
-  using type = decltype(void(__VEG_DECLVAL(T).template get<I>()));
-  template <usize I, typename T>
-  HEDLEY_ALWAYS_INLINE static constexpr auto apply(T&& arg)
-      __VEG_DEDUCE_RET(VEG_FWD(arg).template get<I>());
-};
-struct adl_get {
-  template <usize I, typename T>
-  using type = decltype(void(get<I>(__VEG_DECLVAL(T))));
-
-  template <usize I, typename T>
-  HEDLEY_ALWAYS_INLINE static constexpr auto apply(T&& arg)
-      __VEG_DEDUCE_RET(get<I>(VEG_FWD(arg)));
-};
-
-template <usize I, typename T>
-struct has_member_get : meta::is_detected_i<member_get::type, I, T&&>,
-                        member_get {};
-template <usize I, typename T>
-struct has_adl_get : meta::is_detected_i<adl_get::type, I, T&&>, adl_get {};
-
-template <usize I, typename T>
-struct get_impl : meta::disjunction<has_member_get<I, T>, has_adl_get<I, T>> {};
-} // namespace get
-} // namespace internal
-
-namespace fn {
-template <i64 I>
-struct get {
-  VEG_TEMPLATE(
-      typename T,
-      requires(internal::get::get_impl<static_cast<usize>(I), T>::value),
-      HEDLEY_ALWAYS_INLINE constexpr auto
-      operator(),
-      (arg, T&&))
-  const __VEG_DEDUCE_RET(
-      internal::get::get_impl<static_cast<usize>(I), T>::template apply<I>(
-          VEG_FWD(arg)));
-};
-} // namespace fn
-namespace { /* NOLINT */
-template <i64 I>
-constexpr auto const& get /* NOLINT */ =
-    ::veg::meta::internal::static_const<fn::get<I>>::value;
-}
 
 namespace make {
 namespace fn {

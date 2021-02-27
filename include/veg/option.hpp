@@ -7,8 +7,6 @@
 
 namespace veg {
 
-template <typename T>
-struct option;
 namespace meta {
 template <typename T>
 struct mostly_trivial<option<T>> : mostly_trivial<T> {};
@@ -26,43 +24,6 @@ struct option_inner<option<T>> {
   using type = T;
 };
 } // namespace meta
-struct none_t {
-  friend constexpr auto operator==(none_t /*lhs*/, none_t /*rhs*/) noexcept
-      -> bool {
-    return true;
-  }
-  friend constexpr auto operator!=(none_t /*lhs*/, none_t /*rhs*/) noexcept
-      -> bool {
-    return false;
-  }
-
-private:
-  constexpr none_t() = default;
-  constexpr explicit none_t(none_t* /*unused*/) noexcept {}
-  template <typename T>
-  friend struct meta::internal::static_const;
-};
-__VEG_ODR_VAR(none, none_t);
-struct some_t {
-  VEG_TEMPLATE(
-      (typename T),
-      requires(meta::constructible<meta::remove_cvref_t<T>, T&&>::value),
-      __VEG_CPP14(constexpr) auto
-      operator(),
-      (arg, T&&))
-  const noexcept(
-      meta::nothrow_constructible<meta::remove_cvref_t<T>, T&&>::value)
-      ->option<meta::remove_cvref_t<T>> {
-    return {*this, VEG_FWD(arg)};
-  }
-
-private:
-  constexpr some_t() = default;
-  constexpr explicit some_t(some_t* /*unused*/) noexcept {}
-  template <typename T>
-  friend struct meta::internal::static_const;
-};
-__VEG_ODR_VAR(some, some_t);
 struct some_ref_t {
   template <typename T>
   __VEG_CPP14(constexpr)

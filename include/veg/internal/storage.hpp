@@ -3,7 +3,6 @@
 
 #include "veg/internal/type_traits.hpp"
 #include "veg/internal/memory.hpp"
-#include "veg/assert.hpp"
 
 namespace veg {
 namespace internal {
@@ -297,7 +296,8 @@ struct meta::value_sentinel_for<veg::internal::storage::storage<T&>>
     : std::integral_constant<i64, 1> {
   HEDLEY_ALWAYS_INLINE static constexpr auto invalid(i64 i) noexcept
       -> ::veg::internal::storage::storage<T&> {
-    return VEG_ASSERT(i == 0), ::veg::internal::storage::storage<T&>::null();
+    return ((i == 0) ? (void)0 : terminate()),
+           ::veg::internal::storage::storage<T&>::null();
   }
   HEDLEY_ALWAYS_INLINE static constexpr auto
   id(::veg::internal::storage::storage<T&> const& arg) noexcept -> i64 {
@@ -310,7 +310,8 @@ struct meta::value_sentinel_for<veg::internal::storage::storage<T&&>>
     : std::integral_constant<i64, 1> {
   HEDLEY_ALWAYS_INLINE static constexpr auto invalid(i64 i) noexcept
       -> ::veg::internal::storage::storage<T&&> {
-    return VEG_ASSERT(i == 0), ::veg::internal::storage::storage<T&&>::null();
+    return ((i == 0) ? (void)0 : terminate()),
+           ::veg::internal::storage::storage<T&&>::null();
   }
   HEDLEY_ALWAYS_INLINE static constexpr auto
   id(::veg::internal::storage::storage<T&&> const& arg) noexcept -> i64 {

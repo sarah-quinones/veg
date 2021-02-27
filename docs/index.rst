@@ -6,5 +6,7 @@ small c++ utility library
    :caption: Contents:
 
    assert
+   utility
+   tuple
 
 :ref:`genindex`

@@ -12,23 +12,6 @@ namespace veg {
 template <typename... Ts>
 struct tuple;
 
-struct elems_t {
-  VEG_TEMPLATE(
-      typename... Ts,
-      requires_all(meta::constructible<meta::decay_t<Ts>, Ts&&>::value),
-      constexpr auto
-      operator(),
-      (... args, Ts&&))
-  const noexcept(
-      meta::all_of(
-          {meta::nothrow_constructible<meta::decay_t<Ts>, Ts&&>::value...}))
-      ->veg::tuple<meta::decay_t<Ts>...> {
-    return veg::tuple<meta::decay_t<Ts>...>{VEG_FWD(args)...};
-  }
-};
-
-__VEG_ODR_VAR(elems, elems_t);
-
 namespace internal {
 namespace tuple {
 struct hidden_tag1 {};
@@ -418,7 +401,7 @@ struct tuple_ctor_base : veg::internal::tuple::adl::tuple_base<Ts...> {
       : m_impl(internal::tuple::hidden_tag1{}, VEG_FWD(fns)...) {}
 
   VEG_TEMPLATE_EXPLICIT(
-      !__VEG_ALL_OF(meta::convertible_to<Us&&, Ts>::value),
+      !__VEG_ALL_OF(meta::convertible_to<Ts, Us&&>::value),
       (typename... Us),
       requires __VEG_ALL_OF(meta::constructible<Ts, Us&&>::value),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
@@ -463,7 +446,7 @@ struct tuple_ctor_base<false, Ts...>
       : m_impl(internal::tuple::hidden_tag1{}, VEG_FWD(fns)...) {}
 
   VEG_TEMPLATE_EXPLICIT(
-      !__VEG_ALL_OF(meta::convertible_to<Us&&, Ts>::value),
+      !__VEG_ALL_OF(meta::convertible_to<Ts, Us&&>::value),
       (typename... Us),
       requires __VEG_ALL_OF(meta::constructible<Ts, Us&&>::value),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
@@ -520,79 +503,17 @@ private:
       -> decltype((VEG_FWD(tup).m_impl))&&;
 };
 
-template <bool Const_Self_Assign, typename... Ts>
-struct tuple_assignment_base_copy {
-
-  __VEG_CPP14(
-      constexpr) // NOLINT(
-                 // cppcoreguidelines-c-copy-assignment-signature,misc-unconventional-assign-operator)
-
-  HEDLEY_ALWAYS_INLINE auto operator= // NOLINT(cert-oop54-cpp)
-      (veg::tuple<Ts...> const& rhs) const& noexcept(
-          meta::all_of({meta::assignable<Ts const&, Ts const&>::value...}))
-          -> veg::tuple<Ts...> const& {
-    auto const& self = static_cast<veg::tuple<Ts...> const&>(*this);
-    tuple::assign_(self.as_ref().m_impl, rhs.as_ref().m_impl);
-    return self;
-  }
-  tuple_assignment_base_copy() = default;
-  __VEG_DEFAULTS(tuple_assignment_base_copy);
-};
-template <typename... Ts>
-struct tuple_assignment_base_copy<false, Ts...> {
-  tuple_assignment_base_copy() = default;
-  __VEG_DEFAULTS(tuple_assignment_base_copy);
-};
-
-template <bool Const_Self_Assign, typename... Ts>
-struct tuple_assignment_base_move {
-
-  __VEG_CPP14(
-      constexpr) // NOLINT(
-                 // cppcoreguidelines-c-move-assignment-signature,misc-unconventional-assign-operator)
-
-  HEDLEY_ALWAYS_INLINE auto operator= // NOLINT(cert-oop54-cpp)
-
-      (veg::tuple<Ts...>&& rhs) const& noexcept(
-          meta::all_of({meta::assignable<Ts const&, Ts&&>::value...}))
-          -> veg::tuple<Ts...> const& {
-    auto const& self = static_cast<veg::tuple<Ts...> const&>(*this);
-    tuple::assign_(self.as_ref().m_impl, VEG_FWD(rhs).as_ref().m_impl);
-    return self;
-  }
-  tuple_assignment_base_move() = default;
-  __VEG_DEFAULTS(tuple_assignment_base_move);
-};
-template <typename... Ts>
-struct tuple_assignment_base_move<false, Ts...> {
-  tuple_assignment_base_move() = default;
-  __VEG_DEFAULTS(tuple_assignment_base_move);
-};
-
 } // namespace tuple
 } // namespace internal
 
 template <typename... Ts>
-struct tuple
-    : internal::tuple::tuple_ctor_base<
-          meta::all_of({meta::move_constructible<Ts>::value...}),
-          Ts...>,
-      internal::tuple::tuple_assignment_base_copy<
-          meta::all_of({meta::assignable<Ts const&, Ts const&>::value...}),
-          Ts...>,
-      internal::tuple::tuple_assignment_base_move<
-          meta::all_of({meta::assignable<Ts const&, Ts&&>::value...}),
-          Ts...> {
+struct tuple : internal::tuple::tuple_ctor_base<
+                   meta::all_of({meta::move_constructible<Ts>::value...}),
+                   Ts...> {
   using ctor_base = internal::tuple::tuple_ctor_base<
       meta::all_of({meta::move_constructible<Ts>::value...}),
       Ts...>;
   using ctor_base::ctor_base;
-  using internal::tuple::tuple_assignment_base_copy<
-      meta::all_of({meta::assignable<Ts const&, Ts const&>::value...}),
-      Ts...>::operator=;
-  using internal::tuple::tuple_assignment_base_move<
-      meta::all_of({meta::assignable<Ts const&, Ts&&>::value...}),
-      Ts...>::operator=;
 
   __VEG_DEFAULTS(tuple);
 
@@ -603,7 +524,7 @@ struct tuple
       (tup, veg::tuple<Us...>&&)) = delete;
 
   VEG_TEMPLATE_EXPLICIT(
-      !__VEG_ALL_OF(meta::convertible_to<Us const&, Ts>::value),
+      !__VEG_ALL_OF(meta::convertible_to<Ts, Us const&>::value),
       (typename... Us),
       requires __VEG_ALL_OF(meta::constructible<Ts, Us const&>::value),
       HEDLEY_ALWAYS_INLINE constexpr tuple,
@@ -613,7 +534,7 @@ struct tuple
       : ctor_base(tup.as_ref()){})
 
   VEG_TEMPLATE_EXPLICIT(
-      !__VEG_ALL_OF(meta::convertible_to<Us&, Ts>::value),
+      !__VEG_ALL_OF(meta::convertible_to<Ts, Us&>::value),
       (typename... Us),
       requires __VEG_ALL_OF(meta::constructible<Ts, Us&>::value),
       HEDLEY_ALWAYS_INLINE constexpr tuple,
@@ -621,43 +542,59 @@ struct tuple
       noexcept(meta::all_of({meta::nothrow_constructible<Ts, Us&>::value...}))
       : ctor_base(tup.as_ref()){})
 
-  __VEG_CVREF_DUPLICATE(
-      VEG_TEMPLATE(
-          (i64 I),
-          requires(
-              I < sizeof...(Ts) && (I >= 0) &&
-              meta::move_constructible<typename internal::tuple::pack_ith_elem<
-                  I>::template type<Ts...>>::value),
-          HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
-          operator[],
-          (/*arg*/, fix<I>)),
-      internal::tuple::adl_get<I>,
-      ());
+  VEG_TEMPLATE(
+      (i64 I),
+      requires(
+          I < sizeof...(Ts) && (I >= 0) &&
+          meta::move_constructible<typename internal::tuple::pack_ith_elem<
+              I>::template type<Ts...>>::value),
+      HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
+      operator[],
+      (/*arg*/, fix<I>)) &&
+      __VEG_CPP11_DECLTYPE_AUTO(
+          internal::tuple::adl_get<I>(static_cast<tuple&&>(*this)));
+
   VEG_TEMPLATE(
       (i64 I),
       requires(
           I < sizeof...(Ts) && (I >= 0) &&
           !meta::move_constructible<typename internal::tuple::pack_ith_elem<
               I>::template type<Ts...>>::value),
+      HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void
+      operator[],
+      (/*arg*/, fix<I>)) && noexcept = delete;
+
+  VEG_TEMPLATE(
+      (i64 I),
+      requires(I < sizeof...(Ts) && (I >= 0)),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator[],
-      (/*arg*/, fix<I>)) = delete;
+      (/*arg*/, fix<I>)) &
+      __VEG_CPP11_DECLTYPE_AUTO(internal::tuple::adl_get<I>(*this));
+
+  VEG_TEMPLATE(
+      (i64 I),
+      requires(I < sizeof...(Ts) && (I >= 0)),
+      HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
+      operator[],
+      (/*arg*/, fix<I>))
+  const& __VEG_CPP11_DECLTYPE_AUTO(internal::tuple::adl_get<I>(*this));
 
   VEG_TEMPLATE(
       (typename... Us),
-      requires __VEG_ALL_OF(
-          (meta::reference<Ts>::value &&
+      requires !__VEG_ALL_OF(
+          (!meta::reference<Ts>::value &&
            meta::assignable<Ts&, Us const&>::value)),
-      auto
+      void
       operator=,
-      (rhs, veg::tuple<Us...> const&)) & noexcept -> void = delete;
+      (rhs, veg::tuple<Us...> const&)) & noexcept = delete;
   VEG_TEMPLATE(
       (typename... Us),
-      requires __VEG_ALL_OF(
-          (meta::reference<Ts>::value && meta::assignable<Ts&, Us&&>::value)),
-      auto
+      requires !__VEG_ALL_OF(
+          (!meta::reference<Ts>::value && meta::assignable<Ts&, Us&&>::value)),
+      void
       operator=,
-      (rhs, veg::tuple<Us...>&&)) & noexcept -> void = delete;
+      (rhs, veg::tuple<Us...>&&)) & noexcept = delete;
 
   VEG_TEMPLATE(
       (typename... Us),
@@ -718,6 +655,14 @@ struct tuple
     internal::tuple::assign_(this->as_ref().m_impl, rhs.as_ref().m_impl);
     return static_cast<veg::tuple<Ts...> const&>(*this);
   }
+
+  VEG_TEMPLATE(
+      (typename... Us),
+      requires !__VEG_ALL_OF(meta::assignable<Ts const&, Us&&>::value),
+      HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void
+      operator=,
+      (rhs, veg::tuple<Us...>&&))
+  const& = delete;
 
   __VEG_CVREF_DUPLICATE(
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto as_ref(),
