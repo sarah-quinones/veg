@@ -35,7 +35,7 @@ struct hidden_tag2 {};
 
 template <typename T, bool Rebind = true>
 struct storage {
-  T inner_val;
+  T inner;
 
   storage() = default;
 
@@ -44,98 +44,104 @@ struct storage {
       hidden_tag1 /*tag*/,
       Fn&& fn,
       Args&&... args) noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
-      : inner_val(invoke(VEG_FWD(fn), VEG_FWD(args)...)) {}
+      : inner(invoke(VEG_FWD(fn), VEG_FWD(args)...)) {}
 
   template <typename U>
   HEDLEY_ALWAYS_INLINE explicit constexpr storage(
       hidden_tag2 /*tag*/,
       U&& arg) noexcept(meta::nothrow_constructible<T, U&&>::value)
-      : inner_val(static_cast<T>(VEG_FWD(arg))) {}
+      : inner(static_cast<T>(VEG_FWD(arg))) {}
 
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() const noexcept
       -> T const& {
-    return inner_val;
+    return inner;
   }
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mut() noexcept -> T& {
-    return inner_val;
+    return inner;
   }
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov_ref() && noexcept
       -> T&& {
-    return static_cast<T&&>(inner_val);
+    return static_cast<T&&>(inner);
   }
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov() && noexcept(
       meta::nothrow_move_constructible<T>::value) -> T {
-    return static_cast<T&&>(inner_val);
+    return static_cast<T&&>(inner);
   }
 };
 
 template <typename T>
 struct ref_base {
-  T&& inner_ref = nullptr;
+  T&& inner;
 
   HEDLEY_ALWAYS_INLINE explicit constexpr ref_base(
       hidden_tag2 /*tag*/, T&& arg) noexcept
-      : inner_ref{VEG_FWD(arg)} {}
+      : inner{VEG_FWD(arg)} {}
   template <typename Fn, typename... Args>
   HEDLEY_ALWAYS_INLINE constexpr ref_base(
       hidden_tag1 /*tag*/,
       Fn&& fn,
       Args&&... args) noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
-      : inner_ref(invoke(VEG_FWD(fn), VEG_FWD(args)...)) {}
+      : inner(invoke(VEG_FWD(fn), VEG_FWD(args)...)) {}
 
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() const noexcept -> T& {
-    return inner_ref;
+    return inner;
   }
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mut() noexcept -> T& {
-    return inner_ref;
+    return inner;
   }
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov_ref() && noexcept
       -> T&& {
-    return VEG_FWD(inner_ref);
+    return VEG_FWD(inner);
   }
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov() && noexcept
       -> T&& {
-    return VEG_FWD(inner_ref);
+    return VEG_FWD(inner);
   }
 };
 
-template <typename T, bool = meta::copy_assignable<T>::value>
+template <
+    typename T,
+    bool = meta::assignable<T, meta::remove_cvref_t<T> const&>::value>
 struct copy_ref_base : ref_base<T> {
   using ref_base<T>::ref_base;
-  using ref_base<T>::inner_ref;
+  using ref_base<T>::inner;
   ~copy_ref_base() = default;
   copy_ref_base(copy_ref_base const&) noexcept = default;
   copy_ref_base(copy_ref_base&&) noexcept = default;
-  constexpr auto
+  __VEG_CPP14(constexpr)
+  auto
   operator= /* NOLINT(cert-oop54-cpp) */(copy_ref_base const& rhs) & noexcept(
-      meta::nothrow_copy_assignable<T>::value) -> copy_ref_base& {
-    inner_ref = rhs.inner_ref;
+      meta::nothrow_assignable<T, meta::remove_cvref_t<T> const&>::value)
+      -> copy_ref_base& {
+    auto const& rhs_c = rhs;
+    inner = rhs_c.inner;
   }
   auto operator=(copy_ref_base&& rhs) & = delete;
 };
 template <typename T>
 struct copy_ref_base<T, false> : ref_base<T> {
   using ref_base<T>::ref_base;
-  using ref_base<T>::inner_ref;
+  using ref_base<T>::inner;
 };
 
 template <typename T, bool = meta::move_assignable<T>::value>
 struct move_ref_base : copy_ref_base<T> {
   using copy_ref_base<T>::copy_ref_base;
-  using copy_ref_base<T>::inner_ref;
+  using copy_ref_base<T>::inner;
   ~move_ref_base() = default;
   move_ref_base(move_ref_base const&) noexcept = default;
   move_ref_base(move_ref_base&&) noexcept = default;
   auto operator=(move_ref_base const& rhs) & -> move_ref_base& = default;
-  constexpr auto operator=(move_ref_base&& rhs) & noexcept(
+  __VEG_CPP14(constexpr)
+  auto operator=(move_ref_base&& rhs) & noexcept(
       meta::nothrow_move_assignable<T>::value) -> move_ref_base& {
-    inner_ref = VEG_FWD(rhs.inner_ref);
+    inner = VEG_FWD(rhs.inner);
   }
 };
 template <typename T>
 struct move_ref_base<T, false> : copy_ref_base<T> {
   using copy_ref_base<T>::copy_ref_base;
-  using copy_ref_base<T>::inner_ref;
+  using copy_ref_base<T>::inner;
 };
 
 template <typename T>
@@ -369,7 +375,7 @@ struct meta::value_sentinel_for<veg::internal::storage::storage<T>>
   }
   HEDLEY_ALWAYS_INLINE static constexpr auto
   id(::veg::internal::storage::storage<T> const& arg) noexcept -> i64 {
-    return meta::value_sentinel_for<T>::id(arg.inner_val);
+    return meta::value_sentinel_for<T>::id(arg.inner);
   }
 };
 
