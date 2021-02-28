@@ -45,6 +45,8 @@ TEST(tuple, all) {
     static_assert(veg::meta::swappable<ref_tup&, ref_tup const&>::value);
     static_assert(veg::meta::swappable<ref_tup const&, ref_tup&>::value);
     static_assert(veg::meta::swappable<ref_tup const&, ref_tup const&>::value);
+    static_assert(veg::meta::swappable<ref_tup&&, ref_tup&&>::value);
+    static_assert(veg::meta::nothrow_swappable<ref_tup&&, ref_tup&&>::value);
 
     static_assert(veg::meta::swappable<ref_tup const&, val_tup&>::value);
     static_assert(veg::meta::swappable<val_tup&, val_tup&>::value);
