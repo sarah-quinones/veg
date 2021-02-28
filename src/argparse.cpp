@@ -14,6 +14,7 @@
 
 #include "veg/argparse.hpp"
 #include "veg/assert.hpp"
+#include "veg/internal/narrow.hpp"
 
 namespace veg {
 

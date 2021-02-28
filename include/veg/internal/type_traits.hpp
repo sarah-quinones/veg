@@ -132,7 +132,9 @@
 
 #if __cplusplus >= 201402L
 #define __VEG_CPP11_DECLTYPE_AUTO(...)                                         \
-  noexcept(noexcept(__VA_ARGS__))->decltype(auto) { return __VA_ARGS__; }      \
+  noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) {                     \
+    return __VA_ARGS__;                                                        \
+  }                                                                            \
   static_assert(true, "")
 #else
 #define __VEG_CPP11_DECLTYPE_AUTO(...)                                         \
@@ -211,12 +213,14 @@
       attr_name, tparams, requirement, __VEG_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
 #if __cplusplus >= 202002L
-#define VEG_TEMPLATE_EXPLICIT(cond, tparams, requirement, attr_name, ...)      \
-  __VEG_IMPL_TEMPLATE(                                                         \
-      explicit(cond) attr_name,                                                \
+#define VEG_TEMPLATE_EXPLICIT(                                                 \
+    cond, tparams, requirement, attr_name, args, ...)                          \
+  VEG_TEMPLATE(                                                                \
       tparams,                                                                 \
       requirement,                                                             \
-      __VEG_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+      explicit(cond) attr_name,                                                \
+      __VEG_PP_REMOVE_PAREN(args))                                             \
+  __VA_ARGS__
 #else
 #define VEG_TEMPLATE_EXPLICIT(                                                 \
     cond, tparams, requirement, attr_name, args, ...)                          \
@@ -655,11 +659,11 @@ template <typename Default, template <typename...> class Ftor, typename... Args>
 struct detector : internal::detector<void, Default, Ftor, Args...> {};
 
 template <template <class...> class Op, class... Args>
-using is_detected = typename detector<internal::none, Op, Args...>::found;
+struct is_detected : detector<internal::none, Op, Args...>::found {};
 
 template <template <usize, class...> class Op, usize I, class... Args>
-using is_detected_i =
-    typename internal::detector_i<void, internal::none, Op, I, Args...>::found;
+struct is_detected_i
+    : internal::detector_i<void, internal::none, Op, I, Args...>::found {};
 
 template <template <class...> class Op, class... Args>
 using detected_t = typename detector<internal::none, Op, Args...>::type;
@@ -1065,17 +1069,6 @@ struct tag_invocable : internal::tag_invocable_impl<void, CP, Args...> {};
 namespace internal {
 namespace swap_ {
 
-struct mem_fn_swap {
-  template <typename U, typename V>
-  using type = decltype(__VEG_DECLVAL(U &&).swap(__VEG_DECLVAL(V &&)));
-
-  template <typename U, typename V>
-  HEDLEY_ALWAYS_INLINE static __VEG_CPP14(constexpr) void apply(
-      U&& u, V&& v) noexcept(noexcept(VEG_FWD(u).swap(VEG_FWD(v)))) {
-    VEG_FWD(u).swap(VEG_FWD(v));
-  }
-};
-
 struct adl_fn_swap {
   template <typename U, typename V>
   using type = decltype(swap(__VEG_DECLVAL(U &&), (__VEG_DECLVAL(V &&))));
@@ -1101,9 +1094,6 @@ struct mov_fn_swap {
 };
 
 template <typename U, typename V>
-struct has_mem_fn_swap : meta::is_detected<mem_fn_swap::type, U&&, V&&>,
-                         mem_fn_swap {};
-template <typename U, typename V>
 struct has_adl_swap : meta::is_detected<adl_fn_swap::type, U&&, V&&>,
                       adl_fn_swap {};
 
@@ -1116,10 +1106,7 @@ struct has_mov_swap<U&, U&> : meta::bool_constant<
                               mov_fn_swap {};
 
 template <typename U, typename V>
-struct swap_impl : meta::disjunction<
-                       has_mem_fn_swap<U, V>,
-                       has_adl_swap<U, V>,
-                       has_mov_swap<U, V>> {};
+struct swap_impl : meta::disjunction<has_adl_swap<U, V>, has_mov_swap<U, V>> {};
 
 template <typename U, typename V>
 struct no_throw_swap
@@ -1214,7 +1201,21 @@ struct mostly_trivial : __VEG_HAS_BUILTIN_OR(
                             (std::is_trivial<T>)) {};
 
 template <typename T>
-struct trivially_relocatable : trivially_copyable<T> {};
+struct trivially_relocatable : bool_constant<
+                                   trivially_copyable<T>::value &&
+                                   trivially_move_constructible<T>::value> {};
+
+template <typename U, typename V>
+struct trivially_swappable : false_type {};
+
+template <typename T>
+struct trivially_swappable<T&, T&>
+    : bool_constant<(
+          trivially_copyable<T>::value &&        //
+          trivially_move_assignable<T>::value && //
+          trivially_move_constructible<T>::value &&
+          !::veg::internal::swap_::has_adl_swap<T&, T&>::value) //
+                    > {};
 } // namespace meta
 
 namespace internal {

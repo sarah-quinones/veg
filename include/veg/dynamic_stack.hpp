@@ -7,6 +7,7 @@
 #include "veg/slice.hpp"
 #include "veg/internal/memory.hpp"
 #include "veg/option.hpp"
+#include "veg/internal/narrow.hpp"
 
 namespace veg {
 namespace internal {

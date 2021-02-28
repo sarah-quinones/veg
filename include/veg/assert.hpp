@@ -4,6 +4,8 @@
 #include "veg/internal/typedefs.hpp"
 #include "veg/internal/type_traits.hpp"
 #include "veg/internal/cmp.hpp"
+#include "veg/internal/byte_string_ref.hpp"
+#include "veg/internal/simple_string.hpp"
 
 #if HEDLEY_HAS_WARNING("-Woverloaded-shift-op-parentheses")
 #define __VEG_IGNORE_SHIFT_PAREN_WARNING(Macro, ...)                           \
@@ -30,76 +32,6 @@ struct to_string;
 } // namespace fn
 
 namespace internal {
-
-struct string {
-  struct layout {
-    char* ptr;
-    i64 len;
-    i64 cap;
-  } self = {};
-
-  ~string();
-  string() = default;
-  HEDLEY_ALWAYS_INLINE string(string&& other) noexcept : self{other.self} {
-    other.self = layout{nullptr, 0, 0};
-  }
-  string(string const&) = delete;
-  auto operator=(string const&) -> string& = delete;
-  auto operator=(string&&) -> string& = delete;
-
-  void resize(i64 new_len);
-  void copy(char const* data, i64 len);
-  void insert(i64 pos, char const* data, i64 len);
-
-  VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto data() const noexcept -> char* {
-    return self.ptr;
-  }
-  VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto size() const noexcept -> i64 {
-    return self.len;
-  }
-};
-
-struct char_string_ref {
-  HEDLEY_ALWAYS_INLINE constexpr char_string_ref(
-      char const* data, i64 len) noexcept
-      : data_{data}, len_{len} {}
-
-  char_string_ref // NOLINT(hicpp-explicit-conversions)
-      (char const* str) noexcept;
-
-  VEG_TEMPLATE(
-      typename T,
-      requires(
-          (meta::constructible<
-               char const*,
-               decltype(__VEG_DECLVAL(T const&).data())>::value && //
-           meta::constructible<i64, decltype(__VEG_DECLVAL(T const&).size())>::
-               value)),
-
-      HEDLEY_ALWAYS_INLINE constexpr char_string_ref, // NOLINT(hicpp-explicit-conversions)
-      (arg, T const&))
-  noexcept
-      : char_string_ref{
-            static_cast<char const*>(arg.data()),
-            static_cast<i64>(arg.size())} {}
-
-  char const* data_;
-  i64 len_;
-
-  VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto data() const noexcept
-      -> char const* {
-    return data_;
-  }
-  VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto size() const noexcept
-      -> i64 {
-    return len_;
-  }
-  VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto
-  starts_with(char_string_ref other) const noexcept -> bool;
-  VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto
-  operator==(char_string_ref other) const noexcept -> bool;
-};
-static constexpr char_string_ref empty_str = {"", 0};
 
 struct tag_invoke_print_ {
   template <typename T>

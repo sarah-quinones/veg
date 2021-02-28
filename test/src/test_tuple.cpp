@@ -17,9 +17,24 @@ TEST(tuple, all) {
   {
     static_assert(veg::meta::trivially_relocatable<decltype(tup)>::value);
     static_assert(veg::meta::trivially_copyable<decltype(tup)>::value);
-    static_assert(veg::meta::trivially_copyable<decltype(tup_ref)>::value);
+
+    static_assert(veg::meta::trivially_copy_constructible<
+                  veg::tuple<int&, int const&>>::value);
+    static_assert(veg::meta::trivially_move_constructible<
+                  veg::tuple<int&, int const&>>::value);
+    static_assert(
+        !veg::meta::copy_assignable<veg::tuple<int&, int const&>>::value);
+    static_assert(
+        !veg::meta::move_assignable<veg::tuple<int&, int const&>>::value);
+
+    static_assert(veg::meta::copy_assignable<veg::tuple<int&, float&>>::value);
+    static_assert(veg::meta::move_assignable<veg::tuple<int&, float&>>::value);
+
     static_assert(!veg::meta::copy_assignable<decltype(tup_ref)>::value);
     static_assert(!veg::meta::move_assignable<decltype(tup_ref)>::value);
+    static_assert(!veg::meta::copy_constructible<decltype(tup_ref)>::value);
+    static_assert(
+        veg::meta::trivially_move_constructible<decltype(tup_ref)>::value);
     static_assert(!std::is_copy_constructible<decltype(tup_ref)>::value);
     static_assert(std::is_copy_constructible<decltype(tup)>::value);
     static_assert(std::is_copy_constructible<veg::tuple<int&, bool&>>::value);
@@ -27,8 +42,8 @@ TEST(tuple, all) {
     using ref_tup = veg::tuple<int&, bool&>;
 
     static_assert(veg::meta::swappable<ref_tup&, ref_tup&>::value);
-    static_assert(!veg::meta::swappable<ref_tup&, ref_tup const&>::value);
-    static_assert(!veg::meta::swappable<ref_tup const&, ref_tup&>::value);
+    static_assert(veg::meta::swappable<ref_tup&, ref_tup const&>::value);
+    static_assert(veg::meta::swappable<ref_tup const&, ref_tup&>::value);
     static_assert(veg::meta::swappable<ref_tup const&, ref_tup const&>::value);
 
     static_assert(veg::meta::swappable<ref_tup const&, val_tup&>::value);

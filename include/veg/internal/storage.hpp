@@ -70,14 +70,14 @@ struct storage {
 };
 
 template <typename T>
-struct storage_reference_base {
+struct ref_base {
   T&& inner_ref = nullptr;
 
-  HEDLEY_ALWAYS_INLINE explicit constexpr storage_reference_base(
+  HEDLEY_ALWAYS_INLINE explicit constexpr ref_base(
       hidden_tag2 /*tag*/, T&& arg) noexcept
       : inner_ref{VEG_FWD(arg)} {}
   template <typename Fn, typename... Args>
-  HEDLEY_ALWAYS_INLINE constexpr storage_reference_base(
+  HEDLEY_ALWAYS_INLINE constexpr ref_base(
       hidden_tag1 /*tag*/,
       Fn&& fn,
       Args&&... args) noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
@@ -99,14 +99,53 @@ struct storage_reference_base {
   }
 };
 
+template <typename T, bool = meta::copy_assignable<T>::value>
+struct copy_ref_base : ref_base<T> {
+  using ref_base<T>::ref_base;
+  using ref_base<T>::inner_ref;
+  ~copy_ref_base() = default;
+  copy_ref_base(copy_ref_base const&) noexcept = default;
+  copy_ref_base(copy_ref_base&&) noexcept = default;
+  constexpr auto
+  operator= /* NOLINT(cert-oop54-cpp) */(copy_ref_base const& rhs) & noexcept(
+      meta::nothrow_copy_assignable<T>::value) -> copy_ref_base& {
+    inner_ref = rhs.inner_ref;
+  }
+  auto operator=(copy_ref_base&& rhs) & = delete;
+};
 template <typename T>
-struct storage<T&, false> : storage_reference_base<T&> {
-  using storage_reference_base<T&>::storage_reference_base;
+struct copy_ref_base<T, false> : ref_base<T> {
+  using ref_base<T>::ref_base;
+  using ref_base<T>::inner_ref;
+};
+
+template <typename T, bool = meta::move_assignable<T>::value>
+struct move_ref_base : copy_ref_base<T> {
+  using copy_ref_base<T>::copy_ref_base;
+  using copy_ref_base<T>::inner_ref;
+  ~move_ref_base() = default;
+  move_ref_base(move_ref_base const&) noexcept = default;
+  move_ref_base(move_ref_base&&) noexcept = default;
+  auto operator=(move_ref_base const& rhs) & -> move_ref_base& = default;
+  constexpr auto operator=(move_ref_base&& rhs) & noexcept(
+      meta::nothrow_move_assignable<T>::value) -> move_ref_base& {
+    inner_ref = VEG_FWD(rhs.inner_ref);
+  }
+};
+template <typename T>
+struct move_ref_base<T, false> : copy_ref_base<T> {
+  using copy_ref_base<T>::copy_ref_base;
+  using copy_ref_base<T>::inner_ref;
 };
 
 template <typename T>
-struct storage<T&&, false> : storage_reference_base<T&&> {
-  using storage_reference_base<T&&>::storage_reference_base;
+struct storage<T&, false> : move_ref_base<T&> {
+  using move_ref_base<T&>::move_ref_base;
+};
+
+template <typename T>
+struct storage<T&&, false> : move_ref_base<T&&> {
+  using move_ref_base<T&&>::move_ref_base;
 };
 
 template <typename T>
