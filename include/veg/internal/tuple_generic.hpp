@@ -171,47 +171,49 @@ struct swap_ftor {
   }
 };
 
-template <bool Do_Something>
-struct cmp_impl {
-  template <
-      typename Cmp,
-      usize Start = 0,
-      usize... Is,
-      typename... Ts,
-      typename... Us>
-  static HEDLEY_ALWAYS_INLINE constexpr auto apply(
-      Cmp const* cmp,
-      tuple_impl<meta::index_sequence<Is...>, Ts...> const* lhs,
-      tuple_impl<meta::index_sequence<Is...>, Us...> const* rhs) noexcept
-      -> bool {
-
 #if __cplusplus >= 201703L
-    return (
-        (*cmp)(
-            static_cast<tuple_leaf<Is, Ts> const&>(*lhs).inner,
-            static_cast<tuple_leaf<Is, Us> const&>(*rhs).inner) &&
-        ...);
-#else
-    using T = typename pack_ith_elem<Start>::template type<Ts...>;
-    using U = typename pack_ith_elem<Start>::template type<Us...>;
-
-    return (*cmp)(
-               static_cast<tuple_leaf<Start, T> const&>(*lhs).inner,
-               static_cast<tuple_leaf<Start, U> const&>(*rhs).inner) &&
-
-           cmp_impl<Start + 1 != sizeof...(Is)>::template apply<Start + 1>(
-               lhs, rhs);
-#endif
+template <typename... Ts>
+struct cmp_eq_impl {
+  template <typename... Us>
+  HEDLEY_ALWAYS_INLINE static constexpr auto
+  apply(Ts const&... ts, Us const&... us) noexcept -> bool {
+    return (veg::cmp_equal(ts, us) && ... && true);
   }
 };
-
-template <>
-struct cmp_impl<false> {
-  template <usize Start = 0>
-  static HEDLEY_ALWAYS_INLINE constexpr auto
-  apply(void const* /*cmp*/, void const* /*lhs*/, void const* /*rhs*/) noexcept
+#else
+template <typename... Ts>
+struct cmp_eq_impl;
+template <typename T0, typename... Ts>
+struct cmp_eq_impl<T0, Ts...> {
+  template <typename U0, typename... Us>
+  HEDLEY_ALWAYS_INLINE static constexpr auto
+  apply(T0 const& t0, Ts const&... ts, U0 const& u0, Us const&... us) noexcept
       -> bool {
+    return (veg::cmp_equal(t0, u0) && cmp_eq_impl<Ts...>::apply(ts..., us...));
+  }
+};
+template <>
+struct cmp_eq_impl<> {
+  HEDLEY_ALWAYS_INLINE static constexpr auto apply() noexcept -> bool {
     return true;
+  }
+};
+#endif
+// TODO: three-way comparison customization point
+
+struct cmp_impl {
+  template <usize... Is, typename... Ts, typename... Us>
+  static HEDLEY_ALWAYS_INLINE constexpr auto apply(
+      tuple_impl<meta::index_sequence<Is...>, Ts...> const& lhs,
+      tuple_impl<meta::index_sequence<Is...>, Us...> const& rhs) noexcept
+      -> bool {
+
+    return cmp_eq_impl<meta::remove_cvref_t<Ts>...>::apply(
+
+        static_cast<tuple_leaf<Is, Ts> const&>(lhs).inner...,
+        static_cast<tuple_leaf<Is, Us> const&>(rhs).inner...
+
+    );
   }
 };
 
@@ -294,7 +296,8 @@ struct impl<false> {
     return internal::tuple::swap_impl<
         NoExcept,
         meta::value_category<Tup_Lhs&&>::value,
-        meta::value_category<Tup_Rhs&&>::value>(lhs.m_impl, rhs.m_impl);
+        meta::value_category<Tup_Rhs&&>::value>(
+        tuple::get_inner(lhs), tuple::get_inner(rhs));
   }
 };
 
@@ -390,12 +393,7 @@ VEG_TEMPLATE(
     (lhs, veg::tuple<Ts...> const&),
     (rhs, veg::tuple<Us...> const&))
 noexcept -> bool {
-  return cmp_impl<sizeof...(Ts) != 0>::apply(
-      &cmp_equal,
-      &storage::as_lvalue(internal::tuple::get_inner(
-          veg::tuple<meta::remove_cvref_t<Ts> const&...>(lhs))),
-      &storage::as_lvalue(internal::tuple::get_inner(
-          veg::tuple<meta::remove_cvref_t<Us> const&...>(rhs))));
+  return cmp_impl::apply(tuple::get_inner(lhs), tuple::get_inner(rhs));
 }
 VEG_TEMPLATE(
     (typename... Ts, typename... Us),
@@ -405,74 +403,7 @@ VEG_TEMPLATE(
     (lhs, veg::tuple<Ts...> const&),
     (rhs, veg::tuple<Us...> const&))
 noexcept -> bool {
-  return !cmp_impl<sizeof...(Ts) != 0>::apply(
-      &cmp_equal,
-      &storage::as_lvalue(internal::tuple::get_inner(
-          veg::tuple<meta::remove_cvref_t<Ts> const&...>(lhs))),
-      &storage::as_lvalue(internal::tuple::get_inner(
-          veg::tuple<meta::remove_cvref_t<Us> const&...>(rhs))));
-}
-
-VEG_TEMPLATE(
-    (typename... Ts, typename... Us),
-    requires __VEG_ALL_OF((meta::partially_ordered_with<Ts, Us>::value)),
-    HEDLEY_ALWAYS_INLINE constexpr auto
-    operator<,
-    (lhs, veg::tuple<Ts...> const&),
-    (rhs, veg::tuple<Us...> const&))
-noexcept -> bool {
-  return cmp_impl<sizeof...(Ts) != 0>::apply(
-      &cmp_less,
-      &storage::as_lvalue(internal::tuple::get_inner(
-          veg::tuple<meta::remove_cvref_t<Ts> const&...>(lhs))),
-      &storage::as_lvalue(internal::tuple::get_inner(
-          veg::tuple<meta::remove_cvref_t<Us> const&...>(rhs))));
-}
-VEG_TEMPLATE(
-    (typename... Ts, typename... Us),
-    requires __VEG_ALL_OF((meta::partially_ordered_with<Ts, Us>::value)),
-    HEDLEY_ALWAYS_INLINE constexpr auto
-    operator>=,
-    (lhs, veg::tuple<Ts...> const&),
-    (rhs, veg::tuple<Us...> const&))
-noexcept -> bool {
-  return !cmp_impl<sizeof...(Ts) != 0>::apply(
-      &cmp_less,
-      &storage::as_lvalue(internal::tuple::get_inner(
-          veg::tuple<meta::remove_cvref_t<Ts> const&...>(lhs))),
-      &storage::as_lvalue(internal::tuple::get_inner(
-          veg::tuple<meta::remove_cvref_t<Us> const&...>(rhs))));
-}
-
-VEG_TEMPLATE(
-    (typename... Ts, typename... Us),
-    requires __VEG_ALL_OF((meta::partially_ordered_with<Us, Ts>::value)),
-    HEDLEY_ALWAYS_INLINE constexpr auto
-    operator>,
-    (lhs, veg::tuple<Ts...> const&),
-    (rhs, veg::tuple<Us...> const&))
-noexcept -> bool {
-  return cmp_impl<sizeof...(Ts) != 0>::apply(
-      &cmp_less,
-      &storage::as_lvalue(internal::tuple::get_inner(
-          veg::tuple<meta::remove_cvref_t<Us> const&...>(rhs))),
-      &storage::as_lvalue(internal::tuple::get_inner(
-          veg::tuple<meta::remove_cvref_t<Ts> const&...>(lhs))));
-}
-VEG_TEMPLATE(
-    (typename... Ts, typename... Us),
-    requires __VEG_ALL_OF((meta::partially_ordered_with<Us, Ts>::value)),
-    HEDLEY_ALWAYS_INLINE constexpr auto
-    operator<=,
-    (lhs, veg::tuple<Ts...> const&),
-    (rhs, veg::tuple<Us...> const&))
-noexcept -> bool {
-  return !cmp_impl<sizeof...(Ts) != 0>::apply(
-      &cmp_less,
-      &storage::as_lvalue(internal::tuple::get_inner(
-          veg::tuple<meta::remove_cvref_t<Us> const&...>(rhs))),
-      &storage::as_lvalue(internal::tuple::get_inner(
-          veg::tuple<meta::remove_cvref_t<Ts> const&...>(lhs))));
+  return !cmp_impl::apply(tuple::get_inner(lhs), tuple::get_inner(rhs));
 }
 
 } // namespace adl
@@ -513,7 +444,7 @@ struct tuple_ctor_base : veg::internal::tuple::adl::tuple_base<Ts...> {
           static_cast<std::integral_constant<
               meta::category_e,
               meta::category_e::ref_mov>*>(nullptr),
-          VEG_FWD(tup).m_impl){})
+          tuple::get_inner(VEG_FWD(tup))){})
 
   VEG_TEMPLATE_EXPLICIT(
       !__VEG_ALL_OF(meta::convertible_to<Ts, Us&>::value),
@@ -529,7 +460,7 @@ struct tuple_ctor_base : veg::internal::tuple::adl::tuple_base<Ts...> {
           static_cast<std::integral_constant<
               meta::category_e,
               meta::category_e::ref_mut>*>(nullptr),
-          VEG_FWD(tup).m_impl){})
+          tuple::get_inner(VEG_FWD(tup))){})
 
   VEG_TEMPLATE_EXPLICIT(
       !__VEG_ALL_OF(meta::convertible_to<Ts, Us const&>::value),
@@ -544,21 +475,13 @@ struct tuple_ctor_base : veg::internal::tuple::adl::tuple_base<Ts...> {
           static_cast<
               std::integral_constant<meta::category_e, meta::category_e::ref>*>(
               nullptr),
-          VEG_FWD(tup).m_impl){})
+          tuple::get_inner(VEG_FWD(tup))){})
 
   __VEG_DEFAULTS(tuple_ctor_base);
 
+private:
   internal::tuple::tuple_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>
       m_impl;
-  template <bool Const_Self_Assign, typename... Us>
-  friend struct tuple_assignment_base_copy;
-  template <bool Const_Self_Assign, typename... Us>
-  friend struct tuple_assignment_base_move;
-  template <typename... Us>
-  friend struct veg::tuple;
-  template <bool, typename...>
-  friend struct tuple_ctor_base;
-  friend struct impl<false>;
 
   template <typename T>
   friend auto constexpr internal::tuple::get_inner(T&& tup) noexcept
@@ -578,16 +501,8 @@ struct tuple_ctor_base<true> : veg::internal::tuple::adl::tuple_base<> {
 
   __VEG_DEFAULTS(tuple_ctor_base);
 
+private:
   internal::tuple::tuple_impl<meta::index_sequence<>> m_impl;
-  template <bool Const_Self_Assign, typename... Us>
-  friend struct tuple_assignment_base_copy;
-  template <bool Const_Self_Assign, typename... Us>
-  friend struct tuple_assignment_base_move;
-  template <typename... Us>
-  friend struct veg::tuple;
-  template <bool, typename...>
-  friend struct tuple_ctor_base;
-  friend struct impl<false>;
 
   template <typename T>
   friend auto constexpr internal::tuple::get_inner(T&& tup) noexcept
@@ -622,7 +537,7 @@ struct tuple_ctor_base<false, Ts...>
           static_cast<std::integral_constant<
               meta::category_e,
               meta::category_e::ref_mov>*>(nullptr),
-          VEG_FWD(tup).m_impl){})
+          tuple::get_inner(VEG_FWD(tup))){})
 
   VEG_TEMPLATE_EXPLICIT(
       !__VEG_ALL_OF(meta::convertible_to<Ts, Us&>::value),
@@ -638,7 +553,7 @@ struct tuple_ctor_base<false, Ts...>
           static_cast<std::integral_constant<
               meta::category_e,
               meta::category_e::ref_mut>*>(nullptr),
-          VEG_FWD(tup).m_impl){})
+          tuple::get_inner(VEG_FWD(tup))){})
 
   VEG_TEMPLATE_EXPLICIT(
       !__VEG_ALL_OF(meta::convertible_to<Ts, Us const&>::value),
@@ -653,22 +568,13 @@ struct tuple_ctor_base<false, Ts...>
           static_cast<
               std::integral_constant<meta::category_e, meta::category_e::ref>*>(
               nullptr),
-          VEG_FWD(tup).m_impl){})
+          tuple::get_inner(VEG_FWD(tup))){})
 
   __VEG_DEFAULTS(tuple_ctor_base);
 
+private:
   internal::tuple::tuple_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>
       m_impl;
-
-  template <bool Const_Self_Assign, typename... Us>
-  friend struct tuple_assignment_base_copy;
-  template <bool Const_Self_Assign, typename... Us>
-  friend struct tuple_assignment_base_move;
-  template <typename... Us>
-  friend struct veg::tuple;
-  template <bool, typename...>
-  friend struct tuple_ctor_base;
-  friend struct impl<false>;
 
   template <typename T>
   friend auto constexpr internal::tuple::get_inner(T&& tup) noexcept
@@ -740,26 +646,22 @@ struct tuple : internal::tuple::tuple_ctor_base<
 
   VEG_TEMPLATE(
       (typename... Us),
-      requires __VEG_ALL_OF(
-          meta::assignable<Ts&, meta::remove_cvref_t<Us> const&>::value),
+      requires __VEG_ALL_OF(meta::assignable<Ts&, Us const&>::value),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator=,
       (rhs, veg::tuple<Us...> const&)) &
 
       noexcept(meta::all_of(
-          {meta::nothrow_assignable<Ts&, meta::remove_cvref_t<Us> const&>::
-               value...})) -> tuple& {
+          {meta::nothrow_assignable<Ts&, Us const&>::value...})) -> tuple& {
 
     internal::tuple::binop_apply<
         internal::tuple::assign_ftor,
-        meta::all_of(
-            {meta::nothrow_assignable<Ts&, meta::remove_cvref_t<Us> const&>::
-                 value...})>(
+        meta::all_of({meta::nothrow_assignable<Ts&, Us const&>::value...})>(
 
         static_cast<tuple<Ts&...>*>(nullptr),
-        static_cast<tuple<meta::remove_cvref_t<Us> const&...>*>(nullptr),
-        this->m_impl,
-        rhs.m_impl
+        static_cast<tuple<Us const&...>*>(nullptr),
+        internal::tuple::get_inner(*this),
+        internal::tuple::get_inner(rhs)
 
     );
 
@@ -782,8 +684,8 @@ struct tuple : internal::tuple::tuple_ctor_base<
 
         static_cast<tuple<Ts&...>*>(nullptr),
         static_cast<tuple<Us&&...>*>(nullptr),
-        this->m_impl,
-        rhs.m_impl
+        internal::tuple::get_inner(*this),
+        internal::tuple::get_inner(rhs)
 
     );
 
@@ -792,26 +694,22 @@ struct tuple : internal::tuple::tuple_ctor_base<
 
   VEG_TEMPLATE(
       (typename... Us),
-      requires __VEG_ALL_OF(
-          meta::assignable<Ts&&, meta::remove_cvref_t<Us> const&>::value),
+      requires __VEG_ALL_OF(meta::assignable<Ts&&, Us const&>::value),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator=,
       (rhs, veg::tuple<Us...> const&)) &&
 
       noexcept(meta::all_of(
-          {meta::nothrow_assignable<Ts&&, meta::remove_cvref_t<Us> const&>::
-               value...})) -> tuple&& {
+          {meta::nothrow_assignable<Ts&&, Us const&>::value...})) -> tuple&& {
 
     internal::tuple::binop_apply<
         internal::tuple::assign_ftor,
-        meta::all_of(
-            {meta::nothrow_assignable<Ts&&, meta::remove_cvref_t<Us> const&>::
-                 value...})>(
+        meta::all_of({meta::nothrow_assignable<Ts&&, Us const&>::value...})>(
 
         static_cast<tuple<Ts&&...>*>(nullptr),
-        static_cast<tuple<meta::remove_cvref_t<Us> const&...>*>(nullptr),
-        this->m_impl,
-        rhs.m_impl
+        static_cast<tuple<Us const&...>*>(nullptr),
+        internal::tuple::get_inner(*this),
+        internal::tuple::get_inner(rhs)
 
     );
 
@@ -834,8 +732,8 @@ struct tuple : internal::tuple::tuple_ctor_base<
 
         static_cast<tuple<Ts&&...>*>(nullptr),
         static_cast<tuple<Us&&...>*>(nullptr),
-        this->m_impl,
-        rhs.m_impl
+        internal::tuple::get_inner(*this),
+        internal::tuple::get_inner(rhs)
 
     );
 
@@ -844,28 +742,25 @@ struct tuple : internal::tuple::tuple_ctor_base<
 
   VEG_TEMPLATE(
       (typename... Us),
-      requires __VEG_ALL_OF(
-          meta::assignable<Ts const&, meta::remove_cvref_t<Us> const&>::value),
+      requires __VEG_ALL_OF(meta::assignable<Ts const&, Us const&>::value),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator=,
       (rhs, veg::tuple<Us...> const&))
   const&
 
-      noexcept(meta::all_of({meta::nothrow_assignable<
-                   Ts const&,
-                   meta::remove_cvref_t<Us> const&>::value...}))
+      noexcept(meta::all_of(
+                   {meta::nothrow_assignable<Ts const&, Us const&>::value...}))
           ->tuple const& {
 
     internal::tuple::binop_apply<
         internal::tuple::assign_ftor,
-        meta::all_of({meta::nothrow_assignable<
-            Ts const&,
-            meta::remove_cvref_t<Us> const&>::value...})>(
+        meta::all_of(
+            {meta::nothrow_assignable<Ts const&, Us const&>::value...})>(
 
         static_cast<tuple<Ts const&...>*>(nullptr),
-        static_cast<tuple<meta::remove_cvref_t<Us> const&...>*>(nullptr),
-        this->m_impl,
-        rhs.m_impl
+        static_cast<tuple<Us const&...>*>(nullptr),
+        internal::tuple::get_inner(*this),
+        internal::tuple::get_inner(rhs)
 
     );
 
@@ -890,8 +785,8 @@ struct tuple : internal::tuple::tuple_ctor_base<
 
         static_cast<tuple<Ts&...>*>(nullptr),
         static_cast<tuple<Us&&...>*>(nullptr),
-        this->m_impl,
-        rhs.m_impl
+        internal::tuple::get_inner(*this),
+        internal::tuple::get_inner(rhs)
 
     );
 
@@ -915,7 +810,7 @@ struct tuple : internal::tuple::tuple_ctor_base<
         meta::make_index_sequence<sizeof...(Ts)>{});
   }
 
-  // private:
+private:
   template <typename... Us, usize... Is>
   static constexpr auto HEDLEY_ALWAYS_INLINE as_ref_impl(
       tuple<Ts...> const& self, meta::index_sequence<Is...> /*seq*/) noexcept
@@ -924,13 +819,12 @@ struct tuple : internal::tuple::tuple_ctor_base<
         elems,
 
         const_cast<Us> /* NOLINT */ (
-            static_cast<internal::tuple::tuple_leaf<Is, Ts> const&>(self.m_impl)
+            static_cast<internal::tuple::tuple_leaf<Is, Ts> const&>(
+                internal::tuple::get_inner(self))
                 .inner)
 
             ...};
   }
-
-  friend struct internal::tuple::impl<false>;
 };
 
 __VEG_CPP17(template <typename... Ts> tuple(Ts...) -> tuple<Ts...>;)

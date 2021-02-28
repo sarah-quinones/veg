@@ -6,8 +6,7 @@
 #define MOV VEG_MOV
 
 TEST(tuple, all) {
-  using namespace veg::literals;
-  using veg::get;
+  using namespace veg;
 
   veg::tuple<int, char, bool> tup{1, 'c', true};
   veg::tuple<int const, char const, bool> tup_c{1, 'c', true};
@@ -189,6 +188,13 @@ TEST(tuple, all) {
   ASSERT_SAME(decltype((b)), bool&);
   ASSERT_SAME(decltype(tup_deduce), veg::tuple<int, char, bool>);
 #endif
+
+  static_assert(tuple<int>{1} == tuple<int>{1});
+  static_assert(tuple<int>{1} == tuple<float>{1});
+  static_assert(tuple<int>{1} != tuple<float>{2});
+  static_assert(tuple<int, float>{1, 2.0F} == tuple<float, int>{1.0F, 2});
+  static_assert(tuple<int, float>{1, 2.0F} == tuple<float, int>{1.0F, 2});
+  static_assert(tuple<int, float>{1, 2.0F} != tuple<float, int>{2.0F, 2});
 }
 
 TEST(tuple, nested) {
@@ -208,6 +214,7 @@ TEST(tuple, empty) {
   tuple<> t1;
   tuple<> t2(inplace);
   EXPECT_EQ(t1, t2);
+  static_assert(tuple<>{} == tuple<>{});
 }
 
 TEST(tuple, cvt) {
