@@ -226,14 +226,14 @@
     cond, tparams, requirement, attr_name, args, ...)                          \
   VEG_TEMPLATE(                                                                \
       (__VEG_PP_REMOVE_PAREN tparams,                                          \
-       ::veg::meta::enable_if_t<(cond), int*> = nullptr),                      \
+       ::veg::meta::enable_if_t<(cond), int> = 0),                             \
       requirement,                                                             \
       explicit attr_name,                                                      \
       __VEG_PP_REMOVE_PAREN(args))                                             \
   __VA_ARGS__                                                                  \
   VEG_TEMPLATE(                                                                \
       (__VEG_PP_REMOVE_PAREN tparams,                                          \
-       ::veg::meta::enable_if_t<!(cond), unsigned*> = nullptr),                \
+       ::veg::meta::enable_if_t<!(cond), unsigned> = 0),                       \
       requirement,                                                             \
       attr_name,                                                               \
       __VEG_PP_REMOVE_PAREN(args))                                             \
