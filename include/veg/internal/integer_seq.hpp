@@ -7,13 +7,12 @@ namespace veg {
 namespace meta {
 using usize = decltype(sizeof(int));
 
+namespace internal {
 template <typename T, T... Nums>
 struct integer_sequence {
   using value_type = T;
   static constexpr auto size() noexcept -> usize { return sizeof...(Nums); }
 };
-template <usize... Nums>
-using index_sequence = integer_sequence<usize, Nums...>;
 
 #if __VEG_HAS_BUILTIN(__make_integer_seq)
 
@@ -82,6 +81,15 @@ using make_integer_sequence =
 
 template <usize N>
 using make_index_sequence = make_integer_sequence<usize, N>;
+} // namespace internal
+
+template <usize N>
+using make_index_sequence = internal::make_integer_sequence<usize, N>*;
+
+template <typename T, T... Nums>
+using integer_sequence = internal::integer_sequence<T, Nums...>*;
+template <usize... Nums>
+using index_sequence = integer_sequence<usize, Nums...>;
 
 } // namespace meta
 } // namespace veg
