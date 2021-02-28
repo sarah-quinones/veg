@@ -99,9 +99,7 @@ struct ref_base {
   }
 };
 
-template <
-    typename T,
-    bool = meta::assignable<T, meta::remove_cvref_t<T> const&>::value>
+template <typename T, bool = meta::assignable<T, T const&>::value>
 struct copy_ref_base : ref_base<T> {
   using ref_base<T>::ref_base;
   using ref_base<T>::inner;
@@ -111,8 +109,7 @@ struct copy_ref_base : ref_base<T> {
   __VEG_CPP14(constexpr)
   auto
   operator= /* NOLINT(cert-oop54-cpp) */(copy_ref_base const& rhs) & noexcept(
-      meta::nothrow_assignable<T, meta::remove_cvref_t<T> const&>::value)
-      -> copy_ref_base& {
+      meta::nothrow_assignable<T, T const&>::value) -> copy_ref_base& {
     auto const& rhs_c = rhs;
     inner = rhs_c.inner;
   }
