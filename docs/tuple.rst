@@ -71,7 +71,7 @@ tuple
         | converting lvalue constructor: each member is initialized from the
           corresponding member of the tuple parameter
           ``Ti(tup.elem_i)``
-        | viable if `constructible<Ti, Ui&>
+        | viable if `constructible<Ti, Ui&> && !constructible<Ti, Ui const&>
           <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for all
           `i`
         | ``explicit`` if `convertible_to<Ti, Ui&>
@@ -116,9 +116,9 @@ tuple
                         constexpr auto operator=(tuple<Us...> const& tup) & noexcept(conditionally) -> tuple&;
 
         | assignment operator: assigns to each member ``elem_i = tup.elem_i``
-        | viable if `assignable<Ti&, Ui const&>
+        | viable if `assignable<Ti&, remove_cvref_t<Ui> const&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all `i`
-        | ``noexcept`` if `nothrow_assignable<Ti&, Ui const&>
+        | ``noexcept`` if `nothrow_assignable<Ti&, remove_cvref_t<Ui> const&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
 
       .. cpp:function:: template <typename... Us>\
@@ -162,9 +162,9 @@ tuple
                         constexpr auto operator=(tuple<Us...> const& tup) const& noexcept(conditionally) -> tuple const&;
 
         | proxy assignment operator: assigns to each member ``elem_i = tup.elem_i``
-        | viable if `assignable<Ti const&, Ui const&>
+        | viable if `assignable<Ti const&, remove_cvref_t<Ui> const&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all `i`
-        | ``noexcept`` if `nothrow_assignable<Ti const&, Ui const&>
+        | ``noexcept`` if `nothrow_assignable<Ti const&, remove_cvref_t<Ui> const&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
 
       .. cpp:function:: template <typename... Us>\
@@ -199,9 +199,9 @@ tuple
                         constexpr auto operator=(tuple<Us...> const& tup) && noexcept(conditionally) -> tuple&&;
 
         | proxy assignment operator: assigns to each member ``elem_i = tup.elem_i``
-        | viable if `assignable<Ti&&, Ui const&>
+        | viable if `assignable<Ti&&, remove_cvref_t<Ui> const&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all `i`
-        | ``noexcept`` if `nothrow_assignable<Ti&&, Ui const&>
+        | ``noexcept`` if `nothrow_assignable<Ti&&, remove_cvref_t<Ui> const&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
 
       .. cpp:function:: template <typename... Us>\
