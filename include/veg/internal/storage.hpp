@@ -155,7 +155,7 @@ struct storage<T&&, false> : move_ref_base<T&&> {
 };
 
 template <typename T>
-HEDLEY_ALWAYS_INLINE auto as_lvalue(T&& arg) noexcept -> T& {
+HEDLEY_ALWAYS_INLINE constexpr auto as_lvalue(T&& arg) noexcept -> T& {
   return arg;
 }
 struct null_key {};
