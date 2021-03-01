@@ -51,9 +51,11 @@ struct byte_str_static_const {
   static constexpr T value = {"", 0};
 };
 template <typename T>
-constexpr T byte_str_static_const<T>::value; // NOLINT(readability-redundant-declaration)
-namespace {
-constexpr auto const& empty_str = byte_str_static_const<char_string_ref>::value;
+constexpr T byte_str_static_const<
+    T>::value; // NOLINT(readability-redundant-declaration)
+namespace /* NOLINT */ {
+constexpr auto const& empty_str /* NOLINT */ =
+    byte_str_static_const<char_string_ref>::value;
 } // namespace
 
 } // namespace internal
