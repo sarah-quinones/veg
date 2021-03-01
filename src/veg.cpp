@@ -237,6 +237,7 @@ auto next_tk(char_string_ref& code_str, bool extended_char_set = false)
   TOKEN_RETURN(mutable, qual);
   TOKEN_RETURN(struct, qual);
   TOKEN_RETURN(typename, qual);
+  TOKEN_RETURN(template, qual);
 
   TOKEN_RETURN(static, keyword);
   TOKEN_RETURN(inline, keyword);
