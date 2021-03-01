@@ -21,7 +21,7 @@ struct trivially_swappable : meta::false_type {};
 template <typename... Ts>
 struct trivially_swappable<veg::tuple<Ts...>&, veg::tuple<Ts...>&>
     : meta::bool_constant<meta::all_of(
-          {!meta::reference<Ts>::value &&
+          {!__VEG_CONCEPT(meta::reference<Ts>) &&
            trivially_swappable<Ts&, Ts&>::value...})> {};
 template <typename... Ts>
 struct trivially_swappable<veg::tuple<Ts...> const&, veg::tuple<Ts...> const&>
@@ -32,12 +32,11 @@ struct trivially_swappable<veg::tuple<Ts...> const&, veg::tuple<Ts...> const&>
 
 namespace meta {
 template <typename... Ts>
-struct trivially_swappable<tuple<Ts...>&, tuple<Ts...>&>
+struct is_trivially_swappable<tuple<Ts...>&>
     : veg::internal::tuple::trivially_swappable<tuple<Ts...>&, tuple<Ts...>&> {
 };
 template <typename... Ts>
-struct trivially_swappable<tuple<Ts...> const&, tuple<Ts...> const&>
-    : false_type {};
+struct is_trivially_swappable<tuple<Ts...> const&> : false_type {};
 } // namespace meta
 
 namespace internal {
@@ -162,8 +161,8 @@ struct assign_ftor {
       L&& l,
       R&& r) noexcept(__VEG_CONCEPT(meta::nothrow_assignable<L&&, R&&>)) {
     assign_impl<
-        meta::arithmetic<meta::remove_cvref_t<L>>::value &&
-        meta::arithmetic<meta::remove_cvref_t<R>>::value>::
+        __VEG_CONCEPT(meta::arithmetic<meta::remove_cvref_t<L>>) &&
+        __VEG_CONCEPT(meta::arithmetic<meta::remove_cvref_t<R>>)>::
         apply(VEG_FWD(l), VEG_FWD(r));
   }
 };
@@ -220,28 +219,6 @@ struct cmp_impl {
     );
   }
 };
-
-template <usize... Is, typename... Ts, typename... Us>
-HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void assign_(
-    tuple_impl<meta::index_sequence<Is...>, Ts...>&& lhs,
-    tuple_impl<meta::index_sequence<Is...>, Us...>&&
-        rhs) noexcept(meta::
-                          all_of({__VEG_CONCEPT(
-                              meta::nothrow_assignable<Ts, Us>)...})) {
-  static_assert(meta::all_of({meta::reference<Ts>::value...}), "bug");
-  static_assert(meta::all_of({meta::reference<Us>::value...}), "bug");
-
-  (void)meta::internal::int_arr{
-      0,
-      (assign_impl<(                                            //
-           meta::arithmetic<meta::remove_cvref_t<Ts>>::value && //
-           meta::arithmetic<meta::remove_cvref_t<Us>>::value    //
-           )>::
-           apply(
-               static_cast<tuple_leaf<Is, Ts>&&>(lhs).get_mov_ref(),
-               static_cast<tuple_leaf<Is, Us>&&>(VEG_FWD(rhs)).get_mov_ref()),
-       0)...};
-}
 
 template <
     bool NoExcept,
@@ -319,10 +296,11 @@ template <
     meta::category_e CL,
     meta::category_e CR>
 struct tup_swappable<veg::tuple<Ts...>, veg::tuple<Us...>, CL, CR>
-    : meta::bool_constant<meta::all_of({meta::swappable< //
-          meta::apply_category_t<CL, Ts>,                //
-          meta::apply_category_t<CR, Us>                 //
-          >::value...})> {};
+    : meta::bool_constant<meta::all_of(
+          {__VEG_CONCEPT(meta::swappable<                //
+                         meta::apply_category_t<CL, Ts>, //
+                         meta::apply_category_t<CR, Us>  //
+                         >)...})> {};
 
 template <
     typename Tup_L,
@@ -361,19 +339,19 @@ __VEG_DEDUCE_RET(
 
 VEG_TEMPLATE(
     (typename Tup_Lhs, typename Tup_Rhs, int = 0),
-    requires(meta::disjunction<                            //
-             tuple::trivially_swappable<Tup_Lhs, Tup_Rhs>, //
-             tup_swappable<                                //
-                 meta::remove_cvref_t<Tup_Lhs>,            //
-                 meta::remove_cvref_t<Tup_Rhs>,            //
-                 meta::value_category<Tup_Lhs>::value,     //
-                 meta::value_category<Tup_Rhs>::value>     //
-             >::value),
+    requires(__VEG_CONCEPT(__VEG_DISJUNCTION(                             //
+        (__VEG_TO_CONCEPT(tuple::trivially_swappable<Tup_Lhs, Tup_Rhs>)), //
+        (__VEG_TO_CONCEPT(tup_swappable<                                  //
+                          meta::remove_cvref_t<Tup_Lhs>,                  //
+                          meta::remove_cvref_t<Tup_Rhs>,                  //
+                          meta::value_category<Tup_Lhs>::value,           //
+                          meta::value_category<Tup_Rhs>::value>))         //
+        ))),
     HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void swap,
     (ts, Tup_Lhs&&),
     (us, Tup_Rhs&&))
 noexcept(meta::disjunction<
-         meta::trivially_swappable<Tup_Lhs, Tup_Rhs>,
+         meta::is_trivially_swappable<Tup_Lhs>,
          nothrow_tup_swappable<
              meta::remove_cvref_t<Tup_Lhs>,
              meta::remove_cvref_t<Tup_Rhs>,
@@ -382,7 +360,7 @@ noexcept(meta::disjunction<
   return internal::tuple::
       impl<tuple::trivially_swappable<Tup_Lhs, Tup_Rhs>::value>::template apply<
           meta::disjunction<
-              meta::trivially_swappable<Tup_Lhs, Tup_Rhs>,
+              meta::is_trivially_swappable<Tup_Lhs>,
               nothrow_tup_swappable<
                   meta::remove_cvref_t<Tup_Lhs>,
                   meta::remove_cvref_t<Tup_Rhs>,
@@ -441,9 +419,9 @@ struct tuple_ctor_base : veg::internal::tuple::adl::tuple_base<Ts...> {
       : m_impl(internal::tuple::hidden_tag1{}, VEG_FWD(fns)...) {}
 
   VEG_TEMPLATE_EXPLICIT(
-      !__VEG_ALL_OF(meta::convertible_to<Us&&, Ts>::value),
+      !__VEG_ALL_OF(__VEG_CONCEPT(meta::convertible_to<Us&&, Ts>)),
       (typename... Us),
-      requires __VEG_ALL_OF(meta::constructible<Ts, Us&&>::value),
+      requires __VEG_ALL_OF(__VEG_CONCEPT(meta::constructible<Ts, Us&&>)),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
       ((tup, veg::tuple<Us...>&&)),
       noexcept(meta::all_of(
@@ -455,26 +433,27 @@ struct tuple_ctor_base : veg::internal::tuple::adl::tuple_base<Ts...> {
               meta::category_e::ref_mov>*>(nullptr),
           tuple::get_inner(VEG_FWD(tup))){})
 
-  VEG_TEMPLATE_EXPLICIT(!__VEG_ALL_OF(meta::convertible_to<Us&, Ts>::value),
-                        (typename... Us),
-                        requires __VEG_ALL_OF(
-                            (meta::constructible<Ts, Us&>::value &&
-                             !meta::constructible<Ts, Us const&>::value)),
-                        HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
-                        ((tup, veg::tuple<Us...>&)),
-                        noexcept(meta::all_of({__VEG_CONCEPT(
-                            meta::nothrow_constructible<Ts, Us&>)...}))
-                        : m_impl(
-                            hidden_tag2{},
-                            static_cast<std::integral_constant<
-                                meta::category_e,
-                                meta::category_e::ref_mut>*>(nullptr),
-                            tuple::get_inner(VEG_FWD(tup))){})
+  VEG_TEMPLATE_EXPLICIT(
+      !__VEG_ALL_OF(__VEG_CONCEPT(meta::convertible_to<Us&, Ts>)),
+      (typename... Us),
+      requires __VEG_ALL_OF(
+          (__VEG_CONCEPT(meta::constructible<Ts, Us&>) &&
+           !__VEG_CONCEPT(meta::constructible<Ts, Us const&>))),
+      HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
+      ((tup, veg::tuple<Us...>&)),
+      noexcept(meta::all_of(
+          {__VEG_CONCEPT(meta::nothrow_constructible<Ts, Us&>)...}))
+      : m_impl(
+          hidden_tag2{},
+          static_cast<std::integral_constant<
+              meta::category_e,
+              meta::category_e::ref_mut>*>(nullptr),
+          tuple::get_inner(VEG_FWD(tup))){})
 
   VEG_TEMPLATE_EXPLICIT(
-      !__VEG_ALL_OF(meta::convertible_to<Us const&, Ts>::value),
+      !__VEG_ALL_OF(__VEG_CONCEPT(meta::convertible_to<Us const&, Ts>)),
       (typename... Us),
-      requires __VEG_ALL_OF(meta::constructible<Ts, Us const&>::value),
+      requires __VEG_ALL_OF(__VEG_CONCEPT(meta::constructible<Ts, Us const&>)),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
       ((tup, veg::tuple<Us...> const&)),
       noexcept(meta::all_of(
@@ -535,9 +514,9 @@ struct tuple_ctor_base<false, Ts...>
       : m_impl(internal::tuple::hidden_tag1{}, VEG_FWD(fns)...) {}
 
   VEG_TEMPLATE_EXPLICIT(
-      !__VEG_ALL_OF(meta::convertible_to<Us&&, Ts>::value),
+      !__VEG_ALL_OF(__VEG_CONCEPT(meta::convertible_to<Us&&, Ts>)),
       (typename... Us),
-      requires __VEG_ALL_OF(meta::constructible<Ts, Us&&>::value),
+      requires __VEG_ALL_OF(__VEG_CONCEPT(meta::constructible<Ts, Us&&>)),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
       ((tup, veg::tuple<Us...>&&)),
       noexcept(meta::all_of(
@@ -549,26 +528,27 @@ struct tuple_ctor_base<false, Ts...>
               meta::category_e::ref_mov>*>(nullptr),
           tuple::get_inner(VEG_FWD(tup))){})
 
-  VEG_TEMPLATE_EXPLICIT(!__VEG_ALL_OF(meta::convertible_to<Us&, Ts>::value),
-                        (typename... Us),
-                        requires __VEG_ALL_OF(
-                            (meta::constructible<Ts, Us&>::value &&
-                             !meta::constructible<Ts, Us const&>::value)),
-                        HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
-                        ((tup, veg::tuple<Us...>&)),
-                        noexcept(meta::all_of({__VEG_CONCEPT(
-                            meta::nothrow_constructible<Ts, Us&>)...}))
-                        : m_impl(
-                            hidden_tag2{},
-                            static_cast<std::integral_constant<
-                                meta::category_e,
-                                meta::category_e::ref_mut>*>(nullptr),
-                            tuple::get_inner(VEG_FWD(tup))){})
+  VEG_TEMPLATE_EXPLICIT(
+      !__VEG_ALL_OF(__VEG_CONCEPT(meta::convertible_to<Us&, Ts>)),
+      (typename... Us),
+      requires __VEG_ALL_OF(
+          (__VEG_CONCEPT(meta::constructible<Ts, Us&>) &&
+           !__VEG_CONCEPT(meta::constructible<Ts, Us const&>))),
+      HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
+      ((tup, veg::tuple<Us...>&)),
+      noexcept(meta::all_of(
+          {__VEG_CONCEPT(meta::nothrow_constructible<Ts, Us&>)...}))
+      : m_impl(
+          hidden_tag2{},
+          static_cast<std::integral_constant<
+              meta::category_e,
+              meta::category_e::ref_mut>*>(nullptr),
+          tuple::get_inner(VEG_FWD(tup))){})
 
   VEG_TEMPLATE_EXPLICIT(
-      !__VEG_ALL_OF(meta::convertible_to<Us const&, Ts>::value),
+      !__VEG_ALL_OF(__VEG_CONCEPT(meta::convertible_to<Us const&, Ts>)),
       (typename... Us),
-      requires __VEG_ALL_OF(meta::constructible<Ts, Us const&>::value),
+      requires __VEG_ALL_OF(__VEG_CONCEPT(meta::constructible<Ts, Us const&>)),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
       ((tup, veg::tuple<Us...> const&)),
       noexcept(meta::all_of(
@@ -595,11 +575,12 @@ private:
 } // namespace internal
 
 template <typename... Ts>
-struct tuple : internal::tuple::tuple_ctor_base<
-                   meta::all_of({meta::move_constructible<Ts>::value...}),
-                   Ts...> {
+struct tuple
+    : internal::tuple::tuple_ctor_base<
+          meta::all_of({__VEG_CONCEPT(meta::move_constructible<Ts>)...}),
+          Ts...> {
   using base = internal::tuple::tuple_ctor_base<
-      meta::all_of({meta::move_constructible<Ts>::value...}),
+      meta::all_of({__VEG_CONCEPT(meta::move_constructible<Ts>)...}),
       Ts...>;
   using base::base;
   using base::operator=;
@@ -622,7 +603,7 @@ struct tuple : internal::tuple::tuple_ctor_base<
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator[],
       (/*arg*/, fix<I>)) &&
-      __VEG_CPP11_DECLTYPE_AUTO(
+      __VEG_DEDUCE_RET(
           internal::tuple::adl_get<I>(static_cast<tuple&&>(*this)));
 
   VEG_TEMPLATE(
@@ -631,7 +612,7 @@ struct tuple : internal::tuple::tuple_ctor_base<
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator[],
       (/*arg*/, fix<I>)) &
-      __VEG_CPP11_DECLTYPE_AUTO(internal::tuple::adl_get<I>(*this));
+      __VEG_DEDUCE_RET(internal::tuple::adl_get<I>(*this));
 
   VEG_TEMPLATE(
       (i64 I),
@@ -639,7 +620,7 @@ struct tuple : internal::tuple::tuple_ctor_base<
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator[],
       (/*arg*/, fix<I>))
-  const& __VEG_CPP11_DECLTYPE_AUTO(internal::tuple::adl_get<I>(*this));
+  const& __VEG_DEDUCE_RET(internal::tuple::adl_get<I>(*this));
 
   template <typename... Us>
   void operator=(internal::tuple::adl::tuple_base<Us...>&&) const& = delete;

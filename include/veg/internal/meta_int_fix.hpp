@@ -86,8 +86,8 @@ struct is_fix<int_c::fix<N>> : std::true_type {};
 } // namespace internal
 
 template <typename T>
-using meta_int =
-    bool_constant<__VEG_SAME_AS(T, int_c::dyn) || internal::is_fix<T>::value>;
+__VEG_DEF_CONCEPT(
+    meta_int, __VEG_SAME_AS(T, int_c::dyn) || internal::is_fix<T>::value);
 
 } // namespace meta
 

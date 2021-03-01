@@ -229,7 +229,7 @@ __VEG_ODR_VAR(slice, fn::slice);
 
 namespace meta {
 template <typename T>
-struct mostly_trivial<slice<T>> : bool_constant<true> {};
+struct is_mostly_trivial<slice<T>> : bool_constant<true> {};
 } // namespace meta
 } // namespace veg
 

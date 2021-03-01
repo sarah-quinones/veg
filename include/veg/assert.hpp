@@ -63,13 +63,13 @@ auto to_string_primitive(T arg) -> assert::internal::string;
 
 template <typename T>
 using cast_up = meta::conditional_t<
-    meta::pointer<T>::value, //
-    void const volatile*,    //
+    __VEG_CONCEPT(meta::pointer<T>), //
+    void const volatile*,            //
     meta::conditional_t<
-        meta::floating_point<T>::value,
+        __VEG_CONCEPT(meta::floating_point<T>),
         long double,
         meta::conditional_t<
-            meta::signed_integral<T>::value,
+            __VEG_CONCEPT(meta::signed_integral<T>),
             signed long long,
             unsigned long long>>>;
 
@@ -83,10 +83,10 @@ struct default_impl_print_ {
 };
 
 template <typename T>
-struct is_ptr_non_fn : meta::bool_constant<(
-                           meta::pointer<T>::value &&
-                           !meta::function<meta::remove_pointer_t<T>>::value)> {
-};
+struct is_ptr_non_fn
+    : meta::bool_constant<(
+          __VEG_CONCEPT(meta::pointer<T>) &&
+          !__VEG_CONCEPT(meta::function<meta::remove_pointer_t<T>>))> {};
 
 template <typename T>
 struct default_impl_printable
@@ -121,7 +121,7 @@ struct boolish_print_ {
   }
 };
 template <typename T>
-struct boolish_printable : meta::constructible<bool, T>, boolish_print_ {};
+struct boolish_printable : std::is_constructible<bool, T>, boolish_print_ {};
 
 struct unprintable_print_ {
   template <typename T>

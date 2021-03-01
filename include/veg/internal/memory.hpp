@@ -84,10 +84,14 @@ struct ctor {
 };
 
 template <typename T, typename... Args>
-struct uniform_constructible : meta::uniform_init_constructible<T, Args&&...>,
-                               uniform_init_ctor {};
+struct uniform_constructible
+    : meta::bool_constant<__VEG_CONCEPT(
+          meta::uniform_init_constructible<T, Args&&...>)>,
+      uniform_init_ctor {};
 template <typename T, typename... Args>
-struct constructible : meta::constructible<T, Args&&...>, ctor {};
+struct constructible
+    : meta::bool_constant<__VEG_CONCEPT(meta::constructible<T, Args&&...>)>,
+      ctor {};
 
 template <typename T, typename... Args>
 struct ctor_at_impl : meta::disjunction<
@@ -112,9 +116,9 @@ struct construct_at {
       (typename T, typename... Args),
       requires(
           !__VEG_CONCEPT(meta::const_<T>) &&
-          meta::disjunction<
-              meta::constructible<T, Args&&...>,
-              meta::uniform_init_constructible<T, Args&&...>>::value),
+          __VEG_CONCEPT(__VEG_DISJUNCTION(
+              (meta::constructible<T, Args&&...>),
+              (meta::uniform_init_constructible<T, Args&&...>)))),
       HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) auto
       operator(),
       (mem, T*),
@@ -306,13 +310,13 @@ struct relocate_n {
 
     namespace impl = internal::_reloc;
     impl::reloc_impl<
-        meta::trivially_relocatable<T>::value            //
-            ? impl::which::trivial                       //
-            : meta::nothrow_move_constructible<T>::value //
-                  ? impl::which::nothrow_move            //
-                  : meta::copy_constructible<T>::value   //
-                        ? impl::which::copy              //
-                        : impl::which::throw_move        //
+        __VEG_CONCEPT(meta::trivially_relocatable<T>)            //
+            ? impl::which::trivial                               //
+            : __VEG_CONCEPT(meta::nothrow_move_constructible<T>) //
+                  ? impl::which::nothrow_move                    //
+                  : __VEG_CONCEPT(meta::copy_constructible<T>)   //
+                        ? impl::which::copy                      //
+                        : impl::which::throw_move                //
         >::apply(dest, src, n);
   }
 };

@@ -75,12 +75,12 @@ __VEG_ODR_VAR(elems, elems_t);
 } // namespace make
 namespace meta {
 template <typename... Ts>
-struct trivially_relocatable<tuple<Ts...>>
-    : bool_constant<all_of({trivially_relocatable<Ts>::value...})> {};
+struct is_trivially_relocatable<tuple<Ts...>>
+    : bool_constant<all_of({is_trivially_relocatable<Ts>::value...})> {};
 
 template <typename... Ts>
-struct mostly_trivial<tuple<Ts...>>
-    : bool_constant<all_of({mostly_trivial<Ts>::value...})> {};
+struct is_mostly_trivial<tuple<Ts...>>
+    : bool_constant<all_of({is_mostly_trivial<Ts>::value...})> {};
 } // namespace meta
 } // namespace veg
 

@@ -9,13 +9,13 @@ namespace veg {
 
 namespace meta {
 template <typename T>
-struct mostly_trivial<option<T>> : mostly_trivial<T> {};
+struct is_mostly_trivial<option<T>> : is_mostly_trivial<T> {};
 template <typename T>
-struct trivially_relocatable<option<T>> : trivially_relocatable<T> {};
+struct is_trivially_relocatable<option<T>> : is_trivially_relocatable<T> {};
 template <typename T>
-struct is_option : std::false_type {};
+struct is_option : false_type {};
 template <typename T>
-struct is_option<veg::option<T>> : std::true_type {};
+struct is_option<option<T>> : true_type {};
 
 template <typename T>
 struct option_inner {};
@@ -112,12 +112,12 @@ using kind_v = std::integral_constant<
     kind,
     ((meta::value_sentinel_for<storage::storage<T>>::value > 0) //
          ? has_sentinel
-         : ((meta::mostly_trivial<T>::value &&     //
-             meta::copy_assignable<T>::value &&    //
-             meta::move_assignable<T>::value &&    //
-             meta::constructible<T>::value &&      //
-             meta::copy_constructible<T>::value && //
-             meta::move_constructible<T>::value))
+         : ((__VEG_CONCEPT(meta::mostly_trivial<T>) &&     //
+             __VEG_CONCEPT(meta::copy_assignable<T>) &&    //
+             __VEG_CONCEPT(meta::move_assignable<T>) &&    //
+             __VEG_CONCEPT(meta::constructible<T>) &&      //
+             __VEG_CONCEPT(meta::copy_constructible<T>) && //
+             __VEG_CONCEPT(meta::move_constructible<T>)))
                ? trivial
                : non_trivial)>;
 
@@ -125,7 +125,7 @@ template <typename T, kind = kind_v<T>::value>
 // trivial
 struct option_storage_base {
   static_assert(
-      meta::trivially_copyable<T>::value,
+      __VEG_CONCEPT(meta::trivially_copyable<T>),
       "mostly_trivial is probably mis-defined");
 
   storage::storage<T> some = {};
@@ -189,10 +189,13 @@ template <typename T>
 struct option_storage_base<T, has_sentinel> {
   using sentinel_traits = meta::value_sentinel_for<storage::storage<T>>;
 
-  static_assert(meta::trivially_destructible<T>::value, "um");
-  static_assert(meta::trivially_copyable<storage::storage<T>>::value, "err");
-  static_assert(meta::move_constructible<storage::storage<T>>::value, "err");
-  static_assert(meta::move_assignable<storage::storage<T>>::value, "err");
+  static_assert(__VEG_CONCEPT(meta::trivially_destructible<T>), "um");
+  static_assert(
+      __VEG_CONCEPT(meta::trivially_copyable<storage::storage<T>>), "err");
+  static_assert(
+      __VEG_CONCEPT(meta::move_constructible<storage::storage<T>>), "err");
+  static_assert(
+      __VEG_CONCEPT(meta::move_assignable<storage::storage<T>>), "err");
 
   storage::storage<T> some = sentinel_traits::invalid(0);
 
@@ -253,7 +256,7 @@ struct option_storage_base<T, has_sentinel> {
   }
 };
 
-template <typename T, bool = meta::mostly_trivial<T>::value>
+template <typename T, bool = __VEG_CONCEPT(meta::mostly_trivial<T>)>
 struct option_storage_base_option_emplace {
   template <typename Fn>
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void _emplace(Fn&& fn) noexcept(
@@ -335,7 +338,7 @@ struct option_storage_base<option<T>, has_sentinel>
   }
 };
 
-template <typename T, bool = meta::trivially_destructible<T>::value>
+template <typename T, bool = __VEG_CONCEPT(meta::trivially_destructible<T>)>
 struct option_storage_nontrivial_base {
   union {
     unsigned char none = {};
@@ -475,9 +478,10 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
 
 template <
     typename T,
-    bool = (kind_v<T>::value != non_trivial) || meta::reference<T>::value ||
-           meta::trivially_copy_constructible<T>::value ||
-           !meta::constructible<T, T const&>::value>
+    bool = (kind_v<T>::value != non_trivial) ||
+           __VEG_CONCEPT(meta::reference<T>) ||
+           __VEG_CONCEPT(meta::trivially_copy_constructible<T>) ||
+           !__VEG_CONCEPT(meta::constructible<T, T const&>)>
 struct option_copy_ctor_base : option_storage_base<T> {
   using option_storage_base<T>::option_storage_base;
 };
@@ -504,9 +508,10 @@ struct option_copy_ctor_base<T, false> : option_storage_base<T> {
 
 template <
     typename T,
-    bool = (kind_v<T>::value != non_trivial) || meta::reference<T>::value ||
-           meta::trivially_move_constructible<T>::value ||
-           !meta::constructible<T, T&&>::value>
+    bool = (kind_v<T>::value != non_trivial) ||
+           __VEG_CONCEPT(meta::reference<T>) ||
+           __VEG_CONCEPT(meta::trivially_move_constructible<T>) ||
+           !__VEG_CONCEPT(meta::constructible<T, T&&>)>
 struct option_move_ctor_base : option_copy_ctor_base<T> {
   using option_copy_ctor_base<T>::option_copy_ctor_base;
 };
@@ -534,9 +539,10 @@ struct option_move_ctor_base<T, false> : option_copy_ctor_base<T> {
 
 template <
     typename T,
-    bool = (kind_v<T>::value != non_trivial) || meta::reference<T>::value ||
-           meta::trivially_copy_assignable<T>::value ||
-           !meta::assignable<T, T const&>::value>
+    bool = (kind_v<T>::value != non_trivial) ||
+           __VEG_CONCEPT(meta::reference<T>) ||
+           __VEG_CONCEPT(meta::trivially_copy_assignable<T>) ||
+           !__VEG_CONCEPT(meta::assignable<T, T const&>)>
 struct option_copy_assign_base : option_move_ctor_base<T> {
   using option_move_ctor_base<T>::option_move_ctor_base;
 };
@@ -573,9 +579,10 @@ struct option_copy_assign_base<T, false> : option_move_ctor_base<T> {
 
 template <
     typename T,
-    bool = (kind_v<T>::value != non_trivial) || meta::reference<T>::value ||
-           meta::trivially_move_assignable<T>::value ||
-           !meta::assignable<T, T&&>::value>
+    bool = (kind_v<T>::value != non_trivial) ||
+           __VEG_CONCEPT(meta::reference<T>) ||
+           __VEG_CONCEPT(meta::trivially_move_assignable<T>) ||
+           !__VEG_CONCEPT(meta::assignable<T, T&&>)>
 struct option_move_assign_base : option_copy_assign_base<T> {
   using option_copy_assign_base<T>::option_copy_assign_base;
 };
@@ -609,7 +616,7 @@ struct option_move_assign_base<T, false> : option_copy_assign_base<T> {
   }
 };
 
-template <typename T, bool = meta::move_constructible<T>::value>
+template <typename T, bool = __VEG_CONCEPT(meta::move_constructible<T>)>
 struct option_move_ctor_base2 : option_move_assign_base<T> {
   option_move_ctor_base2() = default;
   explicit __VEG_CPP14(constexpr) option_move_ctor_base2(T value) noexcept(
@@ -663,7 +670,7 @@ struct decay_fn {
   }
 };
 
-template <typename T, bool = meta::move_constructible<T>::value>
+template <typename T, bool = __VEG_CONCEPT(meta::move_constructible<T>)>
 struct option_move_interface_base {
   __VEG_CPP14(constexpr)
   auto clone() && noexcept(__VEG_CONCEPT(meta::nothrow_move_constructible<T>))
@@ -674,7 +681,8 @@ struct option_move_interface_base {
 
   VEG_NODISCARD
   __VEG_CPP14(constexpr)
-  auto take() noexcept(meta::move_constructible<T>::value) -> option<T> {
+  auto take() noexcept(__VEG_CONCEPT(meta::move_constructible<T>))
+      -> option<T> {
     auto& self = static_cast<option<T>&>(*this);
     if (self) {
       T val = static_cast<option<T>&&>(self)._get();
@@ -723,7 +731,7 @@ struct option_move_interface_base {
   }
 };
 
-template <typename T, bool = meta::copy_constructible<T>::value>
+template <typename T, bool = __VEG_CONCEPT(meta::copy_constructible<T>)>
 struct option_copy_interface_base {
 
   __VEG_CPP14(constexpr)
@@ -741,8 +749,8 @@ struct option_move_interface_base<T, false> {};
 
 template <
     typename T,
-    bool B1 = meta::copy_constructible<T>::value,
-    bool B2 = meta::move_constructible<T>::value>
+    bool B1 = __VEG_CONCEPT(meta::copy_constructible<T>),
+    bool B2 = __VEG_CONCEPT(meta::move_constructible<T>)>
 struct option_copymove_interface_base : option_copy_interface_base<T, B1>,
                                         option_move_interface_base<T, B2> {};
 
@@ -849,7 +857,7 @@ struct cmp_with_fn {
   }
 };
 
-template <typename T, bool = meta::equality_comparable_with<T, T>::value>
+template <typename T, bool = __VEG_CONCEPT(meta::equality_comparable_with<T, T>)>
 struct eq_cmp_base {
   VEG_NODISCARD HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto contains(
       meta::remove_cvref_t<T> const& val) const noexcept -> bool {

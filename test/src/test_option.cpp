@@ -131,8 +131,8 @@ TEST(option, all) {
     STATIC_ASSERT_IF_17(opt == some(1));
   }
   {
-    STATIC_ASSERT(meta::mostly_trivial<int>::value);
-    STATIC_ASSERT(meta::mostly_trivial<option<int>>::value);
+    STATIC_ASSERT(__VEG_CONCEPT(meta::mostly_trivial<int>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::mostly_trivial<option<int>>));
     __VEG_CPP17(constexpr)
     auto opt = [&] {
       option<option<int>> x;

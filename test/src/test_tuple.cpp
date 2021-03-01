@@ -15,60 +15,61 @@ TEST(tuple, all) {
       1, MOV(tup).as_ref()[1_c], 'c', fn::get<2>{}(tup), fn::get<2>{}(tup)};
 
   {
-    STATIC_ASSERT(veg::meta::trivially_relocatable<decltype(tup)>::value);
-    STATIC_ASSERT(veg::meta::trivially_copyable<decltype(tup)>::value);
+    STATIC_ASSERT(__VEG_CONCEPT(meta::trivially_relocatable<decltype(tup)>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::trivially_copyable<decltype(tup)>));
 
-    STATIC_ASSERT(veg::meta::trivially_copy_constructible<
-                  veg::tuple<int&, int const&>>::value);
-    STATIC_ASSERT(veg::meta::trivially_move_constructible<
-                  veg::tuple<int&, int const&>>::value);
+    STATIC_ASSERT(__VEG_CONCEPT(
+        meta::trivially_copy_constructible<veg::tuple<int&, int const&>>));
+    STATIC_ASSERT(__VEG_CONCEPT(
+        meta::trivially_move_constructible<veg::tuple<int&, int const&>>));
     STATIC_ASSERT(
-        !veg::meta::copy_assignable<veg::tuple<int&, int const&>>::value);
+        !__VEG_CONCEPT(meta::copy_assignable<veg::tuple<int&, int const&>>));
     STATIC_ASSERT(
-        !veg::meta::move_assignable<veg::tuple<int&, int const&>>::value);
+        !__VEG_CONCEPT(meta::move_assignable<veg::tuple<int&, int const&>>));
 
-    STATIC_ASSERT(!veg::meta::copy_assignable<veg::tuple<int&, float&>>::value);
     STATIC_ASSERT(
-        veg::meta::copy_assignable<veg::tuple<int&, float&> const>::value);
-    STATIC_ASSERT(veg::meta::assignable<
-                  veg::tuple<int&, float&> const&,
-                  veg::tuple<int&, float&>&&>::value);
-    STATIC_ASSERT(veg::meta::assignable<
-                  veg::tuple<int&, float&>&&,
-                  veg::tuple<int&, float&>&&>::value);
+        !__VEG_CONCEPT(meta::copy_assignable<veg::tuple<int&, float&>>));
+    STATIC_ASSERT(
+        __VEG_CONCEPT(meta::copy_assignable<veg::tuple<int&, float&> const>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::assignable<
+                                veg::tuple<int&, float&> const&,
+                                veg::tuple<int&, float&>&&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::assignable<
+                                veg::tuple<int&, float&>&&,
+                                veg::tuple<int&, float&>&&>));
 
-    STATIC_ASSERT(!veg::meta::copy_assignable<decltype(tup_ref)>::value);
-    STATIC_ASSERT(!veg::meta::move_assignable<decltype(tup_ref)>::value);
-    STATIC_ASSERT(!veg::meta::copy_constructible<decltype(tup_ref)>::value);
+    STATIC_ASSERT(!__VEG_CONCEPT(meta::copy_assignable<decltype(tup_ref)>));
+    STATIC_ASSERT(!__VEG_CONCEPT(meta::move_assignable<decltype(tup_ref)>));
+    STATIC_ASSERT(!__VEG_CONCEPT(meta::copy_constructible<decltype(tup_ref)>));
     STATIC_ASSERT(
-        veg::meta::trivially_move_constructible<decltype(tup_ref)>::value);
+        __VEG_CONCEPT(meta::trivially_move_constructible<decltype(tup_ref)>));
     STATIC_ASSERT(!std::is_copy_constructible<decltype(tup_ref)>::value);
     STATIC_ASSERT(std::is_copy_constructible<decltype(tup)>::value);
     STATIC_ASSERT(std::is_copy_constructible<veg::tuple<int&, bool&>>::value);
     using val_tup = veg::tuple<int, bool>;
     using ref_tup = veg::tuple<int&, bool&>;
 
-    STATIC_ASSERT(veg::meta::swappable<ref_tup&, ref_tup&>::value);
-    STATIC_ASSERT(veg::meta::swappable<ref_tup&, ref_tup const&>::value);
-    STATIC_ASSERT(veg::meta::swappable<ref_tup const&, ref_tup&>::value);
-    STATIC_ASSERT(veg::meta::swappable<ref_tup const&, ref_tup const&>::value);
-    STATIC_ASSERT(veg::meta::swappable<ref_tup&&, ref_tup&&>::value);
-    STATIC_ASSERT(veg::meta::nothrow_swappable<ref_tup&&, ref_tup&&>::value);
+    STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup&, ref_tup&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup&, ref_tup const&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup const&, ref_tup&>));
+    STATIC_ASSERT(
+        __VEG_CONCEPT(meta::swappable<ref_tup const&, ref_tup const&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup&&, ref_tup&&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::nothrow_swappable<ref_tup&&, ref_tup&&>));
 
-    STATIC_ASSERT(veg::meta::swappable<ref_tup const&, val_tup&>::value);
-    STATIC_ASSERT(veg::meta::swappable<val_tup&, val_tup&>::value);
-    STATIC_ASSERT(!veg::meta::swappable<val_tup&&, val_tup&&>::value);
-    STATIC_ASSERT(!veg::meta::swappable<val_tup&, val_tup&&>::value);
+    STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup const&, val_tup&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<val_tup&, val_tup&>));
+    STATIC_ASSERT(!__VEG_CONCEPT(meta::swappable<val_tup&&, val_tup&&>));
+    STATIC_ASSERT(!__VEG_CONCEPT(meta::swappable<val_tup&, val_tup&&>));
   }
   {
     using val_tup = veg::tuple<int, bool>;
     val_tup a{5, true};
     val_tup b{3, false};
     STATIC_ASSERT(
-        veg::meta::constructible<veg::tuple<long, bool>, val_tup>::value);
-    STATIC_ASSERT(
-        veg::meta::constructible<veg::tuple<long, bool>, val_tup const&>::
-            value);
+        __VEG_CONCEPT(meta::constructible<veg::tuple<long, bool>, val_tup>));
+    STATIC_ASSERT(__VEG_CONCEPT(
+        meta::constructible<veg::tuple<long, bool>, val_tup const&>));
 
     veg::swap(a, b);
     EXPECT_EQ(a[0_c], 3);
@@ -95,19 +96,20 @@ TEST(tuple, all) {
     EXPECT_EQ(i, 13);
     EXPECT_EQ(j[0_c], 13);
 
-    STATIC_ASSERT(veg::meta::assignable<ref_tup const&, ref_tup const&>::value);
+    STATIC_ASSERT(
+        __VEG_CONCEPT(meta::assignable<ref_tup const&, ref_tup const&>));
   }
 
   {
     using ref_tup = veg::tuple<int&>;
     using rref_tup = veg::tuple<int&&>;
-    STATIC_ASSERT(veg::meta::trivially_copyable<ref_tup>::value);
-    STATIC_ASSERT(veg::meta::trivially_copyable<rref_tup>::value);
-    STATIC_ASSERT(veg::meta::constructible<ref_tup, ref_tup>::value);
-    STATIC_ASSERT(veg::meta::constructible<ref_tup, ref_tup&>::value);
-    STATIC_ASSERT(veg::meta::constructible<ref_tup, rref_tup&>::value);
-    STATIC_ASSERT(veg::meta::constructible<ref_tup, rref_tup const&>::value);
-    STATIC_ASSERT(!veg::meta::constructible<ref_tup, rref_tup&&>::value);
+    STATIC_ASSERT(__VEG_CONCEPT(meta::trivially_copyable<ref_tup>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::trivially_copyable<rref_tup>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::constructible<ref_tup, ref_tup>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::constructible<ref_tup, ref_tup&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::constructible<ref_tup, rref_tup&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::constructible<ref_tup, rref_tup const&>));
+    STATIC_ASSERT(!__VEG_CONCEPT(meta::constructible<ref_tup, rref_tup&&>));
     int i = 13;
     int j = 12;
     ref_tup a{i};
@@ -124,7 +126,8 @@ TEST(tuple, all) {
     EXPECT_EQ(i, 13);
     EXPECT_EQ(j, 13);
 
-    STATIC_ASSERT(veg::meta::assignable<ref_tup const&, ref_tup const&>::value);
+    STATIC_ASSERT(
+        __VEG_CONCEPT(meta::assignable<ref_tup const&, ref_tup const&>));
   }
 
   EXPECT_EQ(tup[0_c], 1);

@@ -228,7 +228,7 @@ struct get_inner<meta::category_e::own> {
     get_type(Indexed<I, T> const& arg) noexcept -> T;
     VEG_TEMPLATE(
         (Idx I, typename T),
-        requires meta::move_constructible<T>::value,
+        requires __VEG_CONCEPT(meta::move_constructible<T>),
         HEDLEY_ALWAYS_INLINE static constexpr auto apply,
         (arg, Indexed<I, T>&&))
     noexcept(__VEG_CONCEPT(meta::nothrow_move_constructible<T>)) -> T {

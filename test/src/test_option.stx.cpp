@@ -79,14 +79,14 @@ auto make_mv() -> MoveOnly<id> {
 
 struct NotEq {};
 
-STATIC_ASSERT(meta::swappable<MoveOnly<0>&, MoveOnly<0>&>::value);
-STATIC_ASSERT(meta::equality_comparable_with<MoveOnly<0>, MoveOnly<0>>::value);
-STATIC_ASSERT(meta::equality_comparable_with<
-              option<MoveOnly<0>>,
-              option<MoveOnly<0>>>::value);
-STATIC_ASSERT(!meta::equality_comparable_with<NotEq, NotEq>::value);
+STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<MoveOnly<0>&, MoveOnly<0>&>));
 STATIC_ASSERT(
-    !meta::equality_comparable_with<option<NotEq>, option<NotEq>>::value);
+    __VEG_CONCEPT(meta::equality_comparable_with<MoveOnly<0>, MoveOnly<0>>));
+STATIC_ASSERT(__VEG_CONCEPT(
+    meta::equality_comparable_with<option<MoveOnly<0>>, option<MoveOnly<0>>>));
+STATIC_ASSERT(!__VEG_CONCEPT(meta::equality_comparable_with<NotEq, NotEq>));
+STATIC_ASSERT(!__VEG_CONCEPT(
+    meta::equality_comparable_with<option<NotEq>, option<NotEq>>));
 
 struct FnMut {
   int call_times{};
