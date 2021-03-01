@@ -113,7 +113,7 @@ struct copy_ref_base : ref_base<T> {
     auto const& rhs_c = rhs;
     inner = rhs_c.inner;
   }
-  auto operator=(copy_ref_base&& rhs) & = delete;
+  auto operator=(copy_ref_base&& rhs) & -> copy_ref_base& = delete;
 };
 template <typename T>
 struct copy_ref_base<T, false> : ref_base<T> {

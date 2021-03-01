@@ -6,7 +6,7 @@
 
 /******************************************************************************/
 #define __VEG_IMPL_BIND(r, Tuple, Index, Identifier)                           \
-  auto&& Identifier = ::veg::get<Index>(VEG_FWD(Tuple));
+  auto&& Identifier = ::veg::fn::get<Index>{}(VEG_FWD(Tuple));
 
 #define __VEG_IMPL_BIND_ID_SEQ(CV_Auto, Identifiers, Tuple, SeqSize, TupleId)  \
   CV_Auto TupleId = Tuple;                                                     \

@@ -13,6 +13,23 @@
   auto operator= /* NOLINT */(class_name&&)&->class_name& = default;           \
   auto operator=(class_name const&)&->class_name& = default
 
+#if defined(VEG_ENABLE_CPP14_EXTENSIONS) || defined(__clang__) ||              \
+    __cplusplus >= 201403L
+
+#if HEDLEY_HAS_WARNING("-Wc++14-extensions")
+#define __VEG_IGNORE_CPP14_EXTENSION_WARNING(...)                              \
+  HEDLEY_DIAGNOSTIC_PUSH                                                       \
+  HEDLEY_PRAGMA(clang diagnostic ignored "-Wc++14-extensions")                 \
+  __VA_ARGS__                                                                  \
+  HEDLEY_DIAGNOSTIC_POP
+#else
+#define __VEG_IGNORE_CPP14_EXTENSION_WARNING(...) __VA_ARGS__
+#endif
+
+#else
+#define __VEG_IGNORE_CPP14_EXTENSION_WARNING(...)
+#endif
+
 #define __VEG_ODR_VAR(name, obj)                                               \
   namespace { /* NOLINT */                                                     \
   constexpr auto const& name /* NOLINT */ =                                    \
@@ -226,14 +243,14 @@
     cond, tparams, requirement, attr_name, args, ...)                          \
   VEG_TEMPLATE(                                                                \
       (__VEG_PP_REMOVE_PAREN tparams,                                          \
-       ::veg::meta::enable_if_t<(cond), int> = 0),                             \
+       typename ::veg::meta::enable_if<(cond), int>::type = 0),                \
       requirement,                                                             \
       explicit attr_name,                                                      \
       __VEG_PP_REMOVE_PAREN(args))                                             \
   __VA_ARGS__                                                                  \
   VEG_TEMPLATE(                                                                \
       (__VEG_PP_REMOVE_PAREN tparams,                                          \
-       ::veg::meta::enable_if_t<!(cond), unsigned> = 0),                       \
+       typename ::veg::meta::enable_if<!(cond), unsigned>::type = 0),          \
       requirement,                                                             \
       attr_name,                                                               \
       __VEG_PP_REMOVE_PAREN(args))                                             \
@@ -268,7 +285,7 @@
   template <__VEG_PP_REMOVE_PAREN(tparams)>                                    \
   attr_name /* NOLINT */ (                                                     \
       ::veg::meta::discard_1st<                                                \
-          ::veg::meta::enable_if_t<(requirement)>,                             \
+          typename ::veg::meta::enable_if<(requirement)>::type,                \
           __VEG_PP_TAIL first_param> __VEG_PP_HEAD first_param                 \
           __VEG_PP_SEQ_FOR_EACH(__VEG_IMPL_PARAM_EXPAND, _, args))
 
@@ -372,19 +389,20 @@ struct conditional_<false> {
   template <typename T, typename F>
   using type = F;
 };
+} // namespace internal
+
 template <bool B, typename T = void>
 struct enable_if {
   using type = T;
 };
 template <typename T>
 struct enable_if<false, T> {};
-} // namespace internal
 
 template <bool B, typename T, typename F>
 using conditional_t = typename internal::conditional_<B>::template type<T, F>;
 
 template <bool B, typename T = void>
-using enable_if_t = typename internal::enable_if<B, T>::type;
+using enable_if_t = typename enable_if<B, T>::type;
 
 template <typename U, typename V>
 using discard_1st = V;
@@ -613,8 +631,33 @@ struct bounded_array<T[N]> : true_type {};
 template <typename T>
 using remove_extent_t = typename std::remove_extent<T>::type;
 
+template <template <typename...> class F, typename... Ts>
+struct meta_apply {
+  using type = F<Ts...>;
+};
+template <typename T>
+struct type_identity {
+  using type = T;
+};
+
 namespace internal {
 struct none {};
+} // namespace internal
+
+#if __cplusplus >= 202002L
+
+template <typename Default, template <typename...> class Ftor, typename... Args>
+struct detector {
+  using found = bool_constant<(requires { typename Ftor<Args...>; })>;
+  using type = typename conditional_t<
+      found::value,
+      meta_apply<Ftor, Args...>,
+      type_identity<Default>>::type;
+};
+
+#else
+
+namespace internal {
 
 template <
     typename Enable,
@@ -632,45 +675,23 @@ struct detector<void_t<Ftor<Args...>>, Default, Ftor, Args...> {
   using type = Ftor<Args...>;
 };
 
-template <
-    typename Enable,
-    typename Default,
-    template <usize, typename...>
-    class Ftor,
-    usize I,
-    typename... Args>
-struct detector_i {
-  using found = false_type;
-  using type = Default;
-};
-template <
-    typename Default,
-    template <usize, typename...>
-    class Ftor,
-    usize I,
-    typename... Args>
-struct detector_i<void_t<Ftor<I, Args...>>, Default, Ftor, I, Args...> {
-  using found = true_type;
-  using type = Ftor<I, Args...>;
-};
 } // namespace internal
 
 template <typename Default, template <typename...> class Ftor, typename... Args>
 struct detector : internal::detector<void, Default, Ftor, Args...> {};
 
+#endif
+
 template <template <class...> class Op, class... Args>
 struct is_detected : detector<internal::none, Op, Args...>::found {};
-
-template <template <usize, class...> class Op, usize I, class... Args>
-struct is_detected_i
-    : internal::detector_i<void, internal::none, Op, I, Args...>::found {};
 
 template <template <class...> class Op, class... Args>
 using detected_t = typename detector<internal::none, Op, Args...>::type;
 
 namespace internal {
 template <typename T, typename... Args>
-using uniform_ctor = decltype(static_cast<void>(T{__VEG_DECLVAL(Args)...}));
+using uniform_ctor = decltype(static_cast<void>(
+    new (static_cast<void*>(nullptr)) T{__VEG_DECLVAL(Args)...}));
 
 template <typename Enable, typename T, typename... Args>
 struct uniform_init_constructible_impl
@@ -905,31 +926,26 @@ using nothrow_invocable = conjunction<
     internal::is_nothrow_invocable_impl<Fn&&, Args&&...>>;
 
 namespace internal {
-template <typename A, typename B, typename Enable = void>
-struct equality_comparable_impl : false_type {};
 template <typename A, typename B>
-struct equality_comparable_impl<
-    A,
-    B,
-    decltype(void(
-        static_cast<bool>(__VEG_DECLVAL(A const&) == __VEG_DECLVAL(B const&))))>
-
-    : meta::bool_constant<(
-          __VEG_SAME_AS(A, B) || (!std::is_enum<A>::value && //
-                                  !std::is_enum<B>::value))> {};
-
-template <typename A, typename B, typename Enable = void>
-struct less_than_comparable_impl : false_type {};
+using cmp_eq = decltype(void(
+    static_cast<bool>(__VEG_DECLVAL(A const&) == __VEG_DECLVAL(B const&))));
 template <typename A, typename B>
-struct less_than_comparable_impl<
-    A,
-    B,
-    decltype(void(static_cast<bool>(
-        __VEG_DECLVAL(A const&) < __VEG_DECLVAL(B const&))))> :
+using cmp_lt = decltype(
+    void(static_cast<bool>(__VEG_DECLVAL(A const&) < __VEG_DECLVAL(B const&))));
 
-    meta::bool_constant<(
-        __VEG_SAME_AS(A, B) || (!std::is_enum<A>::value && //
-                                !std::is_enum<B>::value))> {};
+template <typename A, typename B>
+struct equality_comparable_impl
+    : bool_constant<
+          (__VEG_SAME_AS(A, B) || (!std::is_enum<A>::value &&   //
+                                   !std::is_enum<B>::value)) && //
+          is_detected<cmp_eq, A, B>::value> {};
+
+template <typename A, typename B>
+struct less_than_comparable_impl
+    : bool_constant<
+          (__VEG_SAME_AS(A, B) || (!std::is_enum<A>::value &&   //
+                                   !std::is_enum<B>::value)) && //
+          is_detected<cmp_lt, A, B>::value> {};
 
 } // namespace internal
 
@@ -1154,6 +1170,9 @@ __VEG_ODR_VAR(swap, fn::swap);
 template <typename Fn>
 struct VEG_NODISCARD defer {
   Fn fn;
+  constexpr defer /* NOLINT */ (Fn _fn) noexcept(
+      meta::nothrow_move_constructible<Fn>::value)
+      : fn(VEG_FWD(_fn)) {}
   defer(defer const&) = delete;
   defer(defer&&) noexcept = delete;
   auto operator=(defer const&) -> defer& = delete;
@@ -1225,23 +1244,23 @@ template <typename T>
 void get() = delete;
 
 struct array_get {
-  template <usize I, typename T>
-  using type = decltype(void(__VEG_DECLVAL(T).template get<I>()));
+  template <typename I, typename T>
+  using type = decltype(void(__VEG_DECLVAL(T).template get<I::value>()));
   template <usize I, typename T>
   HEDLEY_ALWAYS_INLINE static constexpr auto apply(T&& arr)
       __VEG_DEDUCE_RET(VEG_FWD(arr)[I]);
 };
 
 struct member_get {
-  template <usize I, typename T>
-  using type = decltype(void(__VEG_DECLVAL(T).template get<I>()));
+  template <typename I, typename T>
+  using type = decltype(void(__VEG_DECLVAL(T).template get<I::value>()));
   template <usize I, typename T>
   HEDLEY_ALWAYS_INLINE static constexpr auto apply(T&& arg)
       __VEG_DEDUCE_RET(VEG_FWD(arg).template get<I>());
 };
 struct adl_get {
-  template <usize I, typename T>
-  using type = decltype(void(get<I>(__VEG_DECLVAL(T))));
+  template <typename I, typename T>
+  using type = decltype(void(get<I::value>(__VEG_DECLVAL(T))));
 
   template <usize I, typename T>
   HEDLEY_ALWAYS_INLINE static constexpr auto apply(T&& arg)
@@ -1253,10 +1272,14 @@ struct has_array_get : meta::bounded_array<meta::remove_cvref_t<T>>,
                        array_get {};
 
 template <usize I, typename T>
-struct has_member_get : meta::is_detected_i<member_get::type, I, T&&>,
-                        member_get {};
+struct has_member_get
+    : meta::
+          is_detected<member_get::type, std::integral_constant<usize, I>, T&&>,
+      member_get {};
 template <usize I, typename T>
-struct has_adl_get : meta::is_detected_i<adl_get::type, I, T&&>, adl_get {};
+struct has_adl_get
+    : meta::is_detected<adl_get::type, std::integral_constant<usize, I>, T&&>,
+      adl_get {};
 
 template <usize I, typename T>
 struct get_impl : meta::disjunction<
@@ -1338,15 +1361,18 @@ private:
   friend struct meta::internal::static_const;
 };
 
-namespace { /* NOLINT */
-template <i64 I>
-constexpr auto const& get /* NOLINT */ =
-    ::veg::meta::internal::static_const<fn::get<I>>::value;
+__VEG_IGNORE_CPP14_EXTENSION_WARNING(
+    namespace { /* NOLINT */
+                template <i64 I>
+                constexpr auto const& get /* NOLINT */ =
+                    ::veg::meta::internal::static_const<fn::get<I>>::value;
 
-template <typename T>
-constexpr auto const& tag =
-    ::veg::meta::internal::static_const<tag_t<T>>::value;
-} // namespace
+                template <typename T>
+                constexpr auto const& tag =
+                    ::veg::meta::internal::static_const<tag_t<T>>::value;
+    } // namespace
+)
+
 __VEG_ODR_VAR(some, some_t);
 __VEG_ODR_VAR(init_list, init_list_t);
 __VEG_ODR_VAR(inplace, inplace_t);

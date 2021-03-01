@@ -2,6 +2,7 @@
 #include "veg/fn_ref.hpp"
 #include <gtest/gtest.h>
 #include <vector>
+#include "static_assert.hpp"
 
 using namespace veg;
 template <typename T, i64 N>
@@ -16,8 +17,10 @@ struct nested_option<T, 0> {
 TEST(option, all) {
 
   struct A {
-    constexpr auto operator()() const -> option<int> { return {some, 13}; }
-    constexpr auto operator()(int i) const -> option<double> {
+    __VEG_CPP14(constexpr) auto operator()() const -> option<int> {
+      return {some, 13};
+    }
+    __VEG_CPP14(constexpr) auto operator()(int i) const -> option<double> {
       if (i == 0) {
         return none;
       }
@@ -26,7 +29,7 @@ TEST(option, all) {
   };
 
   struct B {
-    constexpr auto operator()(int i) const -> double {
+    __VEG_CPP14(constexpr) auto operator()(int i) const -> double {
       if (i == 0) {
         return 1.0;
       }
@@ -34,45 +37,49 @@ TEST(option, all) {
     }
   };
   struct C {
-    constexpr auto operator()() const -> double { return 2000.; }
+    __VEG_CPP14(constexpr) auto operator()() const -> double { return 2000.; }
   };
 
-  static_assert(sizeof(option<int>) == sizeof(int) * 2);
-  static_assert(sizeof(option<option<int>>) == sizeof(int) * 2);
-  static_assert(sizeof(option<option<option<option<int>>>>) == sizeof(int) * 2);
-  static_assert(sizeof(option<fn_ref<void()>>) == sizeof(fn_ref<void()>));
-  static_assert(
+  STATIC_ASSERT(sizeof(option<int>) == sizeof(int) * 2);
+  STATIC_ASSERT(sizeof(option<option<int>>) == sizeof(int) * 2);
+  STATIC_ASSERT(sizeof(option<option<option<option<int>>>>) == sizeof(int) * 2);
+  STATIC_ASSERT(sizeof(option<fn_ref<void()>>) == sizeof(fn_ref<void()>));
+  STATIC_ASSERT(
       sizeof(option<mini_fn_ref<void()>>) == sizeof(mini_fn_ref<void()>));
 
-  constexpr option<int> i = {some, 3};
-  constexpr option<int> j = none;
-  static_assert(i.as_ref().and_then(A{}).unwrap() == 1000. / 3);
-  static_assert(option<int>{some, inplace, [&]{return 0;}});
-  static_assert(i.as_ref().map(B{}).unwrap() == 2000. / 3);
+  __VEG_CPP14(constexpr) option<int> i = {some, 3};
+  __VEG_CPP14(constexpr) option<int> j = none;
+  STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).unwrap() == 1000. / 3);
+  STATIC_ASSERT_IF_17(option<int>{some, inplace, [&] { return 0; }});
+  STATIC_ASSERT_IF_14(i.as_ref().map(B{}).unwrap() == 2000. / 3);
 
-  static_assert(i.as_ref().map_or_else(B{}, C{}) == 2000. / 3);
-  static_assert(j.as_ref().map_or_else(B{}, C{}) == 2000.);
-  static_assert(j.as_ref().map_or(B{}, 2000.) == 2000.);
-  static_assert(i.as_ref().map_or(B{}, 2000.) == 2000. / 3);
-  static_assert(i.as_ref().map([](int k) { return 2.0 * k; }) == some(6.0));
+  STATIC_ASSERT_IF_14(i.as_ref().map_or_else(B{}, C{}) == 2000. / 3);
+  STATIC_ASSERT_IF_14(j.as_ref().map_or_else(B{}, C{}) == 2000.);
+  STATIC_ASSERT_IF_14(j.as_ref().map_or(B{}, 2000.) == 2000.);
+  STATIC_ASSERT_IF_14(i.as_ref().map_or(B{}, 2000.) == 2000. / 3);
+  STATIC_ASSERT_IF_17(
+      i.as_ref().map([](int k) { return 2.0 * k; }) == some(6.0));
 
-  static_assert(!option<int>{0}.and_then(A{}));
-  static_assert(option<int>{3}.and_then(A{}).unwrap() == 1000. / 3);
-  static_assert(option<int>{42}.take().unwrap() == 42);
-  static_assert(!option<int>{none}.take());
-  static_assert(!j.as_ref().and_then(A{}));
+  STATIC_ASSERT_IF_14(!option<int>{0}.and_then(A{}));
+  STATIC_ASSERT_IF_14(option<int>{3}.and_then(A{}).unwrap() == 1000. / 3);
+  STATIC_ASSERT_IF_14(option<int>{42}.take().unwrap() == 42);
+  STATIC_ASSERT_IF_14(!option<int>{none}.take());
+  STATIC_ASSERT_IF_14(!j.as_ref().and_then(A{}));
 
-  static_assert(option<int>{i}.or_else(A{}).unwrap() == 3);
-  static_assert(option<int>{j}.or_else(A{}).unwrap() == 13);
+  STATIC_ASSERT_IF_14(option<int>{i}.or_else(A{}).unwrap() == 3);
+  STATIC_ASSERT_IF_14(option<int>{j}.or_else(A{}).unwrap() == 13);
 
-  static_assert(sizeof(option<int&>) == sizeof(int*));
+  STATIC_ASSERT(sizeof(option<int&>) == sizeof(int*));
 
   {
-    constexpr option<option<option<int>>> opt = {some, {some, {some, 3}}};
-    constexpr option<option<option<int>>> opt_also = some(some(some(3)));
-    constexpr option<option<option<int>>> opt2 = {some, {some, {none}}};
-    static_assert(opt == opt_also);
-    static_assert(
+    __VEG_CPP14(constexpr)
+    option<option<option<int>>> opt = {some, {some, {some, 3}}};
+    __VEG_CPP14(constexpr)
+    option<option<option<int>>> opt_also = some(some(some(3)));
+    __VEG_CPP14(constexpr)
+    option<option<option<int>>> opt2 = {some, {some, {none}}};
+    STATIC_ASSERT_IF_14(opt == opt_also);
+    STATIC_ASSERT_IF_14(
         opt //
             .as_ref()
             .unwrap()
@@ -80,12 +87,12 @@ TEST(option, all) {
             .unwrap()
             .as_ref()
             .unwrap() == 3);
-    static_assert(opt.clone().unwrap().unwrap().unwrap() == 3);
-    static_assert(opt.clone().flatten().flatten().unwrap() == 3);
-    static_assert(!opt2.clone().unwrap().unwrap());
-    static_assert(!opt2.clone().flatten().flatten());
-    static_assert(opt2.clone().flatten());
-    static_assert(opt2.clone().flatten());
+    STATIC_ASSERT_IF_14(opt.clone().unwrap().unwrap().unwrap() == 3);
+    STATIC_ASSERT_IF_14(opt.clone().flatten().flatten().unwrap() == 3);
+    STATIC_ASSERT_IF_14(!opt2.clone().unwrap().unwrap());
+    STATIC_ASSERT_IF_14(!opt2.clone().flatten().flatten());
+    STATIC_ASSERT_IF_14(opt2.clone().flatten());
+    STATIC_ASSERT_IF_14(opt2.clone().flatten());
   }
 
   {
@@ -114,24 +121,26 @@ TEST(option, all) {
     ASSERT_TRUE(flag.as_ref().unwrap());
   }
   {
-    constexpr auto opt = [&] {
+    __VEG_CPP17(constexpr)
+    auto opt = [&] {
       option<int> x;
       x.emplace([&] { return 1; });
       return x;
     }();
 
-    static_assert(opt == some(1));
+    STATIC_ASSERT_IF_17(opt == some(1));
   }
   {
-    static_assert(meta::mostly_trivial<int>::value);
-    static_assert(meta::mostly_trivial<option<int>>::value);
-    constexpr auto opt = [&] {
+    STATIC_ASSERT(meta::mostly_trivial<int>::value);
+    STATIC_ASSERT(meta::mostly_trivial<option<int>>::value);
+    __VEG_CPP17(constexpr)
+    auto opt = [&] {
       option<option<int>> x;
       x.emplace([&] { return some(1); });
       return x;
     }();
 
-    static_assert(opt == some(some(1)));
+    STATIC_ASSERT_IF_17(opt == some(some(1)));
   }
   {
     using std::vector;
@@ -147,7 +156,8 @@ TEST(option, all) {
   {
     using std::vector;
 
-    static_assert(meta::value_sentinel_for<option<vector<int>>>::value == 253);
+    STATIC_ASSERT_IF_14(
+        meta::value_sentinel_for<option<vector<int>>>::value == 253);
 
     auto opt = [&] {
       option<option<vector<int>>> x;
@@ -160,7 +170,7 @@ TEST(option, all) {
   {
     using std::vector;
 
-    static_assert(
+    STATIC_ASSERT_IF_14(
         meta::value_sentinel_for<option<option<vector<int>>>>::value == 252);
 
     auto opt = [&] {
@@ -174,7 +184,7 @@ TEST(option, all) {
   {
     using std::vector;
 
-    static_assert(
+    STATIC_ASSERT_IF_14(
         meta::value_sentinel_for<option<option<option<vector<int>>>>>::value ==
         251);
 

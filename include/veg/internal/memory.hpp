@@ -236,7 +236,7 @@ struct destroy_range_fn {
   i64 const& size;
 
   __VEG_CPP20(constexpr)
-  auto operator()() const noexcept {
+  void operator()() const noexcept {
     if (!success) {
       for (i64 i = 0; i < size; ++i) {
         fn::destroy_at{}(cleanup_ptr + i);

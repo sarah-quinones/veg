@@ -623,7 +623,7 @@ auto parse_func_signature(char_string_ref func) -> std::string {
       }
 
       if (id_and_eq) {
-        tp_param_types.push_back({});
+        tp_param_types.emplace_back();
       } else {
         // assume type prefix
         auto res = parse_type(code_str);

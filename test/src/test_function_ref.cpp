@@ -1,3 +1,4 @@
+#include "static_assert.hpp"
 #include <veg/fn_ref.hpp>
 #include <veg/option.hpp>
 #include <gtest/gtest.h>
@@ -16,8 +17,8 @@ TEST(function_ref, no_args) {
   void (*p)(){};
   using T = decltype(p);
 
-  static_assert(noexcept(p == nullptr));
-  static_assert(
+  STATIC_ASSERT(noexcept(p == nullptr));
+  STATIC_ASSERT(
       meta::internal::equality_comparable_impl<T, std::nullptr_t>::value);
 
   void (*inc_fn_ptr)() = +[] { ++global; };

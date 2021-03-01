@@ -20,14 +20,14 @@ auto align_next(i64 alignment, i64 size, void*& ptr, i64& space) noexcept
 struct default_init_fn {
   template <typename T>
   auto make(void* ptr, i64 len) -> T* {
-    return new (ptr) T[narrow<usize>(len)];
+    return new (ptr) T[fn::narrow<usize>{}(len)];
   }
 };
 
 struct zero_init_fn {
   template <typename T>
   auto make(void* ptr, i64 len) -> T* {
-    return new (ptr) T[narrow<usize>(len)]{};
+    return new (ptr) T[fn::narrow<usize>{}(len)]{};
   }
 };
 
@@ -35,7 +35,7 @@ struct no_init_fn {
   template <typename T>
   auto make(void* ptr, i64 len) -> T* {
     return VEG_LAUNDER(static_cast<T*>(static_cast<void*>(
-        new (ptr) unsigned char[narrow<usize>(len) * sizeof(T)])));
+        new (ptr) unsigned char[fn::narrow<usize>{}(len) * sizeof(T)])));
   }
 };
 
@@ -119,7 +119,7 @@ struct cleanup {
   void* old_data;
   i64 old_rem_bytes;
 
-  HEDLEY_ALWAYS_INLINE auto operator()() const noexcept {
+  HEDLEY_ALWAYS_INLINE void operator()() const noexcept {
     if (!success) {
       parent.m_data = old_data;
       parent.m_rem_bytes = old_rem_bytes;
@@ -170,7 +170,7 @@ private:
 
     void* const data = internal::dynstack::align_next(
         align,
-        len * narrow<i64>(sizeof(T)),
+        len * fn::narrow<i64>{}(sizeof(T)),
         m_parent.m_data,
         m_parent.m_rem_bytes);
 
@@ -211,7 +211,7 @@ public:
       for (i64 i = 0; i < this->m_len; ++i) {
         (this->m_data + i)->~T();
       }
-      this->m_parent.m_rem_bytes += narrow<i64>(
+      this->m_parent.m_rem_bytes += fn::narrow<i64>{}(
           static_cast<unsigned char*>(this->m_parent.m_data) -
           static_cast<unsigned char*>(this->m_old_pos));
       this->m_parent.m_data = this->m_old_pos;

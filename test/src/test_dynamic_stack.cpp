@@ -29,25 +29,25 @@ TEST(dynamic_stack, raii) {
   dynamic_stack_view stack{slice<void>(buf)};
 
   {
-    auto s1 = stack.make_new(tag<S>, 3).unwrap();
+    auto s1 = stack.make_new(tag_t<S>{}, 3).unwrap();
     EXPECT_NE(s1.data(), nullptr);
     EXPECT_EQ(s1.size(), 3);
     EXPECT_EQ(stack.remaining_bytes(), 4093);
     EXPECT_EQ(S::n_instances(), 3);
 
     {
-      auto s2 = stack.make_new(tag<S>, 4).unwrap();
+      auto s2 = stack.make_new(tag_t<S>{}, 4).unwrap();
       EXPECT_NE(s2.data(), nullptr);
       EXPECT_EQ(s2.size(), 4);
       EXPECT_EQ(stack.remaining_bytes(), 4089);
       EXPECT_EQ(S::n_instances(), 7);
 
       {
-        auto i3 = stack.make_new(tag<int>, 30000);
+        auto i3 = stack.make_new(tag_t<int>{}, 30000);
         EXPECT_FALSE(i3);
         EXPECT_EQ(stack.remaining_bytes(), 4089);
         {
-          auto i4 = stack.make_new(tag<int>, 300).unwrap();
+          auto i4 = stack.make_new(tag_t<int>{}, 300).unwrap();
           EXPECT_NE(i4.data(), nullptr);
           EXPECT_EQ(i4.size(), 300);
           EXPECT_LT(stack.remaining_bytes(), 4089 - 300 * sizeof(int));
@@ -60,7 +60,7 @@ TEST(dynamic_stack, raii) {
   EXPECT_EQ(stack.remaining_bytes(), 4096);
   EXPECT_EQ(S::n_instances(), 0);
 
-  auto s1 = stack.make_new(tag<S const>, 3).unwrap();
+  auto s1 = stack.make_new(tag_t<S const>{}, 3).unwrap();
   EXPECT_EQ(stack.remaining_bytes(), 4093);
   EXPECT_EQ(S::n_instances(), 3);
 }
@@ -69,14 +69,14 @@ TEST(dynamic_stack, evil_reorder) {
   unsigned char buf[4096];
   dynamic_stack_view stack{make::slice(buf)};
   auto good = [&] {
-    auto s1 = stack.make_new(tag<int>, 30);
-    auto s2 = stack.make_new(tag<double>, 20);
+    auto s1 = stack.make_new(tag_t<int>{}, 30);
+    auto s2 = stack.make_new(tag_t<double>{}, 20);
     auto s3 = VEG_MOV(s2);
     return true;
   };
   auto bad = [&] {
-    auto s1 = stack.make_new(tag<int>, 30);
-    auto s2 = stack.make_new(tag<double>, 20);
+    auto s1 = stack.make_new(tag_t<int>{}, 30);
+    auto s2 = stack.make_new(tag_t<double>{}, 20);
     auto s3 = VEG_MOV(s1);
   };
   EXPECT_TRUE(good());
@@ -88,9 +88,9 @@ TEST(dynamic_stack, return ) {
   dynamic_stack_view stack(make::slice(buf));
 
   auto s = [&] {
-    auto s1 = stack.make_new(tag<S>, 3).unwrap();
-    auto s2 = stack.make_new(tag<S>, 4).unwrap();
-    auto s3 = stack.make_new(tag<S>, 5).unwrap();
+    auto s1 = stack.make_new(tag_t<S>{}, 3).unwrap();
+    auto s2 = stack.make_new(tag_t<S>{}, 4).unwrap();
+    auto s3 = stack.make_new(tag_t<S>{}, 5).unwrap();
     EXPECT_EQ(stack.remaining_bytes(), 4084);
     EXPECT_EQ(S::n_instances(), 12);
     return s1;
@@ -107,7 +107,7 @@ TEST(dynamic_stack, manual_lifetimes) {
   unsigned char buf[4096];
   dynamic_stack_view stack(make::slice(buf));
 
-  auto s = stack.make_alloc(tag<S>, 3).unwrap();
+  auto s = stack.make_alloc(tag_t<S>{}, 3).unwrap();
   EXPECT_NE(s.data(), nullptr);
   EXPECT_EQ(s.size(), 3);
   EXPECT_EQ(S::n_instances(), 0);
@@ -141,9 +141,9 @@ TEST(dynamic_stack, alignment) {
   EXPECT_EQ(stack.remaining_bytes(), 4096);
   EXPECT_EQ(T::n_instances(), 0);
   {
-    auto s1 = stack.make_new(tag<T>, 0);
+    auto s1 = stack.make_new(tag_t<T>{}, 0);
     EXPECT_EQ(stack.remaining_bytes(), 4096 - alignof(T) + 1);
-    auto s2 = stack.make_new(tag<S>, 0);
+    auto s2 = stack.make_new(tag_t<S>{}, 0);
     EXPECT_EQ(stack.remaining_bytes(), 4096 - alignof(T) + 1);
     EXPECT_EQ(T::n_instances(), 0);
   }
@@ -178,13 +178,13 @@ TEST(dynamic_stack, throwing) {
   dynamic_stack_view stack{slice<void>(buf)};
 
   EXPECT_EQ(throwing::n_instances(), 0);
-  auto s1 = stack.make_new(tag<throwing>, 3);
+  auto s1 = stack.make_new(tag_t<throwing>{}, 3);
   (void)s1;
 
   EXPECT_EQ(throwing::n_instances(), 3);
   EXPECT_EQ(stack.remaining_bytes(), 4093);
   try {
-    auto s2 = stack.make_new(tag<throwing>, 7);
+    auto s2 = stack.make_new(tag_t<throwing>{}, 7);
     (void)s2;
     ASSERT_TRUE(false); // must not be reached
   } catch (int) {

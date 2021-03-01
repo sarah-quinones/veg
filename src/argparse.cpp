@@ -301,7 +301,7 @@ auto _argparse::argparse_parse(argparse* self, int argc, char** argv) -> int {
     std::memmove(
         self->out + self->cpidx,
         self->argv,
-        narrow<std::size_t>(self->argc) * sizeof(*self->out));
+        fn::narrow<std::size_t>{}(self->argc) * sizeof(*self->out));
     self->out[self->cpidx + self->argc] = nullptr;
 
     return self->cpidx + self->argc;
@@ -395,17 +395,17 @@ void argparse_usage(argparse const* self) {
       len += 2; // separator ", "
     }
     if ((options)->long_name != nullptr) {
-      len += narrow<i64>(std::strlen(options->long_name)) + 2;
+      len += fn::narrow<i64>{}(std::strlen(options->long_name)) + 2;
     }
 
     if (options->type >= to_option_type<char>::value) {
-      len += narrow<i64>(std::strlen("=<char>"));
+      len += fn::narrow<i64>{}(std::strlen("=<char>"));
     } else if (options->type == to_option_type<char const*>::value) {
-      len += narrow<i64>(std::strlen("=<str>"));
+      len += fn::narrow<i64>{}(std::strlen("=<str>"));
     } else if (options->type >= to_option_type<float>::value) {
-      len += narrow<i64>(std::strlen("=<flt>"));
+      len += fn::narrow<i64>{}(std::strlen("=<flt>"));
     } else if (options->type >= to_option_type<unsigned char>::value) {
-      len += narrow<i64>(std::strlen("=<int>"));
+      len += fn::narrow<i64>{}(std::strlen("=<int>"));
     }
     len = (len + 3) - ((len + 3) % 4);
     if (usage_opts_width < len) {

@@ -49,7 +49,7 @@ struct boolean<maybe> {
   friend auto
   operator<<(std::basic_ostream<CharT, Traits>& out, boolean arg) noexcept
       -> std::basic_ostream<CharT, Traits>& {
-    auto str = tag_invoke(tag<assert::fn::to_string>, arg);
+    auto str = tag_invoke(tag_t<assert::fn::to_string>{}, arg);
     out.write(str.data(), str.size());
     return out;
   }
@@ -92,7 +92,7 @@ struct dyn {
   friend auto
   operator<<(std::basic_ostream<CharT, Traits>& out, dyn arg) noexcept
       -> std::basic_ostream<CharT, Traits>& {
-    auto str = tag_invoke(tag<assert::fn::to_string>, arg);
+    auto str = tag_invoke(tag_t<assert::fn::to_string>{}, arg);
     out.write(str.data(), str.size());
     return out;
   }
@@ -264,7 +264,7 @@ inline namespace literals {
 
 HEDLEY_ALWAYS_INLINE constexpr auto operator"" _v(unsigned long long n) noexcept
     -> dyn {
-  return veg::narrow<i64>(n);
+  return fn::narrow<i64>{}(n);
 }
 
 } // namespace literals

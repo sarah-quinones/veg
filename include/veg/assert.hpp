@@ -17,7 +17,13 @@
 #endif
 
 #if defined(__GNUC__)
+
+#if defined(__clang__) || __cplusplus >= 201402L
 #define __VEG_THIS_FUNCTION __PRETTY_FUNCTION__
+#else
+#define __VEG_THIS_FUNCTION ""
+#endif
+
 #elif defined(HEDLEY_MSVC_VERSION)
 #define __VEG_THIS_FUNCTION __FUNCSIG__
 #else
@@ -45,7 +51,7 @@ struct tag_invoke_print_ {
 
   template <typename T>
   HEDLEY_ALWAYS_INLINE static auto apply(T const* arg)
-      __VEG_DEDUCE_RET(tag_invoke(tag<fn::to_string>, *arg));
+      __VEG_DEDUCE_RET(tag_invoke(tag_t<fn::to_string>{}, *arg));
 };
 template <typename T>
 struct tag_invoke_printable

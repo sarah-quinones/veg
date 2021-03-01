@@ -607,7 +607,7 @@ struct tuple : internal::tuple::tuple_ctor_base<
       requires(
           I < sizeof...(Ts) && (I >= 0) &&
           meta::move_constructible<typename internal::tuple::pack_ith_elem<
-              I>::template type<Ts...>>::value),
+              usize(I)>::template type<Ts...>>::value),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator[],
       (/*arg*/, fix<I>)) &&

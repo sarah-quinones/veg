@@ -66,7 +66,7 @@ struct boolean {
   friend auto
   operator<<(std::basic_ostream<CharT, Traits>& out, boolean arg) noexcept
       -> std::basic_ostream<CharT, Traits>& {
-    auto str = tag_invoke(tag<assert::fn::to_string>, arg);
+    auto str = tag_invoke(tag_t<assert::fn::to_string>{}, arg);
     out.write(str.data(), str.size());
     return out;
   }
@@ -129,7 +129,7 @@ struct fix {
   friend auto
   operator<<(std::basic_ostream<CharT, Traits>& out, fix arg) noexcept
       -> std::basic_ostream<CharT, Traits>& {
-    auto str = tag_invoke(tag<assert::fn::to_string>, arg);
+    auto str = tag_invoke(tag_t<assert::fn::to_string>{}, arg);
     out.write(str.data(), str.size());
     return out;
   }

@@ -26,12 +26,12 @@ const noexcept -> To {
          static_cast<To>(from);
 }
 } // namespace fn
-namespace {
-template <typename To>
-constexpr auto const& narrow =
-    ::veg::meta::internal::static_const<fn::narrow<To>>::value;
+__VEG_IGNORE_CPP14_EXTENSION_WARNING(namespace /* NOLINT */ {
+  template <typename To>
+  constexpr auto const& narrow =
+      ::veg::meta::internal::static_const<fn::narrow<To>>::value;
 } // namespace
+)
 } // namespace veg
-
 
 #endif /* end of include guard VEG_NARROW_HPP_H0EXKJTAS */

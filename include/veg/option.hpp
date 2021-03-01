@@ -93,7 +93,7 @@ template <typename Fn>
 struct do_if {
   bool cond;
   Fn fn;
-  void operator()() const noexcept {
+  __VEG_CPP20(constexpr) void operator()() const noexcept {
     if (cond) {
       fn();
     }
@@ -452,7 +452,7 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
   HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) void destroy() noexcept {
     VEG_DEBUG_ASSERT(is_engaged());
     set_engaged(false);
-    defer<make_none> guard{mem::addressof(none)};
+    defer<make_none> guard{{mem::addressof(none)}};
     mem::destroy_at(mem::addressof(some));
   }
 

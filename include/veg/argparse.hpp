@@ -32,9 +32,8 @@ struct ternary {
     return a.val == b.val;
   }
 
-  friend constexpr auto
-  tag_invoke(tag_t<assert::fn::to_string> /*tag*/, ternary t)
-      -> slice<char const> {
+  friend __VEG_CPP14(constexpr) auto tag_invoke(
+      tag_t<assert::fn::to_string> /*tag*/, ternary t) -> slice<char const> {
     switch (t.val) {
     case maybe:
       return {"none", 4};
@@ -52,7 +51,7 @@ struct ternary {
   template <typename CharT, typename Traits>
   friend auto operator<<(std::basic_ostream<CharT, Traits>& out, ternary arg)
       -> std::basic_ostream<CharT, Traits>& {
-    auto str = tag_invoke(tag<assert::fn::to_string>, arg);
+    auto str = tag_invoke(tag_t<assert::fn::to_string>{}, arg);
     out.write(str.data(), str.size());
     return out;
   }
