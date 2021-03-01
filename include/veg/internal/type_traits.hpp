@@ -1306,7 +1306,10 @@ struct get {
 
 template <typename... Ts>
 struct tuple;
+template <typename T>
+struct option;
 
+inline namespace tags {
 struct elems_t {
   VEG_TEMPLATE(
       typename... Ts,
@@ -1339,8 +1342,6 @@ private:
   template <typename T>
   friend struct meta::internal::static_const;
 };
-template <typename T>
-struct option;
 struct some_t {
   VEG_TEMPLATE(
       (typename T),
@@ -1378,6 +1379,7 @@ __VEG_ODR_VAR(init_list, init_list_t);
 __VEG_ODR_VAR(inplace, inplace_t);
 __VEG_ODR_VAR(elems, elems_t);
 __VEG_ODR_VAR(none, none_t);
+} // namespace tags
 
 } // namespace veg
 
