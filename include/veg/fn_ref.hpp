@@ -207,9 +207,10 @@ struct function_ref_impl {
   VEG_TEMPLATE(
       (typename Fn),
       requires(
-          meta::void_<Ret>::value ||
-          meta::convertible_to<Ret, meta::detected_t<Concept, Fn, Args...>>::
-              value),
+          __VEG_CONCEPT(meta::void_<Ret>) ||
+          __VEG_CONCEPT(meta::convertible_to<
+                        meta::detected_t<Concept, Fn, Args...>,
+                        Ret>)),
       function_ref_impl, /* NOLINT(hicpp-explicit-conversions,
                            bugprone-forwarding-reference-overload) */
       (fn, Fn&&))

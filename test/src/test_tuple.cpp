@@ -27,8 +27,15 @@ TEST(tuple, all) {
     STATIC_ASSERT(
         !veg::meta::move_assignable<veg::tuple<int&, int const&>>::value);
 
-    STATIC_ASSERT(veg::meta::copy_assignable<veg::tuple<int&, float&>>::value);
-    STATIC_ASSERT(veg::meta::move_assignable<veg::tuple<int&, float&>>::value);
+    STATIC_ASSERT(!veg::meta::copy_assignable<veg::tuple<int&, float&>>::value);
+    STATIC_ASSERT(
+        veg::meta::copy_assignable<veg::tuple<int&, float&> const>::value);
+    STATIC_ASSERT(veg::meta::assignable<
+                  veg::tuple<int&, float&> const&,
+                  veg::tuple<int&, float&>&&>::value);
+    STATIC_ASSERT(veg::meta::assignable<
+                  veg::tuple<int&, float&>&&,
+                  veg::tuple<int&, float&>&&>::value);
 
     STATIC_ASSERT(!veg::meta::copy_assignable<decltype(tup_ref)>::value);
     STATIC_ASSERT(!veg::meta::move_assignable<decltype(tup_ref)>::value);
@@ -94,8 +101,8 @@ TEST(tuple, all) {
   {
     using ref_tup = veg::tuple<int&>;
     using rref_tup = veg::tuple<int&&>;
-    STATIC_ASSERT(!veg::meta::trivially_copyable<ref_tup>::value);
-    STATIC_ASSERT(!veg::meta::trivially_copyable<rref_tup>::value);
+    STATIC_ASSERT(veg::meta::trivially_copyable<ref_tup>::value);
+    STATIC_ASSERT(veg::meta::trivially_copyable<rref_tup>::value);
     STATIC_ASSERT(veg::meta::constructible<ref_tup, ref_tup>::value);
     STATIC_ASSERT(veg::meta::constructible<ref_tup, ref_tup&>::value);
     STATIC_ASSERT(veg::meta::constructible<ref_tup, rref_tup&>::value);
@@ -144,8 +151,8 @@ TEST(tuple, all) {
 
   STATIC_ASSERT(std::is_copy_assignable<veg::tuple<int, char>>());
   STATIC_ASSERT(std::is_trivially_copyable<veg::tuple<int, char>>());
-  STATIC_ASSERT(std::is_copy_assignable<veg::tuple<int&, char&>>());
-  STATIC_ASSERT(std::is_copy_assignable<veg::tuple<int&>>());
+  STATIC_ASSERT(!std::is_copy_assignable<veg::tuple<int&, char&>>());
+  STATIC_ASSERT(!std::is_copy_assignable<veg::tuple<int&>>());
   STATIC_ASSERT(std::is_copy_assignable<veg::tuple<int&, char&> const>());
   STATIC_ASSERT(std::is_copy_assignable<veg::tuple<int&> const>());
   ASSERT_SAME(decltype(tup[0_c]), int&);

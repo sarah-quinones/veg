@@ -70,8 +70,10 @@ struct uniform_init_ctor {
 struct ctor {
   template <typename T, typename... Args>
   HEDLEY_ALWAYS_INLINE static __VEG_CPP20(constexpr) auto apply(
-      T* mem,
-      Args&&... args) noexcept(meta::nothrow_constructible<T, Args&&...>::value)
+      T* mem, Args&&... args) noexcept(__VEG_CONCEPT(meta::
+                                                         nothrow_constructible<
+                                                             T,
+                                                             Args&&...>))
       -> T* {
 #if __cplusplus >= 202002L
     return ::std::construct_at(mem, VEG_FWD(args)...);
@@ -97,7 +99,7 @@ struct fn_to_convertible {
   Fn&& fn;
   HEDLEY_ALWAYS_INLINE constexpr explicit
   operator meta::invoke_result_t<Fn&&>() const
-      noexcept(meta::nothrow_invocable<Fn&&>::value) {
+      noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn&&>)) {
     return VEG_FWD(fn)();
   }
 };
@@ -109,7 +111,7 @@ struct construct_at {
   VEG_TEMPLATE(
       (typename T, typename... Args),
       requires(
-          !meta::const_<T>::value &&
+          !__VEG_CONCEPT(meta::const_<T>) &&
           meta::disjunction<
               meta::constructible<T, Args&&...>,
               meta::uniform_init_constructible<T, Args&&...>>::value),
@@ -117,7 +119,7 @@ struct construct_at {
       operator(),
       (mem, T*),
       (... args, Args&&))
-  const noexcept(meta::nothrow_constructible<T, Args&&...>::value)->T* {
+  const noexcept(__VEG_CONCEPT(meta::nothrow_constructible<T, Args&&...>))->T* {
     return internal::_ctor_at::ctor_at_impl<T, Args&&...>::apply(
         mem, VEG_FWD(args)...);
   }
@@ -126,13 +128,13 @@ struct construct_at {
 struct construct_with {
   VEG_TEMPLATE(
       (typename T, typename Fn),
-      requires !meta::const_<T>::value &&
+      requires !__VEG_CONCEPT(meta::const_<T>) &&
           __VEG_SAME_AS(T, (meta::detected_t<meta::invoke_result_t, Fn&&>)),
       HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) auto
       operator(),
       (mem, T*),
       (fn, Fn&&))
-  const noexcept(meta::nothrow_invocable<Fn&&>::value)->T* {
+  const noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn&&>))->T* {
 #if __cplusplus >= 202002L
     return ::std::construct_at(
         mem, internal::_ctor_at::fn_to_convertible<Fn&&>{VEG_FWD(fn)});
@@ -145,7 +147,7 @@ struct construct_with {
 struct destroy_at {
   VEG_TEMPLATE(
       (typename T, typename... Args),
-      requires !meta::const_<T>::value,
+      requires(!__VEG_CONCEPT(meta::const_<T>)),
       HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) void
       operator(),
       (mem, T*))
@@ -203,7 +205,7 @@ template <>
 struct reloc_impl<which::trivial> {
   VEG_TEMPLATE(
       typename T,
-      requires sizeof(T) >= 1,
+      requires(sizeof(T) >= 1),
       static __VEG_CPP20(constexpr) void apply,
       (dest, T*),
       (src, T*),
@@ -211,7 +213,7 @@ struct reloc_impl<which::trivial> {
 
   noexcept {
     static_assert(
-        meta::nothrow_move_constructible<T>::value,
+        __VEG_CONCEPT(meta::nothrow_move_constructible<T>),
         "is T really trivially relocatable?");
 
     __VEG_CPP20(
@@ -249,7 +251,7 @@ template <typename Cast, typename T>
 static __VEG_CPP20(constexpr) void reloc_fallible(
     T* dest,
     T* src,
-    i64 n) noexcept(meta::nothrow_constructible<T, T const&>::value) {
+    i64 n) noexcept(__VEG_CONCEPT(meta::nothrow_constructible<T, T const&>)) {
 
   bool success = false;
   T* cleanup_ptr = dest;
@@ -268,7 +270,7 @@ template <>
 struct reloc_impl<which::copy> {
   template <typename T>
   static __VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) noexcept(
-      meta::nothrow_constructible<T, T const&>::value) {
+      __VEG_CONCEPT(meta::nothrow_constructible<T, T const&>)) {
     _reloc::reloc_fallible<T const&>(dest, src, n);
   }
 };
@@ -289,26 +291,28 @@ struct reloc_impl<which::throw_move> {
 struct relocate_n {
   VEG_TEMPLATE(
       (typename T),
-      requires !meta::const_<T>::value &&
-          (meta::move_constructible<T>::value ||
-           meta::constructible<T, T const&>::value),
+      requires(
+          !__VEG_CONCEPT(meta::const_<T>) &&
+          (__VEG_CONCEPT(meta::move_constructible<T>) ||
+           __VEG_CONCEPT(meta::copy_constructible<T>))),
       HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) void
       operator(),
       (dest, T*),
       (src, T*),
       (n, i64))
   const noexcept(
-      meta::nothrow_move_constructible<T>::value ||
-      meta::nothrow_constructible<T, T const&>::value) {
+      __VEG_CONCEPT(meta::nothrow_move_constructible<T>) ||
+      __VEG_CONCEPT(meta::nothrow_constructible<T, T const&>)) {
+
     namespace impl = internal::_reloc;
     impl::reloc_impl<
-        meta::trivially_relocatable<T>::value               //
-            ? impl::which::trivial                          //
-            : meta::nothrow_move_constructible<T>::value    //
-                  ? impl::which::nothrow_move               //
-                  : meta::constructible<T, T const&>::value //
-                        ? impl::which::copy                 //
-                        : impl::which::throw_move           //
+        meta::trivially_relocatable<T>::value            //
+            ? impl::which::trivial                       //
+            : meta::nothrow_move_constructible<T>::value //
+                  ? impl::which::nothrow_move            //
+                  : meta::copy_constructible<T>::value   //
+                        ? impl::which::copy              //
+                        : impl::which::throw_move        //
         >::apply(dest, src, n);
   }
 };

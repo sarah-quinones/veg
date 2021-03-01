@@ -4,7 +4,7 @@
 #include "veg/internal/std.hpp"
 #include "veg/internal/typedefs.hpp"
 #include "veg/internal/.external/hedley.ext.h"
-#include "veg/internal/.external/boostpp.ext.h"
+#include "veg/internal/concept_macros.hpp"
 
 #define __VEG_DEFAULTS(class_name)                                             \
   ~class_name() = default;                                                     \
@@ -70,26 +70,6 @@
 #define __VEG_PP_LPAREN() (
 #define __VEG_PP_RPAREN() )
 
-#undef __VEG_PP_CAT
-#define __VEG_IMPL_CAT(A, ...) A##__VA_ARGS__
-#define __VEG_PP_CAT(A, ...) __VEG_IMPL_CAT(A, __VA_ARGS__)
-
-#undef __VEG_PP_SEQ_TAIL
-#define __VEG_PP_SEQ_TAIL(seq) __VEG_PP_CONSUME seq
-#define __VEG_PP_CONSUME(x)
-
-#define __VEG_IMPL_HEAD(arg, ...) arg
-#define __VEG_IMPL_TAIL(arg, ...) __VA_ARGS__
-#define __VEG_PP_HEAD(arg, ...) __VEG_IMPL_HEAD(arg, __VA_ARGS__)
-#define __VEG_PP_TAIL(arg, ...) __VEG_IMPL_TAIL(arg, __VA_ARGS__)
-
-#define __VEG_IMPL_REMOVE_PAREN1(...) __VEG_IMPL_REMOVE_PAREN1 __VA_ARGS__
-#define __VEG_IMPL_REMOVE_PAREN2(...) __VEG_PP_CAT(__VEG_IMPL_, __VA_ARGS__)
-#define __VEG_IMPL___VEG_IMPL_REMOVE_PAREN1
-#define __VEG_PP_REMOVE_PAREN(...)                                             \
-  __VEG_IMPL_REMOVE_PAREN2(__VEG_IMPL_REMOVE_PAREN1 __VA_ARGS__)
-#define __VEG_PP_APPEND(tup, elem) (elem, __VEG_PP_REMOVE_PAREN(tup))
-
 #ifdef VEG_NO_INSTANTIATE
 #define VEG_INSTANTIATE(fn, ...) static_assert(true, "")
 #define VEG_INSTANTIATE_CLASS(fn, ...) static_assert(true, "")
@@ -127,10 +107,8 @@
 
 #if __cplusplus >= 201703L
 #define __VEG_CPP17(...) __VA_ARGS__
-#define __VEG_ALL_OF(...) (__VA_ARGS__ && ...)
 #else
 #define __VEG_CPP17(...)
-#define __VEG_ALL_OF(...) (::veg::meta::all_of({__VA_ARGS__...}))
 #endif
 
 #if defined(__has_builtin)
@@ -261,15 +239,14 @@
   __VEG_IMPL_TEMPLATE2(                                                        \
       attr_name,                                                               \
       tparams,                                                                 \
-      __VEG_PP_CAT(                                                            \
+      __VEG_PP_CAT2(                                                           \
           __VEG_IMPL_REQUIRES_HANDLER,                                         \
-          __VEG_PP_CAT(__VEG_IMPL_PREFIX_, requirement) __VEG_PP_RPAREN()),    \
+          __VEG_PP_CAT2(__VEG_IMPL_PREFIX_, requirement) __VEG_PP_RPAREN()),   \
       __VEG_PP_SEQ_HEAD(args),                                                 \
       __VEG_PP_SEQ_TAIL(args))
 
 #define __VEG_IMPL_PREFIX_requires _ONE __VEG_PP_LPAREN()
 #define __VEG_IMPL_PREFIX_requires_all _ALL __VEG_PP_LPAREN()
-#define __VEG_IMPL_REQUIRES_HANDLER_ONE(...) __VA_ARGS__
 
 #if __cplusplus >= 202002L
 #define __VEG_IMPL_TEMPLATE2(                                                  \
@@ -278,7 +255,6 @@
   requires(requirement) attr_name /* NOLINT */ (                               \
       __VEG_PP_TAIL first_param __VEG_PP_HEAD first_param                      \
           __VEG_PP_SEQ_FOR_EACH(__VEG_IMPL_PARAM_EXPAND, _, args))
-#define __VEG_IMPL_REQUIRES_HANDLER_ALL(...) (__VA_ARGS__) && ...
 #else
 #define __VEG_IMPL_TEMPLATE2(                                                  \
     attr_name, tparams, requirement, first_param, args)                        \
@@ -289,7 +265,6 @@
           __VEG_PP_TAIL first_param> __VEG_PP_HEAD first_param                 \
           __VEG_PP_SEQ_FOR_EACH(__VEG_IMPL_PARAM_EXPAND, _, args))
 
-#define __VEG_IMPL_REQUIRES_HANDLER_ALL(...) (__VA_ARGS__)
 #endif
 
 #define VEG_DECLTYPE_RET(...)                                                  \
@@ -623,10 +598,12 @@ template <typename T>
 using make_unsigned_t = typename internal::make_unsigned<T>::type;
 
 template <typename T>
-struct bounded_array : false_type {};
-
+struct is_bounded_array : false_type {};
 template <typename T, usize N>
-struct bounded_array<T[N]> : true_type {};
+struct is_bounded_array<T[N]> : true_type {};
+
+template <typename T>
+using bounded_array = is_bounded_array<T>;
 
 template <typename T>
 using remove_extent_t = typename std::remove_extent<T>::type;
@@ -814,11 +791,11 @@ struct nothrow_constructible
               T,
               Ts&&...>)) {};
 
-template <typename To, typename From>
+template <typename From, typename To>
 struct convertible_to : __VEG_HAS_BUILTIN_OR(
                             __is_convertible,
-                            (bool_constant<__is_convertible(To, From)>),
-                            (std::is_convertible<To, From>)) {};
+                            (bool_constant<__is_convertible(From, To)>),
+                            (std::is_convertible<From, To>)) {};
 
 template <typename T>
 struct move_constructible : constructible<T, T&&> {};
@@ -979,12 +956,12 @@ namespace fn {
 struct invoke {
   VEG_TEMPLATE(
       (typename Fn, typename... Args),
-      requires(meta::invocable<Fn&&, Args&&...>::value),
+      requires(__VEG_CONCEPT(meta::invocable<Fn&&, Args&&...>)),
       HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (fn, Fn&&),
       (... args, Args&&))
-  const noexcept(meta::nothrow_invocable<Fn&&, Args&&...>::value)
+  const noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn&&, Args&&...>))
       ->meta::invoke_result_t<Fn&&, Args&&...> {
     return meta::invocable<Fn&&, Args&&...>::apply(
         VEG_FWD(fn), VEG_FWD(args)...);
@@ -1101,8 +1078,8 @@ struct mov_fn_swap {
 
   template <typename U>
   HEDLEY_ALWAYS_INLINE static __VEG_CPP14(constexpr) void apply(U& u, U& v) noexcept(
-      (meta::nothrow_move_constructible<U>::value &&
-       meta::nothrow_move_assignable<U>::value)) {
+      (__VEG_CONCEPT(meta::nothrow_move_constructible<U>) &&
+       __VEG_CONCEPT(meta::nothrow_move_assignable<U>))) {
     auto tmp = static_cast<U&&>(u);
     u = static_cast<U&&>(v);
     v = static_cast<U&&>(tmp);
@@ -1155,12 +1132,12 @@ namespace fn {
 struct swap {
   VEG_TEMPLATE(
       (typename U, typename V),
-      requires(meta::swappable<U, V>::value),
+      requires(__VEG_CONCEPT(meta::swappable<U, V>)),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void
       operator(),
       (u, U&&),
       (v, V&&))
-  const noexcept(meta::nothrow_swappable<U, V>::value) {
+  const noexcept(__VEG_CONCEPT(meta::nothrow_swappable<U, V>)) {
     internal::swap_::swap_impl<U, V>::apply(VEG_FWD(u), VEG_FWD(v));
   }
 };
@@ -1171,7 +1148,7 @@ template <typename Fn>
 struct VEG_NODISCARD defer {
   Fn fn;
   constexpr defer /* NOLINT */ (Fn _fn) noexcept(
-      meta::nothrow_move_constructible<Fn>::value)
+      __VEG_CONCEPT(meta::nothrow_move_constructible<Fn>))
       : fn(VEG_FWD(_fn)) {}
   defer(defer const&) = delete;
   defer(defer&&) noexcept = delete;
@@ -1179,7 +1156,7 @@ struct VEG_NODISCARD defer {
   auto operator=(defer&&) noexcept -> defer& = delete;
   __VEG_CPP20(constexpr)
   HEDLEY_ALWAYS_INLINE ~defer() noexcept(
-      noexcept(meta::nothrow_invocable<Fn&&>::value)) {
+      noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn&&>))) {
     VEG_FWD(fn)();
   }
 };
@@ -1194,12 +1171,14 @@ namespace fn {
 struct defer {
   VEG_TEMPLATE(
       typename Fn,
-      requires((
-          meta::move_constructible<Fn>::value && meta::invocable<Fn&&>::value)),
+      requires(
+          __VEG_CONCEPT(meta::move_constructible<Fn>) &&
+          __VEG_CONCEPT(meta::invocable<Fn&&>)),
       HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) auto
       operator(),
       (fn, Fn))
-  const noexcept(meta::nothrow_move_constructible<Fn>::value)->veg::defer<Fn> {
+  const noexcept(__VEG_CONCEPT(meta::nothrow_move_constructible<Fn>))
+      ->veg::defer<Fn> {
     return {VEG_FWD(fn)};
   }
 };
@@ -1313,13 +1292,12 @@ inline namespace tags {
 struct elems_t {
   VEG_TEMPLATE(
       typename... Ts,
-      requires_all(meta::constructible<meta::decay_t<Ts>, Ts&&>::value),
+      requires_all(__VEG_CONCEPT(meta::constructible<meta::decay_t<Ts>, Ts&&>)),
       constexpr auto
       operator(),
       (... args, Ts&&))
-  const noexcept(
-      meta::all_of(
-          {meta::nothrow_constructible<meta::decay_t<Ts>, Ts&&>::value...}))
+  const noexcept(meta::all_of({__VEG_CONCEPT(
+                     meta::nothrow_constructible<meta::decay_t<Ts>, Ts&&>)...}))
       ->veg::tuple<meta::decay_t<Ts>...> {
     return veg::tuple<meta::decay_t<Ts>...>{VEG_FWD(args)...};
   }
@@ -1345,12 +1323,13 @@ private:
 struct some_t {
   VEG_TEMPLATE(
       (typename T),
-      requires(meta::constructible<meta::remove_cvref_t<T>, T&&>::value),
+      requires(
+          __VEG_CONCEPT(meta::constructible<meta::remove_cvref_t<T>, T&&>)),
       __VEG_CPP14(constexpr) auto
       operator(),
       (arg, T&&))
   const noexcept(
-      meta::nothrow_constructible<meta::remove_cvref_t<T>, T&&>::value)
+      __VEG_CONCEPT(meta::nothrow_constructible<meta::remove_cvref_t<T>, T&&>))
       ->option<meta::remove_cvref_t<T>> {
     return {*this, VEG_FWD(arg)};
   }

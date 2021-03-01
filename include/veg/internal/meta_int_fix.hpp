@@ -99,7 +99,7 @@ struct fix {
   HEDLEY_ALWAYS_INLINE constexpr fix(dyn /*arg*/, unsafe_t /*tag*/) noexcept;
   HEDLEY_ALWAYS_INLINE constexpr fix // NOLINT(hicpp-explicit-conversions)
       (dyn arg, safe_t /*tag*/ = {}) noexcept;
-  VEG_TEMPLATE((i64 M), requires M != N, constexpr fix, (/*arg*/, fix<M>)) =
+  VEG_TEMPLATE((i64 M), requires(M != N), constexpr fix, (/*arg*/, fix<M>)) =
       delete;
 
   VEG_NODISCARD HEDLEY_ALWAYS_INLINE explicit constexpr
@@ -274,7 +274,8 @@ struct binary_traits<fix<N>, fix<M>> {
 
 VEG_TEMPLATE(
     (typename L, typename R),
-    requires meta::meta_int<L>::value&& meta::meta_int<R>::value,
+    requires(
+        __VEG_CONCEPT(meta::meta_int<L>) && __VEG_CONCEPT(meta::meta_int<R>)),
     VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
     operator+,
     (a, L),
@@ -283,7 +284,8 @@ __VEG_DEDUCE_RET(internal::binary_traits<L, R>::add_fn(a, b));
 
 VEG_TEMPLATE(
     (typename L, typename R),
-    requires meta::meta_int<L>::value&& meta::meta_int<R>::value,
+    requires(
+        __VEG_CONCEPT(meta::meta_int<L>) && __VEG_CONCEPT(meta::meta_int<R>)),
     VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
     operator-,
     (a, L),
@@ -292,7 +294,8 @@ __VEG_DEDUCE_RET(internal::binary_traits<L, R>::sub_fn(a, b));
 
 VEG_TEMPLATE(
     (typename L, typename R),
-    requires meta::meta_int<L>::value&& meta::meta_int<R>::value,
+    requires(
+        __VEG_CONCEPT(meta::meta_int<L>) && __VEG_CONCEPT(meta::meta_int<R>)),
     VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
     operator*,
     (a, L),
@@ -302,8 +305,10 @@ __VEG_DEDUCE_RET(internal::binary_traits<L, R>::mul_fn(a, b));
 VEG_TEMPLATE(
     (typename L, typename R),
     requires(
-        meta::meta_int<L>::value&& meta::meta_int<R>::value&&
-            meta::meta_int<typename internal::binary_traits<L, R>::div>::value),
+        __VEG_CONCEPT(meta::meta_int<L>) && //
+        __VEG_CONCEPT(meta::meta_int<R>) &&
+        __VEG_CONCEPT(
+            meta::meta_int<typename internal::binary_traits<L, R>::div>)),
     VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
     operator/,
     (a, L),
@@ -313,8 +318,10 @@ __VEG_DEDUCE_RET(internal::binary_traits<L, R>::div_fn(a, b));
 VEG_TEMPLATE(
     (typename L, typename R),
     requires(
-        meta::meta_int<L>::value&& meta::meta_int<R>::value&&
-            meta::meta_int<typename internal::binary_traits<L, R>::mod>::value),
+        __VEG_CONCEPT(meta::meta_int<L>) && //
+        __VEG_CONCEPT(meta::meta_int<R>) &&
+        __VEG_CONCEPT(
+            meta::meta_int<typename internal::binary_traits<L, R>::mod>)),
     VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
     operator%,
     (a, L),
@@ -324,7 +331,9 @@ __VEG_DEDUCE_RET(internal::binary_traits<L, R>::mod_fn(a, b));
 #define __VEG_CMP(Name, Op)                                                    \
   VEG_TEMPLATE(                                                                \
       (typename L, typename R),                                                \
-      requires meta::meta_int<L>::value&& meta::meta_int<R>::value,            \
+      requires(                                                                \
+          __VEG_CONCEPT(meta::meta_int<L>) &&                                  \
+          __VEG_CONCEPT(meta::meta_int<R>)),                                   \
       VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto                        \
       operator Op,                                                             \
       (a, L),                                                                  \

@@ -73,16 +73,18 @@ struct cmp_impl<which::int_unsigned_signed> {
 
 template <typename A, typename B>
 using cmp_impl_ = internal::cmp::cmp_impl<
-    (meta::signed_integral<A>::value && meta::unsigned_integral<B>::value)  //
-        ? which::int_signed_unsigned                                        //
-        : (meta::unsigned_integral<A>::value&&                              //
-               meta::signed_integral<B>::value)                             //
-              ? which::int_unsigned_signed                                  //
-              : (meta::arithmetic<A>::value&& meta::arithmetic<B>::value && //
-                 (meta::floating_point<A>::value ||                         //
-                  meta::floating_point<B>::value))                          //
-                    ? which::floating_point                                 //
-                    : which::generic                                        //
+    (__VEG_CONCEPT(meta::signed_integral<A>) &&
+     __VEG_CONCEPT(meta::unsigned_integral<B>))         //
+        ? which::int_signed_unsigned                    //
+        : (__VEG_CONCEPT(meta::unsigned_integral<A>) && //
+           __VEG_CONCEPT(meta::signed_integral<B>))     //
+              ? which::int_unsigned_signed              //
+              : (__VEG_CONCEPT(meta::arithmetic<A>) &&
+                 __VEG_CONCEPT(meta::arithmetic<B>) &&      //
+                 (__VEG_CONCEPT(meta::floating_point<A>) || //
+                  __VEG_CONCEPT(meta::floating_point<B>)))  //
+                    ? which::floating_point                 //
+                    : which::generic                        //
     >;
 } // namespace cmp
 } // namespace internal
@@ -91,7 +93,7 @@ namespace fn {
 struct cmp_equal {
   VEG_TEMPLATE(
       (typename A, typename B),
-      requires(meta::equality_comparable_with<A, B>::value),
+      requires(__VEG_CONCEPT(meta::equality_comparable_with<A, B>)),
       HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (a, A const&),
@@ -102,7 +104,7 @@ struct cmp_equal {
 struct cmp_not_equal {
   VEG_TEMPLATE(
       (typename A, typename B),
-      requires(meta::equality_comparable_with<A, B>::value),
+      requires(__VEG_CONCEPT(meta::equality_comparable_with<A, B>)),
       HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (a, A const&),
@@ -113,7 +115,7 @@ struct cmp_not_equal {
 struct cmp_less {
   VEG_TEMPLATE(
       (typename A, typename B),
-      requires(meta::partially_ordered_with<A, B>::value),
+      requires(__VEG_CONCEPT(meta::partially_ordered_with<A, B>)),
       HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (a, A const&),
@@ -124,7 +126,7 @@ struct cmp_less {
 struct cmp_greater {
   VEG_TEMPLATE(
       (typename A, typename B),
-      requires(meta::partially_ordered_with<B, A>::value),
+      requires(__VEG_CONCEPT(meta::partially_ordered_with<B, A>)),
       HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (a, A const&),
@@ -135,7 +137,7 @@ struct cmp_greater {
 struct cmp_less_equal {
   VEG_TEMPLATE(
       (typename A, typename B),
-      requires(meta::partially_ordered_with<B, A>::value),
+      requires(__VEG_CONCEPT(meta::partially_ordered_with<B, A>)),
       HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (a, A const&),
@@ -146,7 +148,7 @@ struct cmp_less_equal {
 struct cmp_greater_equal {
   VEG_TEMPLATE(
       (typename A, typename B),
-      requires(meta::partially_ordered_with<A, B>::value),
+      requires(__VEG_CONCEPT(meta::partially_ordered_with<A, B>)),
       HEDLEY_ALWAYS_INLINE constexpr auto
       operator(),
       (a, A const&),

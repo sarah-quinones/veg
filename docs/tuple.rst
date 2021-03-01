@@ -56,7 +56,7 @@ tuple
         | viable if `constructible<Ti, Ui const&>
           <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for all
           `i`
-        | ``explicit`` if `convertible_to<Ti, Ui const&>
+        | ``explicit`` if `convertible_to<Ui const&, Ti>
           <https://en.cppreference.com/w/cpp/types/is_convertible>`__ is
           ``false`` for at least one `i`
         | ``noexcept`` if `nothrow_constructible<Ti, Ui const&>
@@ -74,7 +74,7 @@ tuple
         | viable if `constructible<Ti, Ui&> && !constructible<Ti, Ui const&>
           <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for all
           `i`
-        | ``explicit`` if `convertible_to<Ti, Ui&>
+        | ``explicit`` if `convertible_to<Ui&, Ti>
           <https://en.cppreference.com/w/cpp/types/is_convertible>`__ is
           ``false`` for at least one `i`
         | ``noexcept`` if `nothrow_constructible<Ti, Ui&>
@@ -92,7 +92,7 @@ tuple
         | viable if `constructible<Ti, Ui&&>
           <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for all
           `i`
-        | ``explicit`` if `convertible_to<Ti, Ui&&>
+        | ``explicit`` if `convertible_to<Ui&&, Ti>
           <https://en.cppreference.com/w/cpp/types/is_convertible>`__ is
           ``false`` for at least one `i`
         | ``noexcept`` if `nothrow_constructible<Ti, Ui&&>

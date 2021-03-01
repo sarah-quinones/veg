@@ -17,11 +17,14 @@ struct char_string_ref {
   VEG_TEMPLATE(
       typename T,
       requires(
-          (meta::constructible<
-               char const*,
-               decltype(__VEG_DECLVAL(T const&).data())>::value && //
-           meta::constructible<i64, decltype(__VEG_DECLVAL(T const&).size())>::
-               value)),
+          __VEG_CONCEPT( //
+              meta::constructible<
+                  char const*,
+                  decltype(__VEG_DECLVAL(T const&).data())>) &&
+          __VEG_CONCEPT( //
+              meta::constructible<
+                  i64,
+                  decltype(__VEG_DECLVAL(T const&).size())>)),
 
       HEDLEY_ALWAYS_INLINE constexpr char_string_ref, // NOLINT(hicpp-explicit-conversions)
       (arg, T const&))

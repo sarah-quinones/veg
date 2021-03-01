@@ -44,13 +44,9 @@ namespace fn {
 struct tuple : elems_t {};
 
 struct tuple_ref {
-  VEG_TEMPLATE(
-      typename... Ts,
-      requires true,
-      HEDLEY_ALWAYS_INLINE constexpr auto
-      operator(),
-      (... args, Ts&&))
-  const noexcept->veg::tuple<Ts&&...> {
+  template <typename... Ts>
+  HEDLEY_ALWAYS_INLINE constexpr auto operator()(Ts&&... args) const noexcept
+      -> veg::tuple<Ts&&...> {
     return veg::tuple<Ts&&...>{VEG_FWD(args)...};
   }
 };
@@ -58,12 +54,12 @@ struct tuple_ref {
 struct tuple_fwd {
   VEG_TEMPLATE(
       typename... Ts,
-      requires_all(meta::constructible<Ts, Ts&&>::value),
+      requires_all(__VEG_CONCEPT(meta::constructible<Ts, Ts&&>)),
       constexpr auto
       operator(),
       (... args, Ts&&))
   const noexcept(
-      meta::all_of({meta::nothrow_constructible<Ts, Ts&&>::value...}))
+      meta::all_of({__VEG_CONCEPT(meta::nothrow_constructible<Ts, Ts&&>)...}))
       ->veg::tuple<Ts...> {
     return veg::tuple<Ts...>{VEG_FWD(args)...};
   }

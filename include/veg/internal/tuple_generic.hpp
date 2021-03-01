@@ -77,14 +77,16 @@ struct tuple_impl<meta::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
   HEDLEY_ALWAYS_INLINE constexpr explicit tuple_impl(
       hidden_tag0 /*unused*/, Ts&&... args)
 
-      noexcept(meta::all_of({meta::nothrow_constructible<Ts, Ts&&>::value...}))
+      noexcept(meta::all_of(
+          {__VEG_CONCEPT(meta::nothrow_constructible<Ts, Ts&&>)...}))
       : tuple_leaf<Is, Ts>{storage::hidden_tag2{}, VEG_FWD(args)}... {}
 
   template <typename... Fn>
   HEDLEY_ALWAYS_INLINE constexpr explicit tuple_impl(
       hidden_tag1 /*unused*/,
-      Fn&&... fns) noexcept(meta::all_of({meta::nothrow_invocable<Fn&&>::
-                                              value...}))
+      Fn&&... fns) noexcept(meta::
+                                all_of({__VEG_CONCEPT(
+                                    meta::nothrow_invocable<Fn&&>)...}))
       : tuple_leaf<Is, Ts>{storage::hidden_tag1{}, VEG_FWD(fns)}... {}
 
   template <meta::category_e C, typename... Us>
@@ -93,9 +95,9 @@ struct tuple_impl<meta::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
       std::integral_constant<meta::category_e, C>* /*unused*/,
       tuple_impl<meta::index_sequence<Is...>, Us...> const& tup)
 
-      noexcept(meta::all_of(
-          {meta::nothrow_constructible<Ts, meta::apply_category_t<C, Us>&&>::
-               value...}))
+      noexcept(meta::all_of({__VEG_CONCEPT(
+          meta::
+              nothrow_constructible<Ts, meta::apply_category_t<C, Us>&&>)...}))
       : tuple_leaf<Is, Ts>{
             storage::hidden_tag2{},
             const_cast<meta::apply_category_t<C, Us>&&> /* NOLINT */ (
@@ -148,7 +150,8 @@ template <>
 struct assign_impl<false> {
   template <typename L, typename R>
   HEDLEY_ALWAYS_INLINE static __VEG_CPP14(constexpr) void apply(
-      L&& l, R&& r) noexcept(meta::nothrow_assignable<L&&, R&&>::value) {
+      L&& l,
+      R&& r) noexcept(__VEG_CONCEPT(meta::nothrow_assignable<L&&, R&&>)) {
     VEG_FWD(l) = VEG_FWD(r);
   }
 };
@@ -156,7 +159,8 @@ struct assign_impl<false> {
 struct assign_ftor {
   template <typename L, typename R>
   HEDLEY_ALWAYS_INLINE static __VEG_CPP14(constexpr) void apply(
-      L&& l, R&& r) noexcept(meta::nothrow_assignable<L&&, R&&>::value) {
+      L&& l,
+      R&& r) noexcept(__VEG_CONCEPT(meta::nothrow_assignable<L&&, R&&>)) {
     assign_impl<
         meta::arithmetic<meta::remove_cvref_t<L>>::value &&
         meta::arithmetic<meta::remove_cvref_t<R>>::value>::
@@ -166,7 +170,7 @@ struct assign_ftor {
 struct swap_ftor {
   template <typename L, typename R>
   HEDLEY_ALWAYS_INLINE static __VEG_CPP14(constexpr) void apply(
-      L&& l, R&& r) noexcept(meta::nothrow_swappable<L&&, R&&>::value) {
+      L&& l, R&& r) noexcept(__VEG_CONCEPT(meta::nothrow_swappable<L&&, R&&>)) {
     veg::swap(VEG_FWD(l), VEG_FWD(r));
   }
 };
@@ -221,8 +225,9 @@ template <usize... Is, typename... Ts, typename... Us>
 HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void assign_(
     tuple_impl<meta::index_sequence<Is...>, Ts...>&& lhs,
     tuple_impl<meta::index_sequence<Is...>, Us...>&&
-        rhs) noexcept(meta::all_of({meta::nothrow_assignable<Ts, Us>::
-                                        value...})) {
+        rhs) noexcept(meta::
+                          all_of({__VEG_CONCEPT(
+                              meta::nothrow_assignable<Ts, Us>)...})) {
   static_assert(meta::all_of({meta::reference<Ts>::value...}), "bug");
   static_assert(meta::all_of({meta::reference<Us>::value...}), "bug");
 
@@ -332,10 +337,11 @@ template <
     meta::category_e CL,
     meta::category_e CR>
 struct nothrow_tup_swappable<veg::tuple<Ts...>, veg::tuple<Us...>, CL, CR>
-    : meta::bool_constant<meta::all_of({meta::nothrow_swappable< //
-          meta::apply_category_t<CL, Ts>,                        //
-          meta::apply_category_t<CR, Us>                         //
-          >::value...})> {};
+    : meta::bool_constant<meta::all_of(
+          {__VEG_CONCEPT(meta::nothrow_swappable<        //
+                         meta::apply_category_t<CL, Ts>, //
+                         meta::apply_category_t<CR, Us>  //
+                         >)...})> {};
 
 namespace adl {
 template <typename...>
@@ -355,14 +361,14 @@ __VEG_DEDUCE_RET(
 
 VEG_TEMPLATE(
     (typename Tup_Lhs, typename Tup_Rhs, int = 0),
-    requires((meta::disjunction<                            //
-              tuple::trivially_swappable<Tup_Lhs, Tup_Rhs>, //
-              tup_swappable<
-                  meta::remove_cvref_t<Tup_Lhs>,
-                  meta::remove_cvref_t<Tup_Rhs>,
-                  meta::value_category<Tup_Lhs>::value,
-                  meta::value_category<Tup_Rhs>::value> //
-              >::value)),
+    requires(meta::disjunction<                            //
+             tuple::trivially_swappable<Tup_Lhs, Tup_Rhs>, //
+             tup_swappable<                                //
+                 meta::remove_cvref_t<Tup_Lhs>,            //
+                 meta::remove_cvref_t<Tup_Rhs>,            //
+                 meta::value_category<Tup_Lhs>::value,     //
+                 meta::value_category<Tup_Rhs>::value>     //
+             >::value),
     HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void swap,
     (ts, Tup_Lhs&&),
     (us, Tup_Rhs&&))
@@ -387,7 +393,8 @@ noexcept(meta::disjunction<
 
 VEG_TEMPLATE(
     (typename... Ts, typename... Us),
-    requires __VEG_ALL_OF((meta::equality_comparable_with<Ts, Us>::value)),
+    requires __VEG_ALL_OF(
+        __VEG_CONCEPT(meta::equality_comparable_with<Ts, Us>)),
     HEDLEY_ALWAYS_INLINE constexpr auto
     operator==,
     (lhs, veg::tuple<Ts...> const&),
@@ -397,7 +404,8 @@ noexcept -> bool {
 }
 VEG_TEMPLATE(
     (typename... Ts, typename... Us),
-    requires __VEG_ALL_OF((meta::equality_comparable_with<Ts, Us>::value)),
+    requires __VEG_ALL_OF(
+        __VEG_CONCEPT(meta::equality_comparable_with<Ts, Us>)),
     HEDLEY_ALWAYS_INLINE constexpr auto
     operator!=,
     (lhs, veg::tuple<Ts...> const&),
@@ -413,32 +421,33 @@ struct tuple_ctor_base : veg::internal::tuple::adl::tuple_base<Ts...> {
   constexpr tuple_ctor_base() = default;
 
   HEDLEY_ALWAYS_INLINE constexpr explicit tuple_ctor_base(Ts... args) noexcept(
-      meta::all_of({meta::nothrow_move_constructible<Ts>::value...}))
+      meta::all_of({__VEG_CONCEPT(meta::nothrow_move_constructible<Ts>)...}))
       : m_impl(hidden_tag0{}, VEG_FWD(args)...) {}
 
   HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base /* NOLINT */
-      (elems_t /*tag*/, Ts... args) noexcept(
-          meta::all_of({meta::nothrow_move_constructible<Ts>::value...}))
+      (elems_t /*tag*/, Ts... args) noexcept(meta::all_of(
+          {__VEG_CONCEPT(meta::nothrow_move_constructible<Ts>)...}))
       : m_impl(hidden_tag0{}, VEG_FWD(args)...) {}
 
   VEG_TEMPLATE(
       (typename... Fns),
-      requires __VEG_ALL_OF((
-          meta::invocable<Fns&&>::value && //
-          __VEG_SAME_AS(Ts, (meta::detected_t<meta::invoke_result_t, Fns&&>)))),
+      requires __VEG_ALL_OF(
+          __VEG_CONCEPT(meta::invocable<Fns&&>) && //
+          __VEG_SAME_AS(Ts, (meta::detected_t<meta::invoke_result_t, Fns&&>))),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
       (/*tag*/, inplace_t),
       (... fns, Fns&&))
-  noexcept(meta::all_of({meta::nothrow_invocable<Fns&&>::value...}))
+  noexcept(meta::all_of({__VEG_CONCEPT(meta::nothrow_invocable<Fns&&>)...}))
       : m_impl(internal::tuple::hidden_tag1{}, VEG_FWD(fns)...) {}
 
   VEG_TEMPLATE_EXPLICIT(
-      !__VEG_ALL_OF(meta::convertible_to<Ts, Us&&>::value),
+      !__VEG_ALL_OF(meta::convertible_to<Us&&, Ts>::value),
       (typename... Us),
       requires __VEG_ALL_OF(meta::constructible<Ts, Us&&>::value),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
       ((tup, veg::tuple<Us...>&&)),
-      noexcept(meta::all_of({meta::nothrow_constructible<Ts, Us&&>::value...}))
+      noexcept(meta::all_of(
+          {__VEG_CONCEPT(meta::nothrow_constructible<Ts, Us&&>)...}))
       : m_impl(
           hidden_tag2{},
           static_cast<std::integral_constant<
@@ -446,30 +455,30 @@ struct tuple_ctor_base : veg::internal::tuple::adl::tuple_base<Ts...> {
               meta::category_e::ref_mov>*>(nullptr),
           tuple::get_inner(VEG_FWD(tup))){})
 
-  VEG_TEMPLATE_EXPLICIT(
-      !__VEG_ALL_OF(meta::convertible_to<Ts, Us&>::value),
-      (typename... Us),
-      requires __VEG_ALL_OF(
-          (meta::constructible<Ts, Us&>::value &&
-           !meta::constructible<Ts, Us const&>::value)),
-      HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
-      ((tup, veg::tuple<Us...>&)),
-      noexcept(meta::all_of({meta::nothrow_constructible<Ts, Us&>::value...}))
-      : m_impl(
-          hidden_tag2{},
-          static_cast<std::integral_constant<
-              meta::category_e,
-              meta::category_e::ref_mut>*>(nullptr),
-          tuple::get_inner(VEG_FWD(tup))){})
+  VEG_TEMPLATE_EXPLICIT(!__VEG_ALL_OF(meta::convertible_to<Us&, Ts>::value),
+                        (typename... Us),
+                        requires __VEG_ALL_OF(
+                            (meta::constructible<Ts, Us&>::value &&
+                             !meta::constructible<Ts, Us const&>::value)),
+                        HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
+                        ((tup, veg::tuple<Us...>&)),
+                        noexcept(meta::all_of({__VEG_CONCEPT(
+                            meta::nothrow_constructible<Ts, Us&>)...}))
+                        : m_impl(
+                            hidden_tag2{},
+                            static_cast<std::integral_constant<
+                                meta::category_e,
+                                meta::category_e::ref_mut>*>(nullptr),
+                            tuple::get_inner(VEG_FWD(tup))){})
 
   VEG_TEMPLATE_EXPLICIT(
-      !__VEG_ALL_OF(meta::convertible_to<Ts, Us const&>::value),
+      !__VEG_ALL_OF(meta::convertible_to<Us const&, Ts>::value),
       (typename... Us),
       requires __VEG_ALL_OF(meta::constructible<Ts, Us const&>::value),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
       ((tup, veg::tuple<Us...> const&)),
-      noexcept(
-          meta::all_of({meta::nothrow_constructible<Ts, Us const&>::value...}))
+      noexcept(meta::all_of(
+          {__VEG_CONCEPT(meta::nothrow_constructible<Ts, Us const&>)...}))
       : m_impl(
           hidden_tag2{},
           static_cast<
@@ -517,21 +526,22 @@ struct tuple_ctor_base<false, Ts...>
   VEG_TEMPLATE(
       (typename... Fns),
       requires __VEG_ALL_OF((
-          meta::invocable<Fns&&>::value && //
+          __VEG_CONCEPT(meta::invocable<Fns&&>) && //
           __VEG_SAME_AS(Ts, (meta::detected_t<meta::invoke_result_t, Fns&&>)))),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
       (/*tag*/, inplace_t),
       (... fns, Fns&&))
-  noexcept(meta::all_of({meta::nothrow_invocable<Fns&&>::value...}))
+  noexcept(meta::all_of({__VEG_CONCEPT(meta::nothrow_invocable<Fns&&>)...}))
       : m_impl(internal::tuple::hidden_tag1{}, VEG_FWD(fns)...) {}
 
   VEG_TEMPLATE_EXPLICIT(
-      !__VEG_ALL_OF(meta::convertible_to<Ts, Us&&>::value),
+      !__VEG_ALL_OF(meta::convertible_to<Us&&, Ts>::value),
       (typename... Us),
       requires __VEG_ALL_OF(meta::constructible<Ts, Us&&>::value),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
       ((tup, veg::tuple<Us...>&&)),
-      noexcept(meta::all_of({meta::nothrow_constructible<Ts, Us&&>::value...}))
+      noexcept(meta::all_of(
+          {__VEG_CONCEPT(meta::nothrow_constructible<Ts, Us&&>)...}))
       : m_impl(
           hidden_tag2{},
           static_cast<std::integral_constant<
@@ -539,30 +549,30 @@ struct tuple_ctor_base<false, Ts...>
               meta::category_e::ref_mov>*>(nullptr),
           tuple::get_inner(VEG_FWD(tup))){})
 
-  VEG_TEMPLATE_EXPLICIT(
-      !__VEG_ALL_OF(meta::convertible_to<Ts, Us&>::value),
-      (typename... Us),
-      requires __VEG_ALL_OF(
-          (meta::constructible<Ts, Us&>::value &&
-           !meta::constructible<Ts, Us const&>::value)),
-      HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
-      ((tup, veg::tuple<Us...>&)),
-      noexcept(meta::all_of({meta::nothrow_constructible<Ts, Us&>::value...}))
-      : m_impl(
-          hidden_tag2{},
-          static_cast<std::integral_constant<
-              meta::category_e,
-              meta::category_e::ref_mut>*>(nullptr),
-          tuple::get_inner(VEG_FWD(tup))){})
+  VEG_TEMPLATE_EXPLICIT(!__VEG_ALL_OF(meta::convertible_to<Us&, Ts>::value),
+                        (typename... Us),
+                        requires __VEG_ALL_OF(
+                            (meta::constructible<Ts, Us&>::value &&
+                             !meta::constructible<Ts, Us const&>::value)),
+                        HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
+                        ((tup, veg::tuple<Us...>&)),
+                        noexcept(meta::all_of({__VEG_CONCEPT(
+                            meta::nothrow_constructible<Ts, Us&>)...}))
+                        : m_impl(
+                            hidden_tag2{},
+                            static_cast<std::integral_constant<
+                                meta::category_e,
+                                meta::category_e::ref_mut>*>(nullptr),
+                            tuple::get_inner(VEG_FWD(tup))){})
 
   VEG_TEMPLATE_EXPLICIT(
-      !__VEG_ALL_OF(meta::convertible_to<Ts, Us const&>::value),
+      !__VEG_ALL_OF(meta::convertible_to<Us const&, Ts>::value),
       (typename... Us),
       requires __VEG_ALL_OF(meta::constructible<Ts, Us const&>::value),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
       ((tup, veg::tuple<Us...> const&)),
-      noexcept(
-          meta::all_of({meta::nothrow_constructible<Ts, Us const&>::value...}))
+      noexcept(meta::all_of(
+          {__VEG_CONCEPT(meta::nothrow_constructible<Ts, Us const&>)...}))
       : m_impl(
           hidden_tag2{},
           static_cast<
@@ -606,8 +616,9 @@ struct tuple : internal::tuple::tuple_ctor_base<
       (i64 I),
       requires(
           I < sizeof...(Ts) && (I >= 0) &&
-          meta::move_constructible<typename internal::tuple::pack_ith_elem<
-              usize(I)>::template type<Ts...>>::value),
+          __VEG_CONCEPT(
+              meta::move_constructible<typename internal::tuple::pack_ith_elem<
+                  usize(I)>::template type<Ts...>>)),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator[],
       (/*arg*/, fix<I>)) &&
@@ -646,17 +657,21 @@ struct tuple : internal::tuple::tuple_ctor_base<
 
   VEG_TEMPLATE(
       (typename... Us),
-      requires __VEG_ALL_OF(meta::assignable<Ts&, Us const&>::value),
+      requires __VEG_ALL_OF(
+          !__VEG_CONCEPT(meta::reference<Ts>) &&
+          __VEG_CONCEPT(meta::assignable<Ts&, Us const&>)),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator=,
       (rhs, veg::tuple<Us...> const&)) &
 
       noexcept(meta::all_of(
-          {meta::nothrow_assignable<Ts&, Us const&>::value...})) -> tuple& {
+          {__VEG_CONCEPT(meta::nothrow_assignable<Ts&, Us const&>)...}))
+          -> tuple& {
 
     internal::tuple::binop_apply<
         internal::tuple::assign_ftor,
-        meta::all_of({meta::nothrow_assignable<Ts&, Us const&>::value...})>(
+        meta::all_of(
+            {__VEG_CONCEPT(meta::nothrow_assignable<Ts&, Us const&>)...})>(
 
         static_cast<tuple<Ts&...>*>(nullptr),
         static_cast<tuple<Us const&...>*>(nullptr),
@@ -670,17 +685,19 @@ struct tuple : internal::tuple::tuple_ctor_base<
 
   VEG_TEMPLATE(
       (typename... Us),
-      requires __VEG_ALL_OF(meta::assignable<Ts&, Us&&>::value),
+      requires __VEG_ALL_OF(
+          !__VEG_CONCEPT(meta::reference<Ts>) &&
+          __VEG_CONCEPT(meta::assignable<Ts&, Us&&>)),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator=,
       (rhs, veg::tuple<Us...>&&)) &
 
-      noexcept(meta::all_of({meta::nothrow_assignable<Ts&, Us&&>::value...}))
-          -> tuple& {
+      noexcept(meta::all_of(
+          {__VEG_CONCEPT(meta::nothrow_assignable<Ts&, Us&&>)...})) -> tuple& {
 
     internal::tuple::binop_apply<
         internal::tuple::assign_ftor,
-        meta::all_of({meta::nothrow_assignable<Ts&, Us&&>::value...})>(
+        meta::all_of({__VEG_CONCEPT(meta::nothrow_assignable<Ts&, Us&&>)...})>(
 
         static_cast<tuple<Ts&...>*>(nullptr),
         static_cast<tuple<Us&&...>*>(nullptr),
@@ -694,17 +711,19 @@ struct tuple : internal::tuple::tuple_ctor_base<
 
   VEG_TEMPLATE(
       (typename... Us),
-      requires __VEG_ALL_OF(meta::assignable<Ts&&, Us const&>::value),
+      requires __VEG_ALL_OF(__VEG_CONCEPT(meta::assignable<Ts&&, Us const&>)),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator=,
       (rhs, veg::tuple<Us...> const&)) &&
 
       noexcept(meta::all_of(
-          {meta::nothrow_assignable<Ts&&, Us const&>::value...})) -> tuple&& {
+          {__VEG_CONCEPT(meta::nothrow_assignable<Ts&&, Us const&>)...}))
+          -> tuple&& {
 
     internal::tuple::binop_apply<
         internal::tuple::assign_ftor,
-        meta::all_of({meta::nothrow_assignable<Ts&&, Us const&>::value...})>(
+        meta::all_of(
+            {__VEG_CONCEPT(meta::nothrow_assignable<Ts&&, Us const&>)...})>(
 
         static_cast<tuple<Ts&&...>*>(nullptr),
         static_cast<tuple<Us const&...>*>(nullptr),
@@ -718,17 +737,18 @@ struct tuple : internal::tuple::tuple_ctor_base<
 
   VEG_TEMPLATE(
       (typename... Us),
-      requires __VEG_ALL_OF(meta::assignable<Ts&&, Us&&>::value),
+      requires __VEG_ALL_OF(__VEG_CONCEPT(meta::assignable<Ts&&, Us&&>)),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator=,
       (rhs, veg::tuple<Us...>&&)) &&
 
-      noexcept(meta::all_of({meta::nothrow_assignable<Ts&&, Us&&>::value...}))
+      noexcept(meta::all_of(
+          {__VEG_CONCEPT(meta::nothrow_assignable<Ts&&, Us&&>)...}))
           -> tuple&& {
 
     internal::tuple::binop_apply<
         internal::tuple::assign_ftor,
-        meta::all_of({meta::nothrow_assignable<Ts&&, Us&&>::value...})>(
+        meta::all_of({__VEG_CONCEPT(meta::nothrow_assignable<Ts&&, Us&&>)...})>(
 
         static_cast<tuple<Ts&&...>*>(nullptr),
         static_cast<tuple<Us&&...>*>(nullptr),
@@ -742,20 +762,21 @@ struct tuple : internal::tuple::tuple_ctor_base<
 
   VEG_TEMPLATE(
       (typename... Us),
-      requires __VEG_ALL_OF(meta::assignable<Ts const&, Us const&>::value),
+      requires __VEG_ALL_OF(
+          __VEG_CONCEPT(meta::assignable<Ts const&, Us const&>)),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator=,
       (rhs, veg::tuple<Us...> const&))
   const&
 
-      noexcept(meta::all_of(
-                   {meta::nothrow_assignable<Ts const&, Us const&>::value...}))
+      noexcept(meta::all_of({__VEG_CONCEPT(
+                   meta::nothrow_assignable<Ts const&, Us const&>)...}))
           ->tuple const& {
 
     internal::tuple::binop_apply<
         internal::tuple::assign_ftor,
-        meta::all_of(
-            {meta::nothrow_assignable<Ts const&, Us const&>::value...})>(
+        meta::all_of({__VEG_CONCEPT(
+            meta::nothrow_assignable<Ts const&, Us const&>)...})>(
 
         static_cast<tuple<Ts const&...>*>(nullptr),
         static_cast<tuple<Us const&...>*>(nullptr),
@@ -769,19 +790,20 @@ struct tuple : internal::tuple::tuple_ctor_base<
 
   VEG_TEMPLATE(
       (typename... Us),
-      requires __VEG_ALL_OF(meta::assignable<Ts const&, Us&&>::value),
+      requires __VEG_ALL_OF(__VEG_CONCEPT(meta::assignable<Ts const&, Us&&>)),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator=,
       (rhs, veg::tuple<Us...>&&))
   const&
 
-      noexcept(
-          meta::all_of({meta::nothrow_assignable<Ts const&, Us&&>::value...}))
+      noexcept(meta::all_of({__VEG_CONCEPT(
+                   meta::nothrow_assignable<Ts const&, Us&&>)...}))
           ->tuple const& {
 
     internal::tuple::binop_apply<
         internal::tuple::assign_ftor,
-        meta::all_of({meta::nothrow_assignable<Ts const&, Us&&>::value...})>(
+        meta::all_of(
+            {__VEG_CONCEPT(meta::nothrow_assignable<Ts const&, Us&&>)...})>(
 
         static_cast<tuple<Ts&...>*>(nullptr),
         static_cast<tuple<Us&&...>*>(nullptr),

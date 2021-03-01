@@ -9,7 +9,8 @@ template <typename To>
 struct narrow {
   VEG_TEMPLATE(
       (typename From),
-      requires meta::arithmetic<From>::value&& meta::arithmetic<To>::value,
+      requires __VEG_CONCEPT(meta::arithmetic<From>) &&
+          __VEG_CONCEPT(meta::arithmetic<To>),
       constexpr auto
       operator(),
       (from, From))
@@ -18,7 +19,8 @@ struct narrow {
 template <typename To>
 VEG_TEMPLATE(
     (typename From),
-    requires meta::arithmetic<From>::value&& meta::arithmetic<To>::value,
+    requires __VEG_CONCEPT(meta::arithmetic<From>) &&
+        __VEG_CONCEPT(meta::arithmetic<To>),
     constexpr auto narrow<To>::operator(),
     (from, From))
 const noexcept -> To {

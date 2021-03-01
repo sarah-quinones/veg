@@ -87,17 +87,18 @@ struct array_data_size {
 
 template <typename R, typename T>
 struct has_array_data2
-    : meta::is_convertible<
-          T&,
-          R (&)[sizeof(T) / sizeof(decltype(__VEG_DECLVAL(T)[0]))]> {};
+    : meta::bool_constant<__VEG_CONCEPT(
+          meta::convertible_to<
+              T&,
+              R (&)[sizeof(T) / sizeof(decltype(__VEG_DECLVAL(T)[0]))]>)> {};
 
 template <typename R, typename T>
 struct has_array_data_r
-    : meta::conjunction<meta::bounded_array<T>, has_array_data2<R, T>>,
+    : meta::conjunction<meta::is_bounded_array<T>, has_array_data2<R, T>>,
       array_data_size {};
 
 template <typename T>
-struct has_array_data : meta::bounded_array<T>, array_data_size {};
+struct has_array_data : meta::is_bounded_array<T>, array_data_size {};
 
 template <typename R, typename T>
 struct has_data_r
@@ -180,7 +181,8 @@ struct slice<void> : slice<unsigned char> {
 
   VEG_TEMPLATE(
       (typename T),
-      requires !meta::const_<T>::value && meta::trivially_copyable<T>::value,
+      requires !__VEG_CONCEPT(meta::const_<T>) &&
+          __VEG_CONCEPT(meta::trivially_copyable<T>),
       slice, /* NOLINT(hicpp-explicit-conversions) */
       (s, slice<T>))
   noexcept
@@ -193,7 +195,7 @@ struct slice<void const> : slice<unsigned char const> {
   using slice<unsigned char const>::slice;
   VEG_TEMPLATE(
       (typename T),
-      requires meta::trivially_copyable<T>::value,
+      requires __VEG_CONCEPT(meta::trivially_copyable<T>),
       slice, /* NOLINT(hicpp-explicit-conversions) */
       (s, slice<T>))
   noexcept
@@ -207,11 +209,12 @@ namespace fn {
 struct slice {
   VEG_TEMPLATE(
       (typename Rng),
-      requires(meta::constructible< //
-               veg::slice<meta::remove_pointer_t<
-                   decltype(internal::has_data<meta::remove_cvref_t<Rng>>::d(
-                       __VEG_DECLVAL(Rng&)))>>,
-               Rng&&>::value),
+      requires(
+          __VEG_CONCEPT(meta::constructible< //
+                        veg::slice<meta::remove_pointer_t<decltype(
+                            internal::has_data<meta::remove_cvref_t<Rng>>::d(
+                                __VEG_DECLVAL(Rng&)))>>,
+                        Rng&&>)),
       auto
       operator(),
       (rng, Rng&&))
