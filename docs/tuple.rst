@@ -15,7 +15,7 @@ tuple
     | default constructor: each member is default or value initialized
     | viable if
       `default_constructible<Ti> <https://en.cppreference.com/w/cpp/types/is_default_constructible>`__
-      for all *i*
+      for all ``i``
     | ``noexcept`` if `nothrow_default_constructible<Ti>
       <https://en.cppreference.com/w/cpp/types/is_default_constructible>`__
 
@@ -25,10 +25,10 @@ tuple
       corresponding parameter ``Ti(FWD(args_i))``
     | viable if `move_constructible<Ti>
       <https://en.cppreference.com/w/cpp/types/is_move_constructible>`__ for all
-      *i*
+      ``i``
     | ``noexcept`` if `nothrow_move_constructible<Ti>
       <https://en.cppreference.com/w/cpp/types/is_move_constructible>`__ for
-      all *i*
+      all ``i``
 
   .. cpp:function:: template<typename... Fn> constexpr tuple(inplace_t, Fn&&... fn) noexcept(conditionally)
 
@@ -37,9 +37,9 @@ tuple
     | viable if `invocable<Ti>
       <https://en.cppreference.com/w/cpp/types/is_invocable>`__ and
       `invoke_result_t<Fn_i> == Ti
-        <https://en.cppreference.com/w/cpp/types/result_of>`__ for all *i*
+        <https://en.cppreference.com/w/cpp/types/result_of>`__ for all ``i``
     | ``noexcept`` if `nothrow_invocable<Ti>
-      <https://en.cppreference.com/w/cpp/types/is_invocable>`__ for all *i*
+      <https://en.cppreference.com/w/cpp/types/is_invocable>`__ for all ``i``
 
   .. centered:: converting constructors
 
@@ -55,13 +55,13 @@ tuple
           ``Ti(tup.elem_i)``
         | viable if `constructible<Ti, Ui const&>
           <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for all
-          `i`
+          ``i``
         | ``explicit`` if `convertible_to<Ui const&, Ti>
           <https://en.cppreference.com/w/cpp/types/is_convertible>`__ is
-          ``false`` for at least one `i`
+          ``false`` for at least one ``i``
         | ``noexcept`` if `nothrow_constructible<Ti, Ui const&>
           <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for
-          all *i*
+          all ``i``
 
     .. tab:: lvalue
 
@@ -73,13 +73,17 @@ tuple
           ``Ti(tup.elem_i)``
         | viable if `constructible<Ti, Ui&> && !constructible<Ti, Ui const&>
           <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for all
-          `i`
+          ``i``
+
+        .. warning::
+          when ``Ti == Ui`` for all ``i``, this is shadowed by the copy constructor
+
         | ``explicit`` if `convertible_to<Ui&, Ti>
           <https://en.cppreference.com/w/cpp/types/is_convertible>`__ is
-          ``false`` for at least one `i`
+          ``false`` for at least one ``i``
         | ``noexcept`` if `nothrow_constructible<Ti, Ui&>
           <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for
-          all *i*
+          all ``i``
 
     .. tab:: forwarding
 
@@ -91,13 +95,13 @@ tuple
           ``Ti(static_cast<Ui&&>(tup.elem_i))``
         | viable if `constructible<Ti, Ui&&>
           <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for all
-          `i`
+          ``i``
         | ``explicit`` if `convertible_to<Ui&&, Ti>
           <https://en.cppreference.com/w/cpp/types/is_convertible>`__ is
-          ``false`` for at least one `i`
+          ``false`` for at least one ``i``
         | ``noexcept`` if `nothrow_constructible<Ti, Ui&&>
           <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for
-          all *i*
+          all ``i``
 
     .. tab:: forwarding (deleted)
 
@@ -117,9 +121,9 @@ tuple
 
         | assignment operator: assigns to each member ``elem_i = tup.elem_i``
         | viable if `assignable<Ti&, Ui const&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all `i`
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
         | ``noexcept`` if `nothrow_assignable<Ti&, Ui const&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
 
       .. cpp:function:: template <typename... Us>\
                         void operator=(__::tuple_base<Us...> const& tup) & = delete;
@@ -134,9 +138,9 @@ tuple
         | forwarding assignment operator: assigns to each member ``elem_i =
           static_cast<Ui&&>(tup.elem_i)``
         | viable if `assignable<Ti&, U&&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all `i`
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
         | ``noexcept`` if `nothrow_assignable<Ti&, Ui&&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
 
       .. cpp:function:: template <typename... Us>\
                         void operator=(__::tuple_base<Us...>&& tup) & = delete;
@@ -163,9 +167,9 @@ tuple
 
         | proxy assignment operator: assigns to each member ``elem_i = tup.elem_i``
         | viable if `assignable<Ti const&, Ui const&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all `i`
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
         | ``noexcept`` if `nothrow_assignable<Ti const&, Ui const&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
 
       .. cpp:function:: template <typename... Us>\
                         void operator=(__::tuple_base<Us...> const& tup) const& = delete;
@@ -180,9 +184,9 @@ tuple
         | forwarding proxy assignment operator: assigns to each member ``elem_i =
           static_cast<Ui&&>(tup.elem_i)``
         | viable if `assignable<Ti const&, U&&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all `i`
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
         | ``noexcept`` if `nothrow_assignable<Ti const&, Ui&&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
 
       .. cpp:function:: template <typename... Us>\
                         void operator=(__::tuple_base<Us...>&& tup) const& = delete;
@@ -200,9 +204,9 @@ tuple
 
         | proxy assignment operator: assigns to each member ``elem_i = tup.elem_i``
         | viable if `assignable<Ti&&, Ui const&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all `i`
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
         | ``noexcept`` if `nothrow_assignable<Ti&&, Ui const&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
 
       .. cpp:function:: template <typename... Us>\
                         void operator=(__::tuple_base<Us...> const& tup) && = delete;
@@ -217,9 +221,9 @@ tuple
         | forwarding proxy assignment operator: assigns to each member ``elem_i =
           static_cast<Ui&&>(tup.elem_i)``
         | viable if `assignable<Ti&&, U&&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all `i`
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
         | ``noexcept`` if `nothrow_assignable<Ti&&, Ui&&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all *i*
+          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
 
       .. cpp:function:: template <typename... Us>\
                         void operator=(__::tuple_base<Us...>&& tup) && = delete;
@@ -300,6 +304,6 @@ tuple
   | let ``Ui, Vi``, be the types of ``get<I>(FWD(u))``, and ``get<I>(FWD(v))``
   | viable if each of ``u`` and ``v`` inherits publicly, unambgiuously from some
     :cpp:class:`tuple\<_>` and `swappable_with<Ui, Vi>
-    <https://en.cppreference.com/w/cpp/types/is_swappable>`__ for all *i*
+    <https://en.cppreference.com/w/cpp/types/is_swappable>`__ for all ``i``
   | ``noexcept`` if `nothrow_swappable_with<Ui, Vi>
-    <https://en.cppreference.com/w/cpp/types/is_swappable>`__ for all *i*
+    <https://en.cppreference.com/w/cpp/types/is_swappable>`__ for all ``i``
