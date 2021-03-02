@@ -298,7 +298,7 @@ tuple
 
   | memberwise forwarding :cpp:func:`veg::swap`
   | let ``Ui, Vi``, be the types of ``get<I>(FWD(u))``, and ``get<I>(FWD(v))``
-  | viable if ``u`` and ``v`` inherit publicly, unambgiuously from some
+  | viable if each of ``u`` and ``v`` inherits publicly, unambgiuously from some
     :cpp:class:`tuple\<_>` and `swappable_with<Ui, Vi>
     <https://en.cppreference.com/w/cpp/types/is_swappable>`__ for all *i*
   | ``noexcept`` if `nothrow_swappable_with<Ui, Vi>
