@@ -44,13 +44,11 @@ TEST(tuple, all) {
 
     STATIC_ASSERT(
         !__VEG_CONCEPT(meta::copy_assignable<veg::tuple<int&, float&>>));
-    STATIC_ASSERT(
-        __VEG_CONCEPT(meta::copy_assignable<veg::tuple<int&, float&> const>));
     STATIC_ASSERT(__VEG_CONCEPT(meta::assignable<
-                                veg::tuple<int&, float&> const&,
+                                veg::tuple<int&, float&> const&&,
                                 veg::tuple<int&, float&>&&>));
     STATIC_ASSERT(__VEG_CONCEPT(meta::assignable<
-                                veg::tuple<int&, float&>&&,
+                                veg::tuple<int&, float&> const&&,
                                 veg::tuple<int&, float&>&&>));
 
     STATIC_ASSERT(!__VEG_CONCEPT(meta::copy_assignable<decltype(tup_ref)>));
@@ -65,30 +63,30 @@ TEST(tuple, all) {
     using ref_tup = veg::tuple<int&, bool&>;
 
     STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup&, ref_tup&>));
-    STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup&, ref_tup const&>));
-    STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup const&, ref_tup&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup&&, ref_tup const&&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup const&&, ref_tup&&>));
     STATIC_ASSERT(
-        __VEG_CONCEPT(meta::swappable<ref_tup const&, ref_tup const&>));
+        __VEG_CONCEPT(meta::swappable<ref_tup const&&, ref_tup const&&>));
     STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup&&, ref_tup&&>));
     STATIC_ASSERT(__VEG_CONCEPT(meta::nothrow_swappable<ref_tup&&, ref_tup&&>));
 
-    STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup const&, val_tup&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup const&&, val_tup&>));
     STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<val_tup&, val_tup&>));
     STATIC_ASSERT(!__VEG_CONCEPT(meta::swappable<val_tup&&, val_tup&&>));
     STATIC_ASSERT(!__VEG_CONCEPT(meta::swappable<val_tup&, val_tup&&>));
 
     STATIC_ASSERT(__VEG_CONCEPT(meta::nothrow_swappable<ref_tup&, ref_tup&>));
     STATIC_ASSERT(
-        __VEG_CONCEPT(meta::nothrow_swappable<ref_tup&, ref_tup const&>));
+        __VEG_CONCEPT(meta::nothrow_swappable<ref_tup&&, ref_tup const&&>));
     STATIC_ASSERT(
-        __VEG_CONCEPT(meta::nothrow_swappable<ref_tup const&, ref_tup&>));
+        __VEG_CONCEPT(meta::nothrow_swappable<ref_tup const&&, ref_tup&&>));
     STATIC_ASSERT(
-        __VEG_CONCEPT(meta::nothrow_swappable<ref_tup const&, ref_tup const&>));
+        __VEG_CONCEPT(meta::nothrow_swappable<ref_tup const&&, ref_tup const&&>));
     STATIC_ASSERT(__VEG_CONCEPT(meta::nothrow_swappable<ref_tup&&, ref_tup&&>));
     STATIC_ASSERT(__VEG_CONCEPT(meta::nothrow_swappable<ref_tup&&, ref_tup&&>));
 
     STATIC_ASSERT(
-        __VEG_CONCEPT(meta::nothrow_swappable<ref_tup const&, val_tup&>));
+        __VEG_CONCEPT(meta::nothrow_swappable<ref_tup const&&, val_tup&>));
     STATIC_ASSERT(__VEG_CONCEPT(meta::nothrow_swappable<val_tup&, val_tup&>));
     STATIC_ASSERT(
         !__VEG_CONCEPT(meta::nothrow_swappable<val_tup&&, val_tup&&>));
@@ -117,19 +115,19 @@ TEST(tuple, all) {
     using val_tup = veg::tuple<int>;
     int i = 13;
     val_tup j{12};
-    ref_tup const a{i};
+    ref_tup a{i};
     ref_tup const b{j};
-    veg::swap(a, b);
+    veg::swap(FWD(a), FWD(b));
 
     EXPECT_EQ(i, 12);
     EXPECT_EQ(j[0_c], 13);
 
-    a = b;
+    FWD(a) = b;
     EXPECT_EQ(i, 13);
     EXPECT_EQ(j[0_c], 13);
 
     STATIC_ASSERT(
-        __VEG_CONCEPT(meta::assignable<ref_tup const&, ref_tup const&>));
+        __VEG_CONCEPT(meta::assignable<ref_tup const&&, ref_tup const&>));
   }
 
   {
@@ -153,13 +151,13 @@ TEST(tuple, all) {
     EXPECT_EQ(j, 13);
 
     FWD(a) = FWD(b);
-    static_cast<ref_tup const&>(a) = b;
-    static_cast<ref_tup const&>(a) = FWD(b);
+    static_cast<ref_tup const&&>(a) = b;
+    static_cast<ref_tup const&&>(a) = FWD(b);
     EXPECT_EQ(i, 13);
     EXPECT_EQ(j, 13);
 
     STATIC_ASSERT(
-        __VEG_CONCEPT(meta::assignable<ref_tup const&, ref_tup const&>));
+        __VEG_CONCEPT(meta::assignable<ref_tup const&&, ref_tup const&>));
   }
 
   EXPECT_EQ(tup[0_c], 1);
@@ -188,8 +186,6 @@ TEST(tuple, all) {
   STATIC_ASSERT(std::is_trivially_copyable<veg::tuple<int, char>>());
   STATIC_ASSERT(!std::is_copy_assignable<veg::tuple<int&, char&>>());
   STATIC_ASSERT(!std::is_copy_assignable<veg::tuple<int&>>());
-  STATIC_ASSERT(std::is_copy_assignable<veg::tuple<int&, char&> const>());
-  STATIC_ASSERT(std::is_copy_assignable<veg::tuple<int&> const>());
   ASSERT_SAME(decltype(tup[0_c]), int&);
   ASSERT_SAME(decltype(tup[0_c]), decltype(tup[0_c]));
   ASSERT_SAME(decltype(MOV(tup)[0_c]), decltype(MOV(tup)[0_c]));
@@ -248,6 +244,10 @@ TEST(tuple, nested) {
   ASSERT_SAME(decltype(tup[1_c][0_c]), int&);
   ASSERT_SAME(decltype(tup[1_c][0_c]), int&);
   ASSERT_SAME(decltype(VEG_MOV(tup)[1_c][0_c]), int);
+
+  STATIC_ASSERT(sizeof(tuple<int>) == sizeof(int));
+  STATIC_ASSERT(sizeof(tuple<tuple<int>>) == sizeof(int));
+  STATIC_ASSERT(sizeof(tuple<tuple<tuple<int>>>) == sizeof(int));
 }
 
 TEST(tuple, empty) {
@@ -255,6 +255,7 @@ TEST(tuple, empty) {
   tuple<> t1;
   tuple<> t2(inplace);
   EXPECT_EQ(t1, t2);
+  STATIC_ASSERT(sizeof(t1) == 1);
   STATIC_ASSERT(tuple<>{} == tuple<>{});
 }
 
@@ -264,6 +265,8 @@ TEST(tuple, cvt) {
   tuple<long, double> t2(3, 2.5);
   tuple<long, double> t3(t1);
   tuple<int, float> t4(t3);
+
+  STATIC_ASSERT(sizeof(t2) == sizeof(long) + sizeof(double));
 
   EXPECT_EQ(t1, t4);
   t1 = t2;
@@ -296,9 +299,11 @@ TEST(tuple, get) {
 
 struct T : veg::tuple<int, float> {
   using tuple::tuple;
+  using tuple::operator=;
 };
 struct Tref : veg::tuple<int&, float&> {
   using tuple::tuple;
+  using tuple::operator=;
 };
 
 TEST(tuple, derived) {
@@ -314,7 +319,7 @@ TEST(tuple, derived) {
   swap(t, r);
   ASSERT_EQ(t[0_c], 1);
   ASSERT_EQ(t[1_c], 2.0F);
-  swap(r, r);
+  swap(FWD(r), FWD(r));
   ASSERT_EQ(t[0_c], 1);
   ASSERT_EQ(t[1_c], 2.0F);
 
@@ -325,14 +330,18 @@ TEST(tuple, derived) {
   ASSERT_EQ(t[0_c], 1);
   ASSERT_EQ(t[1_c], 2.0F);
 
+  FWD(r) = static_cast<veg::tuple<int, float> const&>(t2);
+  ASSERT_EQ(t[0_c], 3);
+  ASSERT_EQ(t[1_c], 4.0F);
+
   STATIC_ASSERT(!__VEG_CONCEPT(veg::meta::swappable<T, T>));
   STATIC_ASSERT(!__VEG_CONCEPT(veg::meta::swappable<T const&, T const&>));
-  STATIC_ASSERT(__VEG_CONCEPT(veg::meta::swappable<Tref const&, Tref const&>));
+  STATIC_ASSERT(__VEG_CONCEPT(veg::meta::swappable<Tref const&&, Tref const&&>));
   STATIC_ASSERT(__VEG_CONCEPT(veg::meta::swappable<Tref, Tref>));
-  STATIC_ASSERT(__VEG_SAME_AS(decltype(get<0>(r)), int&));
-  STATIC_ASSERT(__VEG_SAME_AS(decltype(get<0>(FWD(r))), int&));
-  STATIC_ASSERT(__VEG_SAME_AS(decltype(get<0>(t)), int&));
-  STATIC_ASSERT(__VEG_SAME_AS(decltype(get<0>(FWD(t))), int&&));
-  STATIC_ASSERT(__VEG_SAME_AS(decltype(t[0_c]), int&));
-  STATIC_ASSERT(__VEG_SAME_AS(decltype(FWD(t)[0_c]), int));
+  ASSERT_SAME(decltype(get<0>(r)), int&);
+  ASSERT_SAME(decltype(get<0>(FWD(r))), int&);
+  ASSERT_SAME(decltype(get<0>(t)), int&);
+  ASSERT_SAME(decltype(get<0>(FWD(t))), int&&);
+  ASSERT_SAME(decltype(t[0_c]), int&);
+  ASSERT_SAME(decltype(FWD(t)[0_c]), int);
 }

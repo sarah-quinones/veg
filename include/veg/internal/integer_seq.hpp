@@ -9,10 +9,7 @@ using usize = decltype(sizeof(int));
 
 namespace internal {
 template <typename T, T... Nums>
-struct integer_sequence {
-  using value_type = T;
-  static constexpr auto size() noexcept -> usize { return sizeof...(Nums); }
-};
+struct integer_sequence;
 
 #if __VEG_HAS_BUILTIN(__make_integer_seq)
 

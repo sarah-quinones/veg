@@ -163,72 +163,25 @@ tuple
     .. tab:: copy
 
       .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...> const& tup) const& noexcept(conditionally) -> tuple const&;
+                        constexpr auto operator=(tuple<Us...> const&& tup) const&& noexcept(conditionally) -> tuple const&&;
 
-        | proxy assignment operator: assigns to each member ``elem_i = tup.elem_i``
-        | viable if `assignable<Ti const&, Ui const&>
+        | proxy assignment operator: assigns to each member ``FORWARD(elem_i) = tup.elem_i``
+        | viable if `assignable<Ti const&&, Ui const&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-        | ``noexcept`` if `nothrow_assignable<Ti const&, Ui const&>
+        | ``noexcept`` if `nothrow_assignable<Ti const&&, Ui const&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-
-      .. cpp:function:: template <typename... Us>\
-                        void operator=(__::tuple_base<Us...> const& tup) const& = delete;
-
-        | prevents implicit conversions
 
     .. tab:: forwarding
 
       .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...>&& tup) const& noexcept(conditionally) -> tuple const&;
+                        constexpr auto operator=(tuple<Us...>&& tup) const&& noexcept(conditionally) -> tuple const&&;
 
-        | forwarding proxy assignment operator: assigns to each member ``elem_i =
-          static_cast<Ui&&>(tup.elem_i)``
-        | viable if `assignable<Ti const&, U&&>
+        | forwarding proxy assignment operator: assigns to each member ``FORWARD(elem_i) =
+          FORWARD(tup.elem_i)``
+        | viable if `assignable<Ti const&&, U&&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-        | ``noexcept`` if `nothrow_assignable<Ti const&, Ui&&>
+        | ``noexcept`` if `nothrow_assignable<Ti const&&, Ui&&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-
-      .. cpp:function:: template <typename... Us>\
-                        void operator=(__::tuple_base<Us...>&& tup) const& = delete;
-
-        | prevents implicit conversions
-
-  .. centered:: forwarding proxy assignment operators
-
-  .. tabs::
-
-    .. tab:: copy
-
-      .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...> const& tup) && noexcept(conditionally) -> tuple&&;
-
-        | proxy assignment operator: assigns to each member ``elem_i = tup.elem_i``
-        | viable if `assignable<Ti&&, Ui const&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-        | ``noexcept`` if `nothrow_assignable<Ti&&, Ui const&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-
-      .. cpp:function:: template <typename... Us>\
-                        void operator=(__::tuple_base<Us...> const& tup) && = delete;
-
-        | prevents implicit conversions
-
-    .. tab:: forwarding
-
-      .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...>&& tup) && noexcept(conditionally) -> tuple&&;
-
-        | forwarding proxy assignment operator: assigns to each member ``elem_i =
-          static_cast<Ui&&>(tup.elem_i)``
-        | viable if `assignable<Ti&&, U&&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-        | ``noexcept`` if `nothrow_assignable<Ti&&, Ui&&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-
-      .. cpp:function:: template <typename... Us>\
-                        void operator=(__::tuple_base<Us...>&& tup) && = delete;
-
-        | prevents implicit conversions
 
   .. centered:: access operator
 
@@ -290,20 +243,41 @@ tuple
     references, to the objects they point to
 
 
-.. cpp:function:: template <usize I, typename T>\
-                  constexpr void __adl::get(T&& tup) noexcept;
+.. cpp:function:: template <usize I, typename... Ts>\
+                  constexpr auto __adl::get(tuple<Ts...>& tup) noexcept -> Ti;
 
-  | found through adl
-  | viable if ``u`` inherits publicly, unambgiuously from some
-    :cpp:class:`tuple\<_>`
+.. cpp:function:: template <usize I, typename... Ts>\
+                  constexpr auto __adl::get(tuple<Ts...> const& tup) noexcept -> Ti const&;
 
-.. cpp:function:: template <typename U, typename V>\
-                  constexpr void __adl::swap(U&& u, V&& v) noexcept(conditionally);
+.. cpp:function:: template <usize I, typename... Ts>\
+                  constexpr auto __adl::get(tuple<Ts...>&& tup) noexcept -> Ti&&;
 
-  | memberwise forwarding :cpp:func:`veg::swap`
-  | let ``Ui, Vi``, be the types of ``get<I>(FWD(u))``, and ``get<I>(FWD(v))``
-  | viable if each of ``u`` and ``v`` inherits publicly, unambgiuously from some
-    :cpp:class:`tuple\<_>` and `swappable_with<Ui, Vi>
-    <https://en.cppreference.com/w/cpp/types/is_swappable>`__ for all ``i``
-  | ``noexcept`` if `nothrow_swappable_with<Ui, Vi>
-    <https://en.cppreference.com/w/cpp/types/is_swappable>`__ for all ``i``
+.. cpp:function:: template <usize I, typename... Ts>\
+                  constexpr void __adl::get(tuple<Ts...> const&& tup) = delete;
+
+  | returns ith element
+
+.. cpp:function:: template <typename... Ts, typename... Us>\
+                  constexpr void __adl::swap(tuple<Ts...> const&& u, tuple<Us...>& v) noexcept(conditionally);
+
+  | expression-equivalent to memberwise swap :cpp:func:`veg::swap(FORWARD(t.elem_i), u.elem_i)`
+
+.. cpp:function:: template <typename... Ts, typename... Us>\
+                  constexpr void __adl::swap(tuple<Ts...>& t, tuple<Us...>& u) noexcept(conditionally);
+
+  | expression-equivalent to memberwise swap :cpp:func:`veg::swap(t.elem_i, u.elem_i)`
+
+.. cpp:function:: template <typename... Ts, typename... Us>\
+                  constexpr void __adl::swap(tuple<Ts...>& u, tuple<Us...>const&& v) noexcept(conditionally);
+
+  | expression-equivalent to memberwise swap :cpp:func:`veg::swap(t.elem_i, FORWARD(u.elem_i))`
+
+.. cpp:function:: template <typename... Ts, typename... Us>\
+                  constexpr void __adl::swap(tuple<Ts...> const&& u, tuple<Us...>& v) noexcept(conditionally);
+
+  | expression-equivalent to memberwise swap :cpp:func:`veg::swap(FORWARD(t.elem_i), u.elem_i)`
+
+.. cpp:function:: template <typename... Ts, typename... Us>\
+                  constexpr void __adl::swap(tuple<Ts...> const&& u, tuple<Us...> const&& v) noexcept(conditionally);
+
+  | expression-equivalent to memberwise swap :cpp:func:`veg::swap(FORWARD(t.elem_i), FORWARD(u.elem_i))`
