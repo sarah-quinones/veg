@@ -14,7 +14,9 @@
 
 // clang-format off
 // construct_at, destroy_at, addressof
-#if __VEG_HAS_INCLUDE(<bits/stl_construct.h>) && __VEG_HAS_INCLUDE(<bits/move.h>)
+#if __VEG_HAS_INCLUDE(<bits/stl_construct.h>) && __VEG_HAS_INCLUDE(<bits/move.h>) && __VEG_HAS_INCLUDE(<bits/stl_iterator_base_types.h>) && __VEG_HAS_INCLUDE(<bits/stl_iterator_base_funcs.h>)
+#include <bits/stl_iterator_base_types.h>
+#include <bits/stl_iterator_base_funcs.h>
 #include <bits/stl_construct.h>
 #include <bits/move.h>
 #else

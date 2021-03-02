@@ -287,19 +287,19 @@ tuple
 
 
 .. cpp:function:: template <usize I, typename T>\
-                  constexpr void __adl::get(T&& tup) noexcept(conditionally);
+                  constexpr void __adl::get(T&& tup) noexcept;
 
   | found through adl
-  | viable if ``tup`` is a :cpp:class:`tuple\<Ti...>`, and expression-equivalent to
-    ``FWD(tup)[fix<I>()]``
+  | viable if ``u`` inherits publicly, unambgiuously from some
+    :cpp:class:`tuple\<_>`
 
 .. cpp:function:: template <typename U, typename V>\
                   constexpr void __adl::swap(U&& u, V&& v) noexcept(conditionally);
 
   | memberwise forwarding :cpp:func:`veg::swap`
-  | let ``Ui``, be ``decltype(FWD(u).as_ref()[fix<I>()])``, and ``Vi``, be
-    defined similarly
-  | viable if ``u`` and ``v`` are :cpp:class:`tuple\<_>` and `swappable_with<Ui, Vi>
+  | let ``Ui, Vi``, be the types of ``get<I>(FWD(u))``, and ``get<I>(FWD(v))``
+  | viable if ``u`` and ``v`` inherit publicly, unambgiuously from some
+    :cpp:class:`tuple\<_>` and `swappable_with<Ui, Vi>
     <https://en.cppreference.com/w/cpp/types/is_swappable>`__ for all *i*
   | ``noexcept`` if `nothrow_swappable_with<Ui, Vi>
     <https://en.cppreference.com/w/cpp/types/is_swappable>`__ for all *i*

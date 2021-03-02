@@ -22,10 +22,7 @@ template <typename... Ts>
 struct trivially_swappable<veg::tuple<Ts...>&, veg::tuple<Ts...>&>
     : meta::bool_constant<meta::all_of(
           {!__VEG_CONCEPT(meta::reference<Ts>) &&
-           trivially_swappable<Ts&, Ts&>::value...})> {};
-template <typename... Ts>
-struct trivially_swappable<veg::tuple<Ts...> const&, veg::tuple<Ts...> const&>
-    : meta::false_type {};
+           meta::trivially_swappable<Ts&>::value...})> {};
 
 } // namespace tuple
 } // namespace internal
@@ -52,6 +49,50 @@ template <usize I, typename T>
 HEDLEY_ALWAYS_INLINE auto adl_get(T&& arg)
     __VEG_DEDUCE_RET(get<I>(VEG_FWD(arg)));
 
+#if __cplusplus >= 201703L
+
+template <usize I, typename T>
+struct tuple_leaf {
+  T inner;
+};
+
+template <typename ISeq, typename... Ts>
+struct tuple_impl;
+
+template <usize... Is, typename... Ts>
+struct tuple_impl<meta::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
+  constexpr tuple_impl() = default;
+  HEDLEY_ALWAYS_INLINE constexpr explicit tuple_impl(
+      hidden_tag0 /*unused*/, Ts&&... args)
+
+      noexcept(meta::all_of(
+          {__VEG_CONCEPT(meta::nothrow_constructible<Ts, Ts&&>)...}))
+      : tuple_leaf<Is, Ts>{Ts(VEG_FWD(args))}... {}
+
+  template <typename... Fn>
+  HEDLEY_ALWAYS_INLINE constexpr explicit tuple_impl(
+      hidden_tag1 /*unused*/,
+      Fn&&... fns) noexcept(meta::
+                                all_of({__VEG_CONCEPT(
+                                    meta::nothrow_invocable<Fn&&>)...}))
+      : tuple_leaf<Is, Ts>{Ts(VEG_FWD(fns)())}... {}
+
+  template <meta::category_e C, typename... Us>
+  HEDLEY_ALWAYS_INLINE constexpr explicit tuple_impl(
+      hidden_tag2 /*unused*/,
+      std::integral_constant<meta::category_e, C>* /*unused*/,
+      tuple_impl<meta::index_sequence<Is...>, Us...> const& tup)
+
+      noexcept(meta::all_of({__VEG_CONCEPT(
+          meta::
+              nothrow_constructible<Ts, meta::apply_category_t<C, Us>&&>)...}))
+      : tuple_leaf<Is, Ts>{
+            Ts(const_cast<meta::apply_category_t<C, Us>&&> /* NOLINT */ (
+                static_cast<tuple_leaf<Is, Us> const&>(tup).inner))}... {}
+};
+
+#else
+
 template <usize I, typename T>
 struct tuple_leaf : storage::storage<T, false> {
   using storage::storage<T, false>::storage;
@@ -59,16 +100,6 @@ struct tuple_leaf : storage::storage<T, false> {
 
 template <typename ISeq, typename... Ts>
 struct tuple_impl;
-
-template <usize I>
-struct pack_ith_elem {
-  template <typename... Ts>
-  using type = decltype(
-      storage::get_inner<meta::category_e::own>::
-          template with_idx<usize, tuple_leaf>::template get_type<
-              I>(__VEG_DECLVAL(
-              tuple_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>)));
-};
 
 template <usize... Is, typename... Ts>
 struct tuple_impl<meta::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
@@ -103,12 +134,40 @@ struct tuple_impl<meta::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
                 static_cast<tuple_leaf<Is, Us> const&>(tup).inner)}... {}
 };
 
+#endif
+
+template <meta::category_e C, usize I, typename T>
+auto get_impl(tuple_leaf<I, T> const& leaf) noexcept
+    -> meta::apply_category_t<C, T> {
+  return const_cast<meta::apply_category_t<C, T>&&> /* NOLINT */ (leaf.inner);
+}
+
+template <usize I, typename T>
+struct fake_leaf {};
+
+template <typename ISeq, typename... Ts>
+struct fake_impl;
+template <usize... Is, typename... Ts>
+struct fake_impl<meta::index_sequence<Is...>, Ts...> : fake_leaf<Is, Ts>... {};
+
+template <usize I, typename T>
+auto get_type(fake_leaf<I, T> const&) noexcept -> T;
+
+template <usize I>
+struct pack_ith_elem {
+  template <typename... Ts>
+  using type = decltype(tuple::get_type<I>(__VEG_DECLVAL(
+      fake_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>)));
+};
+
 template <typename... Ts>
 struct binop_ftor {
   template <typename Fn, bool NoExcept, typename... Us>
   static __VEG_CPP14(constexpr) void apply(Ts&&... ts, Us&&... us) noexcept(
       NoExcept) {
-    (void)meta::internal::int_arr{0, (Fn::apply(ts, us), 0)...};
+    (void)meta::internal::arr{
+        meta::internal::empty{},
+        (Fn::apply(ts, us), meta::internal::empty{})...};
   }
 };
 
@@ -240,10 +299,45 @@ HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void swap_impl(
       rhs);
 }
 
+template <typename... Ts>
+auto detect_tuple(veg::tuple<Ts...> const&) noexcept -> veg::tuple<Ts...>;
 template <typename T>
-struct is_tuple : meta::false_type {};
+using detect_tuple_t = decltype(detect_tuple(__VEG_DECLVAL(T &&)));
+template <typename T>
+struct is_tuple : meta::is_detected<detect_tuple_t, T> {};
+
 template <typename... Ts>
 struct is_tuple<veg::tuple<Ts...>> : meta::true_type {};
+template <typename... Ts>
+struct is_tuple<veg::tuple<Ts...> const> : meta::true_type {};
+template <typename... Ts>
+struct is_tuple<veg::tuple<Ts...>&> : meta::true_type {};
+template <typename... Ts>
+struct is_tuple<veg::tuple<Ts...> const&> : meta::true_type {};
+
+template <typename T, bool = is_tuple<T>::value>
+struct bare_tuple_type_impl {};
+template <typename T>
+struct bare_tuple_type_impl<T, true> {
+  using type = detect_tuple_t<T>;
+};
+
+template <typename T, bool = is_tuple<T>::value>
+struct tuple_type_impl {};
+template <typename T>
+struct tuple_type_impl<T, true> {
+  using type = meta::collapse_category_t<detect_tuple_t<T>, T>;
+};
+
+template <typename T>
+struct base_tuple : tuple_type_impl<T> {};
+template <typename T>
+struct bare_base_tuple : bare_tuple_type_impl<T> {};
+
+template <typename T>
+using base_tuple_t = typename base_tuple<T>::type;
+template <typename T>
+using bare_base_tuple_t = typename bare_base_tuple<T>::type;
 
 template <typename T>
 HEDLEY_ALWAYS_INLINE constexpr auto get_inner(T&& tup) noexcept
@@ -251,16 +345,10 @@ HEDLEY_ALWAYS_INLINE constexpr auto get_inner(T&& tup) noexcept
   return VEG_FWD(tup).m_impl;
 }
 
-template <usize I, typename... Ts>
-HEDLEY_ALWAYS_INLINE constexpr auto
-ith_impl(veg::tuple<Ts...>& tup) noexcept -> decltype(
-    internal::storage::get_inner<meta::category_e::ref_mut>::template with_idx<
-        usize,
-        internal::tuple::tuple_leaf>::template impl<I>(tuple::get_inner(tup))) {
-  return internal::storage::get_inner<meta::category_e::ref_mut>::
-      template with_idx<usize, internal::tuple::tuple_leaf>::template impl<I>(
-          tuple::get_inner(tup));
-}
+template <usize I, typename T>
+HEDLEY_ALWAYS_INLINE constexpr auto access_impl(T&& tup)
+    __VEG_DEDUCE_RET(tuple::get_impl<meta::value_category<T>::value, I>(
+        tuple::get_inner(VEG_FWD(tup))));
 
 template <bool Trivial>
 struct impl {
@@ -328,45 +416,61 @@ struct tuple_base {};
 VEG_TEMPLATE(
     (usize I, typename T),
     requires(
-        is_tuple<meta::remove_cvref_t<T>>::value &&
-        (I < std::tuple_size<meta::remove_cvref_t<T>>::value)),
+        is_tuple<T>::value &&
+        (I < std::tuple_size<bare_base_tuple_t<T>>::value)),
     HEDLEY_ALWAYS_INLINE constexpr auto get,
     (tup, T&&))
-__VEG_DEDUCE_RET(
-    internal::storage::get_inner<meta::value_category<T>::value>::
-        template with_idx<usize, internal::tuple::tuple_leaf>::template apply<
-            I>(tuple::get_inner(VEG_FWD(tup))));
+noexcept -> meta::collapse_category_t<
+    typename std::tuple_element<I, bare_base_tuple_t<T>>::type,
+    T&&> {
+  return tuple::get_impl<meta::value_category<T&&>::value, I>(
+      tuple::get_inner(static_cast<base_tuple_t<T>&&>(VEG_FWD(tup))));
+};
 
 VEG_TEMPLATE(
     (typename Tup_Lhs, typename Tup_Rhs, int = 0),
-    requires(__VEG_CONCEPT(__VEG_DISJUNCTION(                             //
-        (__VEG_TO_CONCEPT(tuple::trivially_swappable<Tup_Lhs, Tup_Rhs>)), //
-        (__VEG_TO_CONCEPT(tup_swappable<                                  //
-                          meta::remove_cvref_t<Tup_Lhs>,                  //
-                          meta::remove_cvref_t<Tup_Rhs>,                  //
-                          meta::value_category<Tup_Lhs>::value,           //
-                          meta::value_category<Tup_Rhs>::value>))         //
-        ))),
+    requires(
+        (is_tuple<Tup_Lhs>::value &&      //
+         is_tuple<Tup_Rhs>::value &&      //
+         __VEG_CONCEPT(__VEG_DISJUNCTION( //
+             (__VEG_TO_CONCEPT(tuple::trivially_swappable<
+                               base_tuple_t<Tup_Lhs>,
+                               base_tuple_t<Tup_Rhs>>)),               //
+             (__VEG_TO_CONCEPT(tup_swappable<                          //
+                               bare_base_tuple_t<Tup_Lhs>,             //
+                               bare_base_tuple_t<Tup_Rhs>,             //
+                               meta::value_category<Tup_Lhs>::value,   //
+                               meta::value_category<Tup_Rhs>::value>)) //
+             )))),
     HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void swap,
     (ts, Tup_Lhs&&),
     (us, Tup_Rhs&&))
 noexcept(meta::disjunction<
-         meta::is_trivially_swappable<Tup_Lhs>,
+         tuple::
+             trivially_swappable<base_tuple_t<Tup_Lhs>, base_tuple_t<Tup_Rhs>>,
          nothrow_tup_swappable<
-             meta::remove_cvref_t<Tup_Lhs>,
-             meta::remove_cvref_t<Tup_Rhs>,
+             bare_base_tuple_t<Tup_Lhs>,
+             bare_base_tuple_t<Tup_Rhs>,
              meta::value_category<Tup_Lhs>::value,
              meta::value_category<Tup_Rhs>::value>>::value) {
-  return internal::tuple::
-      impl<tuple::trivially_swappable<Tup_Lhs, Tup_Rhs>::value>::template apply<
-          meta::disjunction<
-              meta::is_trivially_swappable<Tup_Lhs>,
-              nothrow_tup_swappable<
-                  meta::remove_cvref_t<Tup_Lhs>,
-                  meta::remove_cvref_t<Tup_Rhs>,
-                  meta::value_category<Tup_Lhs>::value,
-                  meta::value_category<Tup_Rhs>::value>>::value>(
-          VEG_FWD(ts), VEG_FWD(us));
+  return internal::tuple::impl< //
+      tuple::trivially_swappable<
+          base_tuple_t<Tup_Lhs>,
+          base_tuple_t<Tup_Rhs> //
+          >::value              //
+      >::
+      template apply<meta::disjunction<
+          tuple::trivially_swappable< //
+              base_tuple_t<Tup_Lhs>,
+              base_tuple_t<Tup_Rhs> //
+              >,
+          nothrow_tup_swappable<
+              bare_base_tuple_t<Tup_Lhs>,
+              bare_base_tuple_t<Tup_Rhs>,
+              meta::value_category<Tup_Lhs>::value,
+              meta::value_category<Tup_Rhs>::value>>::value>(
+          static_cast<base_tuple_t<Tup_Lhs>>(VEG_FWD(ts)),
+          static_cast<base_tuple_t<Tup_Rhs>>(VEG_FWD(us)));
 }
 
 VEG_TEMPLATE(
@@ -411,7 +515,7 @@ struct tuple_ctor_base : veg::internal::tuple::adl::tuple_base<Ts...> {
       (typename... Fns),
       requires __VEG_ALL_OF(
           __VEG_CONCEPT(meta::invocable<Fns&&>) && //
-          __VEG_SAME_AS(Ts, (meta::detected_t<meta::invoke_result_t, Fns&&>))),
+          __VEG_SAME_AS(Ts, (meta::invoke_result_t<Fns&&>))),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
       (/*tag*/, inplace_t),
       (... fns, Fns&&))
@@ -436,9 +540,7 @@ struct tuple_ctor_base : veg::internal::tuple::adl::tuple_base<Ts...> {
   VEG_TEMPLATE_EXPLICIT(
       !__VEG_ALL_OF(__VEG_CONCEPT(meta::convertible_to<Us&, Ts>)),
       (typename... Us),
-      requires __VEG_ALL_OF(
-          (__VEG_CONCEPT(meta::constructible<Ts, Us&>) &&
-           !__VEG_CONCEPT(meta::constructible<Ts, Us const&>))),
+      requires __VEG_ALL_OF((__VEG_CONCEPT(meta::constructible<Ts, Us&>))),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
       ((tup, veg::tuple<Us...>&)),
       noexcept(meta::all_of(
@@ -504,9 +606,9 @@ struct tuple_ctor_base<false, Ts...>
 
   VEG_TEMPLATE(
       (typename... Fns),
-      requires __VEG_ALL_OF((
-          __VEG_CONCEPT(meta::invocable<Fns&&>) && //
-          __VEG_SAME_AS(Ts, (meta::detected_t<meta::invoke_result_t, Fns&&>)))),
+      requires __VEG_ALL_OF(
+          (__VEG_CONCEPT(meta::invocable<Fns&&>) && //
+           __VEG_SAME_AS(Ts, (meta::invoke_result_t<Fns&&>)))),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
       (/*tag*/, inplace_t),
       (... fns, Fns&&))
@@ -574,6 +676,9 @@ private:
 } // namespace tuple
 } // namespace internal
 
+template <usize I, typename... Ts>
+using ith = typename internal::tuple::pack_ith_elem<I>::template type<Ts...>;
+
 template <typename... Ts>
 struct tuple
     : internal::tuple::tuple_ctor_base<
@@ -597,14 +702,12 @@ struct tuple
       (i64 I),
       requires(
           I < sizeof...(Ts) && (I >= 0) &&
-          __VEG_CONCEPT(
-              meta::move_constructible<typename internal::tuple::pack_ith_elem<
-                  usize(I)>::template type<Ts...>>)),
+          __VEG_CONCEPT(meta::move_constructible<ith<usize(I), Ts...>>)),
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator[],
       (/*arg*/, fix<I>)) &&
       __VEG_DEDUCE_RET(
-          internal::tuple::adl_get<I>(static_cast<tuple&&>(*this)));
+          internal::tuple::access_impl<I>(static_cast<tuple&&>(*this)));
 
   VEG_TEMPLATE(
       (i64 I),
@@ -612,7 +715,7 @@ struct tuple
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator[],
       (/*arg*/, fix<I>)) &
-      __VEG_DEDUCE_RET(internal::tuple::adl_get<I>(*this));
+      __VEG_DEDUCE_RET(internal::tuple::access_impl<I>(*this));
 
   VEG_TEMPLATE(
       (i64 I),
@@ -620,7 +723,7 @@ struct tuple
       HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto
       operator[],
       (/*arg*/, fix<I>))
-  const& __VEG_DEDUCE_RET(internal::tuple::adl_get<I>(*this));
+  const& __VEG_DEDUCE_RET(internal::tuple::access_impl<I>(*this));
 
   template <typename... Us>
   void operator=(internal::tuple::adl::tuple_base<Us...>&&) const& = delete;

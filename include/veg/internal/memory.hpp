@@ -151,7 +151,7 @@ struct construct_with {
 struct destroy_at {
   VEG_TEMPLATE(
       (typename T, typename... Args),
-      requires(!__VEG_CONCEPT(meta::const_<T>)),
+      requires !__VEG_CONCEPT(meta::const_<T>),
       HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) void
       operator(),
       (mem, T*))

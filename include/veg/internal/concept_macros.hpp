@@ -53,22 +53,22 @@
 
 #define __VEG_DEF_CONCEPT(name, ...) concept name = __VA_ARGS__
 #define __VEG_DEF_CONCEPT_EVAL(name, ...) concept name = __VA_ARGS__
-#define __VEG_CONCEPT(...) __VA_ARGS__
+#define __VEG_CONCEPT(...) (__VA_ARGS__)
 #define __VEG_TO_CONCEPT(...) (__VA_ARGS__::value)
 #define __VEG_ALL_OF(...) ((__VA_ARGS__) && ...)
 #define __VEG_IMPL_REQUIRES_HANDLER_ONE(...) (__VA_ARGS__)
 #define __VEG_IMPL_REQUIRES_HANDLER_ALL(...) ((__VA_ARGS__) && ...)
 
-#define __VEG_AND(r, _, param) &&param
-#define __VEG_OR(r, _, param) || param
+#define __VEG_IMPL_AND(r, _, param) &&param
+#define __VEG_IMPL_OR(r, _, param) || param
 
 #define __VEG_CONJUNCTION(...)                                                 \
   (true __VEG_PP_SEQ_FOR_EACH(                                                 \
-      __VEG_AND, _, __VEG_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))
+      __VEG_IMPL_AND, _, __VEG_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))
 
 #define __VEG_DISJUNCTION(...)                                                 \
   (false __VEG_PP_SEQ_FOR_EACH(                                                \
-      __VEG_OR, _, __VEG_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))
+      __VEG_IMPL_OR, _, __VEG_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))
 
 #else
 
@@ -231,7 +231,8 @@
   __VEG_HAS_BUILTIN_OR(                                                        \
       __is_same,                                                               \
       __is_same(__VEG_PP_REMOVE_PAREN(T), __VEG_PP_REMOVE_PAREN(U)),           \
-      (::veg::meta::                                                           \
-           same_as<__VEG_PP_REMOVE_PAREN(T), __VEG_PP_REMOVE_PAREN(U)>))
+      ((__VEG_CONCEPT(                                                         \
+          ::veg::meta::                                                        \
+              same_as<__VEG_PP_REMOVE_PAREN(T), __VEG_PP_REMOVE_PAREN(U)>))))
 
 #endif /* end of include guard __VEG_CONCEPT_MACROS_HPP_3AJ8JOUWS */

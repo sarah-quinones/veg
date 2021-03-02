@@ -5,6 +5,21 @@
 #include <gtest/gtest.h>
 
 #define MOV VEG_MOV
+#define FWD VEG_FWD
+using namespace veg::literals;
+
+template <typename>
+void get() = delete;
+TEST(tuple, adl_get) {
+  veg::tuple<int, float> t;
+  get<0>(t);
+  STATIC_ASSERT(__VEG_SAME_AS(decltype(get<0>(t)), int&));
+  STATIC_ASSERT(__VEG_SAME_AS(
+      decltype(get<0>(static_cast<veg::tuple<int, float> const&>(t))),
+      int const&));
+  STATIC_ASSERT(__VEG_SAME_AS(
+      decltype(get<0>(static_cast<veg::tuple<int, float>&&>(t))), int&&));
+}
 
 TEST(tuple, all) {
   using namespace veg;
@@ -61,6 +76,23 @@ TEST(tuple, all) {
     STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<val_tup&, val_tup&>));
     STATIC_ASSERT(!__VEG_CONCEPT(meta::swappable<val_tup&&, val_tup&&>));
     STATIC_ASSERT(!__VEG_CONCEPT(meta::swappable<val_tup&, val_tup&&>));
+
+    STATIC_ASSERT(__VEG_CONCEPT(meta::nothrow_swappable<ref_tup&, ref_tup&>));
+    STATIC_ASSERT(
+        __VEG_CONCEPT(meta::nothrow_swappable<ref_tup&, ref_tup const&>));
+    STATIC_ASSERT(
+        __VEG_CONCEPT(meta::nothrow_swappable<ref_tup const&, ref_tup&>));
+    STATIC_ASSERT(
+        __VEG_CONCEPT(meta::nothrow_swappable<ref_tup const&, ref_tup const&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::nothrow_swappable<ref_tup&&, ref_tup&&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::nothrow_swappable<ref_tup&&, ref_tup&&>));
+
+    STATIC_ASSERT(
+        __VEG_CONCEPT(meta::nothrow_swappable<ref_tup const&, val_tup&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::nothrow_swappable<val_tup&, val_tup&>));
+    STATIC_ASSERT(
+        !__VEG_CONCEPT(meta::nothrow_swappable<val_tup&&, val_tup&&>));
+    STATIC_ASSERT(!__VEG_CONCEPT(meta::nothrow_swappable<val_tup&, val_tup&&>));
   }
   {
     using val_tup = veg::tuple<int, bool>;
@@ -113,16 +145,16 @@ TEST(tuple, all) {
     int i = 13;
     int j = 12;
     ref_tup a{i};
-    rref_tup b{VEG_FWD(j)};
+    rref_tup b{FWD(j)};
 
     veg::swap(a.as_ref(), b.as_ref());
 
     EXPECT_EQ(i, 12);
     EXPECT_EQ(j, 13);
 
-    VEG_FWD(a) = VEG_FWD(b);
+    FWD(a) = FWD(b);
     static_cast<ref_tup const&>(a) = b;
-    static_cast<ref_tup const&>(a) = VEG_FWD(b);
+    static_cast<ref_tup const&>(a) = FWD(b);
     EXPECT_EQ(i, 13);
     EXPECT_EQ(j, 13);
 
@@ -259,5 +291,48 @@ TEST(tuple, get) {
   using namespace veg;
   int arr[] = {1, 2, 3};
   veg::fn::get<0>{}(arr);
-  veg::fn::get<0>{}(VEG_FWD(arr));
+  veg::fn::get<0>{}(FWD(arr));
+}
+
+struct T : veg::tuple<int, float> {
+  using tuple::tuple;
+};
+struct Tref : veg::tuple<int&, float&> {
+  using tuple::tuple;
+};
+
+TEST(tuple, derived) {
+  T t{1, 2.0F};
+  T t2{3, 4.0F};
+
+  ASSERT_EQ(t[0_c], 1);
+  ASSERT_EQ(t[1_c], 2.0F);
+  swap(t, t);
+  ASSERT_EQ(t[0_c], 1);
+  ASSERT_EQ(t[1_c], 2.0F);
+  Tref r{t};
+  swap(t, r);
+  ASSERT_EQ(t[0_c], 1);
+  ASSERT_EQ(t[1_c], 2.0F);
+  swap(r, r);
+  ASSERT_EQ(t[0_c], 1);
+  ASSERT_EQ(t[1_c], 2.0F);
+
+  swap(t2, r);
+  ASSERT_EQ(t[0_c], 3);
+  ASSERT_EQ(t[1_c], 4.0F);
+  swap(r, t2);
+  ASSERT_EQ(t[0_c], 1);
+  ASSERT_EQ(t[1_c], 2.0F);
+
+  STATIC_ASSERT(!__VEG_CONCEPT(veg::meta::swappable<T, T>));
+  STATIC_ASSERT(!__VEG_CONCEPT(veg::meta::swappable<T const&, T const&>));
+  STATIC_ASSERT(__VEG_CONCEPT(veg::meta::swappable<Tref const&, Tref const&>));
+  STATIC_ASSERT(__VEG_CONCEPT(veg::meta::swappable<Tref, Tref>));
+  STATIC_ASSERT(__VEG_SAME_AS(decltype(get<0>(r)), int&));
+  STATIC_ASSERT(__VEG_SAME_AS(decltype(get<0>(FWD(r))), int&));
+  STATIC_ASSERT(__VEG_SAME_AS(decltype(get<0>(t)), int&));
+  STATIC_ASSERT(__VEG_SAME_AS(decltype(get<0>(FWD(t))), int&&));
+  STATIC_ASSERT(__VEG_SAME_AS(decltype(t[0_c]), int&));
+  STATIC_ASSERT(__VEG_SAME_AS(decltype(FWD(t)[0_c]), int));
 }

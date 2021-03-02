@@ -118,7 +118,8 @@ template <bool B>
 struct bool_constant : std::integral_constant<bool, B> {};
 
 namespace internal {
-using int_arr = int[];
+struct empty {};
+using arr = empty[];
 
 template <typename T>
 struct static_const {
@@ -302,8 +303,10 @@ struct wrapper : wrapper_base {
 } // namespace internal
 
 template <typename T, typename U>
-using same_as = decltype(
-    internal::wrapper<T>::test(static_cast<internal::wrapper<U>*>(nullptr)));
+__VEG_DEF_CONCEPT_EVAL(
+    same_as,
+    decltype(internal::wrapper<T>::test(
+        static_cast<internal::wrapper<U>*>(nullptr)))::value);
 
 template <typename T>
 __VEG_DEF_CONCEPT_EVAL(void_, __VEG_SAME_AS(T, void));
@@ -509,9 +512,18 @@ __VEG_DEF_CONCEPT(
 
 namespace internal {
 
-template <typename T, typename... Args>
-using ctor_t =
-    decltype(void(new (static_cast<void*>(nullptr)) T(__VEG_DECLVAL(Args)...)));
+template <bool Is_Ref>
+struct ctor_t {
+  template <typename T, typename... Args>
+  using type = decltype(
+      void(new (static_cast<void*>(nullptr)) T(__VEG_DECLVAL(Args)...)));
+};
+template <>
+struct ctor_t<true> {
+  template <typename T, typename... Args>
+  using type = decltype(void(T(__VEG_DECLVAL(Args)...)));
+};
+
 template <typename T, typename U>
 using assign_t = decltype(void(__VEG_DECLVAL(T) = __VEG_DECLVAL(U)));
 
@@ -613,7 +625,10 @@ __VEG_DEF_CONCEPT(
     __VEG_HAS_BUILTIN_OR(
         __is_constructible,
         (__is_constructible(T, Ts&&...)),
-        (is_detected<internal::ctor_t, T, Ts&&...>::value)));
+        (is_detected<
+            internal::ctor_t<__VEG_CONCEPT(reference<T>)>::template type,
+            T,
+            Ts&&...>::value)));
 
 template <typename T, typename... Ts>
 __VEG_DEF_CONCEPT(
