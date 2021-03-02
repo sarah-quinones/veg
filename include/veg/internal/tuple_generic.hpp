@@ -6,7 +6,13 @@
 #include "veg/internal/meta_int_fix.hpp"
 #include "veg/internal/storage.hpp"
 #include "veg/internal/cmp.hpp"
-#include <utility> // std::tuple_{size,element}
+
+namespace std { // works on my machine ¯\_(ツ)_/¯
+template <typename T>
+struct tuple_size;
+template <std::size_t I, typename T>
+struct tuple_element;
+} // namespace std
 
 namespace veg {
 
