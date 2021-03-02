@@ -71,7 +71,7 @@ tuple
         | converting lvalue constructor: each member is initialized from the
           corresponding member of the tuple parameter
           ``Ti(tup.elem_i)``
-        | viable if `constructible<Ti, Ui&> && !constructible<Ti, Ui const&>
+        | viable if `constructible<Ti, Ui&>
           <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for all
           ``i``
 
@@ -119,42 +119,31 @@ tuple
       .. cpp:function:: template <typename... Us>\
                         constexpr auto operator=(tuple<Us...> const& tup) & noexcept(conditionally) -> tuple&;
 
+      .. cpp:function:: auto operator=(tuple const&) & -> tuple& = default;
+
         | assignment operator: assigns to each member ``elem_i = tup.elem_i``
-        | viable if `assignable<Ti&, Ui const&>
+        | viable if `!reference<Ti>
+          <https://en.cppreference.com/w/cpp/types/is_reference>`__ ``&&``
+          `assignable<Ti&, Ui const&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
         | ``noexcept`` if `nothrow_assignable<Ti&, Ui const&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-
-      .. cpp:function:: template <typename... Us>\
-                        void operator=(__::tuple_base<Us...> const& tup) & = delete;
-
-        | prevents implicit conversions
 
     .. tab:: forwarding
 
       .. cpp:function:: template <typename... Us>\
                         constexpr auto operator=(tuple<Us...>&& tup) & noexcept(conditionally) -> tuple&;
 
+      .. cpp:function:: auto operator=(tuple&&) & -> tuple& = default;
+
         | forwarding assignment operator: assigns to each member ``elem_i =
           static_cast<Ui&&>(tup.elem_i)``
-        | viable if `assignable<Ti&, U&&>
+        | viable if `!reference<Ti>
+          <https://en.cppreference.com/w/cpp/types/is_reference>`__ ``&&``
+          `assignable<Ti&, U&&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
         | ``noexcept`` if `nothrow_assignable<Ti&, Ui&&>
           <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-
-      .. cpp:function:: template <typename... Us>\
-                        void operator=(__::tuple_base<Us...>&& tup) & = delete;
-
-        | prevents implicit conversions
-
-    .. tab:: copy\|move
-
-      .. cpp:function:: constexpr auto operator=(tuple const&) & noexcept(conditionally) -> tuple&;
-
-      .. cpp:function:: constexpr auto operator=(tuple&&) & noexcept(conditionally) -> tuple&;
-
-        | equivalent to the last two overloads
-        | default compiler-generated functions are used when none of the ``Ti`` is a reference
 
   .. centered:: proxy assignment operators
 
@@ -265,19 +254,19 @@ tuple
 .. cpp:function:: template <typename... Ts, typename... Us>\
                   constexpr void __adl::swap(tuple<Ts...>& t, tuple<Us...>& u) noexcept(conditionally);
 
-  | expression-equivalent to memberwise swap :cpp:func:`veg::swap(t.elem_i, u.elem_i)`
+  | expression-equivalent to memberwise swap :cpp:func:`veg::swap`\ :code:`(t.elem_i, u.elem_i)`
 
 .. cpp:function:: template <typename... Ts, typename... Us>\
                   constexpr void __adl::swap(tuple<Ts...>& u, tuple<Us...>const&& v) noexcept(conditionally);
 
-  | expression-equivalent to memberwise swap :cpp:func:`veg::swap(t.elem_i, FORWARD(u.elem_i))`
+  | expression-equivalent to memberwise swap :cpp:func:`veg::swap`\ :code:`(t.elem_i, FORWARD(u.elem_i))`
 
 .. cpp:function:: template <typename... Ts, typename... Us>\
                   constexpr void __adl::swap(tuple<Ts...> const&& u, tuple<Us...>& v) noexcept(conditionally);
 
-  | expression-equivalent to memberwise swap :cpp:func:`veg::swap(FORWARD(t.elem_i), u.elem_i)`
+  | expression-equivalent to memberwise swap :cpp:func:`veg::swap`\ :code:`(FORWARD(t.elem_i), u.elem_i)`
 
 .. cpp:function:: template <typename... Ts, typename... Us>\
                   constexpr void __adl::swap(tuple<Ts...> const&& u, tuple<Us...> const&& v) noexcept(conditionally);
 
-  | expression-equivalent to memberwise swap :cpp:func:`veg::swap(FORWARD(t.elem_i), FORWARD(u.elem_i))`
+  | expression-equivalent to memberwise swap :cpp:func:`veg::swap`\ :code:`(FORWARD(t.elem_i), FORWARD(u.elem_i))`

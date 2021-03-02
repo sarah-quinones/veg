@@ -669,9 +669,7 @@ struct tuple_ctor_base<false, Ts...> {
   VEG_TEMPLATE_EXPLICIT(
       !__VEG_ALL_OF(__VEG_CONCEPT(meta::convertible_to<Us&, Ts>)),
       (typename... Us),
-      requires __VEG_ALL_OF(
-          (__VEG_CONCEPT(meta::constructible<Ts, Us&>) &&
-           !__VEG_CONCEPT(meta::constructible<Ts, Us const&>))),
+      requires __VEG_ALL_OF((__VEG_CONCEPT(meta::constructible<Ts, Us&>))),
       HEDLEY_ALWAYS_INLINE constexpr tuple_ctor_base,
       ((tup, veg::tuple<Us...>&)),
       noexcept(meta::all_of(

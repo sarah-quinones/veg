@@ -13,3 +13,4 @@ exclude_patterns = ["_build"]
 html_static_path = []
 html_theme = "sphinx_rtd_theme"
 cpp_index_common_prefix = ["veg::"]
+add_function_parentheses = False
