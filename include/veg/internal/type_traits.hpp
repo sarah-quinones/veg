@@ -168,7 +168,7 @@ using std::is_integral;
 using std::is_signed;
 
 template <typename T>
-__VEG_DEF_CONCEPT_EVAL(
+__VEG_DEF_CONCEPT(
     class_,
     __VEG_HAS_BUILTIN_OR(__is_class, __is_class(T), std::is_class<T>::value));
 
@@ -304,13 +304,13 @@ struct wrapper : wrapper_base {
 } // namespace internal
 
 template <typename T, typename U>
-__VEG_DEF_CONCEPT_EVAL(
+__VEG_DEF_CONCEPT(
     same_as,
     decltype(internal::wrapper<T>::test(
         static_cast<internal::wrapper<U>*>(nullptr)))::value);
 
 template <typename T>
-__VEG_DEF_CONCEPT_EVAL(void_, __VEG_SAME_AS(T, void));
+__VEG_DEF_CONCEPT(void_, __VEG_SAME_AS(T, void));
 
 namespace internal {
 template <typename T>
@@ -332,7 +332,7 @@ struct is_rvalue_ref<T&&> : true_type {};
 } // namespace internal
 
 template <typename T>
-__VEG_DEF_CONCEPT_EVAL(
+__VEG_DEF_CONCEPT(
     const_,
     __VEG_HAS_BUILTIN_OR(
         __is_const, __is_const(T), internal::is_const<T>::value));
@@ -342,7 +342,7 @@ template <typename T>
 __VEG_DEF_CONCEPT(pointer, internal::is_pointer<T>::value);
 
 template <typename T>
-__VEG_DEF_CONCEPT_EVAL(
+__VEG_DEF_CONCEPT(
     lvalue_reference,
     __VEG_HAS_BUILTIN_OR(
         __is_lvalue_reference,
@@ -350,7 +350,7 @@ __VEG_DEF_CONCEPT_EVAL(
         internal::is_lvalue_ref<T>::value));
 
 template <typename T>
-__VEG_DEF_CONCEPT_EVAL(
+__VEG_DEF_CONCEPT(
     rvalue_reference,
     __VEG_HAS_BUILTIN_OR(
         __is_rvalue_reference,
@@ -358,7 +358,7 @@ __VEG_DEF_CONCEPT_EVAL(
         internal::is_rvalue_ref<T>::value));
 
 template <typename T>
-__VEG_DEF_CONCEPT_EVAL(
+__VEG_DEF_CONCEPT(
     reference,
     __VEG_HAS_BUILTIN_OR(
         __is_reference,
@@ -375,10 +375,10 @@ __VEG_DEF_CONCEPT(
     unsigned_integral, std::is_integral<T>::value&& std::is_unsigned<T>::value);
 
 template <typename T>
-__VEG_DEF_CONCEPT_EVAL(integral, std::is_integral<T>::value);
+__VEG_DEF_CONCEPT(integral, std::is_integral<T>::value);
 
 template <typename T>
-__VEG_DEF_CONCEPT_EVAL(
+__VEG_DEF_CONCEPT(
     floating_point,
     __VEG_SAME_AS(T, float) || __VEG_SAME_AS(T, double) ||
         __VEG_SAME_AS(T, long double));
@@ -638,7 +638,7 @@ __VEG_DEF_CONCEPT(
         __is_nothrow_constructible,
         (__is_nothrow_constructible(T, Ts&&...)),
         (internal::is_nothrow_constructible_impl<
-            constructible<T, Ts&&...>::value,
+            __VEG_CONCEPT(constructible<T, Ts&&...>),
             T,
             Ts&&...>::value)));
 

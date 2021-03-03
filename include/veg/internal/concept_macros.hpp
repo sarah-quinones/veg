@@ -52,7 +52,6 @@
 #if __cplusplus >= 202002L
 
 #define __VEG_DEF_CONCEPT(name, ...) concept name = __VA_ARGS__
-#define __VEG_DEF_CONCEPT_EVAL(name, ...) concept name = __VA_ARGS__
 #define __VEG_CONCEPT(...) (__VA_ARGS__)
 #define __VEG_TO_CONCEPT(...) (__VA_ARGS__::value)
 #define __VEG_ALL_OF(...) ((__VA_ARGS__) && ...)
@@ -74,8 +73,6 @@
 
 #define __VEG_DEF_CONCEPT(name, ...)                                           \
   struct name : ::veg::meta::bool_constant<__VA_ARGS__> {}
-#define __VEG_DEF_CONCEPT_EVAL(name, ...)                                      \
-  using name = ::veg::meta::bool_constant<(__VA_ARGS__)>
 #define __VEG_CONCEPT(...) __VA_ARGS__::value
 #define __VEG_TO_CONCEPT(...) __VA_ARGS__
 #define __VEG_IMPL_REQUIRES_HANDLER_ONE(...) (__VA_ARGS__)
