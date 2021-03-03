@@ -6,13 +6,7 @@
 #include "veg/internal/meta_int_fix.hpp"
 #include "veg/internal/storage.hpp"
 #include "veg/internal/cmp.hpp"
-
-namespace std { // works on my machine ¯\_(ツ)_/¯
-template <typename T>
-struct tuple_size;
-template <std::size_t I, typename T>
-struct tuple_element;
-} // namespace std
+#include <utility>
 
 namespace veg {
 
@@ -28,7 +22,7 @@ template <typename... Ts>
 struct trivially_swappable<veg::tuple<Ts...>&, veg::tuple<Ts...>&>
     : meta::bool_constant<meta::all_of(
           {!__VEG_CONCEPT(meta::reference<Ts>) &&
-           meta::trivially_swappable<Ts&>::value...})> {};
+           __VEG_CONCEPT(meta::trivially_swappable<Ts&>)...})> {};
 
 } // namespace tuple
 } // namespace internal
@@ -464,7 +458,10 @@ noexcept = delete;
 
 VEG_TEMPLATE(
     (typename... Ts, typename... Us),
-    requires(__VEG_ALL_OF(__VEG_CONCEPT(meta::swappable<Ts&, Us&>))),
+    requires(__VEG_ALL_OF(
+        !__VEG_CONCEPT(meta::reference<Ts>) &&
+        !__VEG_CONCEPT(meta::reference<Us>) &&
+        __VEG_CONCEPT(meta::swappable<Ts&, Us&>))),
     HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void swap,
     (ts, veg::tuple<Ts...>&),
     (us, veg::tuple<Us...>&))
@@ -492,7 +489,9 @@ noexcept(meta::all_of(
 }
 VEG_TEMPLATE(
     (typename... Ts, typename... Us),
-    requires(__VEG_ALL_OF(__VEG_CONCEPT(meta::swappable<Ts&, Us const&&>))),
+    requires(__VEG_ALL_OF(
+        !__VEG_CONCEPT(meta::reference<Ts>) &&
+        __VEG_CONCEPT(meta::swappable<Ts&, Us const&&>))),
     HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void swap,
     (ts, veg::tuple<Ts...>&),
     (us, veg::tuple<Us...> const&&))
@@ -505,7 +504,9 @@ noexcept(meta::all_of(
 }
 VEG_TEMPLATE(
     (typename... Ts, typename... Us),
-    requires(__VEG_ALL_OF(__VEG_CONCEPT(meta::swappable<Ts const&&, Us&>))),
+    requires(__VEG_ALL_OF(
+        !__VEG_CONCEPT(meta::reference<Us>) &&
+        __VEG_CONCEPT(meta::swappable<Ts const&&, Us&>))),
     HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void swap,
     (ts, veg::tuple<Ts...> const&&),
     (us, veg::tuple<Us...>&))

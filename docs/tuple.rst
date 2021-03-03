@@ -6,7 +6,7 @@ tuple
 ``constexpr`` support is provided starting from c++14
 
 .. cpp:namespace:: veg
-.. cpp:class:: template <typename... Ts> tuple : __::tuple_base
+.. cpp:class:: template <typename... Ts> tuple
 
   .. cpp:function:: constexpr tuple(tuple const&) = default;
   .. cpp:function:: constexpr tuple(tuple&&) = default;
@@ -247,24 +247,22 @@ tuple
   | returns ith element
 
 .. cpp:function:: template <typename... Ts, typename... Us>\
-                  constexpr void __adl::swap(tuple<Ts...> const&& u, tuple<Us...>& v) noexcept(conditionally);
-
-  | expression-equivalent to memberwise swap :cpp:func:`veg::swap(FORWARD(t.elem_i), u.elem_i)`
-
-.. cpp:function:: template <typename... Ts, typename... Us>\
                   constexpr void __adl::swap(tuple<Ts...>& t, tuple<Us...>& u) noexcept(conditionally);
 
   | expression-equivalent to memberwise swap :cpp:func:`veg::swap`\ :code:`(t.elem_i, u.elem_i)`
+  | not viable if some ``Ti``, or some ``Ui`` is a reference
 
 .. cpp:function:: template <typename... Ts, typename... Us>\
                   constexpr void __adl::swap(tuple<Ts...>& u, tuple<Us...>const&& v) noexcept(conditionally);
 
   | expression-equivalent to memberwise swap :cpp:func:`veg::swap`\ :code:`(t.elem_i, FORWARD(u.elem_i))`
+  | not viable if some ``Ti`` is a reference
 
 .. cpp:function:: template <typename... Ts, typename... Us>\
                   constexpr void __adl::swap(tuple<Ts...> const&& u, tuple<Us...>& v) noexcept(conditionally);
 
   | expression-equivalent to memberwise swap :cpp:func:`veg::swap`\ :code:`(FORWARD(t.elem_i), u.elem_i)`
+  | not viable if some ``Ui`` is a reference
 
 .. cpp:function:: template <typename... Ts, typename... Us>\
                   constexpr void __adl::swap(tuple<Ts...> const&& u, tuple<Us...> const&& v) noexcept(conditionally);

@@ -162,14 +162,15 @@ constexpr auto any_of(std::initializer_list<bool> lst) noexcept -> bool {
   return meta::any_of_slice(lst.begin(), static_cast<i64>(lst.size()));
 }
 
-using std::is_convertible;
-
 using std::is_arithmetic;
 using std::is_enum;
 using std::is_integral;
 using std::is_signed;
 
-using std::is_base_of;
+template <typename T>
+__VEG_DEF_CONCEPT_EVAL(
+    class_,
+    __VEG_HAS_BUILTIN_OR(__is_class, __is_class(T), std::is_class<T>::value));
 
 namespace internal {
 template <bool B>
@@ -714,10 +715,13 @@ struct is_invocable : disjunction<
                           internal::is_mem_fn_callable_<Fn, Args&&...>> {};
 
 namespace internal {
+struct none_wrapper {
+  using type = none;
+};
 template <bool B, typename T>
 struct defer_if : T {};
 template <typename T>
-struct defer_if<false, T> {};
+struct defer_if<false, T> : none_wrapper {};
 
 template <typename Fn, typename... Args>
 struct is_invocable_impl {
