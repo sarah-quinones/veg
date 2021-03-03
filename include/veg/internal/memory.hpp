@@ -245,7 +245,7 @@ struct destroy_range_fn {
   void operator()() const noexcept {
     if (!success) {
       for (i64 i = 0; i < size; ++i) {
-        fn::destroy_at{}(cleanup_ptr + i);
+        fn::destroy_at{}(cleanup_ptr + (size - i - 1));
       }
     }
   }
