@@ -810,11 +810,13 @@ auto on_fail(
 
 void on_expect_fail(long line, char_string_ref file, char_string_ref func) {
   std::fputs(on_fail(line, file, func, false).c_str(), stderr);
+  failed_asserts.clear();
 }
 
 [[noreturn]] void
 on_assert_fail(long line, char_string_ref file, char_string_ref func) {
   std::fputs(on_fail(line, file, func, false).c_str(), stderr);
+  failed_asserts.clear();
   std::terminate();
 }
 
