@@ -715,10 +715,10 @@ auto find(char_string_ref sv, char c) -> char const* {
   char const* it = sv.data();
   for (; it < sv.data() + sv.size(); ++it) {
     if (*it == c) {
-      return it;
+      break;
     }
   }
-  return nullptr;
+  return it;
 }
 
 auto on_fail(
@@ -777,14 +777,15 @@ auto on_fail(
     } else {
       char const* b = msg.data();
       char const* e = newline;
+      char const* end = msg.data() + msg.size();
 
-      while (b != nullptr) {
+      while (b != end) {
 
         output += "\n > ";
         output += {b, e};
 
-        if (e == nullptr) {
-          b = {};
+        if (e == end) {
+          b = end;
         } else {
           b = e + 1;
           e = find({b, (msg.data() + msg.size()) - b}, '\n');
@@ -810,13 +811,11 @@ auto on_fail(
 
 void on_expect_fail(long line, char_string_ref file, char_string_ref func) {
   std::fputs(on_fail(line, file, func, false).c_str(), stderr);
-  failed_asserts.clear();
 }
 
 [[noreturn]] void
 on_assert_fail(long line, char_string_ref file, char_string_ref func) {
   std::fputs(on_fail(line, file, func, false).c_str(), stderr);
-  failed_asserts.clear();
   std::terminate();
 }
 
