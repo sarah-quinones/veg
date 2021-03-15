@@ -7,7 +7,7 @@ function(enable_sanitizers project_name)
 
     if(ENABLE_COVERAGE)
       target_compile_options(${project_name} INTERFACE --coverage -O0 -g)
-      target_link_libraries(${project_name} INTERFACE --coverage)
+      target_link_options(${project_name} INTERFACE --coverage)
     endif()
 
     set(SANITIZERS "")
@@ -18,7 +18,7 @@ function(enable_sanitizers project_name)
       target_compile_options(
         ${project_name} INTERFACE -fsanitize-address-use-after-scope
       )
-      target_link_libraries(
+      target_link_options(
         ${project_name} INTERFACE -fsanitize-address-use-after-scope
       )
     endif()
@@ -29,7 +29,7 @@ function(enable_sanitizers project_name)
       target_compile_options(
         ${project_name} INTERFACE -fsanitize-memory-track-origins=2
       )
-      target_link_libraries(
+      target_link_options(
         ${project_name} INTERFACE -fsanitize-memory-track-origins=2
       )
     endif()
@@ -66,7 +66,7 @@ function(enable_sanitizers project_name)
         INTERFACE -fsanitize=${LIST_OF_SANITIZERS} -fno-omit-frame-pointer
                   -fno-optimize-sibling-calls
       )
-      target_link_libraries(
+      target_link_options(
         ${project_name}
         INTERFACE -fsanitize=${LIST_OF_SANITIZERS} -fno-omit-frame-pointer
                   -fno-optimize-sibling-calls

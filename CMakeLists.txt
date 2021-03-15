@@ -10,12 +10,6 @@ endif()
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
-if(top_level AND ENABLE_TESTING)
-  set(CMAKE_CXX_STANDARD 17)
-  set(CMAKE_CXX_EXTENSIONS OFF)
-  add_subdirectory("docs")
-endif()
-
 include(cmake/compiler_warnings.cmake)
 include(cmake/static_analyzers.cmake)
 include(cmake/sanitizers.cmake)
@@ -63,5 +57,6 @@ if(top_level AND ENABLE_TESTING)
   endif()
 
   enable_testing()
+  add_subdirectory(docs)
   add_subdirectory(test)
 endif()

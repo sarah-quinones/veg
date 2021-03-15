@@ -62,7 +62,8 @@ TEST(tuple, all) {
     using val_tup = veg::tuple<int, bool>;
     using ref_tup = veg::tuple<int&, bool&>;
 
-    STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup&, ref_tup&>));
+    STATIC_ASSERT(
+        __VEG_CONCEPT(meta::swappable<ref_tup const&&, ref_tup const&&>));
     STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup&&, ref_tup const&&>));
     STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<ref_tup const&&, ref_tup&&>));
     STATIC_ASSERT(
@@ -75,13 +76,13 @@ TEST(tuple, all) {
     STATIC_ASSERT(!__VEG_CONCEPT(meta::swappable<val_tup&&, val_tup&&>));
     STATIC_ASSERT(!__VEG_CONCEPT(meta::swappable<val_tup&, val_tup&&>));
 
-    STATIC_ASSERT(__VEG_CONCEPT(meta::nothrow_swappable<ref_tup&, ref_tup&>));
+    STATIC_ASSERT(__VEG_CONCEPT(meta::nothrow_swappable<ref_tup&&, ref_tup&&>));
     STATIC_ASSERT(
         __VEG_CONCEPT(meta::nothrow_swappable<ref_tup&&, ref_tup const&&>));
     STATIC_ASSERT(
         __VEG_CONCEPT(meta::nothrow_swappable<ref_tup const&&, ref_tup&&>));
-    STATIC_ASSERT(
-        __VEG_CONCEPT(meta::nothrow_swappable<ref_tup const&&, ref_tup const&&>));
+    STATIC_ASSERT(__VEG_CONCEPT(
+        meta::nothrow_swappable<ref_tup const&&, ref_tup const&&>));
     STATIC_ASSERT(__VEG_CONCEPT(meta::nothrow_swappable<ref_tup&&, ref_tup&&>));
     STATIC_ASSERT(__VEG_CONCEPT(meta::nothrow_swappable<ref_tup&&, ref_tup&&>));
 
@@ -316,17 +317,17 @@ TEST(tuple, derived) {
   ASSERT_EQ(t[0_c], 1);
   ASSERT_EQ(t[1_c], 2.0F);
   Tref r{t};
-  swap(t, r);
+  swap(t, FWD(r));
   ASSERT_EQ(t[0_c], 1);
   ASSERT_EQ(t[1_c], 2.0F);
   swap(FWD(r), FWD(r));
   ASSERT_EQ(t[0_c], 1);
   ASSERT_EQ(t[1_c], 2.0F);
 
-  swap(t2, r);
+  swap(t2, FWD(r));
   ASSERT_EQ(t[0_c], 3);
   ASSERT_EQ(t[1_c], 4.0F);
-  swap(r, t2);
+  swap(FWD(r), t2);
   ASSERT_EQ(t[0_c], 1);
   ASSERT_EQ(t[1_c], 2.0F);
 
@@ -336,7 +337,8 @@ TEST(tuple, derived) {
 
   STATIC_ASSERT(!__VEG_CONCEPT(veg::meta::swappable<T, T>));
   STATIC_ASSERT(!__VEG_CONCEPT(veg::meta::swappable<T const&, T const&>));
-  STATIC_ASSERT(__VEG_CONCEPT(veg::meta::swappable<Tref const&&, Tref const&&>));
+  STATIC_ASSERT(
+      __VEG_CONCEPT(veg::meta::swappable<Tref const&&, Tref const&&>));
   STATIC_ASSERT(__VEG_CONCEPT(veg::meta::swappable<Tref, Tref>));
   ASSERT_SAME(decltype(get<0>(r)), int&);
   ASSERT_SAME(decltype(get<0>(FWD(r))), int&);

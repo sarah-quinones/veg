@@ -8,15 +8,6 @@ namespace veg {
 namespace internal {
 namespace storage {
 
-struct delete_copy {
-  delete_copy() = default;
-  ~delete_copy() = default;
-  delete_copy(delete_copy const&) = delete;
-  delete_copy(delete_copy&&) noexcept = default;
-  auto operator=(delete_copy const&) -> delete_copy& = delete;
-  auto operator=(delete_copy&&) noexcept -> delete_copy& = default;
-};
-
 template <typename T, typename Arg>
 struct arg_ctor_to_fn {
   Arg&& arg;
@@ -127,7 +118,7 @@ struct storage<T&, true> {
 
   HEDLEY_ALWAYS_INLINE explicit constexpr storage(
       hidden_tag2 /*tag*/, T& arg) noexcept
-      : inner_ptr{mem::addressof(arg)} {}
+      : inner_ptr{addressof(arg)} {}
   template <typename Fn, typename... Args>
   HEDLEY_ALWAYS_INLINE constexpr storage(
       hidden_tag1 /*tag*/,
@@ -136,7 +127,7 @@ struct storage<T&, true> {
                                                  nothrow_invocable<
                                                      Fn&&,
                                                      Args&&...>))
-      : inner_ptr(mem::addressof(invoke(VEG_FWD(fn), VEG_FWD(args)...))) {}
+      : inner_ptr(addressof(invoke(VEG_FWD(fn), VEG_FWD(args)...))) {}
 
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() const noexcept -> T& {
     return *inner_ptr;
@@ -163,13 +154,13 @@ private:
 };
 
 template <typename T>
-struct storage<T&&, true> : delete_copy {
+struct storage<T&&, true> : meta::internal::delete_copy {
   T* inner_ptr = nullptr;
 
   storage() = default;
   HEDLEY_ALWAYS_INLINE explicit constexpr storage(
       hidden_tag2 /*tag*/, T&& arg) noexcept
-      : inner_ptr{mem::addressof(arg)} {}
+      : inner_ptr{addressof(arg)} {}
   template <typename Fn, typename... Args>
   HEDLEY_ALWAYS_INLINE constexpr storage(
       hidden_tag1 /*tag*/,
@@ -178,7 +169,7 @@ struct storage<T&&, true> : delete_copy {
                                                  nothrow_invocable<
                                                      Fn&&,
                                                      Args&&...>))
-      : inner_ptr(mem::addressof(internal::storage::as_lvalue(
+      : inner_ptr(addressof(internal::storage::as_lvalue(
             invoke(VEG_FWD(fn), VEG_FWD(args)...)))) {}
 
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() const noexcept -> T& {

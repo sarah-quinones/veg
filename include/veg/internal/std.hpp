@@ -7,13 +7,12 @@
 #define __VEG_HAS_INCLUDE(x) 0
 #endif
 
-#include <cstddef>          // maybe unneeded
 #include <cstdint>          // i64, u64
 #include <initializer_list> // std::initializer_list
 #include <new>              // placement new, launder
 
 // clang-format off
-// construct_at, destroy_at, addressof
+// construct_at, addressof
 #if __VEG_HAS_INCLUDE(<bits/stl_construct.h>) && __VEG_HAS_INCLUDE(<bits/move.h>) && __VEG_HAS_INCLUDE(<bits/stl_iterator_base_types.h>) && __VEG_HAS_INCLUDE(<bits/stl_iterator_base_funcs.h>)
 #include <bits/stl_iterator_base_types.h>
 #include <bits/stl_iterator_base_funcs.h>

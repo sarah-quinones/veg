@@ -13,7 +13,7 @@
 #include "veg/assert.hpp"
 #include "veg/internal/type_traits.hpp"
 #include "veg/internal/meta_int.hpp"
-#include "veg/fn_ref.hpp"
+#include "veg/fn_view.hpp"
 
 #include "veg/internal/std.hpp"
 #include "veg/slice.hpp"
@@ -62,7 +62,7 @@ private:
 
 struct argparse;
 struct argparse_option;
-using argparse_callback = fn_ref<int(argparse*, argparse_option const*)>;
+using argparse_callback = fn_view<int(argparse*, argparse_option const*)>;
 
 namespace _argparse {
 

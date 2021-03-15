@@ -1,16 +1,43 @@
 #include "veg/assert.hpp"
+#include "veg/internal/narrow.hpp"
+#include "veg/timer.hpp"
+#include <cinttypes>
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
 #include <exception>
-#include <stack>
 #include <string>
 #include <vector>
 #include <new>
+#include <chrono>
 
 namespace veg {
+
+raii_timer::~raii_timer() {
+  i64 dt = monotonic_nanoseconds_since_epoch() - self.begin;
+
+  char const* unit[] = {"ns", "µs", "ms", "s"};
+
+  char const** p_unit = unit;
+
+  for (i64 i = 0; i < 3; ++i) {
+    if (dt >= i64(1000)) {
+      ++p_unit;
+      dt /= i64(1000);
+    }
+  }
+
+  std::fprintf(self.file, "time elapsed for \"%s\": %" PRId64 "%s\n", self.msg, dt, *p_unit);
+}
+auto monotonic_nanoseconds_since_epoch() noexcept -> i64 {
+  return fn::narrow<i64>{}(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+          std::chrono::steady_clock::now().time_since_epoch())
+          .count());
+}
+
 [[noreturn]] void terminate() noexcept {
   std::terminate();
 }
@@ -334,14 +361,14 @@ auto parse_type_loop(char_string_ref& code_str) -> parse_type_result_t {
     parse_type_result_t res;
     bool entering;
   };
-  std::stack<state> stack;
-  stack.push({0, 0, {empty_str, {}}, false, {}, true});
+  std::vector<state> stack;
+  stack.push_back({0, 0, {empty_str, {}}, false, {}, true});
 
   while (true) {
     bool continue_ = false;
     char const* begin = code_str.data();
 
-    auto* state = &stack.top();
+    auto* state = &stack.back();
     bool entering = state->entering;
 
     if (entering) {
@@ -387,17 +414,17 @@ auto parse_type_loop(char_string_ref& code_str) -> parse_type_result_t {
                              !(token.text == char_string_ref{">", 1}))) {
 
           if (entering) {
-            stack.push({state->indent_level, 0, token, false, {}, true});
+            stack.push_back({state->indent_level, 0, token, false, {}, true});
             continue_ = true;
             break;
           }
 
           auto nested = VEG_MOV(state->res);
-          stack.pop();
+          stack.pop_back();
           if (stack.empty()) {
             return nested;
           }
-          state = &stack.top();
+          state = &stack.back();
           entering = true;
 
           state->res.multiline = state->res.multiline || nested.multiline;

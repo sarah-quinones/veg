@@ -14,14 +14,15 @@
 
 namespace veg {
 namespace internal {
+namespace memory {
 auto opaque_memmove(void* dest, void const* src, usize n) noexcept -> void*;
+}
 } // namespace internal
-namespace mem {
 
 #if !(__VEG_HAS_BUILTIN(__builtin_addressof) || __cplusplus >= 201703L)
 
 namespace internal {
-namespace _addr {
+namespace memory {
 struct member_addr {
   template <typename T>
   using type = decltype(void(__VEG_DECLVAL(T&).operator&()));
@@ -52,13 +53,13 @@ template <typename T>
 struct addr_impl
     : meta::disjunction<has_member_addr<T>, has_adl_addr<T>, builtin_addr> {};
 
-} // namespace _addr
+} // namespace memory
 } // namespace internal
 
 #endif
 
 namespace internal {
-namespace _ctor_at {
+namespace memory {
 
 struct uniform_init_ctor {
   template <typename T, typename... Args>
@@ -107,7 +108,7 @@ struct fn_to_convertible {
     return VEG_FWD(fn)();
   }
 };
-} // namespace _ctor_at
+} // namespace memory
 } // namespace internal
 
 namespace fn {
@@ -124,7 +125,7 @@ struct construct_at {
       (mem, T*),
       (... args, Args&&))
   const noexcept(__VEG_CONCEPT(meta::nothrow_constructible<T, Args&&...>))->T* {
-    return internal::_ctor_at::ctor_at_impl<T, Args&&...>::apply(
+    return internal::memory::ctor_at_impl<T, Args&&...>::apply(
         mem, VEG_FWD(args)...);
   }
 };
@@ -141,7 +142,7 @@ struct construct_with {
   const noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn&&>))->T* {
 #if __cplusplus >= 202002L
     return ::std::construct_at(
-        mem, internal::_ctor_at::fn_to_convertible<Fn&&>{VEG_FWD(fn)});
+        mem, internal::memory::fn_to_convertible<Fn&&>{VEG_FWD(fn)});
 #else
     return new (mem) T(VEG_FWD(fn)());
 #endif
@@ -174,14 +175,15 @@ struct addressof {
 
 #else
 
-    return internal::_addr::addr_impl<T>::apply(var);
+    return internal::memory::addr_impl<T>::apply(var);
 
 #endif
   }
 };
+} // namespace fn
 
 namespace internal {
-namespace _reloc {
+namespace memory {
 
 enum struct which {
   trivial,
@@ -229,7 +231,7 @@ struct reloc_impl<which::trivial> {
     )
 
     {
-      veg::internal::opaque_memmove(
+      veg::internal::memory::opaque_memmove(
           dest, src, static_cast<usize>(n) * sizeof(T));
     }
   }
@@ -275,7 +277,7 @@ struct reloc_impl<which::copy> {
   template <typename T>
   static __VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) noexcept(
       __VEG_CONCEPT(meta::nothrow_constructible<T, T const&>)) {
-    _reloc::reloc_fallible<T const&>(dest, src, n);
+    memory::reloc_fallible<T const&>(dest, src, n);
   }
 };
 
@@ -285,12 +287,14 @@ struct reloc_impl<which::throw_move> {
   HEDLEY_ALWAYS_INLINE static __VEG_CPP20(constexpr) void apply(
       T* dest, T* src, i64 n) //
       noexcept(false) {
-    _reloc::reloc_fallible<T&&>(dest, src, n);
+    memory::reloc_fallible<T&&>(dest, src, n);
   }
 };
 
-} // namespace _reloc
+} // namespace memory
 } // namespace internal
+
+namespace fn {
 
 struct relocate_n {
   VEG_TEMPLATE(
@@ -308,7 +312,7 @@ struct relocate_n {
       __VEG_CONCEPT(meta::nothrow_move_constructible<T>) ||
       __VEG_CONCEPT(meta::nothrow_constructible<T, T const&>)) {
 
-    namespace impl = internal::_reloc;
+    namespace impl = internal::memory;
     impl::reloc_impl<
         __VEG_CONCEPT(meta::trivially_relocatable<T>)            //
             ? impl::which::trivial                               //
@@ -328,7 +332,6 @@ __VEG_ODR_VAR(destroy_at, fn::destroy_at);
 __VEG_ODR_VAR(relocate_n, fn::relocate_n);
 __VEG_ODR_VAR(addressof, fn::addressof);
 
-} // namespace mem
 } // namespace veg
 
 #endif /* end of include guard __VEG_NEW_HPP_43XG2FSKS */

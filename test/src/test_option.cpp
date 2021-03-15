@@ -1,5 +1,5 @@
 #include "veg/option.hpp"
-#include "veg/fn_ref.hpp"
+#include "veg/fn_view.hpp"
 #include <gtest/gtest.h>
 #include <vector>
 #include "static_assert.hpp"
@@ -43,9 +43,8 @@ TEST(option, all) {
   STATIC_ASSERT(sizeof(option<int>) == sizeof(int) * 2);
   STATIC_ASSERT(sizeof(option<option<int>>) == sizeof(int) * 2);
   STATIC_ASSERT(sizeof(option<option<option<option<int>>>>) == sizeof(int) * 2);
-  STATIC_ASSERT(sizeof(option<fn_ref<void()>>) == sizeof(fn_ref<void()>));
-  STATIC_ASSERT(
-      sizeof(option<mini_fn_ref<void()>>) == sizeof(mini_fn_ref<void()>));
+  STATIC_ASSERT(sizeof(option<fn_view<void()>>) == sizeof(fn_view<void()>));
+  STATIC_ASSERT(sizeof(option<fn_view<void()>>) == sizeof(fn_view<void()>));
 
   __VEG_CPP14(constexpr) option<int> i = {some, 3};
   __VEG_CPP14(constexpr) option<int> j = none;

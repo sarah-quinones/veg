@@ -118,6 +118,15 @@ template <bool B>
 struct bool_constant : std::integral_constant<bool, B> {};
 
 namespace internal {
+struct delete_copy {
+  delete_copy() = default;
+  ~delete_copy() = default;
+  delete_copy(delete_copy const&) = delete;
+  delete_copy(delete_copy&&) noexcept = default;
+  auto operator=(delete_copy const&) -> delete_copy& = delete;
+  auto operator=(delete_copy&&) noexcept -> delete_copy& = default;
+};
+
 struct empty {};
 using arr = empty[];
 
@@ -294,12 +303,18 @@ using collapse_category_t = typename internal::apply_categ<
 
 namespace internal {
 struct wrapper_base {
-  static auto test(void*) -> false_type;
+  static auto test(...) -> false_type;
 };
 template <typename T>
 struct wrapper : wrapper_base {
   using wrapper_base::test;
   static auto test(wrapper<T>*) -> true_type;
+};
+
+template <typename Base>
+struct baseof_wrapper : wrapper_base {
+  using wrapper_base::test;
+  static auto test(Base const volatile*) -> true_type;
 };
 } // namespace internal
 
@@ -308,6 +323,11 @@ __VEG_DEF_CONCEPT(
     same_as,
     decltype(internal::wrapper<T>::test(
         static_cast<internal::wrapper<U>*>(nullptr)))::value);
+template <typename Derived, typename Base>
+__VEG_DEF_CONCEPT(
+    base_of,
+    decltype(internal::baseof_wrapper<Base>::test(
+        static_cast<Derived*>(nullptr)))::value);
 
 template <typename T>
 __VEG_DEF_CONCEPT(void_, __VEG_SAME_AS(T, void));
@@ -755,12 +775,8 @@ struct invoke_result : internal::defer_if<
                            is_invocable<Fn&&, Args&&...>::value,
                            internal::is_invocable_impl<Fn&&, Args&&...>> {};
 template <typename Fn, typename... Args>
-using call_result_t = typename call_result<Fn&&, Args&&...>::type;
-template <typename Fn, typename... Args>
 using invoke_result_t = typename invoke_result<Fn&&, Args&&...>::type;
 
-template <typename Fn, typename... Args>
-__VEG_DEF_CONCEPT(callable, is_callable<Fn&&, Args&&...>::value);
 template <typename Fn, typename... Args>
 __VEG_DEF_CONCEPT(invocable, is_invocable<Fn&&, Args&&...>::value);
 

@@ -90,7 +90,7 @@ struct do_if {
 struct make_none { // NOLINT
   unsigned char* c;
   __VEG_CPP20(constexpr) void operator()() const noexcept {
-    mem::construct_at(c);
+    construct_at(c);
   }
 };
 
@@ -261,8 +261,8 @@ struct option_storage_base_option_emplace<false> {
   HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) static void apply(
       T& self, Fn&& fn) noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn&&>)) {
     VEG_DEBUG_ASSERT(!self.is_engaged());
-    // mem::destroy_at(mem::addressof(self.some)); // no-op
-    mem::construct_with(mem::addressof(self.some), VEG_FWD(fn));
+    // destroy_at(addressof(self.some)); // no-op
+    construct_with(addressof(self.some), VEG_FWD(fn));
   }
 };
 
@@ -408,9 +408,9 @@ struct
   HEDLEY_ALWAYS_INLINE
   __VEG_CPP20(constexpr) ~option_storage_nontrivial_base() {
     if (engaged == 1) {
-      mem::destroy_at(mem::addressof(some));
+      destroy_at(addressof(some));
     } else {
-      mem::destroy_at(mem::addressof(none));
+      destroy_at(addressof(none));
     }
   }
 };
@@ -437,10 +437,10 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
       __VEG_CONCEPT(meta::nothrow_invocable<Fn&&>)) {
     VEG_DEBUG_ASSERT(!is_engaged());
 
-    defer<do_if<make_none>> guard{{true, {mem::addressof(none)}}};
+    defer<do_if<make_none>> guard{{true, {addressof(none)}}};
 
-    mem::construct_at(
-        mem::addressof(some), storage::hidden_tag1{}, VEG_FWD(fn));
+    construct_at(
+        addressof(some), storage::hidden_tag1{}, VEG_FWD(fn));
 
     guard.fn.cond = false;
     set_engaged(true);
@@ -449,8 +449,8 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
   HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) void destroy() noexcept {
     VEG_DEBUG_ASSERT(is_engaged());
     set_engaged(false);
-    defer<make_none> guard{{mem::addressof(none)}};
-    mem::destroy_at(mem::addressof(some));
+    defer<make_none> guard{{addressof(none)}};
+    destroy_at(addressof(some));
   }
 
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() const& noexcept
