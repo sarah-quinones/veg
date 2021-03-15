@@ -27,10 +27,10 @@ raii_timer::~raii_timer() {
   std::fprintf(
       self.file,
       "time elapsed for \"%s\": "
-      "%" PRId64 "s "
-      "%" PRId64 "ms "
-      "%" PRId64 "µs "
-      "%" PRId64 "ns\n",
+      "%3" PRId64 "s "
+      "%3" PRId64 "ms "
+      "%3" PRId64 "µs "
+      "%3" PRId64 "ns\n",
       self.msg,
       dt_unit[3],
       dt_unit[2],
