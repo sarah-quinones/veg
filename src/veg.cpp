@@ -17,19 +17,25 @@ namespace veg {
 
 raii_timer::~raii_timer() {
   i64 dt = monotonic_nanoseconds_since_epoch() - self.begin;
+  i64 dt_unit[4] = {};
 
-  char const* unit[] = {"ns", "µs", "ms", "s"};
-
-  char const** p_unit = unit;
-
-  for (i64 i = 0; i < 3; ++i) {
-    if (dt >= i64(1000)) {
-      ++p_unit;
-      dt /= i64(1000);
-    }
+  for (i64 i = 0; i < 4; ++i) {
+    dt_unit[i] = dt % i64(1000);
+    dt /= i64(1000);
   }
 
-  std::fprintf(self.file, "time elapsed for \"%s\": %" PRId64 "%s\n", self.msg, dt, *p_unit);
+  std::fprintf(
+      self.file,
+      "time elapsed for \"%s\": "
+      "%" PRId64 "s "
+      "%" PRId64 "ms "
+      "%" PRId64 "µs "
+      "%" PRId64 "ns\n",
+      self.msg,
+      dt_unit[3],
+      dt_unit[2],
+      dt_unit[1],
+      dt_unit[0]);
 }
 auto monotonic_nanoseconds_since_epoch() noexcept -> i64 {
   return fn::narrow<i64>{}(
