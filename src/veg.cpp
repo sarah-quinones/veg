@@ -26,7 +26,7 @@ raii_timer::~raii_timer() {
 
   std::fprintf(
       self.file,
-      "time elapsed for \"%s\": "
+      "done: %s: "
       "%3" PRId64 "s "
       "%3" PRId64 "ms "
       "%3" PRId64 "µs "
