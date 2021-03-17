@@ -564,8 +564,11 @@ using detected_t = typename detector<internal::none, Op, Args...>::type;
 
 namespace internal {
 template <typename T, typename... Args>
-using uniform_ctor = decltype(static_cast<void>(
-		new (static_cast<void*>(nullptr)) T{__VEG_DECLVAL(Args)...}));
+using uniform_ctor = decltype(static_cast<void>(T{__VEG_DECLVAL(Args)...}));
+
+template <typename T, typename... Args>
+using nothrow_uniform_ctor_impl =
+		bool_constant<noexcept(T{__VEG_DECLVAL(Args)...})>;
 
 template <typename Enable, typename T, typename... Args>
 struct uniform_init_constructible_impl
@@ -578,47 +581,12 @@ __VEG_DEF_CONCEPT(
 		uniform_init_constructible,
 		internal::uniform_init_constructible_impl<void, T, Args&&...>::value);
 
-namespace internal {
-
-template <bool Is_Ref>
-struct ctor_t {
-	template <typename T, typename... Args>
-	using type = decltype(
-			void(new (static_cast<void*>(nullptr)) T(__VEG_DECLVAL(Args)...)));
-};
-template <>
-struct ctor_t<true> {
-	template <typename T, typename... Args>
-	using type = decltype(void(T(__VEG_DECLVAL(Args)...)));
-};
-
-template <typename T, typename U>
-using assign_t = decltype(void(__VEG_DECLVAL(T) = __VEG_DECLVAL(U)));
-
-template <bool Reference, typename T, typename... Args>
-struct is_nothrow_constructible_impl2 //
-		: bool_constant<noexcept(T(__VEG_DECLVAL_NOEXCEPT(Args)...))> {};
 template <typename T, typename... Args>
-struct is_nothrow_constructible_impl2<false, T, Args...> //
-		: bool_constant<noexcept(new (static_cast<void*>(nullptr))
-                                 T(__VEG_DECLVAL_NOEXCEPT(Args)...))> {};
-
-template <bool Constructible, typename T, typename... Args>
-struct is_nothrow_constructible_impl //
-		: is_nothrow_constructible_impl2<__VEG_CONCEPT(reference<T>), T, Args...> {
-};
-template <typename T, typename... Args>
-struct is_nothrow_constructible_impl<false, T, Args...> : false_type {};
-
-template <bool Assignable, typename T, typename U>
-struct is_nothrow_assignable_impl
-		: bool_constant<noexcept(
-					__VEG_DECLVAL_NOEXCEPT(T&&) = __VEG_DECLVAL_NOEXCEPT(U &&))> {};
-
-template <typename T, typename U>
-struct is_nothrow_assignable_impl<false, T, U> : false_type {};
-
-} // namespace internal
+__VEG_DEF_CONCEPT(
+		nothrow_uniform_init_constructible,
+		__VEG_CONCEPT(__VEG_CONJUNCTION(
+				(uniform_init_constructible<T, Args&&...>),
+				(internal::nothrow_uniform_ctor_impl<T, Args&&...>))));
 
 template <typename T, typename U>
 struct is_same : bool_constant<__VEG_SAME_AS(T, U)> {};
@@ -693,10 +661,7 @@ __VEG_DEF_CONCEPT(
 		__VEG_HAS_BUILTIN_OR(
 				__is_constructible,
 				(__is_constructible(T, Ts&&...)),
-				(is_detected<
-						internal::ctor_t<__VEG_CONCEPT(reference<T>)>::template type,
-						T,
-						Ts&&...>::value)));
+				(std::is_constructible<T, Ts&&...>::value)));
 
 template <typename T, typename... Ts>
 __VEG_DEF_CONCEPT(
@@ -704,10 +669,7 @@ __VEG_DEF_CONCEPT(
 		__VEG_HAS_BUILTIN_OR(
 				__is_nothrow_constructible,
 				(__is_nothrow_constructible(T, Ts&&...)),
-				(internal::is_nothrow_constructible_impl<
-						__VEG_CONCEPT(constructible<T, Ts&&...>),
-						T,
-						Ts&&...>::value)));
+				(std::is_nothrow_constructible<T, Ts&&...>::value)));
 
 template <typename From, typename To>
 __VEG_DEF_CONCEPT(

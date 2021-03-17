@@ -86,8 +86,8 @@ template <typename Fn>
 struct fn_to_convertible {
 	Fn&& fn;
 	HEDLEY_ALWAYS_INLINE constexpr explicit
-	operator meta::invoke_result_t<Fn&&>() const
-			noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn&&>)) {
+	operator meta::invoke_result_t<Fn>() const
+			noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn>)) {
 		return VEG_FWD(fn)();
 	}
 };
@@ -100,17 +100,45 @@ __VEG_CPP17(
 } // namespace internal
 
 namespace fn {
+
+struct aggregate_construct_at {
+	VEG_TEMPLATE(
+			(typename T, typename... Args),
+			requires(
+					!__VEG_CONCEPT(meta::const_<T>) &&
+					__VEG_CONCEPT(meta::uniform_init_constructible<T, Args...>)),
+			HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) auto
+			operator(),
+			(mem, T*),
+			(... args, Args&&))
+	const noexcept(
+			__VEG_CONCEPT(meta::nothrow_uniform_init_constructible<T, Args...>))
+			->T* {
+#if __cplusplus >= 202002L
+		return ::std::construct_at(
+				mem,
+				internal::memory::fn_to_convertible{
+						[&]() noexcept(__VEG_CONCEPT(
+								meta::nothrow_uniform_init_constructible<T, Args...>)) -> T {
+							return T{VEG_FWD(args)...};
+						}});
+#else
+		return new (mem) T{VEG_FWD(args)...};
+#endif
+	}
+};
+
 struct construct_at {
 	VEG_TEMPLATE(
 			(typename T, typename... Args),
 			requires(
 					!__VEG_CONCEPT(meta::const_<T>) &&
-					__VEG_CONCEPT(meta::constructible<T, Args&&...>)),
+					__VEG_CONCEPT(meta::constructible<T, Args...>)),
 			HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) auto
 			operator(),
 			(mem, T*),
 			(... args, Args&&))
-	const noexcept(__VEG_CONCEPT(meta::nothrow_constructible<T, Args&&...>))->T* {
+	const noexcept(__VEG_CONCEPT(meta::nothrow_constructible<T, Args...>))->T* {
 #if __cplusplus >= 202002L
 		return ::std::construct_at(mem, VEG_FWD(args)...);
 #else
@@ -124,24 +152,21 @@ struct construct_with {
 			(typename T, typename Fn, typename... Args),
 			requires(
 					!__VEG_CONCEPT(meta::const_<T>) &&
-					__VEG_CONCEPT(meta::invocable<Fn&&, Args&&...>) &&
-					__VEG_SAME_AS(T, (meta::invoke_result_t<Fn&&, Args&&...>))),
+					__VEG_CONCEPT(meta::invocable<Fn, Args...>) &&
+					__VEG_SAME_AS(T, (meta::invoke_result_t<Fn, Args...>))),
 			HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) auto
 			operator(),
 			(mem, T*),
 			(fn, Fn&&),
 			(... args, Args&&))
-	const noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn&&, Args&&...>))->T* {
+	const noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn, Args...>))->T* {
 #if __cplusplus >= 202002L
 
 		return ::std::construct_at(
 				mem,
 				internal::memory::fn_to_convertible{
-						[&]() noexcept(
-								__VEG_CONCEPT(meta::nothrow_invocable<Fn&&, Args&&...>))
-								-> meta::invoke_result_t<Fn&&, Args&&...> {
-							return invoke{}(VEG_FWD(fn), VEG_FWD(args)...);
-						}}
+						[&]() noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn, Args...>))
+								-> T { return invoke{}(VEG_FWD(fn), VEG_FWD(args)...); }}
 
 		);
 #else
