@@ -114,13 +114,30 @@ struct slice_ctor_common {
 
 	constexpr slice_ctor_common(T* data, i64 count, unsafe_t /* tag */) noexcept
 			: m_begin{data}, m_count{count} {}
+
 	constexpr slice_ctor_common(
 			T* data, i64 count, safe_t /* tag */ = {}) noexcept
-			: m_begin{(
-						VEG_DEBUG_ASSERT(count >= i64(0)),
-						(count > 0 ? VEG_DEBUG_ASSERT(data) : void(0)),
-						data)},
-				m_count{count} {}
+			:
+#if __cplusplus >= 201402L
+
+				m_begin{data},
+				m_count{count} {
+		VEG_ASSERT(count >= i64(0));
+		if (count > 0) {
+			VEG_ASSERT(data);
+		}
+	}
+
+#else
+
+				m_begin{
+						(VEG_ASSERT(count >= i64(0)),
+	           (count > 0 ? VEG_ASSERT(data) : void(0)),
+	           data)},
+				m_count{count} {
+	}
+
+#endif
 
 	// COMPAT: check if slice_ctor_common is a base of Rng
 	VEG_TEMPLATE(

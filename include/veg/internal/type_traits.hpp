@@ -14,7 +14,7 @@
 	auto operator=(class_name const&)&->class_name& = default
 
 #if defined(VEG_ENABLE_CPP14_EXTENSIONS) || defined(__clang__) ||              \
-		__cplusplus >= 201403L
+		__cplusplus >= 201402L
 
 #if HEDLEY_HAS_WARNING("-Wc++14-extensions")
 #define __VEG_IGNORE_CPP14_EXTENSION_WARNING(...)                              \
@@ -100,6 +100,14 @@
 #define VEG_NODISCARD HEDLEY_WARN_UNUSED_RESULT
 #else
 #define VEG_NODISCARD
+#endif
+
+#ifdef __VEG_INTERNAL_ASSERTIONS
+#define __VEG_INTERNAL_ASSERT(...)                                             \
+	VEG_ASSERT_ELSE("inner assertion failed", __VA_ARGS__)
+#else
+#define __VEG_INTERNAL_ASSERT(...)                                             \
+	VEG_DEBUG_ASSERT_ELSE("inner assertion failed", __VA_ARGS__)
 #endif
 
 namespace veg {

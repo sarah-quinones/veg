@@ -21,6 +21,7 @@ using copy_ctor_fn = arg_ctor_to_fn<T, T const&>;
 template <typename T>
 using move_ctor_fn = arg_ctor_to_fn<T, T&&>;
 
+struct hidden_tag0 {};
 struct hidden_tag1 {};
 struct hidden_tag2 {};
 
@@ -29,6 +30,15 @@ struct storage {
 	T inner;
 
 	storage() = default;
+
+	template <typename... Args>
+	HEDLEY_ALWAYS_INLINE constexpr storage(
+			hidden_tag0 /*tag*/,
+			Args&&... args) noexcept(__VEG_CONCEPT(meta::
+	                                               nothrow_constructible<
+																										 T,
+																										 Args&&...>))
+			: inner(VEG_FWD(args)...) {}
 
 	template <typename Fn, typename... Args>
 	HEDLEY_ALWAYS_INLINE constexpr storage(
@@ -70,6 +80,16 @@ struct ref_base {
 	HEDLEY_ALWAYS_INLINE explicit constexpr ref_base(
 			hidden_tag2 /*tag*/, T&& arg) noexcept
 			: inner{VEG_FWD(arg)} {}
+
+	template <typename... Args>
+	HEDLEY_ALWAYS_INLINE constexpr ref_base(
+			hidden_tag0 /*tag*/,
+			Args&&... args) noexcept(__VEG_CONCEPT(meta::
+	                                               nothrow_constructible<
+																										 T&&,
+																										 Args&&...>))
+			: inner(VEG_FWD(args)...) {}
+
 	template <typename Fn, typename... Args>
 	HEDLEY_ALWAYS_INLINE constexpr ref_base(
 			hidden_tag1 /*tag*/,
@@ -119,6 +139,16 @@ struct storage<T&, true> {
 	HEDLEY_ALWAYS_INLINE explicit constexpr storage(
 			hidden_tag2 /*tag*/, T& arg) noexcept
 			: inner_ptr{addressof(arg)} {}
+
+	template <typename... Args>
+	HEDLEY_ALWAYS_INLINE constexpr storage(
+			hidden_tag0 /*tag*/,
+			Args&&... args) noexcept(__VEG_CONCEPT(meta::
+	                                               nothrow_constructible<
+																										 T&&,
+																										 Args&&...>))
+			: inner_ptr(addressof(VEG_FWD(args)...)) {}
+
 	template <typename Fn, typename... Args>
 	HEDLEY_ALWAYS_INLINE constexpr storage(
 			hidden_tag1 /*tag*/,
@@ -162,6 +192,16 @@ struct storage<T&&, true> : meta::internal::nocopy_ctor,
 	HEDLEY_ALWAYS_INLINE explicit constexpr storage(
 			hidden_tag2 /*tag*/, T&& arg) noexcept
 			: inner_ptr{addressof(arg)} {}
+
+	template <typename... Args>
+	HEDLEY_ALWAYS_INLINE constexpr storage(
+			hidden_tag0 /*tag*/,
+			Args&&... args) noexcept(__VEG_CONCEPT(meta::
+	                                               nothrow_constructible<
+																										 T&&,
+																										 Args&&...>))
+			: inner_ptr(addressof(internal::storage::as_lvalue(VEG_FWD(args)...))) {}
+
 	template <typename Fn, typename... Args>
 	HEDLEY_ALWAYS_INLINE constexpr storage(
 			hidden_tag1 /*tag*/,

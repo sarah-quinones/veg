@@ -83,6 +83,23 @@ TEST(dynamic_stack, evil_reorder) {
 	EXPECT_DEATH(bad(), "");
 }
 
+TEST(dynamic_stack, assign) {
+	alignas(double) unsigned char buf[100];
+	dynamic_stack_view stack{make::slice(buf)};
+
+	{
+		auto s1 = stack.make_new(tag_t<char>{}, 30);
+		auto s2 = stack.make_new(tag_t<char>{}, 20);
+		auto s3 = VEG_MOV(s2);
+		EXPECT_EQ(stack.remaining_bytes(), 50);
+		s3 = VEG_FWD(s1);
+		EXPECT_EQ(stack.remaining_bytes(), 70);
+		s3 = VEG_FWD(s3);
+		EXPECT_EQ(stack.remaining_bytes(), 70);
+	}
+	EXPECT_EQ(stack.remaining_bytes(), 100);
+}
+
 TEST(dynamic_stack, return ) {
 	unsigned char buf[4096];
 	dynamic_stack_view stack(make::slice(buf));

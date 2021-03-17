@@ -4,6 +4,7 @@
 #include "veg/assert.hpp"
 #include "veg/internal/memory.hpp"
 #include "veg/internal/storage.hpp"
+#include "veg/internal/cmp.hpp"
 
 namespace veg {
 
@@ -42,6 +43,40 @@ __VEG_ODR_VAR(some_ref, some_ref_t);
 namespace internal {
 namespace option_ {
 struct hidden_tag {};
+
+template <bool NoExcept, typename T, typename O>
+__VEG_CPP14(constexpr)
+void copy_assign(O& lhs, O const& rhs) noexcept(NoExcept) {
+	if (rhs.is_engaged()) {
+		if (lhs.is_engaged()) {
+			lhs.assign(rhs._get());
+		} else {
+			lhs._emplace(storage::copy_ctor_fn<T>{rhs._get()});
+		}
+	} else {
+		if (lhs.is_engaged()) {
+			lhs.destroy();
+		}
+		lhs.engaged = rhs.engaged;
+	}
+}
+
+template <bool NoExcept, typename T, typename O>
+__VEG_CPP14(constexpr)
+void move_assign(O& lhs, O&& rhs) noexcept(NoExcept) {
+	if (rhs.is_engaged()) {
+		if (lhs.is_engaged()) {
+			lhs.assign(VEG_FWD(rhs)._get());
+		} else {
+			lhs._emplace(storage::move_ctor_fn<T>{VEG_FWD(rhs)._get()});
+		}
+	} else {
+		if (lhs.is_engaged()) {
+			lhs.destroy();
+		}
+		lhs.engaged = rhs.engaged;
+	}
+}
 
 enum kind { has_sentinel, trivial, non_trivial };
 
@@ -135,39 +170,50 @@ struct option_storage_base<T, trivial> {
 		return engaged == 1;
 	}
 
-	template <typename Fn>
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void _emplace(Fn&& fn) noexcept(
-			__VEG_CONCEPT(meta::nothrow_invocable<Fn&&>)) {
-		VEG_DEBUG_ASSERT(!is_engaged());
-		some = storage::storage<T>(storage::hidden_tag1{}, VEG_FWD(fn));
+	template <typename Fn, typename... Args>
+	HEDLEY_ALWAYS_INLINE
+	__VEG_CPP14(constexpr) void _emplace(Fn&& fn, Args&&... args) noexcept(
+			__VEG_CONCEPT(meta::nothrow_invocable<Fn&&, Args&&...>)) {
+		__VEG_INTERNAL_ASSERT(!is_engaged());
+		some = storage::storage<T>(
+				storage::hidden_tag1{}, VEG_FWD(fn), VEG_FWD(args)...);
+		engaged = 1;
+	}
+
+	template <typename... Args>
+	HEDLEY_ALWAYS_INLINE
+	__VEG_CPP14(constexpr) void _arg_emplace(Args&&... args) noexcept(
+			__VEG_CONCEPT(meta::nothrow_constructible<T, Args&&...>)) {
+		__VEG_INTERNAL_ASSERT(!is_engaged());
+		some = storage::storage<T>(storage::hidden_tag0{}, VEG_FWD(args)...);
 		engaged = 1;
 	}
 
 	template <typename U>
 	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void assign(U&& rhs) noexcept(
 			noexcept(some.get_mut() = VEG_FWD(rhs))) {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		some.get_mut() = VEG_FWD(rhs);
 	}
 
 	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void destroy() noexcept {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		engaged = 0;
 	}
 
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE
 	__VEG_CPP14(constexpr) auto _get() const& noexcept -> T const& {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		return some._get();
 	}
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE
 	__VEG_CPP14(constexpr) auto _get() & noexcept -> T& {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		return some.get_mut();
 	}
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE
 	__VEG_CPP14(constexpr) auto _get() && noexcept -> T&& {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		return VEG_FWD(some).get_mov_ref();
 	}
 };
@@ -202,17 +248,27 @@ struct option_storage_base<T, has_sentinel> {
 		return sentinel_traits::id(some) < 0;
 	}
 
-	template <typename Fn>
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void _emplace(Fn&& fn) noexcept(
-			__VEG_CONCEPT(meta::nothrow_invocable<Fn&&>)) {
-		VEG_DEBUG_ASSERT(!is_engaged());
-		some = storage::storage<T>(storage::hidden_tag1{}, VEG_FWD(fn));
+	template <typename Fn, typename... Args>
+	HEDLEY_ALWAYS_INLINE
+	__VEG_CPP14(constexpr) void _emplace(Fn&& fn, Args&&... args) noexcept(
+			__VEG_CONCEPT(meta::nothrow_invocable<Fn&&, Args&&...>)) {
+		__VEG_INTERNAL_ASSERT(!is_engaged());
+		some = storage::storage<T>(
+				storage::hidden_tag1{}, VEG_FWD(fn), VEG_FWD(args)...);
+	}
+
+	template <typename... Args>
+	HEDLEY_ALWAYS_INLINE
+	__VEG_CPP14(constexpr) void _arg_emplace(Args&&... args) noexcept(
+			__VEG_CONCEPT(meta::nothrow_constructible<T, Args&&...>)) {
+		__VEG_INTERNAL_ASSERT(!is_engaged());
+		some = storage::storage<T>(storage::hidden_tag0{}, VEG_FWD(args)...);
 	}
 
 	template <typename U>
 	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void assign(U&& rhs) noexcept(
 			noexcept(some.get_mut() = VEG_FWD(rhs))) {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		some.get_mut() = VEG_FWD(rhs);
 	}
 
@@ -228,50 +284,85 @@ struct option_storage_base<T, has_sentinel> {
 
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE
 	__VEG_CPP14(constexpr) auto _get() const& noexcept -> T const& {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		return some._get();
 	}
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE
 	__VEG_CPP14(constexpr) auto _get() & noexcept -> T& {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		return some.get_mut();
 	}
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE
 	__VEG_CPP14(constexpr) auto _get() && noexcept -> T&& {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		return VEG_FWD(some).get_mov_ref();
 	}
 };
 
 template <bool Trivial>
 struct option_storage_base_option_emplace {
-	template <typename T, typename Fn>
+	template <typename T, typename Fn, typename... Args>
 	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) static void apply(
-			T& self, Fn&& fn) noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn&&>)) {
-		VEG_DEBUG_ASSERT(!self.is_engaged());
-		self.some = VEG_FWD(fn)();
+			T& self,
+			Fn&& fn,
+			Args&&... args) noexcept(__VEG_CONCEPT(meta::
+	                                               nothrow_invocable<
+																										 Fn,
+																										 Args...>)) {
+		__VEG_INTERNAL_ASSERT(!self.is_engaged());
+		self.some = invoke(VEG_FWD(fn), VEG_FWD(args)...);
+	}
+
+	template <typename Inner, typename T, typename... Args>
+	HEDLEY_ALWAYS_INLINE
+	__VEG_CPP14(constexpr) static void apply2(T& self, Args&&... args) noexcept(
+			__VEG_CONCEPT(meta::nothrow_constructible<Inner, Args&&...>)) {
+		__VEG_INTERNAL_ASSERT(!self.is_engaged());
+		self.some = Inner(VEG_FWD(args)...);
 	}
 };
 
 template <>
 struct option_storage_base_option_emplace<false> {
-	template <typename T, typename Fn>
+	template <typename T, typename Fn, typename... Args>
 	HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) static void apply(
-			T& self, Fn&& fn) noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn&&>)) {
-		VEG_DEBUG_ASSERT(!self.is_engaged());
+			T& self,
+			Fn&& fn,
+			Args&&... args) noexcept(__VEG_CONCEPT(meta::
+	                                               nothrow_invocable<
+																										 Fn,
+																										 Args...>)) {
+		__VEG_INTERNAL_ASSERT(!self.is_engaged());
 		// destroy_at(addressof(self.some)); // no-op
-		construct_with(addressof(self.some), VEG_FWD(fn));
+		construct_with(addressof(self.some), VEG_FWD(fn), VEG_FWD(args)...);
+	}
+
+	template <typename Inner, typename T, typename... Args>
+	HEDLEY_ALWAYS_INLINE
+	__VEG_CPP14(constexpr) static void apply2(T& self, Args&&... args) noexcept(
+			__VEG_CONCEPT(meta::nothrow_constructible<Inner, Args&&...>)) {
+		__VEG_INTERNAL_ASSERT(!self.is_engaged());
+		construct_at(addressof(self.some), VEG_FWD(args)...);
 	}
 };
 
 template <typename T>
 struct option_storage_base<option<T>, has_sentinel> {
 	using sentinel_traits = meta::value_sentinel_for<option<T>>;
-	template <typename Fn>
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void _emplace(Fn&& fn) noexcept(
-			__VEG_CONCEPT(meta::nothrow_invocable<Fn&&>)) {
+	template <typename Fn, typename... Args>
+	HEDLEY_ALWAYS_INLINE
+	__VEG_CPP14(constexpr) void _emplace(Fn&& fn, Args&&... args) noexcept(
+			__VEG_CONCEPT(meta::nothrow_invocable<Fn&&, Args&&...>)) {
 		option_storage_base_option_emplace<__VEG_CONCEPT(
-				meta::mostly_trivial<T>)>::apply(*this, VEG_FWD(fn));
+				meta::mostly_trivial<T>)>::apply(*this, VEG_FWD(fn), VEG_FWD(args)...);
+	}
+
+	template <typename... Args>
+	HEDLEY_ALWAYS_INLINE
+	__VEG_CPP14(constexpr) void _arg_emplace(Args&&... args) noexcept(
+			__VEG_CONCEPT(meta::nothrow_constructible<T, Args&&...>)) {
+		option_storage_base_option_emplace<__VEG_CONCEPT(
+				meta::mostly_trivial<T>)>::template apply2<T>(*this, VEG_FWD(args)...);
 	}
 
 	option<T> some = sentinel_traits::invalid(0);
@@ -297,7 +388,7 @@ struct option_storage_base<option<T>, has_sentinel> {
 	template <typename U>
 	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void assign(U&& rhs) noexcept(
 			noexcept(some = VEG_FWD(rhs))) {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		some = VEG_FWD(rhs);
 	}
 
@@ -313,17 +404,17 @@ struct option_storage_base<option<T>, has_sentinel> {
 
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE
 	__VEG_CPP14(constexpr) auto _get() const& noexcept -> option<T> const& {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		return some;
 	}
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE
 	__VEG_CPP14(constexpr) auto _get() & noexcept -> option<T>& {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		return some;
 	}
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE
 	__VEG_CPP14(constexpr) auto _get() && noexcept -> option<T>&& {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		return VEG_FWD(some);
 	}
 };
@@ -425,26 +516,41 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
 	template <typename U>
 	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void assign(U&& rhs) noexcept(
 			noexcept(some.get_mut() = VEG_FWD(rhs))) {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		some.get_mut() = VEG_FWD(rhs);
 	}
 
-	template <typename Fn>
+	template <typename Fn, typename... Args>
 	__VEG_CPP20(constexpr)
-	HEDLEY_ALWAYS_INLINE void _emplace(Fn&& fn) noexcept(
-			__VEG_CONCEPT(meta::nothrow_invocable<Fn&&>)) {
-		VEG_DEBUG_ASSERT(!is_engaged());
+	HEDLEY_ALWAYS_INLINE void _emplace(Fn&& fn, Args&&... args) noexcept(
+			__VEG_CONCEPT(meta::nothrow_invocable<Fn&&, Args&&...>)) {
+		__VEG_INTERNAL_ASSERT(!is_engaged());
 
 		defer<do_if<make_none>> guard{{true, {addressof(none)}}};
 
-		construct_at(addressof(some), storage::hidden_tag1{}, VEG_FWD(fn));
+		construct_at(
+				addressof(some), storage::hidden_tag1{}, VEG_FWD(fn), VEG_FWD(args)...);
+
+		guard.fn.cond = false;
+		set_engaged(true);
+	}
+
+	template <typename... Args>
+	HEDLEY_ALWAYS_INLINE
+	__VEG_CPP20(constexpr) void _arg_emplace(Args&&... args) noexcept(
+			__VEG_CONCEPT(meta::nothrow_constructible<T, Args&&...>)) {
+		__VEG_INTERNAL_ASSERT(!is_engaged());
+
+		defer<do_if<make_none>> guard{{true, {addressof(none)}}};
+
+		construct_at(addressof(some), storage::hidden_tag0{}, VEG_FWD(args)...);
 
 		guard.fn.cond = false;
 		set_engaged(true);
 	}
 
 	HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) void destroy() noexcept {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		set_engaged(false);
 		defer<make_none> guard{{addressof(none)}};
 		destroy_at(addressof(some));
@@ -452,15 +558,15 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
 
 	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() const& noexcept
 			-> T const& {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		return some._get();
 	}
 	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() & noexcept -> T& {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		return some.get_mut();
 	}
 	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() && noexcept -> T&& {
-		VEG_DEBUG_ASSERT(is_engaged());
+		__VEG_INTERNAL_ASSERT(is_engaged());
 		return VEG_FWD(some).get_mov_ref();
 	}
 };
@@ -484,7 +590,7 @@ struct option_copy_ctor_base<T, false> : option_storage_base<T> {
 			: option_storage_base<T>{0, rhs.engaged} {
 		if (rhs.is_engaged()) {
 			this->engaged = 0;
-			this->_emplace(storage::copy_ctor_fn<T>{rhs._get()});
+			this->_arg_emplace(rhs._get());
 		}
 	}
 	option_copy_ctor_base /* NOLINT */ (option_copy_ctor_base&&) = default;
@@ -511,11 +617,11 @@ struct option_move_ctor_base<T, false> : option_copy_ctor_base<T> {
 	option_move_ctor_base(option_move_ctor_base const&) = default;
 	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr)
 			option_move_ctor_base(option_move_ctor_base&& rhs) noexcept(
-					__VEG_CONCEPT(meta::nothrow_constructible<T, T&&>))
+					__VEG_CONCEPT(meta::nothrow_move_constructible<T>))
 			: option_copy_ctor_base<T>{0, rhs.engaged} {
 		if (rhs.is_engaged()) {
 			this->engaged = 0;
-			this->_emplace(storage::move_ctor_fn<T>{VEG_FWD(rhs)._get()});
+			this->_arg_emplace(VEG_FWD(rhs)._get());
 		}
 	}
 	auto operator=(option_move_ctor_base const&)
@@ -543,20 +649,9 @@ struct option_copy_assign_base<T, false> : option_move_ctor_base<T> {
 	auto operator= // NOLINT(cert-oop54-cpp)
 			(option_copy_assign_base const& rhs) noexcept(
 					(__VEG_CONCEPT(meta::nothrow_copy_constructible<T>) &&
-	         __VEG_CONCEPT(meta::nothrow_assignable<T&, T const&>)))
+	         __VEG_CONCEPT(meta::nothrow_copy_assignable<T>)))
 					-> option_copy_assign_base& {
-		if (rhs.is_engaged()) {
-			if (this->is_engaged()) {
-				this->assign(rhs._get());
-			} else {
-				this->_emplace(storage::copy_ctor_fn<T>{rhs._get()});
-			}
-		} else {
-			if (this->is_engaged()) {
-				this->destroy();
-			}
-			this->engaged = rhs.engaged;
-		}
+		option_::copy_assign<noexcept(*this = rhs), T>(*this, rhs);
 		return *this;
 	}
 	auto operator= /* NOLINT */(option_copy_assign_base&&)
@@ -582,21 +677,84 @@ struct option_move_assign_base<T, false> : option_copy_assign_base<T> {
 			-> option_move_assign_base& = default;
 	__VEG_CPP14(constexpr)
 	auto operator=(option_move_assign_base&& rhs) noexcept(
-			(__VEG_CONCEPT(meta::nothrow_constructible<T, T&&>) &&
-	     __VEG_CONCEPT(meta::nothrow_assignable<T&, T&&>)))
+			(__VEG_CONCEPT(meta::nothrow_move_constructible<T>) &&
+	     __VEG_CONCEPT(meta::nothrow_move_assignable<T>)))
 			-> option_move_assign_base& {
+		option_::move_assign<noexcept(*this = VEG_FWD(rhs)), T>(
+				*this, VEG_FWD(rhs));
+		return *this;
+	}
+};
+
+template <typename T>
+struct option_sp_mem_base : option_storage_base<T> {
+	~option_sp_mem_base() = default;
+	using option_storage_base<T>::option_storage_base;
+
+	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr)
+			option_sp_mem_base(option_sp_mem_base const& rhs) noexcept(
+					__VEG_CONCEPT(meta::nothrow_copy_constructible<T>))
+			: option_storage_base<T>{0, rhs.engaged} {
 		if (rhs.is_engaged()) {
-			if (this->is_engaged()) {
-				this->assign(VEG_FWD(rhs)._get());
-			} else {
-				this->_emplace(storage::move_ctor_fn<T>{VEG_FWD(rhs)._get()});
-			}
-		} else {
-			if (this->is_engaged()) {
-				this->destroy();
-			}
-			this->engaged = rhs.engaged;
+			this->engaged = 0;
+			this->_arg_emplace(rhs._get());
 		}
+	}
+
+	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr)
+			option_sp_mem_base(option_sp_mem_base&& rhs) noexcept(
+					__VEG_CONCEPT(meta::nothrow_move_constructible<T>))
+			: option_storage_base<T>{0, rhs.engaged} {
+		if (rhs.is_engaged()) {
+			this->engaged = 0;
+			this->_arg_emplace(VEG_FWD(rhs)._get());
+		}
+	}
+
+	__VEG_CPP14(constexpr)
+	auto operator= // NOLINT(cert-oop54-cpp)
+			(option_sp_mem_base const& rhs) noexcept(
+					(__VEG_CONCEPT(meta::nothrow_copy_constructible<T>) &&
+	         __VEG_CONCEPT(meta::nothrow_copy_assignable<T>)))
+					-> option_sp_mem_base& {
+		option_::copy_assign<noexcept(*this = rhs), T>(*this, rhs);
+		return *this;
+	}
+	__VEG_CPP14(constexpr)
+	auto operator=(option_sp_mem_base&& rhs) noexcept((
+			__VEG_CONCEPT(meta::nothrow_move_constructible<T>) &&
+			__VEG_CONCEPT(meta::nothrow_move_assignable<T>))) -> option_sp_mem_base& {
+		option_::move_assign<noexcept(*this = VEG_FWD(rhs)), T>(
+				*this, VEG_FWD(rhs));
+		return *this;
+	}
+};
+
+template <typename T>
+struct option_move_sp_mem_base : option_storage_base<T> {
+	~option_move_sp_mem_base() = default;
+	using option_storage_base<T>::option_storage_base;
+
+	option_move_sp_mem_base(option_move_sp_mem_base const&) = delete;
+	auto operator=(option_move_sp_mem_base const& rhs) = delete;
+
+	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr)
+			option_move_sp_mem_base(option_move_sp_mem_base&& rhs) noexcept(
+					__VEG_CONCEPT(meta::nothrow_move_constructible<T>))
+			: option_storage_base<T>{0, rhs.engaged} {
+		if (rhs.is_engaged()) {
+			this->engaged = 0;
+			this->_emplace(storage::move_ctor_fn<T>{VEG_FWD(rhs)._get()});
+		}
+	}
+
+	__VEG_CPP14(constexpr)
+	auto operator=(option_move_sp_mem_base&& rhs) noexcept(
+			(__VEG_CONCEPT(meta::nothrow_move_constructible<T>) &&
+	     __VEG_CONCEPT(meta::nothrow_move_assignable<T>)))
+			-> option_move_sp_mem_base& {
+		option_::move_assign<noexcept(*this = VEG_FWD(rhs)), T>(
+				*this, VEG_FWD(rhs));
 		return *this;
 	}
 };
@@ -604,26 +762,78 @@ struct option_move_assign_base<T, false> : option_copy_assign_base<T> {
 template <typename T, bool = __VEG_CONCEPT(meta::move_constructible<T>)>
 struct option_move_ctor_base2
 		: meta::conditional_t<
-					!__VEG_CONCEPT(meta::class_<T>),
-					option_storage_base<
-							T,
-							__VEG_CONCEPT(meta::reference<T>) ? has_sentinel : trivial>,
-					option_move_assign_base<T>> {
+					(kind_v<T>::value != non_trivial),
+					option_storage_base<T>,
+					meta::conditional_t<
+							((!__VEG_CONCEPT(meta::trivially_move_assignable<T>) &&
+                !__VEG_CONCEPT(meta::trivially_move_constructible<T>) &&
+                !__VEG_CONCEPT(meta::trivially_copy_assignable<T>) &&
+                !__VEG_CONCEPT(meta::trivially_copy_constructible<T>)) &&
+               (__VEG_CONCEPT(meta::move_assignable<T>) &&
+                __VEG_CONCEPT(meta::move_constructible<T>))),
+							meta::conditional_t<
+									(__VEG_CONCEPT(meta::copy_assignable<T>) &&
+                   __VEG_CONCEPT(meta::copy_constructible<T>)),
+									option_sp_mem_base<T>,
+									option_move_sp_mem_base<T>>,
+							option_move_assign_base<T>>> {
 	using _veg_base = meta::conditional_t<
-			!__VEG_CONCEPT(meta::class_<T>),
-			option_storage_base<
-					T,
-					__VEG_CONCEPT(meta::reference<T>) ? has_sentinel : trivial>,
-			option_move_assign_base<T>>;
+			(kind_v<T>::value != non_trivial),
+			option_storage_base<T>,
+			meta::conditional_t<
+					(kind_v<T>::value != non_trivial),
+					option_storage_base<T>,
+					meta::conditional_t<
+							((!__VEG_CONCEPT(meta::trivially_move_assignable<T>) &&
+	              !__VEG_CONCEPT(meta::trivially_move_constructible<T>) &&
+	              !__VEG_CONCEPT(meta::trivially_copy_assignable<T>) &&
+	              !__VEG_CONCEPT(meta::trivially_copy_constructible<T>)) &&
+	             (__VEG_CONCEPT(meta::move_assignable<T>) &&
+	              __VEG_CONCEPT(meta::move_constructible<T>))),
+							meta::conditional_t<
+									(__VEG_CONCEPT(meta::copy_assignable<T>) &&
+	                 __VEG_CONCEPT(meta::copy_constructible<T>)),
+									option_sp_mem_base<T>,
+									option_move_sp_mem_base<T>>,
+							option_move_assign_base<T>>>>;
 
 	option_move_ctor_base2() = default;
 	explicit __VEG_CPP14(constexpr) option_move_ctor_base2(T value) noexcept(
-			__VEG_CONCEPT(meta::nothrow_constructible<T, T&&>))
+			__VEG_CONCEPT(meta::nothrow_move_constructible<T>))
 			: _veg_base(VEG_FWD(value)) {}
 
 	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr)
 			option_move_ctor_base2(some_t /*tag*/, T value) noexcept(
-					__VEG_CONCEPT(meta::nothrow_constructible<T, T&&>))
+					__VEG_CONCEPT(meta::nothrow_move_constructible<T>))
+			: _veg_base(VEG_FWD(value)) {}
+
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args),
+			requires(
+					__VEG_CONCEPT(meta::invocable<Fn, Args...>) &&
+					__VEG_SAME_AS(T, (meta::invoke_result_t<Fn, Args...>))),
+			HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) option_move_ctor_base2,
+
+			(/*tag*/, some_t),
+			(/*tag*/, inplace_t),
+			(fn, Fn&&),
+			(... args, Args&&))
+	noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn, Args...>))
+			: _veg_base(
+						internal::option_::hidden_tag{}, VEG_FWD(fn), VEG_FWD(args)...) {}
+};
+
+template <typename T>
+struct option_move_ctor_base2<T&, true>
+		: option_storage_base<T&, has_sentinel> {
+	using _veg_base = option_storage_base<T&, has_sentinel>;
+
+	option_move_ctor_base2() = default;
+	explicit __VEG_CPP14(constexpr) option_move_ctor_base2(T& value) noexcept
+			: _veg_base(VEG_FWD(value)) {}
+
+	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr)
+			option_move_ctor_base2(some_t /*tag*/, T& value) noexcept
 			: _veg_base(VEG_FWD(value)) {}
 
 	VEG_TEMPLATE(
@@ -662,7 +872,7 @@ struct option_move_ctor_base2<T, false> : option_move_assign_base<T> {
 };
 
 template <typename To>
-struct decay_fn {
+struct into_fn {
 	template <typename T>
 	HEDLEY_ALWAYS_INLINE constexpr auto operator()(T&& ref) const
 			noexcept(__VEG_CONCEPT(meta::nothrow_constructible<To, T&&>)) -> To {
@@ -676,7 +886,7 @@ struct option_move_interface_base {
 	auto clone() && noexcept(__VEG_CONCEPT(meta::nothrow_move_constructible<T>))
 			-> option<T> {
 		auto&& self = static_cast<option<T>&&>(*this);
-		return VEG_FWD(self).as_ref().map(decay_fn<T>{});
+		return VEG_FWD(self)._get().map(into_fn<T>{});
 	}
 
 	VEG_NODISCARD
@@ -699,10 +909,11 @@ struct option_move_interface_base {
 		return VEG_FWD(self)._get();
 	}
 
-	VEG_NODISCARD __VEG_CPP14(constexpr) auto unwrap() && noexcept(
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE
+	__VEG_CPP14(constexpr) auto unwrap() && noexcept(
 			__VEG_CONCEPT(meta::nothrow_move_constructible<T>)) -> T {
 		auto& self = static_cast<option<T>&>(*this);
-		VEG_ASSERT(self);
+		self.unwrap_assert();
 		return static_cast<option<T>&&>(self).unwrap_unchecked(unsafe);
 	}
 
@@ -739,7 +950,7 @@ struct option_copy_interface_base {
 	clone() const& noexcept(__VEG_CONCEPT(meta::nothrow_copy_constructible<T>))
 			-> option<T> {
 		auto const& self = static_cast<option<T> const&>(*this);
-		return self.as_ref().map(decay_fn<T>{});
+		return self.as_ref().map(into_fn<T>{});
 	}
 };
 
@@ -842,35 +1053,22 @@ template <typename T>
 struct option_flatten_base<option<T>> {
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE
 	__VEG_CPP14(constexpr) auto flatten() && noexcept(
-			__VEG_CONCEPT(meta::nothrow_constructible<T, T&&>)) -> option<T> {
+			__VEG_CONCEPT(meta::nothrow_move_constructible<T>)) -> option<T> {
 		auto&& self = static_cast<option<option<T>>&&>(*this);
 		return VEG_FWD(self).as_ref().map_or_else(
-				decay_fn<option<T>>{}, ret_none<T>{});
+				into_fn<option<T>>{}, ret_none<T>{});
 	}
 };
 
 template <typename T>
 struct cmp_with_fn {
 	meta::remove_cvref_t<T> const& rhs;
-	HEDLEY_ALWAYS_INLINE constexpr auto
-	operator()(meta::remove_cvref_t<T> const& lhs) const noexcept -> bool {
-		return static_cast<bool>(rhs == lhs);
+	template <typename U>
+	HEDLEY_ALWAYS_INLINE constexpr auto operator()(U const& lhs) const noexcept
+			-> bool {
+		return cmp_equal(lhs, rhs);
 	}
 };
-
-template <
-		typename T,
-		bool = __VEG_CONCEPT(meta::equality_comparable_with<T, T>)>
-struct eq_cmp_base {
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto contains(
-			meta::remove_cvref_t<T> const& val) const noexcept -> bool {
-		auto& self = static_cast<option<T> const&>(*this);
-		return self.as_cref().map_or(cmp_with_fn<T>{val}, false);
-	}
-};
-
-template <typename T>
-struct eq_cmp_base<T, false> {};
 
 } // namespace option_
 } // namespace internal
@@ -879,8 +1077,7 @@ template <typename T>
 struct VEG_NODISCARD option
 		: private internal::option_::option_move_ctor_base2<T>,
 			public internal::option_::option_copymove_interface_base<T>,
-			public internal::option_::option_flatten_base<T>,
-			public internal::option_::eq_cmp_base<T> {
+			public internal::option_::option_flatten_base<T> {
 
 	using internal::option_::option_move_ctor_base2<T>::option_move_ctor_base2;
 	option() = default;
@@ -899,18 +1096,28 @@ struct VEG_NODISCARD option
 	}
 
 	VEG_TEMPLATE(
-			(typename Fn),
-			requires(
-					(__VEG_CONCEPT(meta::invocable<Fn>) &&
-	         __VEG_SAME_AS(T, (meta::invoke_result_t<Fn>)))),
-			__VEG_CPP14(constexpr) void emplace,
-			(fn, Fn)) &
+			typename U,
+			requires(__VEG_CONCEPT(meta::equality_comparable_with<T, U>)),
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto contains,
+			(val, U const&))
+	const noexcept->bool {
+		return as_cref().map_or(internal::option_::cmp_with_fn<U>{val}, false);
+	}
 
-			noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn>)) {
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args),
+			requires(
+					(__VEG_CONCEPT(meta::invocable<Fn, Args...>) &&
+	         __VEG_SAME_AS(T, (meta::invoke_result_t<Fn, Args...>)))),
+			__VEG_CPP14(constexpr) void emplace,
+			(fn, Fn),
+			(... args, Args)) &
+
+			noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn, Args...>)) {
 		if (*this) {
 			*this = none;
 		}
-		this->_emplace(VEG_FWD(fn));
+		this->_emplace(VEG_FWD(fn), VEG_FWD(args)...);
 	}
 
 	VEG_TEMPLATE(
@@ -1012,7 +1219,7 @@ struct VEG_NODISCARD option
 	__VEG_CPP14(constexpr) auto as_cref() const noexcept
 			-> option<meta::remove_cvref_t<T> const&> {
 		if (*this) {
-			return {some, as_ref().unwrap_unchecked(unsafe)};
+			return {some, this->_get()};
 		}
 		return none;
 	}
@@ -1045,6 +1252,12 @@ struct VEG_NODISCARD option
 	}
 
 private:
+	HEDLEY_ALWAYS_INLINE
+	__VEG_CPP14(constexpr) void unwrap_assert() const noexcept {
+    bool holds_value = static_cast<bool>(*this);
+		VEG_ASSERT(holds_value);
+	}
+
 	template <typename U, bool B>
 	friend struct internal::option_::value_sentinel_impl;
 

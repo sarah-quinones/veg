@@ -24,8 +24,17 @@ VEG_TEMPLATE(
 		constexpr auto narrow<To>::operator(),
 		(from, From))
 const noexcept -> To {
+#if __cplusplus >= 201402L
+
+	To to = static_cast<To>(from);
+	From roundtrip_from = static_cast<From>(static_cast<To>(from));
+	VEG_ASSERT(roundtrip_from == from);
+	return to;
+
+#else
 	return VEG_ASSERT(static_cast<From>(static_cast<To>(from)) == from),
 				 static_cast<To>(from);
+#endif
 }
 } // namespace fn
 __VEG_IGNORE_CPP14_EXTENSION_WARNING(namespace /* NOLINT */ {

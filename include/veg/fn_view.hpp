@@ -210,9 +210,10 @@ struct function_ref_impl {
 	                  template address<State>(fn)),
 				m_call(fnref::fn_view_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::
 	                 template call<State, Fn, Ret, Args...>) {
-		VEG_ASSERT(
-				!fnref::fn_view_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::is_null(
-						m_state));
+		bool null_fn_ptr =
+				fnref::fn_view_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::is_null(
+						m_state);
+		VEG_ASSERT(!null_fn_ptr);
 	}
 
 	function_ref_impl(
@@ -221,7 +222,7 @@ struct function_ref_impl {
 			: m_state(state), m_call(call) {}
 
 	auto call_fn(Args... args) const noexcept(No_Except) -> Ret {
-		VEG_DEBUG_ASSERT(m_call != nullptr);
+		__VEG_INTERNAL_ASSERT(m_call != nullptr);
 		return this->m_call(this->m_state, VEG_FWD(args)...);
 	}
 
@@ -412,7 +413,9 @@ __VEG_CPP17(
 template <typename T>
 struct meta::value_sentinel_for<fn_view<T>> : std::integral_constant<i64, 1> {
 	static constexpr auto invalid(i64 i) noexcept -> fn_view<T> {
-		return VEG_ASSERT(i == i64(0)), fn_view<T>{::veg::internal::fnref::dummy{}};
+		(void)i;
+		return __VEG_INTERNAL_ASSERT(i == i64(0)),
+					 fn_view<T>{::veg::internal::fnref::dummy{}};
 	}
 	static constexpr auto id(fn_view<T> arg) -> i64 {
 		return arg.m_call == nullptr ? 0 : -1;
@@ -422,7 +425,8 @@ template <typename T>
 struct meta::value_sentinel_for<once_fn_view<T>>
 		: std::integral_constant<i64, 1> {
 	static constexpr auto invalid(i64 i) noexcept -> once_fn_view<T> {
-		return VEG_ASSERT(i == i64(0)),
+		(void)i;
+		return __VEG_INTERNAL_ASSERT(i == i64(0)),
 					 once_fn_view<T>{::veg::internal::fnref::dummy{}};
 	}
 	static constexpr auto id(once_fn_view<T> arg) -> i64 {

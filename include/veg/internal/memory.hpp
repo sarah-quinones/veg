@@ -82,44 +82,6 @@ struct addr_impl
 namespace internal {
 namespace memory {
 
-struct uniform_init_ctor {
-	template <typename T, typename... Args>
-	HEDLEY_ALWAYS_INLINE static auto apply(T* mem, Args&&... args) noexcept(
-			noexcept(new (mem) T{VEG_FWD(args)...})) -> T* {
-		return new (mem) T{VEG_FWD(args)...};
-	}
-};
-struct ctor {
-	template <typename T, typename... Args>
-	HEDLEY_ALWAYS_INLINE static __VEG_CPP20(constexpr) auto apply(
-			T* mem, Args&&... args) noexcept(__VEG_CONCEPT(meta::
-	                                                       nothrow_constructible<
-																														 T,
-																														 Args&&...>))
-			-> T* {
-#if __cplusplus >= 202002L
-		return ::std::construct_at(mem, VEG_FWD(args)...);
-#else
-		return new (mem) T(VEG_FWD(args)...);
-#endif
-	}
-};
-
-template <typename T, typename... Args>
-struct uniform_constructible
-		: meta::bool_constant<__VEG_CONCEPT(
-					meta::uniform_init_constructible<T, Args&&...>)>,
-			uniform_init_ctor {};
-template <typename T, typename... Args>
-struct constructible
-		: meta::bool_constant<__VEG_CONCEPT(meta::constructible<T, Args&&...>)>,
-			ctor {};
-
-template <typename T, typename... Args>
-struct ctor_at_impl : meta::disjunction<
-													constructible<T, Args&&...>,
-													uniform_constructible<T, Args&&...>> {};
-
 template <typename Fn>
 struct fn_to_convertible {
 	Fn&& fn;
@@ -143,16 +105,17 @@ struct construct_at {
 			(typename T, typename... Args),
 			requires(
 					!__VEG_CONCEPT(meta::const_<T>) &&
-					__VEG_CONCEPT(__VEG_DISJUNCTION(
-							(meta::constructible<T, Args&&...>),
-							(meta::uniform_init_constructible<T, Args&&...>)))),
+					__VEG_CONCEPT(meta::constructible<T, Args&&...>)),
 			HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) auto
 			operator(),
 			(mem, T*),
 			(... args, Args&&))
 	const noexcept(__VEG_CONCEPT(meta::nothrow_constructible<T, Args&&...>))->T* {
-		return internal::memory::ctor_at_impl<T, Args&&...>::apply(
-				mem, VEG_FWD(args)...);
+#if __cplusplus >= 202002L
+		return ::std::construct_at(mem, VEG_FWD(args)...);
+#else
+		return new (mem) T(VEG_FWD(args)...);
+#endif
 	}
 };
 

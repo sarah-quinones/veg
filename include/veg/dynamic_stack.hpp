@@ -139,13 +139,17 @@ struct dynamic_alloc_base {
 	void const volatile* data = nullptr;
 	i64 len = 0;
 
-	void destroy(void const volatile* data_end) noexcept {
+	void destroy(void const volatile* void_data_end) noexcept {
 		if (len != 0) {
 			// in case resource lifetimes are reodered by moving ownership
-			VEG_ASSERT(parent.stack_data == data_end);
-			VEG_ASSERT(
-					static_cast<unsigned char*>(parent.stack_data) >=
-					static_cast<unsigned char*>(old_pos));
+			auto* parent_stack_data = static_cast<unsigned char*>(parent.stack_data);
+			auto* old_position = static_cast<unsigned char*>(old_pos);
+			auto* data_end =
+					static_cast<unsigned char*>(const_cast<void*>(void_data_end));
+
+			VEG_ASSERT_ALL_OF( //
+					parent_stack_data == data_end,
+					parent_stack_data >= old_position);
 
 			parent.stack_bytes += fn::narrow<i64>{}(
 					static_cast<unsigned char*>(parent.stack_data) -
@@ -171,7 +175,13 @@ public:
 	};
 
 	auto operator=(dynstack_alloc const&) -> dynstack_alloc& = delete;
-	auto operator=(dynstack_alloc&&) -> dynstack_alloc& = delete;
+	auto operator=(dynstack_alloc&& rhs) noexcept -> dynstack_alloc& {
+		if (this != addressof(rhs)) {
+			destroy_at(this);
+			construct_at(this, VEG_FWD(rhs));
+		}
+		return *this;
+	}
 
 	VEG_NODISCARD auto data() const noexcept -> T* {
 		return static_cast<T*>(const_cast<void*>(base::data));
@@ -184,20 +194,20 @@ private:
 
 	template <typename Fn>
 	dynstack_alloc(
-			dynamic_stack_view& parent,
+			dynamic_stack_view& parent_ref,
 			i64 alloc_size,
 			i64 align,
 			Fn fn) noexcept(__VEG_CONCEPT(meta::nothrow_constructible<T>))
-			: base{parent, parent.stack_data} {
+			: base{parent_ref, parent_ref.stack_data} {
 
-		void* const parent_data = parent.stack_data;
-		i64 const parent_bytes = parent.stack_bytes;
+		void* const parent_data = parent_ref.stack_data;
+		i64 const parent_bytes = parent_ref.stack_bytes;
 
 		void* const data = internal::dynstack::align_next(
 				align,
 				alloc_size * fn::narrow<i64>{}(sizeof(T)),
-				parent.stack_data,
-				parent.stack_bytes);
+				parent_ref.stack_data,
+				parent_ref.stack_bytes);
 
 		if (data != nullptr) {
 			bool success = false;
@@ -223,10 +233,16 @@ public:
 	dynstack_array(dynstack_array const&) = delete;
 	dynstack_array(dynstack_array&&) noexcept = default;
 	auto operator=(dynstack_array const&) -> dynstack_array& = delete;
-	auto operator=(dynstack_array&&) -> dynstack_array& = delete;
+	auto operator=(dynstack_array&& rhs) noexcept -> dynstack_array& {
+		if (this != addressof(rhs)) {
+			destroy_at(this);
+			construct_at(this, VEG_FWD(rhs));
+		}
+		return *this;
+	}
 
 	~dynstack_array() {
-		for (i64 i = this->base::len - 1; i >= 0; --i) {
+		for (i64 i = this->dynstack_alloc<T>::base::len - 1; i >= 0; --i) {
 			fn::destroy_at{}(this->data() + i);
 		}
 	}
