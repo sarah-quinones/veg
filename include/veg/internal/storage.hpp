@@ -154,7 +154,8 @@ private:
 };
 
 template <typename T>
-struct storage<T&&, true> : meta::internal::delete_copy {
+struct storage<T&&, true> : meta::internal::nocopy_ctor,
+                            meta::internal::nocopy_assign {
   T* inner_ptr = nullptr;
 
   storage() = default;

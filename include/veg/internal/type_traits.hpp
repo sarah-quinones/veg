@@ -118,14 +118,44 @@ template <bool B>
 struct bool_constant : std::integral_constant<bool, B> {};
 
 namespace internal {
-struct delete_copy {
-  delete_copy() = default;
-  ~delete_copy() = default;
-  delete_copy(delete_copy const&) = delete;
-  delete_copy(delete_copy&&) noexcept = default;
-  auto operator=(delete_copy const&) -> delete_copy& = delete;
-  auto operator=(delete_copy&&) noexcept -> delete_copy& = default;
+struct nodefault_ctor {
+  nodefault_ctor() = delete;
 };
+struct nomove_assign {
+  nomove_assign() = default;
+  ~nomove_assign() = default;
+  nomove_assign(nomove_assign const&) = default;
+  nomove_assign(nomove_assign&&) noexcept = default;
+  auto operator=(nomove_assign const&) -> nomove_assign& = default;
+  auto operator=(nomove_assign&&) noexcept -> nomove_assign& = delete;
+};
+struct nocopy_assign {
+  nocopy_assign() = default;
+  ~nocopy_assign() = default;
+  nocopy_assign(nocopy_assign const&) = default;
+  nocopy_assign(nocopy_assign&&) noexcept = default;
+  auto operator=(nocopy_assign const&) -> nocopy_assign& = delete;
+  auto operator=(nocopy_assign&&) noexcept -> nocopy_assign& = default;
+};
+struct nomove_ctor {
+  nomove_ctor() = default;
+  ~nomove_ctor() = default;
+  nomove_ctor(nomove_ctor const&) = default;
+  nomove_ctor(nomove_ctor&&) noexcept = delete;
+  auto operator=(nomove_ctor const&) -> nomove_ctor& = default;
+  auto operator=(nomove_ctor&&) noexcept -> nomove_ctor& = default;
+};
+struct nocopy_ctor {
+  nocopy_ctor() = default;
+  ~nocopy_ctor() = default;
+  nocopy_ctor(nocopy_ctor const&) = delete;
+  nocopy_ctor(nocopy_ctor&&) noexcept = default;
+  auto operator=(nocopy_ctor const&) -> nocopy_ctor& = default;
+  auto operator=(nocopy_ctor&&) noexcept -> nocopy_ctor& = default;
+};
+
+template <i64 I>
+struct empty_i {};
 
 struct empty {};
 using arr = empty[];
@@ -330,7 +360,7 @@ __VEG_DEF_CONCEPT(
         static_cast<Derived*>(nullptr)))::value);
 
 template <typename T>
-__VEG_DEF_CONCEPT(void_, __VEG_SAME_AS(T, void));
+__VEG_DEF_CONCEPT(void_, __VEG_SAME_AS(remove_cv_t<T>, void));
 
 namespace internal {
 template <typename T>
@@ -417,7 +447,7 @@ __VEG_DEF_CONCEPT(
 
 template <typename T>
 __VEG_DEF_CONCEPT(
-    function, !__VEG_CONCEPT(const_<T>) && !__VEG_CONCEPT(reference<T>));
+    function, !__VEG_CONCEPT(const_<T const>) && !__VEG_CONCEPT(reference<T>));
 
 namespace internal {
 template <typename T>

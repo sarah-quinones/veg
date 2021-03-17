@@ -17,11 +17,11 @@ struct array {
 
   VEG_NODISCARD auto operator[](i64 i) && noexcept -> T&& = delete;
   VEG_NODISCARD auto operator[](i64 i) & noexcept -> T& {
-    VEG_ASSERT_ALL_OF(i >= 0, i < N);
+    VEG_ASSERT_ALL_OF(i >= i64(0), i < N);
     return self[i];
   }
   VEG_NODISCARD auto operator[](i64 i) const& noexcept -> T const& {
-    VEG_ASSERT_ALL_OF(i >= 0, i < N);
+    VEG_ASSERT_ALL_OF(i >= i64(0), i < N);
     return self[i];
   }
 
@@ -112,9 +112,12 @@ template <typename T>
 struct slice_ctor_common {
   slice_ctor_common() noexcept = default;
 
-  constexpr slice_ctor_common(T* data, i64 count) noexcept
+  constexpr slice_ctor_common(T* data, i64 count, unsafe_t /* tag */) noexcept
+      : m_begin{data}, m_count{count} {}
+  constexpr slice_ctor_common(
+      T* data, i64 count, safe_t /* tag */ = {}) noexcept
       : m_begin{(
-            VEG_DEBUG_ASSERT(count >= 0),
+            VEG_DEBUG_ASSERT(count >= i64(0)),
             (count > 0 ? VEG_DEBUG_ASSERT(data) : void(0)),
             data)},
         m_count{count} {}
@@ -162,7 +165,7 @@ struct slice : private internal::slice_ctor<T> {
   }
   VEG_NODISCARD constexpr auto operator[](i64 i) const noexcept -> T& {
     return VEG_ASSERT_ALL_OF( //
-               (i >= 0),
+               (i >= i64(0)),
                (i < size())),
            *(data() + i);
   }

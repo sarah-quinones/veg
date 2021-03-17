@@ -140,7 +140,7 @@ struct option_storage_base<T, trivial> {
   template <typename Fn>
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void _emplace(Fn&& fn) noexcept(
       __VEG_CONCEPT(meta::nothrow_invocable<Fn&&>)) {
-    VEG_DEBUG_ASSERT(!engaged);
+    VEG_DEBUG_ASSERT(!is_engaged());
     some = storage::storage<T>(storage::hidden_tag1{}, VEG_FWD(fn));
     engaged = 1;
   }
@@ -148,12 +148,12 @@ struct option_storage_base<T, trivial> {
   template <typename U>
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void assign(U&& rhs) noexcept(
       noexcept(some.get_mut() = VEG_FWD(rhs))) {
-    VEG_DEBUG_ASSERT(engaged);
+    VEG_DEBUG_ASSERT(is_engaged());
     some.get_mut() = VEG_FWD(rhs);
   }
 
   HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) void destroy() noexcept {
-    VEG_DEBUG_ASSERT(engaged);
+    VEG_DEBUG_ASSERT(is_engaged());
     engaged = 0;
   }
 

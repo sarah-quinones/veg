@@ -19,6 +19,7 @@ add_library(_veg_ub ${CMAKE_CURRENT_SOURCE_DIR}/src/ub.cpp)
 set_property(TARGET _veg_ub PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
 add_library(
   veg ${CMAKE_CURRENT_SOURCE_DIR}/src/veg.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/alloc.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/src/argparse.cpp
 )
 target_link_libraries(veg PRIVATE _veg_ub)

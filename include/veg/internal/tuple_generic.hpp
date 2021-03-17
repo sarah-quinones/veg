@@ -32,8 +32,6 @@ template <typename... Ts>
 struct is_trivially_swappable<tuple<Ts...>&>
     : veg::internal::tuple::trivially_swappable<tuple<Ts...>&, tuple<Ts...>&> {
 };
-template <typename... Ts>
-struct is_trivially_swappable<tuple<Ts...> const&> : false_type {};
 } // namespace meta
 
 namespace internal {

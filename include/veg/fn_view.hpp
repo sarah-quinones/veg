@@ -322,7 +322,8 @@ template <typename Ret, typename... Args>
 struct once_fn_view<Ret(Args...)>
     : private internal::fnref::
           function_ref_impl<false, internal::fnref::state_t, Ret, Args...>,
-      meta::internal::delete_copy {
+      meta::internal::nocopy_ctor,
+      meta::internal::nocopy_assign {
 private:
   using base = internal::fnref::
       function_ref_impl<false, internal::fnref::state_t, Ret, Args...>;
@@ -370,7 +371,7 @@ __VEG_CPP17(
  struct once_fn_view<Ret(Args...) noexcept>
  : private internal::fnref::
  function_ref_impl<true, internal::fnref::state_t, Ret, Args...>,
- meta::internal::delete_copy {
+ meta::internal::nocopy_ctor, meta::internal::nocopy_assign {
  private:
  using base = internal::fnref::
  function_ref_impl<true, internal::fnref::state_t, Ret, Args...>;
@@ -411,7 +412,7 @@ __VEG_CPP17(
 template <typename T>
 struct meta::value_sentinel_for<fn_view<T>> : std::integral_constant<i64, 1> {
   static constexpr auto invalid(i64 i) noexcept -> fn_view<T> {
-    return VEG_ASSERT(i == 0), fn_view<T>{::veg::internal::fnref::dummy{}};
+    return VEG_ASSERT(i == i64(0)), fn_view<T>{::veg::internal::fnref::dummy{}};
   }
   static constexpr auto id(fn_view<T> arg) -> i64 {
     return arg.m_call == nullptr ? 0 : -1;
@@ -421,7 +422,8 @@ template <typename T>
 struct meta::value_sentinel_for<once_fn_view<T>>
     : std::integral_constant<i64, 1> {
   static constexpr auto invalid(i64 i) noexcept -> once_fn_view<T> {
-    return VEG_ASSERT(i == 0), once_fn_view<T>{::veg::internal::fnref::dummy{}};
+    return VEG_ASSERT(i == i64(0)),
+           once_fn_view<T>{::veg::internal::fnref::dummy{}};
   }
   static constexpr auto id(once_fn_view<T> arg) -> i64 {
     return arg.m_call == nullptr ? 0 : -1;

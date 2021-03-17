@@ -107,27 +107,30 @@ TEST(dynamic_stack, manual_lifetimes) {
   unsigned char buf[4096];
   dynamic_stack_view stack(make::slice(buf));
 
-  auto s = stack.make_alloc(tag_t<S>{}, 3).unwrap();
-  EXPECT_NE(s.data(), nullptr);
-  EXPECT_EQ(s.size(), 3);
-  EXPECT_EQ(S::n_instances(), 0);
-
   {
-    new (s.data() + 0) S{};
-    EXPECT_EQ(S::n_instances(), 1);
-    new (s.data() + 1) S{};
-    EXPECT_EQ(S::n_instances(), 2);
-    new (s.data() + 2) S{};
-    EXPECT_EQ(S::n_instances(), 3);
+    auto s = stack.make_alloc(tag_t<S>{}, 3).unwrap();
+    EXPECT_NE(s.data(), nullptr);
+    EXPECT_EQ(s.size(), 3);
+    EXPECT_EQ(S::n_instances(), 0);
 
-    (s.data() + 2)->~S();
-    EXPECT_EQ(S::n_instances(), 2);
-    (s.data() + 1)->~S();
-    EXPECT_EQ(S::n_instances(), 1);
-    (s.data() + 0)->~S();
+    {
+      new (s.data() + 0) S{};
+      EXPECT_EQ(S::n_instances(), 1);
+      new (s.data() + 1) S{};
+      EXPECT_EQ(S::n_instances(), 2);
+      new (s.data() + 2) S{};
+      EXPECT_EQ(S::n_instances(), 3);
+
+      (s.data() + 2)->~S();
+      EXPECT_EQ(S::n_instances(), 2);
+      (s.data() + 1)->~S();
+      EXPECT_EQ(S::n_instances(), 1);
+      (s.data() + 0)->~S();
+      EXPECT_EQ(S::n_instances(), 0);
+    }
     EXPECT_EQ(S::n_instances(), 0);
   }
-  EXPECT_EQ(S::n_instances(), 0);
+  EXPECT_EQ(stack.remaining_bytes(), 4096);
 }
 
 struct T : S {

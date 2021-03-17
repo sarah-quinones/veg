@@ -168,11 +168,11 @@ struct binary_traits<dyn, dyn> {
   using mod = dyn;
 
   VEG_NODISCARD static constexpr auto div_fn(dyn a, dyn b) noexcept -> div {
-    return VEG_ASSERT(i64(b) != 0), i64(a) / i64(b);
+    return VEG_ASSERT(i64(b) != i64(0)), i64(a) / i64(b);
   }
   VEG_NODISCARD static constexpr auto mod_fn(dyn a, dyn b) noexcept -> mod {
 
-    return VEG_ASSERT(i64(b) != 0), i64(a) % i64(b);
+    return VEG_ASSERT(i64(b) != i64(0)), i64(a) % i64(b);
   }
 
 #undef __VEG_OP
