@@ -208,6 +208,7 @@ struct addressof {
 };
 } // namespace fn
 
+__VEG_ODR_VAR(aggregate_construct_at, fn::aggregate_construct_at);
 __VEG_ODR_VAR(construct_at, fn::construct_at);
 __VEG_ODR_VAR(construct_with, fn::construct_with);
 __VEG_ODR_VAR(destroy_at, fn::destroy_at);
