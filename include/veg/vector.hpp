@@ -21,82 +21,82 @@ namespace internal {
 namespace vec_ {
 
 constexpr auto size_hint(i64 cap, i64 new_cap) noexcept -> i64 {
-  return new_cap > (2 * cap) ? new_cap : 2 * cap;
+	return new_cap > (2 * cap) ? new_cap : 2 * cap;
 }
 
 template <
-    typename T,
-    bool = __VEG_CONCEPT(meta::copy_constructible<T>) &&
-           __VEG_CONCEPT(meta::copy_assignable<T>)>
+		typename T,
+		bool = __VEG_CONCEPT(meta::copy_constructible<T>) &&
+					 __VEG_CONCEPT(meta::copy_assignable<T>)>
 struct vec_copy_base {
 
 private:
-  HEDLEY_ALWAYS_INLINE
-  auto _self() noexcept -> vec<T>& { return static_cast<vec<T>&>(*this); }
+	HEDLEY_ALWAYS_INLINE
+	auto _self() noexcept -> vec<T>& { return static_cast<vec<T>&>(*this); }
 
 public:
-  auto operator=(slice<T const> rhs) & noexcept(false) -> vec_copy_base& {
-    if (_self().capacity() < rhs.size()) {
-      _self() = vec<T>(from_slice, rhs);
-      return *this;
-    }
+	auto operator=(slice<T const> rhs) & noexcept(false) -> vec_copy_base& {
+		if (_self().capacity() < rhs.size()) {
+			_self() = vec<T>(from_slice, rhs);
+			return *this;
+		}
 
-    mixed_init_copy_n(_self().data(), rhs.data(), rhs.size(), _self().size());
-    _self().self.len = rhs.size();
+		mixed_init_copy_n(_self().data(), rhs.data(), rhs.size(), _self().size());
+		_self().self.len = rhs.size();
 
-    return *this;
-  }
+		return *this;
+	}
 };
 
 template <typename T>
 struct vec_copy_base<T, false> {};
 
 template <
-    typename T,
-    bool = __VEG_CONCEPT(meta::move_constructible<T>) ||
-           __VEG_CONCEPT(meta::copy_constructible<T>)>
+		typename T,
+		bool = __VEG_CONCEPT(meta::move_constructible<T>) ||
+					 __VEG_CONCEPT(meta::copy_constructible<T>)>
 struct vec_move_base {
 private:
-  HEDLEY_ALWAYS_INLINE
-  auto _self() noexcept -> vec<T>& { return static_cast<vec<T>&>(*this); }
+	HEDLEY_ALWAYS_INLINE
+	auto _self() noexcept -> vec<T>& { return static_cast<vec<T>&>(*this); }
 
-  HEDLEY_ALWAYS_INLINE
-  auto _grow1() noexcept(false) {
-    if (_self().size() == _self().capacity()) {
-      reserve(internal::vec_::size_hint(
-          _self().capacity(), _self().capacity() + 1));
-    }
-  }
+	HEDLEY_ALWAYS_INLINE
+	auto _grow1() noexcept(false) {
+		if (_self().size() == _self().capacity()) {
+			reserve(internal::vec_::size_hint(
+					_self().capacity(), _self().capacity() + 1));
+		}
+	}
 
 public:
-  VEG_TEMPLATE(
-      (typename... Args),
-      requires(__VEG_CONCEPT(meta::constructible<T, Args&&...>)),
-      HEDLEY_ALWAYS_INLINE auto emplace_back,
-      (... args, Args&&))
-  noexcept(false) -> T& {
-    _grow1();
-    T& ref = *new (_self().data() + _self().size()) T(VEG_FWD(args)...);
-    ++_self().self.len;
-    return ref;
-  }
+	VEG_TEMPLATE(
+			(typename... Args),
+			requires(__VEG_CONCEPT(meta::constructible<T, Args&&...>)),
+			HEDLEY_ALWAYS_INLINE auto emplace_back,
+			(... args, Args&&))
+	noexcept(false) -> T& {
+		_grow1();
+		T& ref = *new (_self().data() + _self().size()) T(VEG_FWD(args)...);
+		++_self().self.len;
+		return ref;
+	}
 
-  HEDLEY_ALWAYS_INLINE auto push_back(T value) noexcept(false) {
-    return emplace_back(VEG_FWD(value));
-  }
+	HEDLEY_ALWAYS_INLINE auto push_back(T value) noexcept(false) {
+		return emplace_back(VEG_FWD(value));
+	}
 
-  HEDLEY_ALWAYS_INLINE
-  void reserve(i64 new_capacity) noexcept(false) {
-    if (new_capacity > _self().capacity()) {
-      _self().self.begin = internal::algo::reallocate_memory(
-          _self().data(),
-          alignof(T),
-          _self().size(),
-          _self().capacity(),
-          new_capacity);
-      _self().self.cap = new_capacity;
-    }
-  }
+	HEDLEY_ALWAYS_INLINE
+	void reserve(i64 new_capacity) noexcept(false) {
+		if (new_capacity > _self().capacity()) {
+			_self().self.begin = internal::algo::reallocate_memory(
+					_self().data(),
+					alignof(T),
+					_self().size(),
+					_self().capacity(),
+					new_capacity);
+			_self().self.cap = new_capacity;
+		}
+	}
 };
 
 template <typename T>
@@ -106,67 +106,67 @@ template <typename T>
 struct vec_base {
 
 private:
-  HEDLEY_ALWAYS_INLINE
-  auto _self() noexcept -> vec<T>& { return static_cast<vec<T>&>(*this); }
+	HEDLEY_ALWAYS_INLINE
+	auto _self() noexcept -> vec<T>& { return static_cast<vec<T>&>(*this); }
 
 public:
-  struct raw_parts {
-    T* begin;
-    i64 len;
-    i64 cap;
-  };
-  raw_parts self = {};
+	struct raw_parts {
+		T* begin;
+		i64 len;
+		i64 cap;
+	};
+	raw_parts self = {};
 
-  __VEG_CPP14(constexpr) vec_base() noexcept = default;
+	__VEG_CPP14(constexpr) vec_base() noexcept = default;
 
-  vec_base(from_slice_t /*tag*/, slice<T const> slice) noexcept(false)
-      : vec_base{
-            from_raw_parts,
-            raw_parts{
-                static_cast<T*>(internal::memory::aligned_alloc(
-                    alignof(T), static_cast<i64>(sizeof(T)) * slice.size())),
-                0,
-                slice.size()},
-            unsafe,
-        } {
-    uninitialized_copy_n(_self().data(), slice.data(), slice.size());
-    self.len = slice.size();
-  }
+	vec_base(from_slice_t /*tag*/, slice<T const> slice) noexcept(false)
+			: vec_base{
+						from_raw_parts,
+						raw_parts{
+								static_cast<T*>(internal::memory::aligned_alloc(
+										alignof(T), static_cast<i64>(sizeof(T)) * slice.size())),
+								0,
+								slice.size()},
+						unsafe,
+				} {
+		uninitialized_copy_n(_self().data(), slice.data(), slice.size());
+		self.len = slice.size();
+	}
 
-  HEDLEY_ALWAYS_INLINE
-  vec_base(vec_base const& other) noexcept(false)
-      : vec_base{
-            from_slice,
-            slice<T const>{other.self.begin, other.self.len, unsafe}} {}
+	HEDLEY_ALWAYS_INLINE
+	vec_base(vec_base const& other) noexcept(false)
+			: vec_base{
+						from_slice,
+						slice<T const>{other.self.begin, other.self.len, unsafe}} {}
 
-  HEDLEY_ALWAYS_INLINE
-  vec_base(vec_base&& other) noexcept : self{other.self} { other.self = {}; }
+	HEDLEY_ALWAYS_INLINE
+	vec_base(vec_base&& other) noexcept : self{other.self} { other.self = {}; }
 
-  HEDLEY_ALWAYS_INLINE
-  vec_base(from_raw_parts_t /*tag*/, raw_parts parts, unsafe_t /*tag*/) noexcept
-      : self{parts} {}
+	HEDLEY_ALWAYS_INLINE
+	vec_base(from_raw_parts_t /*tag*/, raw_parts parts, unsafe_t /*tag*/) noexcept
+			: self{parts} {}
 
-  HEDLEY_ALWAYS_INLINE
-  ~vec_base() { aligned_free(self.begin, self.cap); }
+	HEDLEY_ALWAYS_INLINE
+	~vec_base() { aligned_free(self.begin, self.cap); }
 
-  HEDLEY_ALWAYS_INLINE
-  auto operator=(vec_base const& rhs) & noexcept(false) -> vec_base& {
-    if (this == addressof(rhs)) {
-      return *this;
-    }
-    _self() = slice<T const>{rhs.self.begin, rhs.self.len, unsafe};
-    return *this;
-  }
-  HEDLEY_ALWAYS_INLINE
-  auto operator=(vec_base&& rhs) & noexcept -> vec_base& {
-    this->destroy();
-    self = rhs.self;
-    rhs.self = {};
-    return *this;
-  }
+	HEDLEY_ALWAYS_INLINE
+	auto operator=(vec_base const& rhs) & noexcept(false) -> vec_base& {
+		if (this == addressof(rhs)) {
+			return *this;
+		}
+		_self() = slice<T const>{rhs.self.begin, rhs.self.len, unsafe};
+		return *this;
+	}
+	HEDLEY_ALWAYS_INLINE
+	auto operator=(vec_base&& rhs) & noexcept -> vec_base& {
+		this->destroy();
+		self = rhs.self;
+		rhs.self = {};
+		return *this;
+	}
 
-  HEDLEY_ALWAYS_INLINE
-  void destroy() noexcept { aligned_free(self.begin, self.cap); }
+	HEDLEY_ALWAYS_INLINE
+	void destroy() noexcept { aligned_free(self.begin, self.cap); }
 };
 
 } // namespace vec_
@@ -174,59 +174,59 @@ public:
 
 template <typename T>
 struct vec : internal::vec_::vec_base<T>,
-             internal::vec_::vec_move_base<T>,
-             internal::vec_::vec_copy_base<T>,
-             meta::conditional_t<
-                 __VEG_CONCEPT(meta::copy_constructible<T>),
-                 meta::internal::empty_i<0>,
-                 meta::internal::nocopy_ctor>,
-             meta::conditional_t<
-                 __VEG_CONCEPT(meta::copy_assignable<T>) &&
-                     (__VEG_CONCEPT(meta::move_constructible<T>) ||
+						 internal::vec_::vec_move_base<T>,
+						 internal::vec_::vec_copy_base<T>,
+						 meta::conditional_t<
+								 __VEG_CONCEPT(meta::copy_constructible<T>),
+								 meta::internal::empty_i<0>,
+								 meta::internal::nocopy_ctor>,
+						 meta::conditional_t<
+								 __VEG_CONCEPT(meta::copy_assignable<T>) &&
+										 (__VEG_CONCEPT(meta::move_constructible<T>) ||
                       __VEG_CONCEPT(meta::copy_constructible<T>)),
-                 meta::internal::empty_i<1>,
-                 meta::internal::nocopy_assign> {
+								 meta::internal::empty_i<1>,
+								 meta::internal::nocopy_assign> {
 
-  using typename internal::vec_::vec_base<T>::raw_parts;
-  using internal::vec_::vec_base<T>::vec_base;
-  using internal::vec_::vec_copy_base<T>::operator=;
+	using typename internal::vec_::vec_base<T>::raw_parts;
+	using internal::vec_::vec_base<T>::vec_base;
+	using internal::vec_::vec_copy_base<T>::operator=;
 
 private:
-  friend struct internal::vec_::vec_move_base<T>;
-  friend struct internal::vec_::vec_copy_base<T>;
-  using internal::vec_::vec_base<T>::self;
+	friend struct internal::vec_::vec_move_base<T>;
+	friend struct internal::vec_::vec_copy_base<T>;
+	using internal::vec_::vec_base<T>::self;
 
 public:
-  VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto into_raw_parts() && noexcept
-      -> raw_parts {
-    raw_parts copy = self;
-    self = {};
-    return copy;
-  }
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto into_raw_parts() && noexcept
+			-> raw_parts {
+		raw_parts copy = self;
+		self = {};
+		return copy;
+	}
 
-  VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto data() noexcept -> T* {
-    return self.begin;
-  }
-  VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto data() const noexcept -> T const* {
-    return self.begin;
-  }
-  VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto size() const noexcept -> i64 {
-    return self.len;
-  }
-  VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto capacity() const noexcept -> i64 {
-    return self.cap;
-  }
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto data() noexcept -> T* {
+		return self.begin;
+	}
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto data() const noexcept -> T const* {
+		return self.begin;
+	}
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto size() const noexcept -> i64 {
+		return self.len;
+	}
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto capacity() const noexcept -> i64 {
+		return self.cap;
+	}
 
-  HEDLEY_ALWAYS_INLINE
-  void resize_down(i64 new_size, unsafe_t /*tag*/) noexcept {
-    backward_destroy_n(data() + new_size, size() - new_size);
-    self.len = new_size;
-  }
-  HEDLEY_ALWAYS_INLINE
-  void resize_down(i64 new_size, safe_t /*tag*/ = {}) noexcept {
-    VEG_ASSERT(new_size <= size());
-    resize_down(new_size, unsafe);
-  }
+	HEDLEY_ALWAYS_INLINE
+	void resize_down(i64 new_size, unsafe_t /*tag*/) noexcept {
+		backward_destroy_n(data() + new_size, size() - new_size);
+		self.len = new_size;
+	}
+	HEDLEY_ALWAYS_INLINE
+	void resize_down(i64 new_size, safe_t /*tag*/ = {}) noexcept {
+		VEG_ASSERT(new_size <= size());
+		resize_down(new_size, unsafe);
+	}
 };
 
 template <typename T>

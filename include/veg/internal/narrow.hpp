@@ -7,31 +7,31 @@ namespace veg {
 namespace fn {
 template <typename To>
 struct narrow {
-  VEG_TEMPLATE(
-      (typename From),
-      requires __VEG_CONCEPT(meta::arithmetic<From>) &&
-          __VEG_CONCEPT(meta::arithmetic<To>),
-      constexpr auto
-      operator(),
-      (from, From))
-  const noexcept->To;
+	VEG_TEMPLATE(
+			(typename From),
+			requires __VEG_CONCEPT(meta::arithmetic<From>) &&
+					__VEG_CONCEPT(meta::arithmetic<To>),
+			constexpr auto
+			operator(),
+			(from, From))
+	const noexcept->To;
 };
 template <typename To>
 VEG_TEMPLATE(
-    (typename From),
-    requires __VEG_CONCEPT(meta::arithmetic<From>) &&
-        __VEG_CONCEPT(meta::arithmetic<To>),
-    constexpr auto narrow<To>::operator(),
-    (from, From))
+		(typename From),
+		requires __VEG_CONCEPT(meta::arithmetic<From>) &&
+				__VEG_CONCEPT(meta::arithmetic<To>),
+		constexpr auto narrow<To>::operator(),
+		(from, From))
 const noexcept -> To {
-  return VEG_ASSERT(static_cast<From>(static_cast<To>(from)) == from),
-         static_cast<To>(from);
+	return VEG_ASSERT(static_cast<From>(static_cast<To>(from)) == from),
+				 static_cast<To>(from);
 }
 } // namespace fn
 __VEG_IGNORE_CPP14_EXTENSION_WARNING(namespace /* NOLINT */ {
-  template <typename To>
-  constexpr auto const& narrow =
-      ::veg::meta::internal::static_const<fn::narrow<To>>::value;
+	template <typename To>
+	constexpr auto const& narrow =
+			::veg::meta::internal::static_const<fn::narrow<To>>::value;
 } // namespace
 )
 } // namespace veg

@@ -44,268 +44,268 @@ using namespace veg; // NOLINT
 
 template <size_t ID>
 struct MoveOnly {
-  explicit MoveOnly(int /*unused*/) {}
-  // no implicit defaul construction
-  MoveOnly() {
-    VEG_ASSERT("\t>> MoveOnly<" + to_string(ID) + ">::construct", false);
-  }
-  MoveOnly(MoveOnly const& /*unused*/) {
-    VEG_ASSERT(
-        "\t>> MoveOnly<" + to_string(ID) + ">::copy_construct called", false);
-  }
-  MoveOnly(MoveOnly&&) noexcept = default;
-  auto operator=(MoveOnly const& /*unused*/) -> MoveOnly& { // NOLINT
-    VEG_ASSERT(
-        "\t>> MoveOnly<" + to_string(ID) + ">::copy_assign called", false);
-    return *this;
-  }
-  auto operator=(MoveOnly&&) noexcept -> MoveOnly& = default;
-  ~MoveOnly() noexcept = default;
+	explicit MoveOnly(int /*unused*/) {}
+	// no implicit defaul construction
+	MoveOnly() {
+		VEG_ASSERT("\t>> MoveOnly<" + to_string(ID) + ">::construct", false);
+	}
+	MoveOnly(MoveOnly const& /*unused*/) {
+		VEG_ASSERT(
+				"\t>> MoveOnly<" + to_string(ID) + ">::copy_construct called", false);
+	}
+	MoveOnly(MoveOnly&&) noexcept = default;
+	auto operator=(MoveOnly const& /*unused*/) -> MoveOnly& { // NOLINT
+		VEG_ASSERT(
+				"\t>> MoveOnly<" + to_string(ID) + ">::copy_assign called", false);
+		return *this;
+	}
+	auto operator=(MoveOnly&&) noexcept -> MoveOnly& = default;
+	~MoveOnly() noexcept = default;
 
-  void done() const {}
+	void done() const {}
 
-  auto operator==(MoveOnly const& /*unused*/) const noexcept -> bool {
-    return true;
-  }
-  auto operator!=(MoveOnly const& /*unused*/) const noexcept -> bool {
-    return false;
-  }
+	auto operator==(MoveOnly const& /*unused*/) const noexcept -> bool {
+		return true;
+	}
+	auto operator!=(MoveOnly const& /*unused*/) const noexcept -> bool {
+		return false;
+	}
 };
 
 template <size_t id>
 auto make_mv() -> MoveOnly<id> {
-  return MoveOnly<id>(id);
+	return MoveOnly<id>(id);
 }
 
 struct NotEq {};
 
 STATIC_ASSERT(__VEG_CONCEPT(meta::swappable<MoveOnly<0>&, MoveOnly<0>&>));
 STATIC_ASSERT(
-    __VEG_CONCEPT(meta::equality_comparable_with<MoveOnly<0>, MoveOnly<0>>));
+		__VEG_CONCEPT(meta::equality_comparable_with<MoveOnly<0>, MoveOnly<0>>));
 STATIC_ASSERT(__VEG_CONCEPT(
-    meta::equality_comparable_with<option<MoveOnly<0>>, option<MoveOnly<0>>>));
+		meta::equality_comparable_with<option<MoveOnly<0>>, option<MoveOnly<0>>>));
 STATIC_ASSERT(!__VEG_CONCEPT(meta::equality_comparable_with<NotEq, NotEq>));
 STATIC_ASSERT(!__VEG_CONCEPT(
-    meta::equality_comparable_with<option<NotEq>, option<NotEq>>));
+		meta::equality_comparable_with<option<NotEq>, option<NotEq>>));
 
 struct FnMut {
-  int call_times{};
-  FnMut() = default;
-  auto operator()(int&& x) -> int {
-    call_times++;
-    return x;
-  }
-  auto operator()(int&& x) const -> int { return x; }
+	int call_times{};
+	FnMut() = default;
+	auto operator()(int&& x) -> int {
+		call_times++;
+		return x;
+	}
+	auto operator()(int&& x) const -> int { return x; }
 };
 
 struct FnConst {
-  auto operator()(int&& x) const -> int { return x; }
+	auto operator()(int&& x) const -> int { return x; }
 };
 
 TEST(OptionTest, Misc) {
-  EXPECT_EQ(option<option<int>>({some, {some, 899}}).unwrap().unwrap(), 899);
+	EXPECT_EQ(option<option<int>>({some, {some, 899}}).unwrap().unwrap(), 899);
 }
 
 TEST(OptionTest, ObjectConstructionTest) {
-  option<int> a = none;
-  auto b = some(89);
-  EXPECT_DEATH(void(VEG_MOV(a).unwrap()), ".*");
-  EXPECT_TRUE((void(VEG_MOV(b).unwrap()), true));
-  EXPECT_EQ(some(89).unwrap(), 89);
+	option<int> a = none;
+	auto b = some(89);
+	EXPECT_DEATH(void(VEG_MOV(a).unwrap()), ".*");
+	EXPECT_TRUE((void(VEG_MOV(b).unwrap()), true));
+	EXPECT_EQ(some(89).unwrap(), 89);
 
-  auto fn_a = []() -> option<MoveOnly<0>> {
-    return {some, make_mv<0>()}; // NOLINT
-  };
-  (void)fn_a();
-  auto fn_b = []() -> option<MoveOnly<1>> { return none; };
-  (void)fn_b();
+	auto fn_a = []() -> option<MoveOnly<0>> {
+		return {some, make_mv<0>()}; // NOLINT
+	};
+	(void)fn_a();
+	auto fn_b = []() -> option<MoveOnly<1>> { return none; };
+	(void)fn_b();
 
-  auto d = fn_a();
-  d = {some, make_mv<0>()};
-  d = none;
-  d = {some, make_mv<0>()};
+	auto d = fn_a();
+	d = {some, make_mv<0>()};
+	d = none;
+	d = {some, make_mv<0>()};
 }
 
 TEST(OptionTest, CopyConstructionTest) {
-  option<int> a = none;
-  option<int> b = a;
-  EXPECT_EQ(a, b);
+	option<int> a = none;
+	option<int> b = a;
+	EXPECT_EQ(a, b);
 
-  option<int> c = {some, 98};
-  b = c;
-  EXPECT_EQ(b, c);
-  EXPECT_NE(a, c);
-  EXPECT_NE(a, b);
+	option<int> c = {some, 98};
+	b = c;
+	EXPECT_EQ(b, c);
+	EXPECT_NE(a, c);
+	EXPECT_NE(a, b);
 
-  option<vector<int>> d = none;
-  option<vector<int>> e = d;
+	option<vector<int>> d = none;
+	option<vector<int>> e = d;
 
-  EXPECT_EQ(d, e);
+	EXPECT_EQ(d, e);
 
-  auto f = some(vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
-  e = f;
-  EXPECT_EQ(e, f);
-  EXPECT_NE(d, e);
-  EXPECT_NE(d, f);
+	auto f = some(vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+	e = f;
+	EXPECT_EQ(e, f);
+	EXPECT_NE(d, e);
+	EXPECT_NE(d, f);
 }
 
 TEST(OptionTest, ObjectForwardingTest) {
-  auto fn_a = []() -> option<MoveOnly<0>> {
-    return {some, make_mv<0>()}; // NOLINT
-  };
-  (void)(fn_a().unwrap());
-  auto fn_b = []() -> option<unique_ptr<int[]>> {
-    return {some, std::unique_ptr<int[]>(new int[1024])};
-  };
-  (void)(fn_b().unwrap());
+	auto fn_a = []() -> option<MoveOnly<0>> {
+		return {some, make_mv<0>()}; // NOLINT
+	};
+	(void)(fn_a().unwrap());
+	auto fn_b = []() -> option<unique_ptr<int[]>> {
+		return {some, std::unique_ptr<int[]>(new int[1024])};
+	};
+	(void)(fn_b().unwrap());
 
-  auto g = some(vector<int>{1, 2, 3, 4, 5});
+	auto g = some(vector<int>{1, 2, 3, 4, 5});
 
-  g = {some, vector<int>{5, 6, 7, 8, 9}};
+	g = {some, vector<int>{5, 6, 7, 8, 9}};
 
-  EXPECT_EQ(g, some(vector<int>{5, 6, 7, 8, 9}));
+	EXPECT_EQ(g, some(vector<int>{5, 6, 7, 8, 9}));
 
-  g = none;
+	g = none;
 
-  EXPECT_EQ(g, none);
+	EXPECT_EQ(g, none);
 
-  g = {some, vector<int>{1, 2, 3, 4, 5}};
+	g = {some, vector<int>{1, 2, 3, 4, 5}};
 
-  EXPECT_EQ(g, some(vector<int>{1, 2, 3, 4, 5}));
+	EXPECT_EQ(g, some(vector<int>{1, 2, 3, 4, 5}));
 
-  g = none;
+	g = none;
 
-  EXPECT_EQ(g, none);
+	EXPECT_EQ(g, none);
 }
 
 TEST(OptionTest, Equality) {
-  EXPECT_NE((some(0)), none);
-  EXPECT_EQ((some(90)), (some(90)));
-  EXPECT_NE((some(90)), (some(70)));
-  EXPECT_NE((option<option<int>>{some, none}), none);
-  EXPECT_EQ(none, none);
-  EXPECT_EQ((some(90)), (some(90)));
-  EXPECT_NE((some(90)), (some(70)));
-  EXPECT_EQ((some(90)), (some(90)));
-  EXPECT_NE((some(90)), (some(20)));
-  EXPECT_NE((some(90)), none);
-  EXPECT_EQ(option<int>{none}, none);
-  EXPECT_NE((option<option<int>>{some, option<int>(none)}), none);
+	EXPECT_NE((some(0)), none);
+	EXPECT_EQ((some(90)), (some(90)));
+	EXPECT_NE((some(90)), (some(70)));
+	EXPECT_NE((option<option<int>>{some, none}), none);
+	EXPECT_EQ(none, none);
+	EXPECT_EQ((some(90)), (some(90)));
+	EXPECT_NE((some(90)), (some(70)));
+	EXPECT_EQ((some(90)), (some(90)));
+	EXPECT_NE((some(90)), (some(20)));
+	EXPECT_NE((some(90)), none);
+	EXPECT_EQ(option<int>{none}, none);
+	EXPECT_NE((option<option<int>>{some, option<int>(none)}), none);
 
-  EXPECT_NE(none, (some(0)));
-  EXPECT_NE((option<option<int>>{some, option<int>{none}}), none);
-  EXPECT_EQ((some(90)), (some(90)));
-  EXPECT_NE((some(70)), (some(90)));
-  EXPECT_NE(none, (some(90)));
-  EXPECT_EQ(none, option<int>(none));
-  EXPECT_NE(none, option<option<int>>({some, option<int>(none)}));
+	EXPECT_NE(none, (some(0)));
+	EXPECT_NE((option<option<int>>{some, option<int>{none}}), none);
+	EXPECT_EQ((some(90)), (some(90)));
+	EXPECT_NE((some(70)), (some(90)));
+	EXPECT_NE(none, (some(90)));
+	EXPECT_EQ(none, option<int>(none));
+	EXPECT_NE(none, option<option<int>>({some, option<int>(none)}));
 
-  int const x = 909909;
-  int y = 909909;
+	int const x = 909909;
+	int y = 909909;
 
-  EXPECT_EQ(some_ref(x), (some(909909)));
-  EXPECT_EQ((some_ref(y)), (some(909909)));
+	EXPECT_EQ(some_ref(x), (some(909909)));
+	EXPECT_EQ((some_ref(y)), (some(909909)));
 
-  EXPECT_EQ((some(909909)), some_ref(y));
-  EXPECT_EQ((some(909909)), some_ref(y));
+	EXPECT_EQ((some(909909)), some_ref(y));
+	EXPECT_EQ((some(909909)), some_ref(y));
 
-  EXPECT_EQ((some(909909)), (some_ref(x)));
-  EXPECT_EQ((some(909909)), (some_ref(y)));
-  EXPECT_NE((some(101101)), (some_ref(x)));
-  EXPECT_NE((some(101101)), (some_ref(y)));
+	EXPECT_EQ((some(909909)), (some_ref(x)));
+	EXPECT_EQ((some(909909)), (some_ref(y)));
+	EXPECT_NE((some(101101)), (some_ref(x)));
+	EXPECT_NE((some(101101)), (some_ref(y)));
 
-  EXPECT_EQ(some_ref(x), (some(909909)));
-  EXPECT_EQ(some_ref(y), (some(909909)));
-  EXPECT_NE(some_ref(x), (some(101101)));
-  EXPECT_NE(some_ref(y), (some(101101)));
+	EXPECT_EQ(some_ref(x), (some(909909)));
+	EXPECT_EQ(some_ref(y), (some(909909)));
+	EXPECT_NE(some_ref(x), (some(101101)));
+	EXPECT_NE(some_ref(y), (some(101101)));
 }
 
 TEST(OptionTest, Contains) {
-  EXPECT_TRUE(some(vector<int>{1, 2, 3, 4}).contains(vector<int>{1, 2, 3, 4}));
-  EXPECT_FALSE(
-      some(vector<int>{1, 2, 3, 4}).contains(vector<int>{1, 2, 3, 4, 5}));
+	EXPECT_TRUE(some(vector<int>{1, 2, 3, 4}).contains(vector<int>{1, 2, 3, 4}));
+	EXPECT_FALSE(
+			some(vector<int>{1, 2, 3, 4}).contains(vector<int>{1, 2, 3, 4, 5}));
 
-  EXPECT_TRUE(some(8).contains(8));
-  EXPECT_FALSE(some(8).contains(88));
+	EXPECT_TRUE(some(8).contains(8));
+	EXPECT_FALSE(some(8).contains(88));
 }
 
 #define EXPECT_NO_DEATH(...)                                                   \
-  EXPECT_EXIT(                                                                 \
-      [&] { __VA_ARGS__ ::std::exit(0); }(),                                   \
-      ::testing::ExitedWithCode(0),                                            \
-      ".*")
+	EXPECT_EXIT(                                                                 \
+			[&] { __VA_ARGS__ ::std::exit(0); }(),                                   \
+			::testing::ExitedWithCode(0),                                            \
+			".*")
 
 TEST(OptionLifetimeTest, Contains) {
-  EXPECT_NO_DEATH((void)some(make_mv<0>()););
-  EXPECT_NO_DEATH((void)option<MoveOnly<1>>{none}.contains(make_mv<1>()););
+	EXPECT_NO_DEATH((void)some(make_mv<0>()););
+	EXPECT_NO_DEATH((void)option<MoveOnly<1>>{none}.contains(make_mv<1>()););
 }
 
 TEST(OptionTest, Exists) {
-  auto const even = [](int const& x) { return x % 2 == 0; };
+	auto const even = [](int const& x) { return x % 2 == 0; };
 
-  auto const all_even = [&](vector<int> const& x) {
-    return std::all_of(x.begin(), x.end(), even);
-  };
+	auto const all_even = [&](vector<int> const& x) {
+		return std::all_of(x.begin(), x.end(), even);
+	};
 
-  EXPECT_TRUE(some(8).filter(even));
-  EXPECT_FALSE(some(81).filter(even));
+	EXPECT_TRUE(some(8).filter(even));
+	EXPECT_FALSE(some(81).filter(even));
 
-  EXPECT_TRUE(some(vector<int>{2, 4, 6, 8, 10}).filter(all_even));
-  EXPECT_FALSE(some(vector<int>{2, 4, 6, 9, 10}).filter(all_even));
+	EXPECT_TRUE(some(vector<int>{2, 4, 6, 8, 10}).filter(all_even));
+	EXPECT_FALSE(some(vector<int>{2, 4, 6, 9, 10}).filter(all_even));
 }
 
 TEST(OptionTest, AsConstRef) {
-  auto const a = some(68);
-  EXPECT_EQ(a.as_cref().unwrap(), 68);
+	auto const a = some(68);
+	EXPECT_EQ(a.as_cref().unwrap(), 68);
 
-  option<int> const b = none;
-  EXPECT_EQ(b.as_cref(), none);
+	option<int> const b = none;
+	EXPECT_EQ(b.as_cref(), none);
 
-  auto const c = some(vector<int>{1, 2, 3, 4});
-  EXPECT_EQ(c.as_cref().unwrap(), (vector<int>{1, 2, 3, 4}));
+	auto const c = some(vector<int>{1, 2, 3, 4});
+	EXPECT_EQ(c.as_cref().unwrap(), (vector<int>{1, 2, 3, 4}));
 
-  option<vector<int>> const d = none;
-  EXPECT_EQ(d.as_cref(), none);
+	option<vector<int>> const d = none;
+	EXPECT_EQ(d.as_cref(), none);
 }
 
 TEST(OptionTest, AsRef) {
-  auto a = some(68);
-  a.as_ref().unwrap() = 99;
-  EXPECT_EQ(a, some(99));
+	auto a = some(68);
+	a.as_ref().unwrap() = 99;
+	EXPECT_EQ(a, some(99));
 
-  option<int> b = none;
-  EXPECT_EQ(b.as_ref(), none);
+	option<int> b = none;
+	EXPECT_EQ(b.as_ref(), none);
 
-  auto c = some(vector<int>{1, 2, 3, 4});
-  c.as_ref().unwrap() = vector<int>{5, 6, 7, 8, 9, 10};
-  EXPECT_EQ(c, some(vector<int>{5, 6, 7, 8, 9, 10}));
+	auto c = some(vector<int>{1, 2, 3, 4});
+	c.as_ref().unwrap() = vector<int>{5, 6, 7, 8, 9, 10};
+	EXPECT_EQ(c, some(vector<int>{5, 6, 7, 8, 9, 10}));
 
-  auto d = option<vector<int>>(none);
-  EXPECT_EQ(d.as_ref(), none);
+	auto d = option<vector<int>>(none);
+	EXPECT_EQ(d.as_ref(), none);
 }
 
 TEST(OptionLifeTimeTest, AsRef) {
-  auto a = some(make_mv<0>());
-  EXPECT_NO_DEATH((void)a.as_ref().unwrap().done(););
+	auto a = some(make_mv<0>());
+	EXPECT_NO_DEATH((void)a.as_ref().unwrap().done(););
 
-  auto b = option<MoveOnly<1>>(none);
-  EXPECT_NO_DEATH((void)a.as_ref().unwrap().done(););
-  EXPECT_NO_DEATH(auto b_ = b.as_ref(); (void)b_;);
+	auto b = option<MoveOnly<1>>(none);
+	EXPECT_NO_DEATH((void)a.as_ref().unwrap().done(););
+	EXPECT_NO_DEATH(auto b_ = b.as_ref(); (void)b_;);
 }
 
 TEST(OptionTest, Unwrap) {
-  EXPECT_EQ((some(0)).unwrap(), 0);
-  EXPECT_DEATH((void)option<int>(none).unwrap(), ".*");
+	EXPECT_EQ((some(0)).unwrap(), 0);
+	EXPECT_DEATH((void)option<int>(none).unwrap(), ".*");
 
-  EXPECT_EQ(
-      (some(vector<int>{1, 2, 3, 4, 5})).unwrap(),
-      (vector<int>{1, 2, 3, 4, 5}));
-  EXPECT_DEATH((void)option<vector<int>>(none).unwrap(), ".*");
+	EXPECT_EQ(
+			(some(vector<int>{1, 2, 3, 4, 5})).unwrap(),
+			(vector<int>{1, 2, 3, 4, 5}));
+	EXPECT_DEATH((void)option<vector<int>>(none).unwrap(), ".*");
 }
 
 TEST(OptionLifetimeTest, Unwrap) {
-  auto a = some(make_mv<0>());
-  EXPECT_NO_DEATH(move(a).unwrap().done(););
+	auto a = some(make_mv<0>());
+	EXPECT_NO_DEATH(move(a).unwrap().done(););
 }
 
 // TEST(OptionTest, UnwrapOr) {
@@ -377,44 +377,44 @@ TEST(OptionLifetimeTest, Unwrap) {
 //}
 
 TEST(OptionLifetimeTest, Map) {
-  auto a = some(make_mv<0>());
-  EXPECT_NO_DEATH(
-      move(a).map([](MoveOnly<0> r) { return r; }).unwrap().done(););
+	auto a = some(make_mv<0>());
+	EXPECT_NO_DEATH(
+			move(a).map([](MoveOnly<0> r) { return r; }).unwrap().done(););
 }
 
 TEST(OptionTest, FnMutMap) {
-  auto fnmut_a = FnMut();
-  auto a1_ = some(90).map(fnmut_a);
-  auto a2_ = some(90).map(fnmut_a);
+	auto fnmut_a = FnMut();
+	auto a1_ = some(90).map(fnmut_a);
+	auto a2_ = some(90).map(fnmut_a);
 
-  EXPECT_EQ(fnmut_a.call_times, 2);
+	EXPECT_EQ(fnmut_a.call_times, 2);
 
-  auto const fnmut_b = FnMut();
-  auto b1_ = some(90).map(fnmut_b);
-  auto b2_ = some(90).map(fnmut_b);
-  EXPECT_EQ(fnmut_b.call_times, 0);
+	auto const fnmut_b = FnMut();
+	auto b1_ = some(90).map(fnmut_b);
+	auto b2_ = some(90).map(fnmut_b);
+	EXPECT_EQ(fnmut_b.call_times, 0);
 
-  auto fnconst = FnConst();
-  auto c = some(90).map(fnconst);
+	auto fnconst = FnConst();
+	auto c = some(90).map(fnconst);
 
-  (void)a1_, (void)a2_, (void)b1_, (void)b2_, (void)c;
+	(void)a1_, (void)a2_, (void)b1_, (void)b2_, (void)c;
 }
 
 TEST(OptionTest, MapOrElse) {
-  auto&& a = some(90).map_or_else(
-      [](int&& x) -> int { return x + 90; }, []() -> int { return 90; });
-  EXPECT_EQ(a, 180);
+	auto&& a = some(90).map_or_else(
+			[](int&& x) -> int { return x + 90; }, []() -> int { return 90; });
+	EXPECT_EQ(a, 180);
 
-  auto&& b = option<int>(none).map_or_else(
-      [](int&& x) -> int { return x + 90; }, []() -> int { return 90; });
-  EXPECT_EQ(b, 90);
+	auto&& b = option<int>(none).map_or_else(
+			[](int&& x) -> int { return x + 90; }, []() -> int { return 90; });
+	EXPECT_EQ(b, 90);
 }
 
 TEST(OptionLifetimeTest, MapOrElse) {
-  auto a = some(make_mv<0>());
-  auto fn = [](MoveOnly<0>) { return make_mv<0>(); };
-  auto fn_b = []() { return make_mv<0>(); };
-  EXPECT_NO_DEATH(move(a).map_or_else(fn, fn_b).done(););
+	auto a = some(make_mv<0>());
+	auto fn = [](MoveOnly<0>) { return make_mv<0>(); };
+	auto fn_b = []() { return make_mv<0>(); };
+	EXPECT_NO_DEATH(move(a).map_or_else(fn, fn_b).done(););
 }
 
 // TEST(OptionTest, And) {
@@ -462,26 +462,26 @@ TEST(OptionLifetimeTest, MapOrElse) {
 //}
 
 TEST(OptionTest, Filter) {
-  auto is_even = [](int const& num) { return num % 2 == 0; };
-  auto is_odd = [&](int const& num) { return !(is_even(num)); };
+	auto is_even = [](int const& num) { return num % 2 == 0; };
+	auto is_odd = [&](int const& num) { return !(is_even(num)); };
 
-  EXPECT_EQ((some(90).filter(is_even).unwrap()), 90);
-  EXPECT_EQ((some(99).filter(is_odd).unwrap()), 99);
+	EXPECT_EQ((some(90).filter(is_even).unwrap()), 90);
+	EXPECT_EQ((some(99).filter(is_odd).unwrap()), 99);
 
-  EXPECT_EQ(option<int>(none).filter(is_even), none);
-  EXPECT_EQ(option<int>(none).filter(is_even), none);
+	EXPECT_EQ(option<int>(none).filter(is_even), none);
+	EXPECT_EQ(option<int>(none).filter(is_even), none);
 
-  auto all_odd = [&](vector<int> const& vec) {
-    return all_of(vec.begin(), vec.end(), is_odd);
-  };
+	auto all_odd = [&](vector<int> const& vec) {
+		return all_of(vec.begin(), vec.end(), is_odd);
+	};
 
-  EXPECT_EQ((some(vector<int>{1, 3, 5, 7, 2, 4, 6, 8}).filter(all_odd)), none);
-  EXPECT_EQ(
-      (some(vector<int>{1, 3, 5, 7}).filter(all_odd).unwrap()),
-      (vector<int>{1, 3, 5, 7}));
+	EXPECT_EQ((some(vector<int>{1, 3, 5, 7, 2, 4, 6, 8}).filter(all_odd)), none);
+	EXPECT_EQ(
+			(some(vector<int>{1, 3, 5, 7}).filter(all_odd).unwrap()),
+			(vector<int>{1, 3, 5, 7}));
 
-  EXPECT_EQ(option<vector<int>>(none).filter(all_odd), none);
-  EXPECT_EQ(option<vector<int>>(none).filter(all_odd), none);
+	EXPECT_EQ(option<vector<int>>(none).filter(all_odd), none);
+	EXPECT_EQ(option<vector<int>>(none).filter(all_odd), none);
 }
 
 // TEST(OptionTest, FilterNot) {
@@ -556,22 +556,22 @@ TEST(OptionTest, Filter) {
 //}
 
 TEST(OptionTest, Take) {
-  auto a = some(9);
-  EXPECT_EQ(a.take().unwrap(), 9);
-  EXPECT_EQ(a, none);
+	auto a = some(9);
+	EXPECT_EQ(a.take().unwrap(), 9);
+	EXPECT_EQ(a, none);
 
-  auto b = option<int>(none);
-  EXPECT_EQ(b.take(), none);
-  EXPECT_EQ(b, none);
+	auto b = option<int>(none);
+	EXPECT_EQ(b.take(), none);
+	EXPECT_EQ(b, none);
 
-  auto c = some(vector<int>{-1, -2, -4, -8, -16});
-  auto ca = c.take();
-  EXPECT_EQ(ca, (some(vector<int>{-1, -2, -4, -8, -16})));
-  EXPECT_EQ(c, none);
+	auto c = some(vector<int>{-1, -2, -4, -8, -16});
+	auto ca = c.take();
+	EXPECT_EQ(ca, (some(vector<int>{-1, -2, -4, -8, -16})));
+	EXPECT_EQ(c, none);
 
-  auto d = option<vector<int>>(none);
-  EXPECT_EQ(d.take(), none);
-  EXPECT_EQ(d, none);
+	auto d = option<vector<int>>(none);
+	EXPECT_EQ(d.take(), none);
+	EXPECT_EQ(d, none);
 }
 
 // TEST(OptionTest, Replace) {
@@ -593,41 +593,41 @@ TEST(OptionTest, Take) {
 //}
 
 TEST(OptionTest, Clone) {
-  auto a = some(9);
-  EXPECT_EQ(a.clone(), (some(9)));
-  EXPECT_EQ(a, (some(9)));
+	auto a = some(9);
+	EXPECT_EQ(a.clone(), (some(9)));
+	EXPECT_EQ(a, (some(9)));
 
-  auto b = some(static_cast<int*>(nullptr));
-  EXPECT_EQ(b.clone(), (some(static_cast<int*>(nullptr))));
-  EXPECT_EQ(b, (some(static_cast<int*>(nullptr))));
+	auto b = some(static_cast<int*>(nullptr));
+	EXPECT_EQ(b.clone(), (some(static_cast<int*>(nullptr))));
+	EXPECT_EQ(b, (some(static_cast<int*>(nullptr))));
 
-  auto c = some(vector<int>{1, 2, 3, 4, 5});
-  EXPECT_EQ(c.clone(), (some(vector<int>{1, 2, 3, 4, 5})));
-  EXPECT_EQ(c, (some(vector<int>{1, 2, 3, 4, 5})));
+	auto c = some(vector<int>{1, 2, 3, 4, 5});
+	EXPECT_EQ(c.clone(), (some(vector<int>{1, 2, 3, 4, 5})));
+	EXPECT_EQ(c, (some(vector<int>{1, 2, 3, 4, 5})));
 }
 
 TEST(OptionTest, OrElse) {
-  auto&& a = some(90.0F).or_else([]() { return some(0.5f); });
-  EXPECT_FLOAT_EQ(move(a).unwrap(), 90.0F);
+	auto&& a = some(90.0F).or_else([]() { return some(0.5f); });
+	EXPECT_FLOAT_EQ(move(a).unwrap(), 90.0F);
 
-  auto&& b = option<float>(none).or_else([]() { return some(0.5f); });
-  EXPECT_FLOAT_EQ(move(b).unwrap(), 0.5F);
+	auto&& b = option<float>(none).or_else([]() { return some(0.5f); });
+	EXPECT_FLOAT_EQ(move(b).unwrap(), 0.5F);
 
-  auto&& c = option<float>(none).or_else([]() { return option<float>(none); });
-  EXPECT_EQ(c, none);
-  //
-  //
-  auto&& d = some(vector<int>{1, 2, 3, 4, 5}).or_else([]() {
-    return some(vector<int>{6, 7, 8, 9, 10});
-  });
-  EXPECT_EQ(move(d).unwrap(), (vector<int>{1, 2, 3, 4, 5}));
+	auto&& c = option<float>(none).or_else([]() { return option<float>(none); });
+	EXPECT_EQ(c, none);
+	//
+	//
+	auto&& d = some(vector<int>{1, 2, 3, 4, 5}).or_else([]() {
+		return some(vector<int>{6, 7, 8, 9, 10});
+	});
+	EXPECT_EQ(move(d).unwrap(), (vector<int>{1, 2, 3, 4, 5}));
 
-  auto&& e = option<vector<int>>(none).or_else([]() {
-    return some(vector<int>{6, 7, 8, 9, 10});
-  });
-  EXPECT_EQ(move(e).unwrap(), (vector<int>{6, 7, 8, 9, 10}));
+	auto&& e = option<vector<int>>(none).or_else([]() {
+		return some(vector<int>{6, 7, 8, 9, 10});
+	});
+	EXPECT_EQ(move(e).unwrap(), (vector<int>{6, 7, 8, 9, 10}));
 
-  auto&& f = option<vector<int>>(none).or_else(
-      []() { return option<vector<int>>(none); });
-  EXPECT_EQ(f, none);
+	auto&& f = option<vector<int>>(none).or_else(
+			[]() { return option<vector<int>>(none); });
+	EXPECT_EQ(f, none);
 }

@@ -23,41 +23,41 @@ namespace veg {
 
 struct ternary {
 
-  constexpr ternary() noexcept = default;
-  constexpr ternary /* NOLINT(hicpp-explicit-conversions) */ (
-      ternary_e e) noexcept
-      : val(e) {}
+	constexpr ternary() noexcept = default;
+	constexpr ternary /* NOLINT(hicpp-explicit-conversions) */ (
+			ternary_e e) noexcept
+			: val(e) {}
 
-  constexpr friend auto operator==(ternary a, ternary b) noexcept -> bool {
-    return a.val == b.val;
-  }
+	constexpr friend auto operator==(ternary a, ternary b) noexcept -> bool {
+		return a.val == b.val;
+	}
 
-  friend __VEG_CPP14(constexpr) auto tag_invoke(
-      tag_t<assert::fn::to_string> /*tag*/, ternary t) -> slice<char const> {
-    switch (t.val) {
-    case maybe:
-      return {"none", 4};
-    case yes:
-      return {"yes", 3};
-      break;
-    case no:
-      return {"no", 2};
-      break;
-    default:
-      return {"unknown", 7};
-    }
-  }
+	friend __VEG_CPP14(constexpr) auto tag_invoke(
+			tag_t<assert::fn::to_string> /*tag*/, ternary t) -> slice<char const> {
+		switch (t.val) {
+		case maybe:
+			return {"none", 4};
+		case yes:
+			return {"yes", 3};
+			break;
+		case no:
+			return {"no", 2};
+			break;
+		default:
+			return {"unknown", 7};
+		}
+	}
 
-  template <typename CharT, typename Traits>
-  friend auto operator<<(std::basic_ostream<CharT, Traits>& out, ternary arg)
-      -> std::basic_ostream<CharT, Traits>& {
-    auto str = tag_invoke(tag_t<assert::fn::to_string>{}, arg);
-    out.write(str.data(), str.size());
-    return out;
-  }
+	template <typename CharT, typename Traits>
+	friend auto operator<<(std::basic_ostream<CharT, Traits>& out, ternary arg)
+			-> std::basic_ostream<CharT, Traits>& {
+		auto str = tag_invoke(tag_t<assert::fn::to_string>{}, arg);
+		out.write(str.data(), str.size());
+		return out;
+	}
 
 private:
-  ternary_e val = maybe;
+	ternary_e val = maybe;
 };
 
 struct argparse;
@@ -68,171 +68,171 @@ namespace _argparse {
 
 template <typename T>
 struct is_supported : meta::bool_constant<                         //
-                          __VEG_SAME_AS(std::nullptr_t, T) ||      //
-                          __VEG_SAME_AS(char const**, T) ||        //
-                          __VEG_SAME_AS(ternary*, T) ||            //
-                          __VEG_SAME_AS(bool*, T) ||               //
+													__VEG_SAME_AS(std::nullptr_t, T) ||      //
+													__VEG_SAME_AS(char const**, T) ||        //
+													__VEG_SAME_AS(ternary*, T) ||            //
+													__VEG_SAME_AS(bool*, T) ||               //
                                                                    //
-                          __VEG_SAME_AS(char*, T) ||               //
+													__VEG_SAME_AS(char*, T) ||               //
                                                                    //
-                          __VEG_SAME_AS(char signed*, T) ||        //
-                          __VEG_SAME_AS(short signed*, T) ||       //
-                          __VEG_SAME_AS(int signed*, T) ||         //
-                          __VEG_SAME_AS(long signed*, T) ||        //
-                          __VEG_SAME_AS(long long signed*, T) ||   //
+													__VEG_SAME_AS(char signed*, T) ||        //
+													__VEG_SAME_AS(short signed*, T) ||       //
+													__VEG_SAME_AS(int signed*, T) ||         //
+													__VEG_SAME_AS(long signed*, T) ||        //
+													__VEG_SAME_AS(long long signed*, T) ||   //
                                                                    //
-                          __VEG_SAME_AS(char unsigned*, T) ||      //
-                          __VEG_SAME_AS(short unsigned*, T) ||     //
-                          __VEG_SAME_AS(int unsigned*, T) ||       //
-                          __VEG_SAME_AS(long unsigned*, T) ||      //
-                          __VEG_SAME_AS(long long unsigned*, T) || //
+													__VEG_SAME_AS(char unsigned*, T) ||      //
+													__VEG_SAME_AS(short unsigned*, T) ||     //
+													__VEG_SAME_AS(int unsigned*, T) ||       //
+													__VEG_SAME_AS(long unsigned*, T) ||      //
+													__VEG_SAME_AS(long long unsigned*, T) || //
                                                                    //
-                          __VEG_SAME_AS(float*, T) ||              //
-                          __VEG_SAME_AS(double*, T) ||             //
-                          __VEG_SAME_AS(long double*, T)           //
-                          > {};
+													__VEG_SAME_AS(float*, T) ||              //
+													__VEG_SAME_AS(double*, T) ||             //
+													__VEG_SAME_AS(long double*, T)           //
+													> {};
 
 enum struct argparse_option_type {
-  /* special */
-  ARGPARSE_OPT_GROUP,
-  /* options with no arguments */
-  ARGPARSE_OPT_BOOLEAN,
-  ARGPARSE_OPT_TERNARY,
-  /* options with arguments (optional or required) */
-  ARGPARSE_OPT_CHAR,
+	/* special */
+	ARGPARSE_OPT_GROUP,
+	/* options with no arguments */
+	ARGPARSE_OPT_BOOLEAN,
+	ARGPARSE_OPT_TERNARY,
+	/* options with arguments (optional or required) */
+	ARGPARSE_OPT_CHAR,
 
-  ARGPARSE_OPT_UCHAR,
-  ARGPARSE_OPT_USHORT,
-  ARGPARSE_OPT_UINT,
-  ARGPARSE_OPT_ULONG,
-  ARGPARSE_OPT_ULONG_LONG,
-  ARGPARSE_OPT_SCHAR,
-  ARGPARSE_OPT_SSHORT,
-  ARGPARSE_OPT_SINT,
-  ARGPARSE_OPT_SLONG,
-  ARGPARSE_OPT_SLONG_LONG,
+	ARGPARSE_OPT_UCHAR,
+	ARGPARSE_OPT_USHORT,
+	ARGPARSE_OPT_UINT,
+	ARGPARSE_OPT_ULONG,
+	ARGPARSE_OPT_ULONG_LONG,
+	ARGPARSE_OPT_SCHAR,
+	ARGPARSE_OPT_SSHORT,
+	ARGPARSE_OPT_SINT,
+	ARGPARSE_OPT_SLONG,
+	ARGPARSE_OPT_SLONG_LONG,
 
-  ARGPARSE_OPT_FLOAT,
-  ARGPARSE_OPT_DOUBLE,
-  ARGPARSE_OPT_LONG_DOUBLE,
-  ARGPARSE_OPT_STRING,
+	ARGPARSE_OPT_FLOAT,
+	ARGPARSE_OPT_DOUBLE,
+	ARGPARSE_OPT_LONG_DOUBLE,
+	ARGPARSE_OPT_STRING,
 };
 template <typename T>
 struct to_option_type {};
 
 template <>
 struct to_option_type<std::nullptr_t> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_BOOLEAN; // unused
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_BOOLEAN; // unused
 };
 
 template <>
 struct to_option_type<char> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_CHAR;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_CHAR;
 };
 
 template <>
 struct to_option_type<char unsigned> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_UCHAR;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_UCHAR;
 };
 template <>
 struct to_option_type<short unsigned> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_USHORT;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_USHORT;
 };
 template <>
 struct to_option_type<int unsigned> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_UINT;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_UINT;
 };
 template <>
 struct to_option_type<long unsigned> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_ULONG;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_ULONG;
 };
 template <>
 struct to_option_type<long long unsigned> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_ULONG_LONG;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_ULONG_LONG;
 };
 
 template <>
 struct to_option_type<signed char> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_SCHAR;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_SCHAR;
 };
 template <>
 struct to_option_type<short> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_SSHORT;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_SSHORT;
 };
 template <>
 struct to_option_type<int> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_SINT;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_SINT;
 };
 template <>
 struct to_option_type<long> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_SLONG;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_SLONG;
 };
 template <>
 struct to_option_type<long long> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_SLONG_LONG;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_SLONG_LONG;
 };
 
 template <>
 struct to_option_type<bool> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_BOOLEAN;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_BOOLEAN;
 };
 template <>
 struct to_option_type<ternary> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_TERNARY;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_TERNARY;
 };
 template <>
 struct to_option_type<float> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_FLOAT;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_FLOAT;
 };
 template <>
 struct to_option_type<double> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_DOUBLE;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_DOUBLE;
 };
 template <>
 struct to_option_type<long double> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_LONG_DOUBLE;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_LONG_DOUBLE;
 };
 template <>
 struct to_option_type<char const*> {
-  static constexpr _argparse::argparse_option_type value =
-      _argparse::argparse_option_type::ARGPARSE_OPT_STRING;
+	static constexpr _argparse::argparse_option_type value =
+			_argparse::argparse_option_type::ARGPARSE_OPT_STRING;
 };
 
 struct layout {
-  _argparse::argparse_option_type type;
-  const char short_name;
-  char const* long_name;
-  void* value;
-  char const* help;
-  option<argparse_callback> callback;
-  unsigned flags;
+	_argparse::argparse_option_type type;
+	const char short_name;
+	char const* long_name;
+	void* value;
+	char const* help;
+	option<argparse_callback> callback;
+	unsigned flags;
 };
 
 auto argparse_parse(argparse* self, int argc, char** argv) -> int;
 } // namespace _argparse
 enum argparse_option_flags : unsigned {
-  OPT_NONEG = 1, /* disable negation */
+	OPT_NONEG = 1, /* disable negation */
 };
 
 enum argparse_flag : unsigned {
-  ARGPARSE_STOP_AT_NON_OPTION = 1,
+	ARGPARSE_STOP_AT_NON_OPTION = 1,
 };
 
 /**
@@ -263,57 +263,57 @@ enum argparse_flag : unsigned {
 
 struct argparse_option : _argparse::layout {
 
-  argparse_option /* NOLINT(hicpp-explicit-conversions) */ (
-      char const* group_name) noexcept
-      : argparse_option{
-            {_argparse::argparse_option_type::ARGPARSE_OPT_GROUP,
-             0,
-             nullptr,
-             nullptr,
-             group_name,
-             {},
-             0}} {}
+	argparse_option /* NOLINT(hicpp-explicit-conversions) */ (
+			char const* group_name) noexcept
+			: argparse_option{
+						{_argparse::argparse_option_type::ARGPARSE_OPT_GROUP,
+	           0,
+	           nullptr,
+	           nullptr,
+	           group_name,
+	           {},
+	           0}} {}
 
-  VEG_TEMPLATE(
-      (typename T),
-      requires _argparse::is_supported<T>::value,
-      argparse_option,
-      (value_ptr, T),
-      (arg_long_name, char const*),
-      (help_str = "", char const*),
-      (callback_fn = {}, option<argparse_callback>))
-  noexcept
-      : argparse_option{{
-            _argparse::to_option_type<meta::remove_pointer_t<T>>::value,
-            '\0',
-            arg_long_name,
-            value_ptr,
-            help_str,
-            callback_fn,
-            0,
-        }} {}
+	VEG_TEMPLATE(
+			(typename T),
+			requires _argparse::is_supported<T>::value,
+			argparse_option,
+			(value_ptr, T),
+			(arg_long_name, char const*),
+			(help_str = "", char const*),
+			(callback_fn = {}, option<argparse_callback>))
+	noexcept
+			: argparse_option{{
+						_argparse::to_option_type<meta::remove_pointer_t<T>>::value,
+						'\0',
+						arg_long_name,
+						value_ptr,
+						help_str,
+						callback_fn,
+						0,
+				}} {}
 
-  VEG_TEMPLATE(
-      (typename T),
-      requires _argparse::is_supported<T>::value,
-      argparse_option,
-      (value_ptr, T),
-      (arg_short_name, char),
-      (arg_long_name = nullptr, char const*),
-      (help_str = "", char const*),
-      (callback_fn = {}, option<argparse_callback>))
-  noexcept
-      : argparse_option{{
-            _argparse::to_option_type<meta::remove_pointer_t<T>>::value,
-            arg_short_name,
-            arg_long_name,
-            value_ptr,
-            help_str,
-            callback_fn,
-            0,
-        }} {}
+	VEG_TEMPLATE(
+			(typename T),
+			requires _argparse::is_supported<T>::value,
+			argparse_option,
+			(value_ptr, T),
+			(arg_short_name, char),
+			(arg_long_name = nullptr, char const*),
+			(help_str = "", char const*),
+			(callback_fn = {}, option<argparse_callback>))
+	noexcept
+			: argparse_option{{
+						_argparse::to_option_type<meta::remove_pointer_t<T>>::value,
+						arg_short_name,
+						arg_long_name,
+						value_ptr,
+						help_str,
+						callback_fn,
+						0,
+				}} {}
 
-  explicit argparse_option(layout l) noexcept : layout{l} {}
+	explicit argparse_option(layout l) noexcept : layout{l} {}
 };
 
 /**
@@ -321,49 +321,49 @@ struct argparse_option : _argparse::layout {
  */
 
 struct argparse {
-  int argc;
-  char** argv;
-  argparse_option const* const options;
-  i64 const argparse_options_len;
-  char const* const* const usages;
-  i64 const usages_len;
-  unsigned const flags;
-  char const* const description;
-  char const* const epilogue;
-  char** out;
-  int cpidx;
-  char const* optvalue; // current option value
+	int argc;
+	char** argv;
+	argparse_option const* const options;
+	i64 const argparse_options_len;
+	char const* const* const usages;
+	i64 const usages_len;
+	unsigned const flags;
+	char const* const description;
+	char const* const epilogue;
+	char** out;
+	int cpidx;
+	char const* optvalue; // current option value
 };
 
 inline void parse_args(
-    int* argc,
-    char** argv,
-    slice<argparse_option const> options,
-    slice<char const* const> usages,
-    char const* description = "",
-    char const* epilogue = "",
-    unsigned flags = 0) noexcept {
-  argparse ap = {
-      *argc,
-      argv,
-      options.data(),
-      options.size(),
-      usages.data(),
-      usages.size(),
-      flags,
-      description,
-      epilogue,
-      nullptr,
-      0,
-      nullptr};
-  *argc = _argparse::argparse_parse(&ap, *argc, argv);
+		int* argc,
+		char** argv,
+		slice<argparse_option const> options,
+		slice<char const* const> usages,
+		char const* description = "",
+		char const* epilogue = "",
+		unsigned flags = 0) noexcept {
+	argparse ap = {
+			*argc,
+			argv,
+			options.data(),
+			options.size(),
+			usages.data(),
+			usages.size(),
+			flags,
+			description,
+			epilogue,
+			nullptr,
+			0,
+			nullptr};
+	*argc = _argparse::argparse_parse(&ap, *argc, argv);
 }
 
 // built-in callbacks
 auto argparse_help_cb(argparse* self, argparse_option const* option) -> int;
 
 static const argparse_option help = argparse_option{
-    {_argparse::argparse_option_type::ARGPARSE_OPT_BOOLEAN,
+		{_argparse::argparse_option_type::ARGPARSE_OPT_BOOLEAN,
      'h',
      "help",
      nullptr,

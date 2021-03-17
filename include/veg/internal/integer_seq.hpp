@@ -33,46 +33,46 @@ struct _merge_p1;
 
 template <typename T, T... Nums1, T... Nums2>
 struct _merge<integer_sequence<T, Nums1...>, integer_sequence<T, Nums2...>> {
-  using type = integer_sequence<T, Nums1..., (sizeof...(Nums1) + Nums2)...>;
+	using type = integer_sequence<T, Nums1..., (sizeof...(Nums1) + Nums2)...>;
 };
 
 template <typename T, T... Nums1, T... Nums2>
 struct _merge_p1<integer_sequence<T, Nums1...>, integer_sequence<T, Nums2...>> {
-  using type = integer_sequence<
-      T,
-      Nums1...,
-      (sizeof...(Nums1) + Nums2)...,
-      sizeof...(Nums1) + sizeof...(Nums2)>;
+	using type = integer_sequence<
+			T,
+			Nums1...,
+			(sizeof...(Nums1) + Nums2)...,
+			sizeof...(Nums1) + sizeof...(Nums2)>;
 };
 
 template <typename T, usize N, bool Even = (N % 2) == 0>
 struct _make_integer_sequence {
-  using type = typename _merge<
-      typename _make_integer_sequence<T, N / 2>::type,
-      typename _make_integer_sequence<T, N / 2>::type>::type;
+	using type = typename _merge<
+			typename _make_integer_sequence<T, N / 2>::type,
+			typename _make_integer_sequence<T, N / 2>::type>::type;
 };
 
 template <typename T, usize N>
 struct _make_integer_sequence<T, N, false> {
-  using type = typename _merge_p1<
-      typename _make_integer_sequence<T, N / 2>::type,
-      typename _make_integer_sequence<T, N / 2>::type>::type;
+	using type = typename _merge_p1<
+			typename _make_integer_sequence<T, N / 2>::type,
+			typename _make_integer_sequence<T, N / 2>::type>::type;
 };
 
 template <typename T>
 struct _make_integer_sequence<T, 0> {
-  using type = integer_sequence<T>;
+	using type = integer_sequence<T>;
 };
 template <typename T>
 struct _make_integer_sequence<T, 1> {
-  using type = integer_sequence<T, 0>;
+	using type = integer_sequence<T, 0>;
 };
 
 } // namespace internal
 
 template <typename T, T N>
 using make_integer_sequence =
-    typename internal::_make_integer_sequence<T, N>::type;
+		typename internal::_make_integer_sequence<T, N>::type;
 
 #endif
 

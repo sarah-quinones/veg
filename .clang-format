@@ -89,7 +89,7 @@ NamespaceIndentation: None
 PointerAlignment: Left
 ReflowComments:  true
 SortIncludes:    false
-SortUsingDeclarations: true
+SortUsingDeclarations: false
 SpaceAfterCStyleCast: false
 SpaceAfterLogicalNot: false
 SpaceAfterTemplateKeyword: true
@@ -110,8 +110,8 @@ SpacesInParentheses: false
 SpacesInSquareBrackets: false
 SpaceBeforeSquareBrackets: false
 Standard:        Latest
-TabWidth:        8
+TabWidth:        2
 UseCRLF:         false
-UseTab:          Never
+UseTab:          AlignWithSpaces
 ...
 
