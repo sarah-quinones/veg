@@ -291,9 +291,18 @@ using remove_pointer_t = typename std::remove_pointer<T>::type;
 template <typename T>
 using remove_cv_t = typename std::remove_cv<T>::type;
 
+namespace internal {
+// clang-format off
+template <typename T> struct uncvlref;
+template <typename T> struct uncvlref<T&> { using type = T; };
+template <typename T> struct uncvlref<T const&>  { using type = T; };
+template <typename T> struct uncvlref<T volatile&> { using type = T; };
+template <typename T> struct uncvlref<T volatile const&>  { using type = T; };
+// clang-format on
+} // namespace internal
+
 template <typename T>
-using uncvref_t =
-		typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+using uncvref_t = typename internal::uncvlref<T&>::type;
 
 template <typename T>
 using decay_t = typename std::decay<T>::type;
