@@ -227,8 +227,8 @@ struct assign_ftor {
 			L&& l,
 			R&& r) noexcept(__VEG_CONCEPT(meta::nothrow_assignable<L&&, R&&>)) {
 		assign_impl<
-				__VEG_CONCEPT(meta::arithmetic<meta::remove_cvref_t<L>>) &&
-				__VEG_CONCEPT(meta::arithmetic<meta::remove_cvref_t<R>>)>::
+				__VEG_CONCEPT(meta::arithmetic<meta::uncvref_t<L>>) &&
+				__VEG_CONCEPT(meta::arithmetic<meta::uncvref_t<R>>)>::
 				apply(VEG_FWD(l), VEG_FWD(r));
 	}
 };
@@ -277,7 +277,7 @@ struct cmp_impl {
 			tuple_impl<meta::index_sequence<Is...>, Us...> const& rhs) noexcept
 			-> bool {
 
-		return cmp_eq_impl<meta::remove_cvref_t<Ts>...>::apply(
+		return cmp_eq_impl<meta::uncvref_t<Ts>...>::apply(
 
 				static_cast<tuple_leaf<Is, Ts> const&>(lhs).inner...,
 				static_cast<tuple_leaf<Is, Us> const&>(rhs).inner...

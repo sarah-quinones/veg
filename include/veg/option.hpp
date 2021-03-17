@@ -920,17 +920,16 @@ struct option_move_interface_base {
 	VEG_TEMPLATE(
 			(typename Fn),
 			requires(
-					__VEG_CONCEPT(meta::invocable<Fn, meta::remove_cvref_t<T> const&>) &&
-					__VEG_CONCEPT(
-							meta::constructible<
-									bool,
-									meta::invoke_result_t<Fn, meta::remove_cvref_t<T> const&>>)),
+					__VEG_CONCEPT(meta::invocable<Fn, meta::uncvref_t<T> const&>) &&
+					__VEG_CONCEPT(meta::constructible<
+												bool,
+												meta::invoke_result_t<Fn, meta::uncvref_t<T> const&>>)),
 			VEG_NODISCARD __VEG_CPP14(constexpr) auto filter,
 			(fn, Fn&&)) &&
 
 			noexcept(
 					(__VEG_CONCEPT(
-							 meta::nothrow_invocable<Fn&&, meta::remove_cvref_t<T> const&>) &&
+							 meta::nothrow_invocable<Fn&&, meta::uncvref_t<T> const&>) &&
 	         __VEG_CONCEPT(meta::nothrow_move_constructible<T>))) -> option<T> {
 		auto&& self = static_cast<option<T>&&>(*this);
 		if (self) {
@@ -1062,7 +1061,7 @@ struct option_flatten_base<option<T>> {
 
 template <typename T>
 struct cmp_with_fn {
-	meta::remove_cvref_t<T> const& rhs;
+	meta::uncvref_t<T> const& rhs;
 	template <typename U>
 	HEDLEY_ALWAYS_INLINE constexpr auto operator()(U const& lhs) const noexcept
 			-> bool {
@@ -1109,7 +1108,7 @@ struct VEG_NODISCARD option
 			requires(
 					(__VEG_CONCEPT(meta::invocable<Fn, Args...>) &&
 	         __VEG_SAME_AS(T, (meta::invoke_result_t<Fn, Args...>)))),
-			__VEG_CPP14(constexpr) void emplace,
+			__VEG_CPP14(constexpr) void emplace_with,
 			(fn, Fn),
 			(... args, Args)) &
 
@@ -1118,6 +1117,19 @@ struct VEG_NODISCARD option
 			*this = none;
 		}
 		this->_emplace(VEG_FWD(fn), VEG_FWD(args)...);
+	}
+
+	VEG_TEMPLATE(
+			(typename... Args),
+			requires(__VEG_CONCEPT(meta::constructible<T, Args...>)),
+			__VEG_CPP14(constexpr) void emplace,
+			(... args, Args)) &
+
+			noexcept(__VEG_CONCEPT(meta::nothrow_constructible<T, Args...>)) {
+		if (*this) {
+			*this = none;
+		}
+		this->_arg_emplace(VEG_FWD(args)...);
 	}
 
 	VEG_TEMPLATE(
@@ -1217,7 +1229,7 @@ struct VEG_NODISCARD option
 
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE
 	__VEG_CPP14(constexpr) auto as_cref() const noexcept
-			-> option<meta::remove_cvref_t<T> const&> {
+			-> option<meta::uncvref_t<T> const&> {
 		if (*this) {
 			return {some, this->_get()};
 		}
@@ -1254,7 +1266,7 @@ struct VEG_NODISCARD option
 private:
 	HEDLEY_ALWAYS_INLINE
 	__VEG_CPP14(constexpr) void unwrap_assert() const noexcept {
-    bool holds_value = static_cast<bool>(*this);
+		bool holds_value = static_cast<bool>(*this);
 		VEG_ASSERT(holds_value);
 	}
 

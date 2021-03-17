@@ -123,7 +123,7 @@ TEST(option, all) {
 		__VEG_CPP17(constexpr)
 		auto opt = [&] {
 			option<int> x;
-			x.emplace([&] { return 1; });
+			x.emplace_with([&] { return 1; });
 			return x;
 		}();
 
@@ -135,7 +135,7 @@ TEST(option, all) {
 		__VEG_CPP17(constexpr)
 		auto opt = [&] {
 			option<option<int>> x;
-			x.emplace([&] { return some(1); });
+			x.emplace_with([&] { return some(1); });
 			return x;
 		}();
 
@@ -146,11 +146,11 @@ TEST(option, all) {
 
 		auto opt = [&] {
 			option<vector<int>> x;
-			x.emplace([&] { return vector<int>{1, 2, 3}; });
+			x.emplace_with([&](int i) { return vector<int>{1, 2, 3, i}; }, 5);
 			return x;
 		}();
 
-		ASSERT_EQ(opt, some(vector<int>{1, 2, 3}));
+		ASSERT_EQ(opt, some(vector<int>{1, 2, 3, 5}));
 	}
 	{
 		using std::vector;
@@ -160,7 +160,7 @@ TEST(option, all) {
 
 		auto opt = [&] {
 			option<option<vector<int>>> x;
-			x.emplace([&] { return some(vector<int>{1, 2, 3}); });
+			x.emplace_with([&] { return some(vector<int>{1, 2, 3}); });
 			return x;
 		}();
 
@@ -174,7 +174,7 @@ TEST(option, all) {
 
 		auto opt = [&] {
 			option<option<option<vector<int>>>> x;
-			x.emplace([&] { return some(some(vector<int>{1, 2, 3})); });
+			x.emplace_with([&] { return some(some(vector<int>{1, 2, 3})); });
 			return x;
 		}();
 
@@ -189,7 +189,51 @@ TEST(option, all) {
 
 		auto opt = [&] {
 			option<option<option<option<vector<int>>>>> x;
-			x.emplace([&] { return some(some(some(vector<int>{1, 2, 3}))); });
+			x.emplace_with([&] { return some(some(some(vector<int>{1, 2, 3}))); });
+			return x;
+		}();
+
+		ASSERT_EQ(opt, some(some(some(some(vector<int>{1, 2, 3})))));
+	}
+
+	{
+		using std::vector;
+
+		STATIC_ASSERT_IF_14(
+				meta::value_sentinel_for<option<vector<int>>>::value == 253);
+
+		auto opt = [&] {
+			option<option<vector<int>>> x;
+			x.emplace(some(vector<int>{1, 2, 3}));
+			return x;
+		}();
+
+		ASSERT_EQ(opt, some(some(vector<int>{1, 2, 3})));
+	}
+	{
+		using std::vector;
+
+		STATIC_ASSERT_IF_14(
+				meta::value_sentinel_for<option<option<vector<int>>>>::value == 252);
+
+		auto opt = [&] {
+			option<option<option<vector<int>>>> x;
+			x.emplace(some(some(vector<int>{1, 2, 3})));
+			return x;
+		}();
+
+		ASSERT_EQ(opt, some(some(some(vector<int>{1, 2, 3}))));
+	}
+	{
+		using std::vector;
+
+		STATIC_ASSERT_IF_14(
+				meta::value_sentinel_for<option<option<option<vector<int>>>>>::value ==
+				251);
+
+		auto opt = [&] {
+			option<option<option<option<vector<int>>>>> x;
+			x.emplace(some(some(some(vector<int>{1, 2, 3}))));
 			return x;
 		}();
 

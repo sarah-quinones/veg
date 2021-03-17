@@ -142,16 +142,15 @@ struct slice_ctor_common {
 	// COMPAT: check if slice_ctor_common is a base of Rng
 	VEG_TEMPLATE(
 			(typename Rng),
-			requires(internal::has_data_r<T, meta::remove_cvref_t<Rng>>::value),
+			requires(internal::has_data_r<T, meta::uncvref_t<Rng>>::value),
 			constexpr slice_ctor_common, /* NOLINT(hicpp-explicit-conversions,
 	                           bugprone-forwarding-reference-overload) */
 			(rng, Rng&&))
 	noexcept
 			: slice_ctor_common(
 						static_cast<T*>(
-								internal::has_data_r<T, meta::remove_cvref_t<Rng>>::d(rng)),
-						static_cast<i64>(
-								has_data_r<T, meta::remove_cvref_t<Rng>>::s(rng))) {}
+								internal::has_data_r<T, meta::uncvref_t<Rng>>::d(rng)),
+						static_cast<i64>(has_data_r<T, meta::uncvref_t<Rng>>::s(rng))) {}
 
 	T* m_begin = nullptr;
 	i64 m_count = 0;
@@ -229,17 +228,16 @@ namespace fn {
 struct slice {
 	VEG_TEMPLATE(
 			(typename Rng),
-			requires(
-					__VEG_CONCEPT(meta::constructible< //
-												veg::slice<meta::remove_pointer_t<decltype(
-														internal::has_data<meta::remove_cvref_t<Rng>>::d(
-																__VEG_DECLVAL(Rng&)))>>,
-												Rng&&>)),
+			requires(__VEG_CONCEPT(meta::constructible< //
+														 veg::slice<meta::remove_pointer_t<decltype(
+																 internal::has_data<meta::uncvref_t<Rng>>::d(
+																		 __VEG_DECLVAL(Rng&)))>>,
+														 Rng&&>)),
 			auto
 			operator(),
 			(rng, Rng&&))
 	const noexcept->veg::slice<meta::remove_pointer_t<decltype(
-			internal::has_data<meta::remove_cvref_t<Rng>>::d(rng))>> {
+			internal::has_data<meta::uncvref_t<Rng>>::d(rng))>> {
 		return {VEG_FWD(rng)};
 	}
 };

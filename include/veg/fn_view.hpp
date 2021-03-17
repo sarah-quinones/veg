@@ -139,7 +139,7 @@ struct fn_view_impl<fn_kind_e::fn_obj> {
 	static auto call(State state, Args... args) noexcept(
 			__VEG_CONCEPT(meta::nothrow_invocable<Fn&&, Args&&...>)) -> Ret {
 		return discard_void<Ret>::apply(
-				VEG_FWD(*static_cast<meta::remove_cvref_t<Fn>*>(state.ptr)),
+				VEG_FWD(*static_cast<meta::uncvref_t<Fn>*>(state.ptr)),
 				VEG_FWD(args)...);
 	}
 };
@@ -258,7 +258,7 @@ public:
 	VEG_TEMPLATE(
 			(typename Fn),
 			requires(
-					!__VEG_CONCEPT(meta::base_of<meta::remove_cvref_t<Fn>, fn_view>) &&
+					!__VEG_CONCEPT(meta::base_of<meta::uncvref_t<Fn>, fn_view>) &&
 					__VEG_CONCEPT(meta::invocable<Fn&, Args&&...>) &&
 					(__VEG_CONCEPT(meta::void_<Ret>) ||
 	         __VEG_SAME_AS(Ret, (meta::invoke_result_t<Fn&, Args&&...>)))),
@@ -303,7 +303,7 @@ __VEG_CPP17(
  VEG_TEMPLATE(
      (typename Fn),
      requires(
-       !__VEG_CONCEPT(meta::base_of<meta::remove_cvref_t<Fn>, fn_view>) &&
+       !__VEG_CONCEPT(meta::base_of<meta::uncvref_t<Fn>, fn_view>) &&
        __VEG_CONCEPT(meta::nothrow_invocable<Fn&, Args&&...>) &&
        (__VEG_CONCEPT(meta::void_<Ret>) ||
         __VEG_SAME_AS(Ret, (meta::invoke_result_t<Fn&, Args&&...>)))),
@@ -343,8 +343,7 @@ public:
 	VEG_TEMPLATE(
 			(typename Fn),
 			requires(
-					!__VEG_CONCEPT(
-							meta::base_of<meta::remove_cvref_t<Fn>, once_fn_view>) &&
+					!__VEG_CONCEPT(meta::base_of<meta::uncvref_t<Fn>, once_fn_view>) &&
 					__VEG_CONCEPT(meta::invocable<Fn&&, Args&&...>) &&
 					(__VEG_CONCEPT(meta::void_<Ret>) ||
 	         __VEG_SAME_AS(Ret, (meta::invoke_result_t<Fn&&, Args&&...>)))),
@@ -392,7 +391,7 @@ __VEG_CPP17(
      (typename Fn),
      requires(
        !__VEG_CONCEPT(
-         meta::base_of<meta::remove_cvref_t<Fn>, once_fn_view>) &&
+         meta::base_of<meta::uncvref_t<Fn>, once_fn_view>) &&
        __VEG_CONCEPT(meta::nothrow_invocable<Fn&&, Args&&...>) &&
        (__VEG_CONCEPT(meta::void_<Ret>) ||
         __VEG_SAME_AS(Ret, (meta::invoke_result_t<Fn&&, Args&&...>)))),

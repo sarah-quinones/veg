@@ -292,7 +292,7 @@ template <typename T>
 using remove_cv_t = typename std::remove_cv<T>::type;
 
 template <typename T>
-using remove_cvref_t =
+using uncvref_t =
 		typename std::remove_cv<typename std::remove_reference<T>::type>::type;
 
 template <typename T>
@@ -853,14 +853,12 @@ struct less_than_comparable_impl
 template <typename A, typename B>
 __VEG_DEF_CONCEPT(
 		equality_comparable_with,
-		internal::equality_comparable_impl<remove_cvref_t<A>, remove_cvref_t<B>>::
-				value);
+		internal::equality_comparable_impl<uncvref_t<A>, uncvref_t<B>>::value);
 
 template <typename A, typename B>
 __VEG_DEF_CONCEPT(
 		partially_ordered_with,
-		internal::less_than_comparable_impl<remove_cvref_t<A>, remove_cvref_t<B>>::
-				value);
+		internal::less_than_comparable_impl<uncvref_t<A>, uncvref_t<B>>::value);
 
 } // namespace meta
 
@@ -1174,8 +1172,7 @@ struct adl_get {
 };
 
 template <usize I, typename T>
-struct has_array_get : meta::is_bounded_array<meta::remove_cvref_t<T>>,
-											 array_get {};
+struct has_array_get : meta::is_bounded_array<meta::uncvref_t<T>>, array_get {};
 
 template <usize I, typename T>
 struct has_member_get
@@ -1255,14 +1252,13 @@ private:
 struct some_t {
 	VEG_TEMPLATE(
 			(typename T),
-			requires(
-					__VEG_CONCEPT(meta::constructible<meta::remove_cvref_t<T>, T&&>)),
+			requires(__VEG_CONCEPT(meta::constructible<meta::uncvref_t<T>, T&&>)),
 			__VEG_CPP14(constexpr) auto
 			operator(),
 			(arg, T&&))
 	const noexcept(
-			__VEG_CONCEPT(meta::nothrow_constructible<meta::remove_cvref_t<T>, T&&>))
-			->option<meta::remove_cvref_t<T>> {
+			__VEG_CONCEPT(meta::nothrow_constructible<meta::uncvref_t<T>, T&&>))
+			->option<meta::uncvref_t<T>> {
 		return {*this, VEG_FWD(arg)};
 	}
 

@@ -57,7 +57,7 @@ template <typename T>
 struct has_adl_begin_end : meta::is_detected<adl_begin_end::type, T&&>,
 													 adl_begin_end {};
 template <typename T>
-struct has_array_begin_end : meta::bounded_array<meta::remove_cvref_t<T>>,
+struct has_array_begin_end : meta::bounded_array<meta::uncvref_t<T>>,
 														 array_begin_end {};
 
 template <typename T>
