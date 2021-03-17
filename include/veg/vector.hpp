@@ -3,6 +3,7 @@
 
 #include "veg/internal/memory.hpp"
 #include "veg/internal/algorithm.hpp"
+#include "veg/internal/narrow.hpp"
 #include "veg/slice.hpp"
 
 namespace veg {
@@ -94,7 +95,7 @@ public:
 					_self().size(),
 					_self().capacity(),
 					new_capacity);
-			_self().self.cap = new_capacity;
+			_self().self.cap = fn::narrow<usize>{}(new_capacity);
 		}
 	}
 };
@@ -112,8 +113,8 @@ private:
 public:
 	struct raw_parts {
 		T* begin;
-		i64 len;
-		i64 cap;
+		usize len;
+		usize cap;
 	};
 	raw_parts self = {};
 
@@ -130,14 +131,14 @@ public:
 						unsafe,
 				} {
 		uninitialized_copy_n(_self().data(), slice.data(), slice.size());
-		self.len = slice.size();
+		self.len = fn::narrow<usize>{}(slice.size());
 	}
 
 	HEDLEY_ALWAYS_INLINE
 	vec_base(vec_base const& other) noexcept(false)
 			: vec_base{
 						from_slice,
-						slice<T const>{other.self.begin, other.self.len, unsafe}} {}
+						slice<T const>{other.self.begin, i64(other.self.len), unsafe}} {}
 
 	HEDLEY_ALWAYS_INLINE
 	vec_base(vec_base&& other) noexcept : self{other.self} { other.self = {}; }
@@ -147,14 +148,14 @@ public:
 			: self{parts} {}
 
 	HEDLEY_ALWAYS_INLINE
-	~vec_base() { aligned_free(self.begin, self.cap); }
+	~vec_base() { aligned_free(self.begin, fn::narrow<usize>{}(self.cap)); }
 
 	HEDLEY_ALWAYS_INLINE
 	auto operator=(vec_base const& rhs) & noexcept(false) -> vec_base& {
 		if (this == addressof(rhs)) {
 			return *this;
 		}
-		_self() = slice<T const>{rhs.self.begin, rhs.self.len, unsafe};
+		_self() = slice<T const>{rhs.self.begin, i64(rhs.self.len), unsafe};
 		return *this;
 	}
 	HEDLEY_ALWAYS_INLINE
@@ -166,7 +167,9 @@ public:
 	}
 
 	HEDLEY_ALWAYS_INLINE
-	void destroy() noexcept { aligned_free(self.begin, self.cap); }
+	void destroy() noexcept {
+		aligned_free(self.begin, fn::narrow<usize>{}(self.cap));
+	}
 };
 
 } // namespace vec_
@@ -211,16 +214,16 @@ public:
 		return self.begin;
 	}
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto size() const noexcept -> i64 {
-		return self.len;
+		return i64(self.len);
 	}
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto capacity() const noexcept -> i64 {
-		return self.cap;
+		return i64(self.cap);
 	}
 
 	HEDLEY_ALWAYS_INLINE
 	void resize_down(i64 new_size, unsafe_t /*tag*/) noexcept {
 		backward_destroy_n(data() + new_size, size() - new_size);
-		self.len = new_size;
+    self.len = usize(new_size);
 	}
 	HEDLEY_ALWAYS_INLINE
 	void resize_down(i64 new_size, safe_t /*tag*/ = {}) noexcept {
