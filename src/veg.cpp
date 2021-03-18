@@ -15,23 +15,23 @@
 
 namespace veg {
 
-raii_timer::~raii_timer() {
-	i64 dt = monotonic_nanoseconds_since_epoch() - self.begin;
+void fn::log_elapsed_time::impl(
+		i64 duration, char const* msg, std::FILE* out) noexcept {
 	i64 dt_unit[4] = {};
 
 	for (i64 i = 0; i < 4; ++i) {
-		dt_unit[i] = dt % i64(1000);
-		dt /= i64(1000);
+		dt_unit[i] = duration % i64(1000);
+		duration /= i64(1000);
 	}
 
 	std::fprintf(
-			self.file,
+			out,
 			"done: %s: "
 			"%3" PRId64 "s "
 			"%3" PRId64 "ms "
 			"%3" PRId64 "µs "
 			"%3" PRId64 "ns\n",
-			self.msg,
+			msg,
 			dt_unit[3],
 			dt_unit[2],
 			dt_unit[1],
