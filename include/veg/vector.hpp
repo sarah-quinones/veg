@@ -5,14 +5,13 @@
 #include "veg/internal/algorithm.hpp"
 #include "veg/internal/narrow.hpp"
 #include "veg/slice.hpp"
+#include "veg/internal/prologue.hpp"
 
 namespace veg {
-
+inline namespace VEG_ABI {
 inline namespace tags {
 struct from_slice_t {};
-__VEG_ODR_VAR(from_slice, from_slice_t);
-struct from_raw_parts_t {};
-__VEG_ODR_VAR(from_raw_parts, from_raw_parts_t);
+VEG_INLINE_VAR(from_slice, from_slice_t);
 } // namespace tags
 
 template <typename T>
@@ -27,8 +26,8 @@ constexpr auto size_hint(i64 cap, i64 new_cap) noexcept -> i64 {
 
 template <
 		typename T,
-		bool = __VEG_CONCEPT(meta::copy_constructible<T>) &&
-					 __VEG_CONCEPT(meta::copy_assignable<T>)>
+		bool =
+				VEG_CONCEPT(copy_constructible<T>) && VEG_CONCEPT(copy_assignable<T>)>
 struct vec_copy_base {
 
 private:
@@ -37,6 +36,7 @@ private:
 
 public:
 	auto operator=(slice<T const> rhs) & noexcept(false) -> vec_copy_base& {
+		// FIXME: backward or forward copy
 		if (_self().capacity() < rhs.size()) {
 			_self() = vec<T>(from_slice, rhs);
 			return *this;
@@ -54,29 +54,28 @@ struct vec_copy_base<T, false> {};
 
 template <
 		typename T,
-		bool = __VEG_CONCEPT(meta::move_constructible<T>) ||
-					 __VEG_CONCEPT(meta::copy_constructible<T>)>
+		bool = VEG_CONCEPT(move_constructible<T>) ||
+					 VEG_CONCEPT(copy_constructible<T>)>
 struct vec_move_base {
 private:
 	HEDLEY_ALWAYS_INLINE
 	auto _self() noexcept -> vec<T>& { return static_cast<vec<T>&>(*this); }
 
 	HEDLEY_ALWAYS_INLINE
-	auto _grow1() noexcept(false) {
-		if (_self().size() == _self().capacity()) {
-			reserve(internal::vec_::size_hint(
-					_self().capacity(), _self().capacity() + 1));
+	auto _grow_to(i64 n) noexcept(false) {
+		if (n > _self().capacity()) {
+			reserve(internal::vec_::size_hint(_self().capacity(), n));
 		}
 	}
 
 public:
 	VEG_TEMPLATE(
 			(typename... Args),
-			requires(__VEG_CONCEPT(meta::constructible<T, Args&&...>)),
+			requires(VEG_CONCEPT(constructible<T, Args&&...>)),
 			HEDLEY_ALWAYS_INLINE auto emplace_back,
 			(... args, Args&&))
 	noexcept(false) -> T& {
-		_grow1();
+		_grow_to(_self().capacity() + 1);
 		T& ref = *new (_self().data() + _self().size()) T(VEG_FWD(args)...);
 		++_self().self.len;
 		return ref;
@@ -118,7 +117,7 @@ public:
 	};
 	raw_parts self = {};
 
-	__VEG_CPP14(constexpr) vec_base() noexcept = default;
+	VEG_CPP14(constexpr) vec_base() noexcept = default;
 
 	vec_base(from_slice_t /*tag*/, slice<T const> slice) noexcept(false)
 			: vec_base{
@@ -180,13 +179,13 @@ struct vec : internal::vec_::vec_base<T>,
 						 internal::vec_::vec_move_base<T>,
 						 internal::vec_::vec_copy_base<T>,
 						 meta::conditional_t<
-								 __VEG_CONCEPT(meta::copy_constructible<T>),
+								 VEG_CONCEPT(copy_constructible<T>),
 								 meta::internal::empty_i<0>,
 								 meta::internal::nocopy_ctor>,
 						 meta::conditional_t<
-								 __VEG_CONCEPT(meta::copy_assignable<T>) &&
-										 (__VEG_CONCEPT(meta::move_constructible<T>) ||
-                      __VEG_CONCEPT(meta::copy_constructible<T>)),
+								 VEG_CONCEPT(copy_assignable<T>) &&
+										 (VEG_CONCEPT(move_constructible<T>) ||
+                      VEG_CONCEPT(copy_constructible<T>)),
 								 meta::internal::empty_i<1>,
 								 meta::internal::nocopy_assign> {
 
@@ -223,7 +222,7 @@ public:
 	HEDLEY_ALWAYS_INLINE
 	void resize_down(i64 new_size, unsafe_t /*tag*/) noexcept {
 		backward_destroy_n(data() + new_size, size() - new_size);
-    self.len = usize(new_size);
+		self.len = usize(new_size);
 	}
 	HEDLEY_ALWAYS_INLINE
 	void resize_down(i64 new_size, safe_t /*tag*/ = {}) noexcept {
@@ -236,7 +235,8 @@ template <typename T>
 struct meta::is_trivially_relocatable<vec<T>> : true_type {};
 template <typename T>
 struct meta::is_trivially_swappable<vec<T>&> : true_type {};
-
+} // namespace VEG_ABI
 } // namespace veg
 
+#include "veg/internal/epilogue.hpp"
 #endif /* end of include guard __VEG_VECTOR_HPP_QWFSH3ROS */

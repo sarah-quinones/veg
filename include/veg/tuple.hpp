@@ -2,11 +2,11 @@
 #define __VEG_TUPLE_HPP_B8PHUNWES
 
 #include "veg/internal/tuple_generic.hpp"
-#include <utility> // std::tuple_{size,element}
+#include "veg/internal/prologue.hpp"
 
 /******************************************************************************/
 #define __VEG_IMPL_BIND(r, Tuple, Index, Identifier)                           \
-	auto&& Identifier = ::veg::fn::get<Index>{}(VEG_FWD(Tuple));
+	auto&& Identifier = ::veg::niebloid::get<Index>{}(VEG_FWD(Tuple));
 
 #define __VEG_IMPL_BIND_ID_SEQ(CV_Auto, Identifiers, Tuple, SeqSize, TupleId)  \
 	CV_Auto TupleId = Tuple;                                                     \
@@ -38,10 +38,22 @@
 /******************************************************************************/
 
 namespace veg {
-
+inline namespace VEG_ABI {
 namespace make {
-namespace fn {
-struct tuple : elems_t {};
+namespace niebloid {
+struct tuple : elems_t {
+	VEG_TEMPLATE(
+			typename... Ts,
+			requires VEG_ALL_OF(VEG_CONCEPT(constructible<meta::decay_t<Ts>, Ts&&>)),
+			constexpr auto
+			operator(),
+			(... args, Ts&&))
+	const noexcept(meta::all_of({VEG_CONCEPT(
+										 nothrow_constructible<meta::decay_t<Ts>, Ts&&>)...}))
+			->veg::tuple<meta::decay_t<Ts>...> {
+		return veg::tuple<meta::decay_t<Ts>...>{VEG_FWD(args)...};
+	}
+};
 
 struct tuple_ref {
 	template <typename... Ts>
@@ -54,24 +66,20 @@ struct tuple_ref {
 struct tuple_fwd {
 	VEG_TEMPLATE(
 			typename... Ts,
-			requires_all(__VEG_CONCEPT(meta::constructible<Ts, Ts&&>)),
+			requires VEG_ALL_OF(VEG_CONCEPT(constructible<Ts, Ts&&>)),
 			constexpr auto
 			operator(),
 			(... args, Ts&&))
 	const noexcept(
-			meta::all_of({__VEG_CONCEPT(meta::nothrow_constructible<Ts, Ts&&>)...}))
+			meta::all_of({VEG_CONCEPT(nothrow_constructible<Ts, Ts&&>)...}))
 			->veg::tuple<Ts...> {
 		return veg::tuple<Ts...>{VEG_FWD(args)...};
 	}
 };
-} // namespace fn
-__VEG_ODR_VAR(tuple, fn::tuple);
-__VEG_ODR_VAR(tuple_ref, fn::tuple_ref);
-__VEG_ODR_VAR(tuple_fwd, fn::tuple_fwd);
-
-struct elems_t {};
-__VEG_ODR_VAR(elems, elems_t);
-
+} // namespace niebloid
+VEG_NIEBLOID(tuple);
+VEG_NIEBLOID(tuple_ref);
+VEG_NIEBLOID(tuple_fwd);
 } // namespace make
 namespace meta {
 template <typename... Ts>
@@ -82,6 +90,7 @@ template <typename... Ts>
 struct is_mostly_trivial<tuple<Ts...>>
 		: bool_constant<all_of({is_mostly_trivial<Ts>::value...})> {};
 } // namespace meta
+} // namespace VEG_ABI
 } // namespace veg
 
 namespace std {
@@ -96,4 +105,5 @@ struct tuple_element<I, veg::tuple<Ts...>> {
 };
 } // namespace std
 
+#include "veg/internal/epilogue.hpp"
 #endif /* end of include guard __VEG_TUPLE_HPP_B8PHUNWES */

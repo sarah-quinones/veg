@@ -4,9 +4,10 @@
 #include "veg/assert.hpp"
 #include "veg/internal/meta_int_fix.hpp"
 #include "veg/internal/narrow.hpp"
+#include "veg/internal/prologue.hpp"
 
 namespace veg {
-
+inline namespace VEG_ABI {
 namespace int_c {
 
 template <ternary_e T>
@@ -17,45 +18,25 @@ struct boolean<maybe> {
 	using type = maybe_c;
 
 	constexpr boolean /* NOLINT(hicpp-explicit-conversions) */ (
-			bool val = false) noexcept
-			: m_val(val) {}
+			bool _val = false) noexcept
+			: val{_val} {}
 	template <ternary_e T>
 	HEDLEY_ALWAYS_INLINE constexpr boolean /* NOLINT(hicpp-explicit-conversions)
 	                                        */
 			(boolean<T> /*arg*/, safe_t /*tag*/ = {}) noexcept
-			: m_val(T == yes) {}
+			: val(T == yes) {}
 
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr friend auto
 	operator!(boolean arg) noexcept -> boolean {
-		return {!arg.m_val};
+		return {!arg.val};
 	}
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE explicit constexpr
 	operator bool() const noexcept {
-		return m_val;
-	}
-
-	friend auto __VEG_CPP14(constexpr)
-			tag_invoke(tag_t<assert::fn::to_string> /*tag*/, boolean arg) noexcept
-			-> assert::internal::char_string_ref {
-		constexpr auto const& yes_str = "maybe(true)";
-		constexpr auto const& no_str = "maybe(false)";
-		char const* str = arg.m_val ? yes_str : no_str;
-		auto len = i64(arg.m_val ? sizeof(yes_str) : sizeof(no_str)) - 1;
-
-		return {str, len};
-	}
-
-	template <typename CharT, typename Traits>
-	friend auto
-	operator<<(std::basic_ostream<CharT, Traits>& out, boolean arg) noexcept
-			-> std::basic_ostream<CharT, Traits>& {
-		auto str = tag_invoke(tag_t<assert::fn::to_string>{}, arg);
-		out.write(str.data(), str.size());
-		return out;
+		return val;
 	}
 
 private:
-	bool m_val;
+	bool val;
 };
 
 struct dyn {
@@ -79,24 +60,6 @@ struct dyn {
 		return {-arg.m_val};
 	}
 
-	friend auto tag_invoke(tag_t<assert::fn::to_string> /*tag*/, dyn arg) noexcept
-			-> assert::internal::string {
-		auto str = assert::to_string(i64(arg.m_val));
-		str.insert(0, "dyn[", 4);
-		str.insert(str.size(), "]", 1);
-
-		return str;
-	}
-
-	template <typename CharT, typename Traits>
-	friend auto
-	operator<<(std::basic_ostream<CharT, Traits>& out, dyn arg) noexcept
-			-> std::basic_ostream<CharT, Traits>& {
-		auto str = tag_invoke(tag_t<assert::fn::to_string>{}, arg);
-		out.write(str.data(), str.size());
-		return out;
-	}
-
 private:
 	i64 m_val;
 };
@@ -108,7 +71,7 @@ template <ternary_e T>
 HEDLEY_ALWAYS_INLINE constexpr boolean<
 		T>::boolean // NOLINT(hicpp-explicit-conversions)
 		(boolean<maybe> b, safe_t /*tag*/) noexcept
-		: boolean(((void)VEG_ASSERT(b.m_val == (T == yes)), b), unsafe) {}
+		: boolean(((void)VEG_ASSERT(b.val == (T == yes)), b), unsafe) {}
 
 template <i64 N>
 HEDLEY_ALWAYS_INLINE constexpr fix<N>::fix(
@@ -138,7 +101,7 @@ struct binary_traits<dyn, dyn> {
 		dyn m_cols;
 	};
 
-#define __VEG_OP(Name, Op)                                                     \
+#define VEG_OP(Name, Op)                                                       \
 	using Name /* NOLINT(bugprone-macro-parentheses) */ = dyn;                   \
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE static constexpr auto Name##_fn(          \
 			dyn a, dyn b) noexcept->Name {                                           \
@@ -146,7 +109,7 @@ struct binary_traits<dyn, dyn> {
 	}                                                                            \
 	static_assert(true, "")
 
-#define __VEG_CMP(Name, Op)                                                    \
+#define VEG_CMP(Name, Op)                                                      \
 	using Name /* NOLINT(bugprone-macro-parentheses) */ = boolean<maybe>;        \
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE static constexpr auto Name##_fn(          \
 			dyn a, dyn b) noexcept->Name {                                           \
@@ -154,15 +117,15 @@ struct binary_traits<dyn, dyn> {
 	}                                                                            \
 	static_assert(true, "")
 
-	__VEG_OP(add, +);
-	__VEG_OP(sub, -);
-	__VEG_OP(mul, *);
-	__VEG_CMP(cmp_eq, ==);
-	__VEG_CMP(cmp_neq, !=);
-	__VEG_CMP(cmp_lt, <);
-	__VEG_CMP(cmp_le, <=);
-	__VEG_CMP(cmp_gt, >);
-	__VEG_CMP(cmp_ge, >=);
+	VEG_OP(add, +);
+	VEG_OP(sub, -);
+	VEG_OP(mul, *);
+	VEG_CMP(cmp_eq, ==);
+	VEG_CMP(cmp_neq, !=);
+	VEG_CMP(cmp_lt, <);
+	VEG_CMP(cmp_le, <=);
+	VEG_CMP(cmp_gt, >);
+	VEG_CMP(cmp_ge, >=);
 
 	using div = dyn;
 	using mod = dyn;
@@ -175,8 +138,8 @@ struct binary_traits<dyn, dyn> {
 		return VEG_ASSERT(i64(b) != i64(0)), i64(a) % i64(b);
 	}
 
-#undef __VEG_OP
-#undef __VEG_CMP
+#undef VEG_OP
+#undef VEG_CMP
 };
 
 template <i64 N>
@@ -261,13 +224,33 @@ struct binary_traits<dyn, fix<N>> : binary_traits<dyn, dyn> {
 } // namespace int_c
 
 inline namespace literals {
-
 HEDLEY_ALWAYS_INLINE constexpr auto operator"" _v(unsigned long long n) noexcept
 		-> dyn {
-	return fn::narrow<i64>{}(n);
+	return niebloid::narrow<i64>{}(n);
 }
-
 } // namespace literals
+
+namespace fmt {
+template <>
+struct debug<boolean<maybe>> {
+	static void to_string(fmt::buffer& out, boolean<maybe> val) {
+		out.insert(out.size(), "maybe[", 6);
+		debug<bool>::to_string(out, bool(val));
+		out.insert(out.size(), "]", 1);
+	}
+};
+
+template <>
+struct debug<dyn> {
+	static void to_string(fmt::buffer& out, dyn val) {
+		out.insert(out.size(), "dyn[", 4);
+		debug<i64>::to_string(out, i64(val));
+		out.insert(out.size(), "]", 1);
+	}
+};
+} // namespace fmt
+} // namespace VEG_ABI
 } // namespace veg
 
+#include "veg/internal/epilogue.hpp"
 #endif /* end of include guard __VEG_META_INT_DYN_HPP_GC385NKBS */

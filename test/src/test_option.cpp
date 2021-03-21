@@ -1,8 +1,9 @@
 #include "veg/option.hpp"
 #include "veg/fn_view.hpp"
-#include <gtest/gtest.h>
+#include <doctest.h>
 #include <vector>
 #include "static_assert.hpp"
+#include "veg/internal/prologue.hpp"
 
 using namespace veg;
 template <typename T, i64 N>
@@ -14,13 +15,13 @@ struct nested_option<T, 0> {
 	using type = T;
 };
 
-TEST(option, all) {
+TEST_CASE("option, all") {
 
 	struct A {
-		__VEG_CPP14(constexpr) auto operator()() const -> option<int> {
+		VEG_CPP14(constexpr) auto operator()() const -> option<int> {
 			return {some, 13};
 		}
-		__VEG_CPP14(constexpr) auto operator()(int i) const -> option<double> {
+		VEG_CPP14(constexpr) auto operator()(int i) const -> option<double> {
 			if (i == 0) {
 				return none;
 			}
@@ -29,7 +30,7 @@ TEST(option, all) {
 	};
 
 	struct B {
-		__VEG_CPP14(constexpr) auto operator()(int i) const -> double {
+		VEG_CPP14(constexpr) auto operator()(int i) const -> double {
 			if (i == 0) {
 				return 1.0;
 			}
@@ -37,17 +38,19 @@ TEST(option, all) {
 		}
 	};
 	struct C {
-		__VEG_CPP14(constexpr) auto operator()() const -> double { return 2000.; }
+		VEG_CPP14(constexpr) auto operator()() const -> double { return 2000.; }
 	};
 
 	STATIC_ASSERT(sizeof(option<int>) == sizeof(int) * 2);
 	STATIC_ASSERT(sizeof(option<option<int>>) == sizeof(int) * 2);
 	STATIC_ASSERT(sizeof(option<option<option<option<int>>>>) == sizeof(int) * 2);
-	STATIC_ASSERT(sizeof(option<fn_view<void()>>) == sizeof(fn_view<void()>));
-	STATIC_ASSERT(sizeof(option<fn_view<void()>>) == sizeof(fn_view<void()>));
+	STATIC_ASSERT(
+			sizeof(option<fn::fn_view<void()>>) == sizeof(fn::fn_view<void()>));
+	STATIC_ASSERT(
+			sizeof(option<fn::fn_view<void()>>) == sizeof(fn::fn_view<void()>));
 
-	__VEG_CPP14(constexpr) option<int> i = {some, 3};
-	__VEG_CPP14(constexpr) option<int> j = none;
+	VEG_CPP14(constexpr) option<int> i = {some, 3};
+	VEG_CPP14(constexpr) option<int> j = none;
 	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).unwrap() == 1000. / 3);
 	STATIC_ASSERT_IF_17(option<int>{some, inplace, [&] { return 0; }});
 	STATIC_ASSERT_IF_14(i.as_ref().map(B{}).unwrap() == 2000. / 3);
@@ -71,11 +74,11 @@ TEST(option, all) {
 	STATIC_ASSERT(sizeof(option<int&>) == sizeof(int*));
 
 	{
-		__VEG_CPP14(constexpr)
+		VEG_CPP14(constexpr)
 		option<option<option<int>>> opt = {some, {some, {some, 3}}};
-		__VEG_CPP14(constexpr)
+		VEG_CPP14(constexpr)
 		option<option<option<int>>> opt_also = some(some(some(3)));
-		__VEG_CPP14(constexpr)
+		VEG_CPP14(constexpr)
 		option<option<option<int>>> opt2 = {some, {some, {none}}};
 		STATIC_ASSERT_IF_14(opt == opt_also);
 		STATIC_ASSERT_IF_14(
@@ -104,8 +107,8 @@ TEST(option, all) {
 				[&] {
 					flag = {some, false};
 				});
-		ASSERT_TRUE(flag);
-		ASSERT_FALSE(flag.as_ref().unwrap());
+		CHECK(flag);
+		CHECK(!flag.as_ref().unwrap());
 
 		opt = {some, 3};
 		flag = none;
@@ -116,11 +119,11 @@ TEST(option, all) {
 				[&] {
 					flag = {some, false};
 				});
-		ASSERT_TRUE(flag);
-		ASSERT_TRUE(flag.as_ref().unwrap());
+		CHECK(flag);
+		CHECK(flag.as_ref().unwrap());
 	}
 	{
-		__VEG_CPP17(constexpr)
+		VEG_CPP17(constexpr)
 		auto opt = [&] {
 			option<int> x;
 			x.emplace_with([&] { return 1; });
@@ -130,9 +133,9 @@ TEST(option, all) {
 		STATIC_ASSERT_IF_17(opt == some(1));
 	}
 	{
-		STATIC_ASSERT(__VEG_CONCEPT(meta::mostly_trivial<int>));
-		STATIC_ASSERT(__VEG_CONCEPT(meta::mostly_trivial<option<int>>));
-		__VEG_CPP17(constexpr)
+		STATIC_ASSERT(VEG_CONCEPT(mostly_trivial<int>));
+		STATIC_ASSERT(VEG_CONCEPT(mostly_trivial<option<int>>));
+		VEG_CPP17(constexpr)
 		auto opt = [&] {
 			option<option<int>> x;
 			x.emplace_with([&] { return some(1); });
@@ -146,11 +149,11 @@ TEST(option, all) {
 
 		auto opt = [&] {
 			option<vector<int>> x;
-			x.emplace_with([&](int i) { return vector<int>{1, 2, 3, i}; }, 5);
+			x.emplace_with([&](int i_) { return vector<int>{1, 2, 3, i_}; }, 5);
 			return x;
 		}();
 
-		ASSERT_EQ(opt, some(vector<int>{1, 2, 3, 5}));
+		CHECK(opt == some(vector<int>{1, 2, 3, 5}));
 	}
 	{
 		using std::vector;
@@ -164,7 +167,7 @@ TEST(option, all) {
 			return x;
 		}();
 
-		ASSERT_EQ(opt, some(some(vector<int>{1, 2, 3})));
+		CHECK(opt == some(some(vector<int>{1, 2, 3})));
 	}
 	{
 		using std::vector;
@@ -178,7 +181,7 @@ TEST(option, all) {
 			return x;
 		}();
 
-		ASSERT_EQ(opt, some(some(some(vector<int>{1, 2, 3}))));
+		CHECK(opt == some(some(some(vector<int>{1, 2, 3}))));
 	}
 	{
 		using std::vector;
@@ -193,7 +196,7 @@ TEST(option, all) {
 			return x;
 		}();
 
-		ASSERT_EQ(opt, some(some(some(some(vector<int>{1, 2, 3})))));
+		CHECK(opt == some(some(some(some(vector<int>{1, 2, 3})))));
 	}
 
 	{
@@ -208,7 +211,7 @@ TEST(option, all) {
 			return x;
 		}();
 
-		ASSERT_EQ(opt, some(some(vector<int>{1, 2, 3})));
+		CHECK(opt == some(some(vector<int>{1, 2, 3})));
 	}
 	{
 		using std::vector;
@@ -222,7 +225,7 @@ TEST(option, all) {
 			return x;
 		}();
 
-		ASSERT_EQ(opt, some(some(some(vector<int>{1, 2, 3}))));
+		CHECK(opt == some(some(some(vector<int>{1, 2, 3}))));
 	}
 	{
 		using std::vector;
@@ -237,6 +240,7 @@ TEST(option, all) {
 			return x;
 		}();
 
-		ASSERT_EQ(opt, some(some(some(some(vector<int>{1, 2, 3})))));
+		CHECK(opt == some(some(some(some(vector<int>{1, 2, 3})))));
 	}
 }
+#include "veg/internal/epilogue.hpp"

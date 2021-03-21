@@ -1,5 +1,6 @@
 #include "veg/dynamic_stack.hpp"
-#include <gtest/gtest.h>
+#include "assert_death.hpp"
+#include <doctest.h>
 
 #include <atomic>
 
@@ -23,67 +24,66 @@ public:
 	~S() { --n_instances_mut(); }
 };
 
-TEST(dynamic_stack, raii) {
+TEST_CASE("dynamic_stack, raii") {
 	unsigned char buf[4096];
 
 	dynamic_stack_view stack{slice<void>(buf)};
 
 	{
 		auto s1 = stack.make_new(tag_t<S>{}, 3).unwrap();
-		EXPECT_NE(s1.data(), nullptr);
-		EXPECT_EQ(s1.size(), 3);
-		EXPECT_EQ(stack.remaining_bytes(), 4093);
-		EXPECT_EQ(S::n_instances(), 3);
+		CHECK(s1.data() != nullptr);
+		CHECK(s1.size() == 3);
+		CHECK(stack.remaining_bytes() == 4093);
+		CHECK(S::n_instances() == 3);
 
 		{
 			auto s2 = stack.make_new(tag_t<S>{}, 4).unwrap();
-			EXPECT_NE(s2.data(), nullptr);
-			EXPECT_EQ(s2.size(), 4);
-			EXPECT_EQ(stack.remaining_bytes(), 4089);
-			EXPECT_EQ(S::n_instances(), 7);
+			CHECK(s2.data() != nullptr);
+			CHECK(s2.size() == 4);
+			CHECK(stack.remaining_bytes() == 4089);
+			CHECK(S::n_instances() == 7);
 
 			{
 				auto i3 = stack.make_new(tag_t<int>{}, 30000);
-				EXPECT_FALSE(i3);
-				EXPECT_EQ(stack.remaining_bytes(), 4089);
+				CHECK(!i3);
+				CHECK(stack.remaining_bytes() == 4089);
 				{
 					auto i4 = stack.make_new(tag_t<int>{}, 300).unwrap();
-					EXPECT_NE(i4.data(), nullptr);
-					EXPECT_EQ(i4.size(), 300);
-					EXPECT_LT(stack.remaining_bytes(), 4089 - 300 * sizeof(int));
+					CHECK(i4.data() != nullptr);
+					CHECK(i4.size() == 300);
+					CHECK(stack.remaining_bytes() < 4089 - 300 * sizeof(int));
 				}
 			}
 		}
-		EXPECT_EQ(stack.remaining_bytes(), 4093);
-		EXPECT_EQ(S::n_instances(), 3);
+		CHECK(stack.remaining_bytes() == 4093);
+		CHECK(S::n_instances() == 3);
 	}
-	EXPECT_EQ(stack.remaining_bytes(), 4096);
-	EXPECT_EQ(S::n_instances(), 0);
+	CHECK(stack.remaining_bytes() == 4096);
+	CHECK(S::n_instances() == 0);
 
 	auto s1 = stack.make_new(tag_t<S const>{}, 3).unwrap();
-	EXPECT_EQ(stack.remaining_bytes(), 4093);
-	EXPECT_EQ(S::n_instances(), 3);
+	CHECK(stack.remaining_bytes() == 4093);
+	CHECK(S::n_instances() == 3);
 }
 
-TEST(dynamic_stack, evil_reorder) {
+TEST_CASE("dynamic_stack, evil_reorder") {
 	unsigned char buf[4096];
 	dynamic_stack_view stack{make::slice(buf)};
 	auto good = [&] {
 		auto s1 = stack.make_new(tag_t<int>{}, 30);
 		auto s2 = stack.make_new(tag_t<double>{}, 20);
 		auto s3 = VEG_MOV(s2);
-		return true;
 	};
 	auto bad = [&] {
 		auto s1 = stack.make_new(tag_t<int>{}, 30);
 		auto s2 = stack.make_new(tag_t<double>{}, 20);
 		auto s3 = VEG_MOV(s1);
 	};
-	EXPECT_TRUE(good());
-	EXPECT_DEATH(bad(), "");
+	CHECK_NO_DEATH({ good(); });
+	CHECK_DEATH({ bad(); });
 }
 
-TEST(dynamic_stack, assign) {
+TEST_CASE("dynamic_stack, assign") {
 	alignas(double) unsigned char buf[100];
 	dynamic_stack_view stack{make::slice(buf)};
 
@@ -91,16 +91,16 @@ TEST(dynamic_stack, assign) {
 		auto s1 = stack.make_new(tag_t<char>{}, 30);
 		auto s2 = stack.make_new(tag_t<char>{}, 20);
 		auto s3 = VEG_MOV(s2);
-		EXPECT_EQ(stack.remaining_bytes(), 50);
+		CHECK(stack.remaining_bytes() == 50);
 		s3 = VEG_FWD(s1);
-		EXPECT_EQ(stack.remaining_bytes(), 70);
+		CHECK(stack.remaining_bytes() == 70);
 		s3 = VEG_FWD(s3);
-		EXPECT_EQ(stack.remaining_bytes(), 70);
+		CHECK(stack.remaining_bytes() == 70);
 	}
-	EXPECT_EQ(stack.remaining_bytes(), 100);
+	CHECK(stack.remaining_bytes() == 100);
 }
 
-TEST(dynamic_stack, return ) {
+TEST_CASE("dynamic_stack, return") {
 	unsigned char buf[4096];
 	dynamic_stack_view stack(make::slice(buf));
 
@@ -108,46 +108,46 @@ TEST(dynamic_stack, return ) {
 		auto s1 = stack.make_new(tag_t<S>{}, 3).unwrap();
 		auto s2 = stack.make_new(tag_t<S>{}, 4).unwrap();
 		auto s3 = stack.make_new(tag_t<S>{}, 5).unwrap();
-		EXPECT_EQ(stack.remaining_bytes(), 4084);
-		EXPECT_EQ(S::n_instances(), 12);
+		CHECK(stack.remaining_bytes() == 4084);
+		CHECK(S::n_instances() == 12);
 		return s1;
 	}();
 
-	EXPECT_EQ(stack.remaining_bytes(), 4093);
-	EXPECT_EQ(S::n_instances(), 3);
+	CHECK(stack.remaining_bytes() == 4093);
+	CHECK(S::n_instances() == 3);
 
-	EXPECT_NE(s.data(), nullptr);
-	EXPECT_EQ(s.size(), 3);
+	CHECK(s.data() != nullptr);
+	CHECK(s.size() == 3);
 }
 
-TEST(dynamic_stack, manual_lifetimes) {
+TEST_CASE("dynamic_stack, manual_lifetimes") {
 	unsigned char buf[4096];
 	dynamic_stack_view stack(make::slice(buf));
 
 	{
 		auto s = stack.make_alloc(tag_t<S>{}, 3).unwrap();
-		EXPECT_NE(s.data(), nullptr);
-		EXPECT_EQ(s.size(), 3);
-		EXPECT_EQ(S::n_instances(), 0);
+		CHECK(s.data() != nullptr);
+		CHECK(s.size() == 3);
+		CHECK(S::n_instances() == 0);
 
 		{
 			new (s.data() + 0) S{};
-			EXPECT_EQ(S::n_instances(), 1);
+			CHECK(S::n_instances() == 1);
 			new (s.data() + 1) S{};
-			EXPECT_EQ(S::n_instances(), 2);
+			CHECK(S::n_instances() == 2);
 			new (s.data() + 2) S{};
-			EXPECT_EQ(S::n_instances(), 3);
+			CHECK(S::n_instances() == 3);
 
 			(s.data() + 2)->~S();
-			EXPECT_EQ(S::n_instances(), 2);
+			CHECK(S::n_instances() == 2);
 			(s.data() + 1)->~S();
-			EXPECT_EQ(S::n_instances(), 1);
+			CHECK(S::n_instances() == 1);
 			(s.data() + 0)->~S();
-			EXPECT_EQ(S::n_instances(), 0);
+			CHECK(S::n_instances() == 0);
 		}
-		EXPECT_EQ(S::n_instances(), 0);
+		CHECK(S::n_instances() == 0);
 	}
-	EXPECT_EQ(stack.remaining_bytes(), 4096);
+	CHECK(stack.remaining_bytes() == 4096);
 }
 
 struct T : S {
@@ -155,19 +155,19 @@ struct T : S {
 	int a = 0;
 };
 
-TEST(dynamic_stack, alignment) {
+TEST_CASE("dynamic_stack, alignment") {
 	alignas(T) unsigned char buffer[4096 + 1];
 	dynamic_stack_view stack{{buffer + 1, 4096}};
-	EXPECT_EQ(stack.remaining_bytes(), 4096);
-	EXPECT_EQ(T::n_instances(), 0);
+	CHECK(stack.remaining_bytes() == 4096);
+	CHECK(T::n_instances() == 0);
 	{
 		auto s1 = stack.make_new(tag_t<T>{}, 0);
-		EXPECT_EQ(stack.remaining_bytes(), 4096 - alignof(T) + 1);
+		CHECK(stack.remaining_bytes() == 4096 - alignof(T) + 1);
 		auto s2 = stack.make_new(tag_t<S>{}, 0);
-		EXPECT_EQ(stack.remaining_bytes(), 4096 - alignof(T) + 1);
-		EXPECT_EQ(T::n_instances(), 0);
+		CHECK(stack.remaining_bytes() == 4096 - alignof(T) + 1);
+		CHECK(T::n_instances() == 0);
 	}
-	EXPECT_EQ(T::n_instances(), 0);
+	CHECK(T::n_instances() == 0);
 }
 
 struct throwing {
@@ -193,22 +193,22 @@ public:
 	~throwing() { --n_instances_mut(); }
 };
 
-TEST(dynamic_stack, throwing) {
+TEST_CASE("dynamic_stack, throwing") {
 	unsigned char buf[4096];
 	dynamic_stack_view stack{slice<void>(buf)};
 
-	EXPECT_EQ(throwing::n_instances(), 0);
+	CHECK(throwing::n_instances() == 0);
 	auto s1 = stack.make_new(tag_t<throwing>{}, 3);
 	(void)s1;
 
-	EXPECT_EQ(throwing::n_instances(), 3);
-	EXPECT_EQ(stack.remaining_bytes(), 4093);
+	CHECK(throwing::n_instances() == 3);
+	CHECK(stack.remaining_bytes() == 4093);
 	try {
 		auto s2 = stack.make_new(tag_t<throwing>{}, 7);
 		(void)s2;
-		ASSERT_TRUE(false); // must not be reached
+		CHECK(false); // must not be reached
 	} catch (int) {
-		EXPECT_EQ(throwing::n_instances(), 3);
-		EXPECT_EQ(stack.remaining_bytes(), 4093);
+		CHECK(throwing::n_instances() == 3);
+		CHECK(stack.remaining_bytes() == 4093);
 	}
 }

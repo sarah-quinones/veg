@@ -104,8 +104,8 @@ struct end {
 	}
 };
 } // namespace fn
-__VEG_ODR_VAR(begin, fn::begin);
-__VEG_ODR_VAR(end, fn::end);
+VEG_INLINE_VAR(begin, fn::begin);
+VEG_INLINE_VAR(end, fn::end);
 
 } // namespace legacy
 } // namespace veg

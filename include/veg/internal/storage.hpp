@@ -3,8 +3,10 @@
 
 #include "veg/internal/type_traits.hpp"
 #include "veg/internal/memory.hpp"
+#include "veg/internal/prologue.hpp"
 
 namespace veg {
+inline namespace VEG_ABI {
 namespace internal {
 namespace storage {
 
@@ -12,7 +14,7 @@ template <typename T, typename Arg>
 struct arg_ctor_to_fn {
 	Arg&& arg;
 	HEDLEY_ALWAYS_INLINE constexpr auto operator()() const
-			noexcept(__VEG_CONCEPT(meta::nothrow_constructible<T, Arg&&>)) -> T {
+			noexcept(VEG_CONCEPT(nothrow_constructible<T, Arg&&>)) -> T {
 		return T{VEG_FWD(arg)};
 	}
 };
@@ -34,41 +36,35 @@ struct storage {
 	template <typename... Args>
 	HEDLEY_ALWAYS_INLINE constexpr storage(
 			hidden_tag0 /*tag*/,
-			Args&&... args) noexcept(__VEG_CONCEPT(meta::
-	                                               nothrow_constructible<
-																										 T,
-																										 Args&&...>))
+			Args&&... args) noexcept(VEG_CONCEPT(nothrow_constructible<T, Args&&...>))
 			: inner(VEG_FWD(args)...) {}
 
 	template <typename Fn, typename... Args>
 	HEDLEY_ALWAYS_INLINE constexpr storage(
 			hidden_tag1 /*tag*/,
 			Fn&& fn,
-			Args&&... args) noexcept(__VEG_CONCEPT(meta::
-	                                               nothrow_invocable<
-																										 Fn&&,
-																										 Args&&...>))
+			Args&&... args) noexcept(VEG_CONCEPT(nothrow_invocable<Fn&&, Args&&...>))
 			: inner(invoke(VEG_FWD(fn), VEG_FWD(args)...)) {}
 
 	template <typename U>
 	HEDLEY_ALWAYS_INLINE explicit constexpr storage(
 			hidden_tag2 /*tag*/,
-			U&& arg) noexcept(__VEG_CONCEPT(meta::nothrow_constructible<T, U&&>))
+			U&& arg) noexcept(VEG_CONCEPT(nothrow_constructible<T, U&&>))
 			: inner(static_cast<T>(VEG_FWD(arg))) {}
 
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() const noexcept
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto _get() const noexcept
 			-> T const& {
 		return inner;
 	}
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mut() noexcept -> T& {
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mut() noexcept -> T& {
 		return inner;
 	}
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov_ref() && noexcept
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mov_ref() && noexcept
 			-> T&& {
 		return static_cast<T&&>(inner);
 	}
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov() && noexcept(
-			__VEG_CONCEPT(meta::nothrow_move_constructible<T>)) -> T {
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mov() && noexcept(
+			VEG_CONCEPT(nothrow_move_constructible<T>)) -> T {
 		return static_cast<T&&>(inner);
 	}
 };
@@ -84,34 +80,27 @@ struct ref_base {
 	template <typename... Args>
 	HEDLEY_ALWAYS_INLINE constexpr ref_base(
 			hidden_tag0 /*tag*/,
-			Args&&... args) noexcept(__VEG_CONCEPT(meta::
-	                                               nothrow_constructible<
-																										 T&&,
-																										 Args&&...>))
+			Args&&... args) noexcept(VEG_CONCEPT(nothrow_constructible<T&&, Args&&...>))
 			: inner(VEG_FWD(args)...) {}
 
 	template <typename Fn, typename... Args>
 	HEDLEY_ALWAYS_INLINE constexpr ref_base(
 			hidden_tag1 /*tag*/,
 			Fn&& fn,
-			Args&&... args) noexcept(__VEG_CONCEPT(meta::
-	                                               nothrow_invocable<
-																										 Fn&&,
-																										 Args&&...>))
+			Args&&... args) noexcept(VEG_CONCEPT(nothrow_invocable<Fn&&, Args&&...>))
 			: inner(invoke(VEG_FWD(fn), VEG_FWD(args)...)) {}
 
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() const noexcept -> T& {
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto _get() const noexcept -> T& {
 		return inner;
 	}
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mut() noexcept -> T& {
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mut() noexcept -> T& {
 		return inner;
 	}
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov_ref() && noexcept
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mov_ref() && noexcept
 			-> T&& {
 		return VEG_FWD(inner);
 	}
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov() && noexcept
-			-> T&& {
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mov() && noexcept -> T&& {
 		return VEG_FWD(inner);
 	}
 };
@@ -143,33 +132,27 @@ struct storage<T&, true> {
 	template <typename... Args>
 	HEDLEY_ALWAYS_INLINE constexpr storage(
 			hidden_tag0 /*tag*/,
-			Args&&... args) noexcept(__VEG_CONCEPT(meta::
-	                                               nothrow_constructible<
-																										 T&&,
-																										 Args&&...>))
+			Args&&... args) noexcept(VEG_CONCEPT(nothrow_constructible<T&&, Args&&...>))
 			: inner_ptr(addressof(VEG_FWD(args)...)) {}
 
 	template <typename Fn, typename... Args>
 	HEDLEY_ALWAYS_INLINE constexpr storage(
 			hidden_tag1 /*tag*/,
 			Fn&& fn,
-			Args&&... args) noexcept(__VEG_CONCEPT(meta::
-	                                               nothrow_invocable<
-																										 Fn&&,
-																										 Args&&...>))
+			Args&&... args) noexcept(VEG_CONCEPT(nothrow_invocable<Fn&&, Args&&...>))
 			: inner_ptr(addressof(invoke(VEG_FWD(fn), VEG_FWD(args)...))) {}
 
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() const noexcept -> T& {
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto _get() const noexcept -> T& {
 		return *inner_ptr;
 	}
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mut() noexcept -> T& {
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mut() noexcept -> T& {
 		return *inner_ptr;
 	}
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov_ref() && noexcept
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mov_ref() && noexcept
 			-> T& {
 		return *inner_ptr;
 	}
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov() && noexcept -> T& {
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mov() && noexcept -> T& {
 		return *inner_ptr;
 	}
 
@@ -196,35 +179,28 @@ struct storage<T&&, true> : meta::internal::nocopy_ctor,
 	template <typename... Args>
 	HEDLEY_ALWAYS_INLINE constexpr storage(
 			hidden_tag0 /*tag*/,
-			Args&&... args) noexcept(__VEG_CONCEPT(meta::
-	                                               nothrow_constructible<
-																										 T&&,
-																										 Args&&...>))
+			Args&&... args) noexcept(VEG_CONCEPT(nothrow_constructible<T&&, Args&&...>))
 			: inner_ptr(addressof(internal::storage::as_lvalue(VEG_FWD(args)...))) {}
 
 	template <typename Fn, typename... Args>
 	HEDLEY_ALWAYS_INLINE constexpr storage(
 			hidden_tag1 /*tag*/,
 			Fn&& fn,
-			Args&&... args) noexcept(__VEG_CONCEPT(meta::
-	                                               nothrow_invocable<
-																										 Fn&&,
-																										 Args&&...>))
+			Args&&... args) noexcept(VEG_CONCEPT(nothrow_invocable<Fn&&, Args&&...>))
 			: inner_ptr(addressof(internal::storage::as_lvalue(
 						invoke(VEG_FWD(fn), VEG_FWD(args)...)))) {}
 
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto _get() const noexcept -> T& {
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto _get() const noexcept -> T& {
 		return *inner_ptr;
 	}
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mut() noexcept -> T& {
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mut() noexcept -> T& {
 		return *inner_ptr;
 	}
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov_ref() && noexcept
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mov_ref() && noexcept
 			-> T&& {
 		return static_cast<T&&>(*inner_ptr);
 	}
-	HEDLEY_ALWAYS_INLINE __VEG_CPP14(constexpr) auto get_mov() && noexcept
-			-> T&& {
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mov() && noexcept -> T&& {
 		return static_cast<T&&>(*inner_ptr);
 	}
 
@@ -252,7 +228,7 @@ struct meta::value_sentinel_for<veg::internal::storage::storage<T&>>
 		: std::integral_constant<i64, 1> {
 	HEDLEY_ALWAYS_INLINE static constexpr auto invalid(i64 i) noexcept
 			-> ::veg::internal::storage::storage<T&> {
-		return ((i == 0) ? (void)0 : terminate()),
+		return ((i == 0) ? (void)0 : abi::internal::terminate()),
 					 ::veg::internal::storage::storage<T&>::null();
 	}
 	HEDLEY_ALWAYS_INLINE static constexpr auto
@@ -266,7 +242,7 @@ struct meta::value_sentinel_for<veg::internal::storage::storage<T&&>>
 		: std::integral_constant<i64, 1> {
 	HEDLEY_ALWAYS_INLINE static constexpr auto invalid(i64 i) noexcept
 			-> ::veg::internal::storage::storage<T&&> {
-		return ((i == 0) ? (void)0 : terminate()),
+		return ((i == 0) ? (void)0 : abi::internal::terminate()),
 					 ::veg::internal::storage::storage<T&&>::null();
 	}
 	HEDLEY_ALWAYS_INLINE static constexpr auto
@@ -289,7 +265,8 @@ struct meta::value_sentinel_for<veg::internal::storage::storage<T>>
 		return meta::value_sentinel_for<T>::id(arg.inner);
 	}
 };
-
+} // namespace VEG_ABI
 } // namespace veg
 
+#include "veg/internal/epilogue.hpp"
 #endif /* end of include guard __VEG_STORAGE_HPP_X0B4XDKES */

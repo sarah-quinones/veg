@@ -20,8 +20,6 @@ if(USE_LIBCXX)
   if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
     add_compile_options("-stdlib=libc++")
     add_link_options("-stdlib=libc++ -lc++abi")
-  else()
-    message(SEND_ERROR "libc++ only available with clang")
   endif()
 endif()
 

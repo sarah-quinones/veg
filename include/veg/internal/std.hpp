@@ -10,6 +10,7 @@
 #include <cstdint>          // i64, u64
 #include <initializer_list> // std::initializer_list
 #include <new>              // placement new, launder
+#include <utility>          // std::tuple_{size,element}
 
 // clang-format off
 // construct_at, addressof

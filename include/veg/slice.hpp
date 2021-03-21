@@ -3,9 +3,10 @@
 
 #include "veg/assert.hpp"
 #include "veg/option.hpp"
+#include "veg/internal/prologue.hpp"
 
 namespace veg {
-
+inline namespace VEG_ABI {
 template <typename T, i64 N>
 struct array {
 	static_assert(N > 0, "");
@@ -45,13 +46,13 @@ namespace internal {
 struct member_fn_data_size {
 	template <typename R, typename T>
 	using dtype_r = decltype(void(static_cast<R* const*>(
-			static_cast<decltype(__VEG_DECLVAL(T&).data()) const*>(nullptr))));
+			static_cast<decltype(VEG_DECLVAL(T&).data()) const*>(nullptr))));
 
 	template <typename T>
-	using dtype = decltype(void(__VEG_DECLVAL(T&).data()));
+	using dtype = decltype(void(VEG_DECLVAL(T&).data()));
 
 	template <typename T>
-	using stype = decltype(void(static_cast<i64>(__VEG_DECLVAL(T&).size())));
+	using stype = decltype(void(static_cast<i64>(VEG_DECLVAL(T&).size())));
 
 	template <typename T>
 	static constexpr auto d(T& arg) noexcept -> decltype(arg.data()) {
@@ -87,10 +88,10 @@ struct array_data_size {
 
 template <typename R, typename T>
 struct has_array_data2
-		: meta::bool_constant<__VEG_CONCEPT(
-					meta::convertible_to<
+		: meta::bool_constant<VEG_CONCEPT(
+					convertible<
 							T&,
-							R (&)[sizeof(T) / sizeof(decltype(__VEG_DECLVAL(T)[0]))]>)> {};
+							R (&)[sizeof(T) / sizeof(decltype(VEG_DECLVAL(T &&)[0]))]>)> {};
 
 template <typename R, typename T>
 struct has_array_data_r
@@ -144,7 +145,7 @@ struct slice_ctor_common {
 			(typename Rng),
 			requires(internal::has_data_r<T, meta::uncvref_t<Rng>>::value),
 			constexpr slice_ctor_common, /* NOLINT(hicpp-explicit-conversions,
-	                           bugprone-forwarding-reference-overload) */
+	                                    bugprone-forwarding-reference-overload) */
 			(rng, Rng&&))
 	noexcept
 			: slice_ctor_common(
@@ -185,7 +186,7 @@ struct slice : private internal::slice_ctor<T> {
 							 (i < size())),
 					 *(data() + i);
 	}
-	VEG_NODISCARD __VEG_CPP14(constexpr) auto at(i64 i) const noexcept
+	VEG_NODISCARD VEG_CPP14(constexpr) auto at(i64 i) const noexcept
 			-> option<T&> {
 		if (i > 0 || i <= size()) {
 			return {some, *(data() + i)};
@@ -200,8 +201,9 @@ struct slice<void> : slice<unsigned char> {
 
 	VEG_TEMPLATE(
 			(typename T),
-			requires !__VEG_CONCEPT(meta::const_<T>) &&
-					__VEG_CONCEPT(meta::trivially_copyable<T>),
+			requires(
+					!VEG_CONCEPT(const_type<T>) && //
+					VEG_CONCEPT(trivially_copyable<T>)),
 			slice, /* NOLINT(hicpp-explicit-conversions) */
 			(s, slice<T>))
 	noexcept
@@ -214,7 +216,7 @@ struct slice<void const> : slice<unsigned char const> {
 	using slice<unsigned char const>::slice;
 	VEG_TEMPLATE(
 			(typename T),
-			requires __VEG_CONCEPT(meta::trivially_copyable<T>),
+			requires VEG_CONCEPT(trivially_copyable<T>),
 			slice, /* NOLINT(hicpp-explicit-conversions) */
 			(s, slice<T>))
 	noexcept
@@ -224,15 +226,15 @@ struct slice<void const> : slice<unsigned char const> {
 };
 
 namespace make {
-namespace fn {
+namespace niebloid {
 struct slice {
 	VEG_TEMPLATE(
 			(typename Rng),
-			requires(__VEG_CONCEPT(meta::constructible< //
-														 veg::slice<meta::remove_pointer_t<decltype(
-																 internal::has_data<meta::uncvref_t<Rng>>::d(
-																		 __VEG_DECLVAL(Rng&)))>>,
-														 Rng&&>)),
+			requires(VEG_CONCEPT(constructible< //
+													 veg::slice<meta::remove_pointer_t<decltype(
+															 internal::has_data<meta::uncvref_t<Rng>>::d(
+																	 VEG_DECLVAL(Rng&)))>>,
+													 Rng&&>)),
 			auto
 			operator(),
 			(rng, Rng&&))
@@ -241,14 +243,16 @@ struct slice {
 		return {VEG_FWD(rng)};
 	}
 };
-} // namespace fn
-__VEG_ODR_VAR(slice, fn::slice);
+} // namespace niebloid
+VEG_NIEBLOID(slice);
 } // namespace make
 
 namespace meta {
 template <typename T>
 struct is_mostly_trivial<slice<T>> : bool_constant<true> {};
 } // namespace meta
+} // namespace VEG_ABI
 } // namespace veg
 
+#include "veg/internal/epilogue.hpp"
 #endif /* end of include guard __VEG_SPAN_HPP_CBT4079WS */

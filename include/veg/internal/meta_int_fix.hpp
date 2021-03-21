@@ -5,15 +5,11 @@
 #include "veg/internal/std.hpp"
 #include "veg/internal/byte_string_ref.hpp"
 #include "veg/internal/simple_string.hpp"
+#include "veg/internal/fmt.hpp"
+#include "veg/internal/prologue.hpp"
 
 namespace veg {
-
-namespace assert {
-namespace fn {
-struct to_string;
-} // namespace fn
-} // namespace assert
-
+inline namespace VEG_ABI {
 enum struct ternary_e : unsigned char {
 	no,
 	maybe,
@@ -51,45 +47,17 @@ struct boolean {
 		return T == yes;
 	}
 
-	friend auto __VEG_CPP14(constexpr)
-			tag_invoke(tag_t<assert::fn::to_string> /*tag*/, boolean /*arg*/) noexcept
-			-> assert::internal::char_string_ref {
+private:
+	void print(fmt::buffer& out) const {
 		constexpr auto const& yes_str = "maybe(true)";
 		constexpr auto const& no_str = "maybe(false)";
-		auto str = T == yes ? yes_str : no_str;
-		auto len = i64(T == yes ? sizeof(yes_str) : sizeof(no_str)) - 1;
-
-		return {str, len};
-	}
-
-	template <typename CharT, typename Traits>
-	friend auto
-	operator<<(std::basic_ostream<CharT, Traits>& out, boolean arg) noexcept
-			-> std::basic_ostream<CharT, Traits>& {
-		auto str = tag_invoke(tag_t<assert::fn::to_string>{}, arg);
-		out.write(str.data(), str.size());
-		return out;
+		char const* str = (T == yes) ? yes_str : no_str;
+		auto len = i64((T == yes) ? sizeof(yes_str) : sizeof(no_str)) - 1;
+		out.insert(out.size(), str, len);
 	}
 };
 
-struct dyn;
-template <i64 N>
-struct fix;
-
 } // namespace int_c
-namespace meta {
-namespace internal {
-template <typename T>
-struct is_fix : std::false_type {};
-template <i64 N>
-struct is_fix<int_c::fix<N>> : std::true_type {};
-} // namespace internal
-
-template <typename T>
-__VEG_DEF_CONCEPT(
-		meta_int, __VEG_SAME_AS(T, int_c::dyn) || internal::is_fix<T>::value);
-
-} // namespace meta
 
 namespace int_c {
 
@@ -113,25 +81,6 @@ struct fix {
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr friend auto
 	operator-(fix /**/) noexcept -> fix<-N> {
 		return {};
-	}
-
-	friend auto
-	tag_invoke(tag_t<assert::fn::to_string> /*tag*/, fix /*arg*/) noexcept
-			-> assert::internal::string {
-		auto str = assert::internal::to_string_primitive<long long>(N);
-		str.insert(0, "fix[", 4);
-		str.insert(str.size(), "]", 1);
-
-		return str;
-	}
-
-	template <typename CharT, typename Traits>
-	friend auto
-	operator<<(std::basic_ostream<CharT, Traits>& out, fix arg) noexcept
-			-> std::basic_ostream<CharT, Traits>& {
-		auto str = tag_invoke(tag_t<assert::fn::to_string>{}, arg);
-		out.write(str.data(), str.size());
-		return out;
 	}
 };
 
@@ -227,7 +176,7 @@ struct binary_traits<fix<N>, fix<M>> {
 		}
 	};
 
-#define __VEG_OP(Name, Op)                                                     \
+#define VEG_OP(Name, Op)                                                       \
 	using Name /* NOLINT(bugprone-macro-parentheses) */ = fix<N Op M>;           \
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE static constexpr auto Name##_fn(          \
 			fix<N>, fix<M>) noexcept->Name {                                         \
@@ -235,7 +184,7 @@ struct binary_traits<fix<N>, fix<M>> {
 	}                                                                            \
 	static_assert(true, "")
 
-#define __VEG_CMP(Name, Op)                                                    \
+#define VEG_CMP(Name, Op)                                                      \
 	using Name /* NOLINT(bugprone-macro-parentheses) */ =                        \
 			boolean<(N Op M) ? yes : no>;                                            \
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE static constexpr auto Name##_fn(          \
@@ -244,15 +193,15 @@ struct binary_traits<fix<N>, fix<M>> {
 	}                                                                            \
 	static_assert(true, "")
 
-	__VEG_OP(add, +);
-	__VEG_OP(sub, -);
-	__VEG_OP(mul, *);
-	__VEG_CMP(cmp_eq, ==);
-	__VEG_CMP(cmp_neq, !=);
-	__VEG_CMP(cmp_lt, <);
-	__VEG_CMP(cmp_le, <=);
-	__VEG_CMP(cmp_gt, >);
-	__VEG_CMP(cmp_ge, >=);
+	VEG_OP(add, +);
+	VEG_OP(sub, -);
+	VEG_OP(mul, *);
+	VEG_CMP(cmp_eq, ==);
+	VEG_CMP(cmp_neq, !=);
+	VEG_CMP(cmp_lt, <);
+	VEG_CMP(cmp_le, <=);
+	VEG_CMP(cmp_gt, >);
+	VEG_CMP(cmp_ge, >=);
 
 	using div = meta::conditional_t<M == 0, void, fix<N / (M != 0 ? M : 1)>>;
 	using mod = meta::conditional_t<M == 0, void, fix<N % (M != 0 ? M : 1)>>;
@@ -266,88 +215,81 @@ struct binary_traits<fix<N>, fix<M>> {
 		return mod();
 	}
 
-#undef __VEG_OP
-#undef __VEG_CMP
+#undef VEG_OP
+#undef VEG_CMP
 };
 
 } // namespace internal
 
 VEG_TEMPLATE(
 		(typename L, typename R),
-		requires(
-				__VEG_CONCEPT(meta::meta_int<L>) && __VEG_CONCEPT(meta::meta_int<R>)),
+		requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),
 		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator+,
 		(a, L),
 		(b, R))
-__VEG_DEDUCE_RET(internal::binary_traits<L, R>::add_fn(a, b));
+VEG_DEDUCE_RET(internal::binary_traits<L, R>::add_fn(a, b));
 
 VEG_TEMPLATE(
 		(typename L, typename R),
-		requires(
-				__VEG_CONCEPT(meta::meta_int<L>) && __VEG_CONCEPT(meta::meta_int<R>)),
+		requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),
 		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator-,
 		(a, L),
 		(b, R))
-__VEG_DEDUCE_RET(internal::binary_traits<L, R>::sub_fn(a, b));
+VEG_DEDUCE_RET(internal::binary_traits<L, R>::sub_fn(a, b));
 
 VEG_TEMPLATE(
 		(typename L, typename R),
-		requires(
-				__VEG_CONCEPT(meta::meta_int<L>) && __VEG_CONCEPT(meta::meta_int<R>)),
+		requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),
 		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator*,
 		(a, L),
 		(b, R))
-__VEG_DEDUCE_RET(internal::binary_traits<L, R>::mul_fn(a, b));
+VEG_DEDUCE_RET(internal::binary_traits<L, R>::mul_fn(a, b));
 
 VEG_TEMPLATE(
 		(typename L, typename R),
 		requires(
-				__VEG_CONCEPT(meta::meta_int<L>) && //
-				__VEG_CONCEPT(meta::meta_int<R>) &&
-				__VEG_CONCEPT(
-						meta::meta_int<typename internal::binary_traits<L, R>::div>)),
+				VEG_CONCEPT(meta_int<L>) && //
+				VEG_CONCEPT(meta_int<R>) &&
+				VEG_CONCEPT(meta_int<typename internal::binary_traits<L, R>::div>)),
 		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator/,
 		(a, L),
 		(b, R))
-__VEG_DEDUCE_RET(internal::binary_traits<L, R>::div_fn(a, b));
+VEG_DEDUCE_RET(internal::binary_traits<L, R>::div_fn(a, b));
 
 VEG_TEMPLATE(
 		(typename L, typename R),
 		requires(
-				__VEG_CONCEPT(meta::meta_int<L>) && //
-				__VEG_CONCEPT(meta::meta_int<R>) &&
-				__VEG_CONCEPT(
-						meta::meta_int<typename internal::binary_traits<L, R>::mod>)),
+				VEG_CONCEPT(meta_int<L>) && //
+				VEG_CONCEPT(meta_int<R>) &&
+				VEG_CONCEPT(meta_int<typename internal::binary_traits<L, R>::mod>)),
 		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator%,
 		(a, L),
 		(b, R))
-__VEG_DEDUCE_RET(internal::binary_traits<L, R>::mod_fn(a, b));
+VEG_DEDUCE_RET(internal::binary_traits<L, R>::mod_fn(a, b));
 
-#define __VEG_CMP(Name, Op)                                                    \
+#define VEG_CMP(Name, Op)                                                      \
 	VEG_TEMPLATE(                                                                \
 			(typename L, typename R),                                                \
-			requires(                                                                \
-					__VEG_CONCEPT(meta::meta_int<L>) &&                                  \
-					__VEG_CONCEPT(meta::meta_int<R>)),                                   \
+			requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),          \
 			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto                        \
 			operator Op,                                                             \
 			(a, L),                                                                  \
 			(b, R))                                                                  \
-	__VEG_DEDUCE_RET(internal::binary_traits<L, R>::cmp_##Name##_fn(a, b))
+	VEG_DEDUCE_RET(internal::binary_traits<L, R>::cmp_##Name##_fn(a, b))
 
-__VEG_CMP(eq, ==);
-__VEG_CMP(neq, !=);
-__VEG_CMP(lt, <);
-__VEG_CMP(le, <=);
-__VEG_CMP(gt, >);
-__VEG_CMP(ge, >=);
+VEG_CMP(eq, ==);
+VEG_CMP(neq, !=);
+VEG_CMP(lt, <);
+VEG_CMP(le, <=);
+VEG_CMP(gt, >);
+VEG_CMP(ge, >=);
 
-#undef __VEG_CMP
+#undef VEG_CMP
 
 } // namespace int_c
 using int_c::boolean;
@@ -361,6 +303,32 @@ HEDLEY_ALWAYS_INLINE constexpr auto operator"" _c() noexcept
 	return {};
 }
 } // namespace literals
+
+namespace fmt {
+template <>
+struct debug<boolean<yes>> {
+	static void to_string(fmt::buffer& out, boolean<yes> /*val*/) {
+		out.insert(out.size(), "yes", 3);
+	}
+};
+template <>
+struct debug<boolean<no>> {
+	static void to_string(fmt::buffer& out, boolean<no> /*val*/) {
+		out.insert(out.size(), "no", 2);
+	}
+};
+
+template <i64 N>
+struct debug<fix<N>> {
+	static void to_string(fmt::buffer& out, fix<N> val) {
+		out.insert(out.size(), "fix[", 4);
+		debug<i64>::to_string(out, i64(val));
+		out.insert(out.size(), "]", 1);
+	}
+};
+} // namespace fmt
+} // namespace VEG_ABI
 } // namespace veg
 
+#include "veg/internal/epilogue.hpp"
 #endif /* end of include guard __VEG_META_INT_FIX_HPP_7S9Y48TFS */

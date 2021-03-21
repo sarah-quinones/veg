@@ -1,7 +1,7 @@
 #include "veg/assert.hpp"
-#include "veg/internal/narrow.hpp"
 #include "veg/timer.hpp"
 #include <cinttypes>
+#include <memory>
 
 #include <cstdio>
 #include <cstdlib>
@@ -12,15 +12,17 @@
 #include <vector>
 #include <new>
 #include <chrono>
+#include "veg/internal/prologue.hpp"
 
 namespace veg {
-
-void fn::log_elapsed_time::impl(
-		i64 duration, char const* msg, std::FILE* out) noexcept {
+namespace abi {
+inline namespace VEG_ABI_VERSION {
+namespace time {
+void log_elapsed_time(i64 duration, char const* msg, std::FILE* out) noexcept {
 	i64 dt_unit[4] = {};
 
-	for (i64 i = 0; i < 4; ++i) {
-		dt_unit[i] = duration % i64(1000);
+	for (i64& i : dt_unit) {
+		i = duration % i64(1000);
 		duration /= i64(1000);
 	}
 
@@ -38,17 +40,46 @@ void fn::log_elapsed_time::impl(
 			dt_unit[0]);
 }
 auto monotonic_nanoseconds_since_epoch() noexcept -> i64 {
-	return fn::narrow<i64>{}(
+	return static_cast<i64>(
 			std::chrono::duration_cast<std::chrono::nanoseconds>(
 					std::chrono::steady_clock::now().time_since_epoch())
 					.count());
+}
+} // namespace time
+
+namespace internal {
+string::~string() {
+	std::free(self.ptr);
+}
+void string::reserve(i64 new_cap) {
+	if (new_cap > self.cap) {
+		auto* new_alloc = static_cast<char*>(std::realloc(self.ptr, new_cap));
+		if (new_alloc == nullptr) {
+			throw std::bad_alloc{};
+		}
+		self.ptr = new_alloc;
+		self.cap = new_cap;
+	}
+}
+void string::resize(i64 new_len) {
+	reserve(new_len);
+	self.len = new_len;
+}
+void string::insert(i64 pos, char const* data_, i64 len) {
+	i64 old_size = size();
+	i64 pre_new_size = len + old_size;
+	i64 new_size =
+			(pre_new_size > (2 * old_size)) ? pre_new_size : (2 * old_size);
+	resize(new_size);
+	if (len > 0) {
+		std::memmove(data() + pos + len, data() + pos, std::size_t(old_size - pos));
+		std::memmove(data() + pos, data_, std::size_t(len));
+	}
 }
 
 [[noreturn]] void terminate() noexcept {
 	std::terminate();
 }
-namespace assert {
-namespace internal {
 thread_local i64
 		counter = // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 		0;
@@ -79,34 +110,6 @@ char_string_ref::char_string_ref(char const* str) noexcept
 
 #define LIT(x)                                                                 \
 	char_string_ref { x, sizeof(x) - 1 }
-
-string::~string() {
-	std::free(self.ptr);
-}
-void string::resize(i64 new_len) {
-	if (new_len > size()) {
-		auto* new_alloc = static_cast<char*>(std::realloc(self.ptr, new_len));
-		if (new_alloc == nullptr) {
-			throw std::bad_alloc{};
-		}
-		self.ptr = new_alloc;
-	}
-	self.len = new_len;
-}
-void string::copy(char const* data, i64 len) {
-	resize(len);
-	if (len > 0) {
-		std::memmove(self.ptr, data, len);
-	}
-}
-void string::insert(i64 pos, char const* data_, i64 len) {
-	i64 old_size = size();
-	resize(len + old_size);
-	if (len > 0) {
-		std::memmove(data() + pos + len, data() + pos, std::size_t(old_size - pos));
-		std::memmove(data() + pos, data_, std::size_t(len));
-	}
-}
 
 struct color_t {
 	std::uint8_t r;
@@ -887,81 +890,18 @@ void set_assert_params2(        //
 	failed_asserts.back().callback = msg;
 }
 
-#define TO_STRING(type, fmt, arg_)                                             \
-	template <>                                                                  \
-	auto to_string_primitive_impl(type arg)->assert::internal::string {          \
-		assert::internal::string str;                                              \
-		int n = std::snprintf(nullptr, 0, "%" fmt, arg_) + 1;                      \
-		str.resize(n);                                                             \
-		std::snprintf(str.data(), str.size(), "%" fmt, arg_);                      \
-		str.resize(n - 1);                                                         \
-		return str;                                                                \
-	}                                                                            \
-	static_assert(true, "")
-
-template <typename T>
-auto to_string_primitive_impl(T arg) -> assert::internal::string;
-
-TO_STRING(long long signed, "lld", arg);
-TO_STRING(long long unsigned, "llu", arg);
-TO_STRING(long double, "Lf", arg);
-TO_STRING(
-		void const volatile*,
-		"p",
-		const_cast<void*>(arg)); // NOLINT(cppcoreguidelines-pro-type-const-cast)
-
-template <typename T>
-auto to_string_primitive(T arg) -> assert::internal::string {
-	return to_string_primitive_impl(arg);
-}
-template auto to_string_primitive(long long signed) -> assert::internal::string;
-template auto to_string_primitive(long long unsigned)
-		-> assert::internal::string;
-template auto to_string_primitive(long double) -> assert::internal::string;
-template auto to_string_primitive(void const volatile*)
-		-> assert::internal::string;
-
-} // namespace internal
-} // namespace assert
-
-namespace internal {
-namespace dynstack {
-
 auto align_next(i64 alignment, i64 size, void*& ptr, i64& space) noexcept
 		-> void* {
-	static_assert(
-			sizeof(std::uintptr_t) >= sizeof(void*),
-			"std::uintptr_t can't hold a pointer value");
-
-	using byte_ptr = unsigned char*;
-
-	// assert alignment is power of two
-	VEG_ASSERT_ALL_OF(
-			(alignment > 0), ((u64(alignment) & (u64(alignment) - 1)) == 0));
-
-	if (space < size) {
-		return nullptr;
-	}
-
-	std::uintptr_t lo_mask = alignment - 1;
-	std::uintptr_t hi_mask = ~lo_mask;
-
-	auto const intptr = reinterpret_cast<std::uintptr_t>(ptr);
-	auto* const byteptr = static_cast<byte_ptr>(ptr);
-
-	auto offset = ((intptr + alignment - 1) & hi_mask) - intptr;
-
-	if (space - size < offset) {
-		return nullptr;
-	}
-
-	void* const rv = byteptr + offset;
-
-	ptr = byteptr + (offset + size);
-	space = space - (offset + size);
-
-	return rv;
+	auto uspace = usize(space);
+	void* res = std::align(alignment, usize(size), ptr, uspace);
+	space = i64(uspace);
+	return res;
 }
-} // namespace dynstack
+auto vsnprintf(char* out, usize n, char const* fmt, va_list args) -> int {
+	return std::vsnprintf(out, n, fmt, args);
+}
 } // namespace internal
+} // namespace VEG_ABI_VERSION
+} // namespace abi
 } // namespace veg
+#include "veg/internal/epilogue.hpp"

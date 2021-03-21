@@ -10,17 +10,17 @@ endif()
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
-include(cmake/compiler_warnings.cmake)
-include(cmake/static_analyzers.cmake)
-include(cmake/sanitizers.cmake)
-include(cmake/conan.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/compiler_warnings.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/static_analyzers.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/sanitizers.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/conan.cmake)
 
 add_library(_veg_ub ${CMAKE_CURRENT_SOURCE_DIR}/src/ub.cpp)
 set_property(TARGET _veg_ub PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
 add_library(
-  veg ${CMAKE_CURRENT_SOURCE_DIR}/src/veg.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/src/alloc.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/src/argparse.cpp
+  veg
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/veg.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/alloc.cpp
 )
 target_link_libraries(veg PRIVATE _veg_ub)
 target_include_directories(veg PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -28,21 +28,20 @@ target_include_directories(veg PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 if(top_level AND ENABLE_TESTING)
   # Conan dependencies
   set(CONAN_REQUIRES # MIT License
-      fmt/7.1.2 backward-cpp/1.5 gtest/1.10.0
+      fmt/7.1.2 backward-cpp/1.5
   )
-  set(CONAN_OPTIONS gtest:build_gmock=False)
+  set(CONAN_OPTIONS)
   run_conan()
   message(STATUS ${CONAN_LIBS})
 
   target_link_libraries(veg PUBLIC CONAN_PKG::fmt)
-  include(GoogleTest)
 
   add_library(project_warnings INTERFACE)
   add_library(project_options INTERFACE)
 
   target_link_libraries(veg INTERFACE project_options project_warnings)
 
-  include(cmake/extra_local_settings.cmake)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/extra_local_settings.cmake)
 
   set_project_warnings(project_warnings)
 

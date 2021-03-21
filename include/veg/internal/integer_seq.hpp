@@ -2,6 +2,7 @@
 #define __VEG_INTEGER_SEQ_HPP_JBT0EKAQS
 
 #include "veg/internal/type_traits.hpp"
+#include "veg/internal/prologue.hpp"
 
 namespace veg {
 namespace meta {
@@ -11,7 +12,7 @@ namespace internal {
 template <typename T, T... Nums>
 struct integer_sequence;
 
-#if __VEG_HAS_BUILTIN(__make_integer_seq)
+#if VEG_HAS_BUILTIN(__make_integer_seq)
 
 template <typename T, T N>
 using make_integer_sequence = __make_integer_seq<integer_sequence, T, N>;
@@ -91,4 +92,5 @@ using index_sequence = integer_sequence<usize, Nums...>;
 } // namespace meta
 } // namespace veg
 
+#include "veg/internal/epilogue.hpp"
 #endif /* end of include guard __VEG_INTEGER_SEQ_HPP_JBT0EKAQS */

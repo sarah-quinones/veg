@@ -1,16 +1,17 @@
-#ifndef VEG_NARROW_HPP_H0EXKJTAS
-#define VEG_NARROW_HPP_H0EXKJTAS
+#ifndef __VEG_NARROW_HPP_H0EXKJTAS
+#define __VEG_NARROW_HPP_H0EXKJTAS
 
 #include "veg/assert.hpp"
+#include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace fn {
+inline namespace VEG_ABI {
+namespace niebloid {
 template <typename To>
 struct narrow {
 	VEG_TEMPLATE(
 			(typename From),
-			requires __VEG_CONCEPT(meta::arithmetic<From>) &&
-					__VEG_CONCEPT(meta::arithmetic<To>),
+			requires VEG_CONCEPT(integral<From>) && VEG_CONCEPT(integral<To>),
 			constexpr auto
 			operator(),
 			(from, From))
@@ -19,8 +20,7 @@ struct narrow {
 template <typename To>
 VEG_TEMPLATE(
 		(typename From),
-		requires __VEG_CONCEPT(meta::arithmetic<From>) &&
-				__VEG_CONCEPT(meta::arithmetic<To>),
+		requires VEG_CONCEPT(integral<From>) && VEG_CONCEPT(integral<To>),
 		constexpr auto narrow<To>::operator(),
 		(from, From))
 const noexcept -> To {
@@ -36,13 +36,15 @@ const noexcept -> To {
 				 static_cast<To>(from);
 #endif
 }
-} // namespace fn
-__VEG_IGNORE_CPP14_EXTENSION_WARNING(namespace /* NOLINT */ {
+} // namespace niebloid
+VEG_IGNORE_CPP14_EXTENSION_WARNING(namespace /* NOLINT */ {
 	template <typename To>
 	constexpr auto const& narrow =
-			::veg::meta::internal::static_const<fn::narrow<To>>::value;
+			::veg::meta::internal::static_const<niebloid::narrow<To>>::value;
 } // namespace
 )
+} // namespace VEG_ABI
 } // namespace veg
 
-#endif /* end of include guard VEG_NARROW_HPP_H0EXKJTAS */
+#include "veg/internal/epilogue.hpp"
+#endif /* end of include guard __VEG_NARROW_HPP_H0EXKJTAS */

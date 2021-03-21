@@ -1,10 +1,12 @@
-#ifndef VEG_BYTE_STRING_REF_HPP_NK1AVIX7S
-#define VEG_BYTE_STRING_REF_HPP_NK1AVIX7S
+#ifndef __VEG_BYTE_STRING_REF_HPP_NK1AVIX7S
+#define __VEG_BYTE_STRING_REF_HPP_NK1AVIX7S
 
 #include "veg/internal/type_traits.hpp"
+#include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace assert {
+namespace abi {
+inline namespace VEG_ABI_VERSION {
 namespace internal {
 struct char_string_ref {
 	HEDLEY_ALWAYS_INLINE constexpr char_string_ref(
@@ -17,14 +19,11 @@ struct char_string_ref {
 	VEG_TEMPLATE(
 			typename T,
 			requires(
-					__VEG_CONCEPT( //
-							meta::constructible<
-									char const*,
-									decltype(__VEG_DECLVAL(T const&).data())>) &&
-					__VEG_CONCEPT( //
-							meta::constructible<
-									i64,
-									decltype(__VEG_DECLVAL(T const&).size())>)),
+					VEG_CONCEPT(constructible<
+											char const*,
+											decltype(VEG_DECLVAL(T const&).data())>) &&
+					VEG_CONCEPT(
+							constructible<i64, decltype(VEG_DECLVAL(T const&).size())>)),
 
 			HEDLEY_ALWAYS_INLINE constexpr char_string_ref, // NOLINT(hicpp-explicit-conversions)
 			(arg, T const&))
@@ -60,9 +59,10 @@ namespace /* NOLINT */ {
 constexpr auto const& empty_str /* NOLINT */ =
 		byte_str_static_const<char_string_ref>::value;
 } // namespace
-
 } // namespace internal
-} // namespace assert
+} // namespace VEG_ABI_VERSION
+} // namespace abi
 } // namespace veg
 
-#endif /* end of include guard VEG_BYTE_STRING_REF_HPP_NK1AVIX7S */
+#include "veg/internal/epilogue.hpp"
+#endif /* end of include guard __VEG_BYTE_STRING_REF_HPP_NK1AVIX7S */

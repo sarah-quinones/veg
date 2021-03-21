@@ -3,8 +3,9 @@
 
 #include "veg/internal/type_traits.hpp"
 #include "veg/internal/std.hpp"
+#include "veg/internal/prologue.hpp"
 
-#if __VEG_HAS_BUILTIN(__builtin_launder) || __GNUC__ >= 7
+#if VEG_HAS_BUILTIN(__builtin_launder) || __GNUC__ >= 7
 #define VEG_LAUNDER(p) __builtin_launder(p)
 #elif __cplusplus >= 201703L
 #define VEG_LAUNDER(p) ::std::launder(p)
@@ -13,40 +14,43 @@
 #endif
 
 namespace veg {
+namespace abi {
+inline namespace VEG_ABI_VERSION {
 namespace internal {
-namespace memory {
 auto opaque_memmove(void* dest, void const* src, usize nbytes) noexcept
 		-> void*;
+} // namespace internal
 
 auto aligned_alloc(i64 align, i64 nbytes) noexcept(false) -> void*;
 void aligned_free(void* ptr, i64 nbytes) noexcept;
-} // namespace memory
-} // namespace internal
+} // namespace VEG_ABI_VERSION
+} // namespace abi
 
-namespace fn {
+inline namespace VEG_ABI {
+namespace niebloid {
 struct aligned_alloc {
 	auto operator()(i64 align, i64 nbytes) const noexcept(false) -> void* {
-		return internal::memory::aligned_alloc(align, nbytes);
+		return abi::aligned_alloc(align, nbytes);
 	}
 };
 struct aligned_free {
 	void operator()(void* ptr, i64 nbytes) const noexcept {
 		if (ptr != nullptr) {
-			internal::memory::aligned_free(ptr, nbytes);
+			abi::aligned_free(ptr, nbytes);
 		}
 	}
 };
-} // namespace fn
-__VEG_ODR_VAR(aligned_alloc, fn::aligned_alloc);
-__VEG_ODR_VAR(aligned_free, fn::aligned_free);
+} // namespace niebloid
+VEG_NIEBLOID(aligned_alloc);
+VEG_NIEBLOID(aligned_free);
 
-#if !(__VEG_HAS_BUILTIN(__builtin_addressof) || __cplusplus >= 201703L)
+#if !(VEG_HAS_BUILTIN(__builtin_addressof) || __cplusplus >= 201703L)
 
 namespace internal {
 namespace memory {
 struct member_addr {
 	template <typename T>
-	using type = decltype(void(__VEG_DECLVAL(T&).operator&()));
+	using type = decltype(void(VEG_DECLVAL(T&).operator&()));
 
 	template <typename T>
 	HEDLEY_ALWAYS_INLINE static auto apply(T& var) noexcept -> T* {
@@ -56,7 +60,7 @@ struct member_addr {
 };
 struct adl_addr : member_addr {
 	template <typename T>
-	using type = decltype(void(operator&(__VEG_DECLVAL(T&))));
+	using type = decltype(void(operator&(VEG_DECLVAL(T&))));
 };
 struct builtin_addr : std::true_type {
 	template <typename T>
@@ -87,11 +91,11 @@ struct fn_to_convertible {
 	Fn&& fn;
 	HEDLEY_ALWAYS_INLINE constexpr explicit
 	operator meta::invoke_result_t<Fn>() const
-			noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn>)) {
+			noexcept(VEG_CONCEPT(nothrow_invocable<Fn>)) {
 		return VEG_FWD(fn)();
 	}
 };
-__VEG_CPP17(
+VEG_CPP17(
 
 		template <typename Fn> fn_to_convertible(Fn&&) -> fn_to_convertible<Fn&&>;
 
@@ -99,29 +103,25 @@ __VEG_CPP17(
 } // namespace memory
 } // namespace internal
 
-namespace fn {
+namespace niebloid {
 
 struct aggregate_construct_at {
 	VEG_TEMPLATE(
 			(typename T, typename... Args),
 			requires(
-					!__VEG_CONCEPT(meta::const_<T>) &&
-					__VEG_CONCEPT(meta::uniform_init_constructible<T, Args...>)),
-			HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) auto
+					!VEG_CONCEPT(const_type<T>) &&
+					VEG_CONCEPT(brace_constructible<T, Args...>)),
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) auto
 			operator(),
 			(mem, T*),
 			(... args, Args&&))
-	const noexcept(
-			__VEG_CONCEPT(meta::nothrow_uniform_init_constructible<T, Args...>))
-			->T* {
+	const noexcept(VEG_CONCEPT(nothrow_brace_constructible<T, Args...>))->T* {
 #if __cplusplus >= 202002L
 		return ::std::construct_at(
 				mem,
 				internal::memory::fn_to_convertible{
-						[&]() noexcept(__VEG_CONCEPT(
-								meta::nothrow_uniform_init_constructible<T, Args...>)) -> T {
-							return T{VEG_FWD(args)...};
-						}});
+						[&]() noexcept(VEG_CONCEPT(nothrow_brace_constructible<T, Args...>))
+								-> T { return T{VEG_FWD(args)...}; }});
 #else
 		return new (mem) T{VEG_FWD(args)...};
 #endif
@@ -132,13 +132,13 @@ struct construct_at {
 	VEG_TEMPLATE(
 			(typename T, typename... Args),
 			requires(
-					!__VEG_CONCEPT(meta::const_<T>) &&
-					__VEG_CONCEPT(meta::constructible<T, Args...>)),
-			HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) auto
+					!VEG_CONCEPT(const_type<T>) &&
+					VEG_CONCEPT(constructible<T, Args...>)),
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) auto
 			operator(),
 			(mem, T*),
 			(... args, Args&&))
-	const noexcept(__VEG_CONCEPT(meta::nothrow_constructible<T, Args...>))->T* {
+	const noexcept(VEG_CONCEPT(nothrow_constructible<T, Args...>))->T* {
 #if __cplusplus >= 202002L
 		return ::std::construct_at(mem, VEG_FWD(args)...);
 #else
@@ -151,22 +151,22 @@ struct construct_with {
 	VEG_TEMPLATE(
 			(typename T, typename Fn, typename... Args),
 			requires(
-					!__VEG_CONCEPT(meta::const_<T>) &&
-					__VEG_CONCEPT(meta::invocable<Fn, Args...>) &&
-					__VEG_SAME_AS(T, (meta::invoke_result_t<Fn, Args...>))),
-			HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) auto
+					!VEG_CONCEPT(const_type<T>) && VEG_CONCEPT(invocable<Fn, Args...>) &&
+					VEG_SAME_AS(T, (meta::invoke_result_t<Fn, Args...>))),
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) auto
 			operator(),
 			(mem, T*),
 			(fn, Fn&&),
 			(... args, Args&&))
-	const noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn, Args...>))->T* {
+	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args...>))->T* {
 #if __cplusplus >= 202002L
 
 		return ::std::construct_at(
 				mem,
 				internal::memory::fn_to_convertible{
-						[&]() noexcept(__VEG_CONCEPT(meta::nothrow_invocable<Fn, Args...>))
-								-> T { return invoke{}(VEG_FWD(fn), VEG_FWD(args)...); }}
+						[&]() noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args...>)) -> T {
+							return invoke{}(VEG_FWD(fn), VEG_FWD(args)...);
+						}}
 
 		);
 #else
@@ -178,8 +178,8 @@ struct construct_with {
 struct destroy_at {
 	VEG_TEMPLATE(
 			(typename T, typename... Args),
-			requires !__VEG_CONCEPT(meta::void_<T>),
-			HEDLEY_ALWAYS_INLINE __VEG_CPP20(constexpr) void
+			requires !VEG_CONCEPT(void_type<T>),
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(mem, T*))
 	const noexcept { mem->~T(); }
@@ -191,7 +191,7 @@ struct addressof {
 
 	template <typename T>
 	HEDLEY_ALWAYS_INLINE constexpr auto operator()(T& var) const noexcept -> T* {
-#if __VEG_HAS_BUILTIN(__builtin_addressof)
+#if VEG_HAS_BUILTIN(__builtin_addressof)
 
 		return __builtin_addressof(var);
 
@@ -206,14 +206,15 @@ struct addressof {
 #endif
 	}
 };
-} // namespace fn
+} // namespace niebloid
 
-__VEG_ODR_VAR(aggregate_construct_at, fn::aggregate_construct_at);
-__VEG_ODR_VAR(construct_at, fn::construct_at);
-__VEG_ODR_VAR(construct_with, fn::construct_with);
-__VEG_ODR_VAR(destroy_at, fn::destroy_at);
-__VEG_ODR_VAR(addressof, fn::addressof);
-
+VEG_NIEBLOID(aggregate_construct_at);
+VEG_NIEBLOID(construct_at);
+VEG_NIEBLOID(construct_with);
+VEG_NIEBLOID(destroy_at);
+VEG_NIEBLOID(addressof);
+} // namespace VEG_ABI
 } // namespace veg
 
+#include "veg/internal/epilogue.hpp"
 #endif /* end of include guard __VEG_NEW_HPP_43XG2FSKS */

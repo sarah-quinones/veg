@@ -1,5 +1,5 @@
-#ifndef DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS
-#define DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS
+#ifndef __VEG_DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS
+#define __VEG_DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS
 
 #include "veg/internal/meta_int.hpp"
 #include "veg/internal/type_traits.hpp"
@@ -8,28 +8,36 @@
 #include "veg/internal/memory.hpp"
 #include "veg/option.hpp"
 #include "veg/internal/narrow.hpp"
+#include "veg/internal/prologue.hpp"
 
 namespace veg {
+namespace abi {
+inline namespace VEG_ABI_VERSION {
+namespace internal {
+auto align_next(i64 alignment, i64 size, void*& ptr, i64& space) noexcept
+		-> void*;
+}
+} // namespace VEG_ABI_VERSION
+} // namespace abi
+
+inline namespace VEG_ABI {
 namespace internal {
 namespace dynstack {
 
 struct cleanup;
 struct dynamic_alloc_base;
 
-auto align_next(i64 alignment, i64 size, void*& ptr, i64& space) noexcept
-		-> void*;
-
 struct default_init_fn {
 	template <typename T>
 	auto make(void* ptr, i64 len) -> T* {
-		return new (ptr) T[fn::narrow<usize>{}(len)];
+		return new (ptr) T[static_cast<usize>(len)];
 	}
 };
 
 struct zero_init_fn {
 	template <typename T>
 	auto make(void* ptr, i64 len) -> T* {
-		return new (ptr) T[fn::narrow<usize>{}(len)]{};
+		return new (ptr) T[static_cast<usize>(len)]{};
 	}
 };
 
@@ -37,7 +45,7 @@ struct no_init_fn {
 	template <typename T>
 	auto make(void* ptr, i64 len) -> T* {
 		return VEG_LAUNDER(static_cast<T*>(static_cast<void*>(
-				new (ptr) unsigned char[fn::narrow<usize>{}(len) * sizeof(T)])));
+				new (ptr) unsigned char[static_cast<usize>(len) * sizeof(T)])));
 	}
 };
 
@@ -60,13 +68,12 @@ public:
 
 	VEG_TEMPLATE(
 			(typename T),
-			requires __VEG_CONCEPT(meta::constructible<T>),
+			requires VEG_CONCEPT(constructible<T>),
 			VEG_NODISCARD auto make_new,
 			(/*unused*/, tag_t<T>),
 			(len, i64),
 			(align = alignof(T), i64))
-	noexcept(__VEG_CONCEPT(meta::nothrow_constructible<T>))
-			-> option<dynstack_array<T>> {
+	noexcept(VEG_CONCEPT(nothrow_constructible<T>)) -> option<dynstack_array<T>> {
 		dynstack_array<T> get{
 				*this, len, align, internal::dynstack::zero_init_fn{}};
 		if (get.data() == nullptr) {
@@ -77,14 +84,13 @@ public:
 
 	VEG_TEMPLATE(
 			(typename T),
-			requires __VEG_CONCEPT(meta::constructible<T>),
+			requires VEG_CONCEPT(constructible<T>),
 			VEG_NODISCARD auto make_new_for_overwrite,
 			(/*unused*/, tag_t<T>),
 			(len, i64),
 			(align = alignof(T), i64))
 
-	noexcept(__VEG_CONCEPT(meta::nothrow_constructible<T>))
-			-> option<dynstack_array<T>> {
+	noexcept(VEG_CONCEPT(nothrow_constructible<T>)) -> option<dynstack_array<T>> {
 		dynstack_array<T> get{
 				*this, len, align, internal::dynstack::default_init_fn{}};
 		if (get.data() == nullptr) {
@@ -151,7 +157,7 @@ struct dynamic_alloc_base {
 					parent_stack_data == data_end,
 					parent_stack_data >= old_position);
 
-			parent.stack_bytes += fn::narrow<i64>{}(
+			parent.stack_bytes += niebloid::narrow<i64>{}(
 					static_cast<unsigned char*>(parent.stack_data) -
 					static_cast<unsigned char*>(old_pos));
 			parent.stack_data = old_pos;
@@ -197,15 +203,15 @@ private:
 			dynamic_stack_view& parent_ref,
 			i64 alloc_size,
 			i64 align,
-			Fn fn) noexcept(__VEG_CONCEPT(meta::nothrow_constructible<T>))
+			Fn fn) noexcept(VEG_CONCEPT(nothrow_constructible<T>))
 			: base{parent_ref, parent_ref.stack_data} {
 
 		void* const parent_data = parent_ref.stack_data;
 		i64 const parent_bytes = parent_ref.stack_bytes;
 
-		void* const data = internal::dynstack::align_next(
+		void* const data = abi::internal::align_next(
 				align,
-				alloc_size * fn::narrow<i64>{}(sizeof(T)),
+				alloc_size * i64{sizeof(T)},
 				parent_ref.stack_data,
 				parent_ref.stack_bytes);
 
@@ -243,7 +249,7 @@ public:
 
 	~dynstack_array() {
 		for (i64 i = this->dynstack_alloc<T>::base::len - 1; i >= 0; --i) {
-			fn::destroy_at{}(this->data() + i);
+			destroy_at(this->data() + i);
 		}
 	}
 
@@ -251,7 +257,9 @@ private:
 	using dynstack_alloc<T>::dynstack_alloc;
 	friend struct dynamic_stack_view;
 };
-
+} // namespace VEG_ABI
 } // namespace veg
 
-#endif /* end of include guard DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS */
+#include "veg/internal/epilogue.hpp"
+#endif /* end of include guard __VEG_DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS \
+        */
