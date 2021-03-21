@@ -64,7 +64,7 @@ auto to_string(T const& arg) -> abi::internal::string {
 
 	{
 		abi::internal::incr_counter();
-		auto&& cleanup = make::defer([&] { abi::internal::decr_counter(); });
+		auto&& cleanup = make::defer(abi::internal::decr_counter);
 		(void)cleanup;
 		veg::fmt::debug<T>::to_string(buf, arg);
 	}
