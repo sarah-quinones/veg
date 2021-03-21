@@ -8,7 +8,7 @@ namespace veg {
 namespace abi {
 inline namespace VEG_ABI_VERSION {
 namespace fn {
-union fn_view_state {
+union state_ptr {
 	void* ptr;
 	void (*fn)();
 };
@@ -18,15 +18,15 @@ struct raw_parts;
 
 template <typename Ret, typename... Args>
 struct raw_parts<Ret(Args...)> {
-	fn_view_state state;
-	auto (*func_ptr)(fn_view_state, Args...) -> Ret;
+	state_ptr state;
+	auto (*fn_ptr)(state_ptr, Args...) -> Ret;
 };
 
 #if __cplusplus >= 201703L
 template <typename Ret, typename... Args>
 struct raw_parts<Ret(Args...) noexcept> {
-	fn_view_state state;
-	auto (*func_ptr)(fn_view_state, Args...) noexcept -> Ret;
+	state_ptr state;
+	auto (*fn_ptr)(state_ptr, Args...) noexcept -> Ret;
 };
 #endif
 } // namespace fn
@@ -105,20 +105,19 @@ struct fn_view_impl;
 
 template <>
 struct fn_view_impl<fn_kind_e::fn_obj> {
-	template <typename State, typename Fn>
-	HEDLEY_ALWAYS_INLINE static auto address(Fn& arg) noexcept -> State {
+	template <typename Fn>
+	HEDLEY_ALWAYS_INLINE static auto address(Fn& arg) noexcept -> state_ptr {
 		using char_ref = char&;
 		using vptr = void*;
 		using ptr = Fn*;
 		return {ptr(vptr(&char_ref(arg)))};
 	}
-	template <typename State>
-	HEDLEY_ALWAYS_INLINE static auto is_null(State /*arg*/) noexcept -> bool {
+	HEDLEY_ALWAYS_INLINE static auto is_null(state_ptr /*arg*/) noexcept -> bool {
 		return false;
 	}
 
-	template <typename State, typename Fn, typename Ret, typename... Args>
-	HEDLEY_ALWAYS_INLINE static auto call(State state, Args... args) noexcept(
+	template <typename Fn, typename Ret, typename... Args>
+	HEDLEY_ALWAYS_INLINE static auto call(state_ptr state, Args... args) noexcept(
 			VEG_CONCEPT(nothrow_invocable<Fn&&, Args&&...>)) -> Ret {
 		return discard_void<Ret>::apply(
 				VEG_FWD(*static_cast<meta::uncvref_t<Fn>*>(state.ptr)),
@@ -127,19 +126,18 @@ struct fn_view_impl<fn_kind_e::fn_obj> {
 };
 template <>
 struct fn_view_impl<fn_kind_e::fn_ptr> {
-	template <typename State, typename Fn>
-	HEDLEY_ALWAYS_INLINE static auto address(Fn& arg) noexcept -> State {
-		State rv;
+	template <typename Fn>
+	HEDLEY_ALWAYS_INLINE static auto address(Fn& arg) noexcept -> state_ptr {
+		state_ptr rv;
 		rv.fn = reinterpret_cast<void (*)()>(+arg);
 		return rv;
 	}
-	template <typename State>
-	HEDLEY_ALWAYS_INLINE static auto is_null(State arg) noexcept -> bool {
+	HEDLEY_ALWAYS_INLINE static auto is_null(state_ptr arg) noexcept -> bool {
 		return arg.fn == nullptr;
 	}
 
-	template <typename State, typename Fn, typename Ret, typename... Args>
-	HEDLEY_ALWAYS_INLINE static auto call(State state, Args... args) noexcept(
+	template <typename Fn, typename Ret, typename... Args>
+	HEDLEY_ALWAYS_INLINE static auto call(state_ptr state, Args... args) noexcept(
 			VEG_CONCEPT(nothrow_invocable<Fn&&, Args&&...>)) -> Ret {
 		return discard_void<Ret>::apply(
 				reinterpret_cast<decltype(+VEG_DECLVAL(Fn&))>(state.fn),
@@ -158,10 +156,10 @@ struct function_ref_impl {
 	HEDLEY_ALWAYS_INLINE
 	function_ref_impl(char /*unused*/, char /*unused*/, Fn&& fn) noexcept
 			: self{
+						fnref::fn_view_impl<
+								fnref::fn_kind<meta::decay_t<Fn>>::value>::address(fn),
 						fnref::fn_view_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::
-								template address<fn_view_state>(fn),
-						fnref::fn_view_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::
-								template call<fn_view_state, Fn, Ret, Args...>,
+								template call<Fn, Ret, Args...>,
 				} {
 		bool null_fn_ptr =
 				fnref::fn_view_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::is_null(
@@ -174,9 +172,9 @@ struct function_ref_impl {
 
 	HEDLEY_ALWAYS_INLINE
 	auto call_fn(Args... args) const noexcept(No_Except) -> Ret {
-		void* fn_ptr = reinterpret_cast<void*>(self.func_ptr);
+		void* fn_ptr = reinterpret_cast<void*>(self.fn_ptr);
 		VEG_INTERNAL_ASSERT(fn_ptr != nullptr);
-		return self.func_ptr(self.state, VEG_FWD(args)...);
+		return self.fn_ptr(self.state, VEG_FWD(args)...);
 	}
 
 	template <fnref::fn_kind_e>
@@ -224,7 +222,7 @@ public:
 
 			HEDLEY_ALWAYS_INLINE fn_view /* NOLINT */ (
 					fn_view<Ret(Args...) noexcept> fn) noexcept
-			: base({}, {fn.self.state, fn.self.func_ptr}){}
+			: base({}, {fn.self.state, fn.self.fn_ptr}){}
 
 	)
 
@@ -275,12 +273,12 @@ public:
 
 			HEDLEY_ALWAYS_INLINE once_fn_view /* NOLINT */ (
 					fn_view<Ret(Args...) noexcept> fn) noexcept
-			: base({}, {fn.self.state, fn.self.func_ptr}){}
+			: base({}, {fn.self.state, fn.self.fn_ptr}){}
 
 	)
 	HEDLEY_ALWAYS_INLINE
 	once_fn_view /* NOLINT */ (fn_view<Ret(Args...)> fn) noexcept
-			: base({}, {fn.self.state, fn.self.func_ptr}) {}
+			: base({}, {fn.self.state, fn.self.fn_ptr}) {}
 
 	HEDLEY_ALWAYS_INLINE
 	auto operator()(Args... args) const&& -> Ret {
@@ -368,7 +366,7 @@ public:
 
 	HEDLEY_ALWAYS_INLINE
 	once_fn_view /* NOLINT */ (fn_view<Ret(Args...) noexcept> fn) noexcept
-			: base({}, {fn.self.state, fn.self.func_ptr}) {}
+			: base({}, {fn.self.state, fn.self.fn_ptr}) {}
 
 	HEDLEY_ALWAYS_INLINE
 	auto operator()(Args... args) const&& noexcept -> Ret {
@@ -388,7 +386,7 @@ struct meta::value_sentinel_for<fn::fn_view<T>>
 	}
 	HEDLEY_ALWAYS_INLINE
 	static constexpr auto id(fn::fn_view<T> arg) -> i64 {
-		return arg.self.func_ptr == nullptr ? 0 : -1;
+		return arg.self.fn_ptr == nullptr ? 0 : -1;
 	}
 };
 template <typename T>
@@ -401,7 +399,7 @@ struct meta::value_sentinel_for<fn::once_fn_view<T>>
 	}
 	HEDLEY_ALWAYS_INLINE
 	static constexpr auto id(fn::once_fn_view<T> arg) -> i64 {
-		return arg.self.func_ptr == nullptr ? 0 : -1;
+		return arg.self.fn_ptr == nullptr ? 0 : -1;
 	}
 };
 } // namespace VEG_ABI
