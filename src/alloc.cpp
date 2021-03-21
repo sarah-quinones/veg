@@ -14,6 +14,7 @@ namespace internal {
 
 } // namespace internal
 
+namespace mem {
 auto aligned_alloc(i64 align, i64 nbytes) -> void* {
 	void* p = ::aligned_alloc(usize(align), usize(nbytes));
 	if (p == nullptr) {
@@ -32,8 +33,8 @@ auto aligned_realloc(void* ptr, i64 align, i64 nbytes_old, i64 nbytes_new)
 		return p;
 	}
 
-	void* out = abi::aligned_alloc(nbytes_new, align);
-	abi::aligned_free(ptr, nbytes_old);
+	void* out = abi::mem::aligned_alloc(nbytes_new, align);
+	abi::mem::aligned_free(ptr, nbytes_old);
 	return out;
 }
 
@@ -41,7 +42,7 @@ void aligned_free(void* ptr, i64 nbytes) noexcept {
 	(void)nbytes;
 	std::free(ptr);
 }
-
+} // namespace mem
 } // namespace VEG_ABI_VERSION
 } // namespace abi
 } // namespace veg

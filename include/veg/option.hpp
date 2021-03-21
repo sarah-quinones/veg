@@ -125,7 +125,9 @@ struct do_if {
 
 struct make_none { // NOLINT
 	unsigned char* c;
-	VEG_CPP20(constexpr) void operator()() const noexcept { construct_at(c); }
+	VEG_CPP20(constexpr) void operator()() const noexcept {
+		mem::construct_at(c);
+	}
 };
 
 template <typename T>
@@ -325,8 +327,9 @@ struct option_storage_base_option_emplace<false> {
 			Fn&& fn,
 			Args&&... args) noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args...>)) {
 		VEG_INTERNAL_ASSERT(!self.is_engaged());
-		// destroy_at(addressof(self.some)); // no-op
-		construct_with(addressof(self.some), VEG_FWD(fn), VEG_FWD(args)...);
+		// mem::destroy_at(mem::addressof(self.some)); // no-op
+		mem::construct_with(
+				mem::addressof(self.some), VEG_FWD(fn), VEG_FWD(args)...);
 	}
 
 	template <typename Inner, typename T, typename... Args>
@@ -334,7 +337,7 @@ struct option_storage_base_option_emplace<false> {
 	VEG_CPP14(constexpr) static void apply2(T& self, Args&&... args) noexcept(
 			VEG_CONCEPT(nothrow_constructible<Inner, Args&&...>)) {
 		VEG_INTERNAL_ASSERT(!self.is_engaged());
-		construct_at(addressof(self.some), VEG_FWD(args)...);
+		mem::construct_at(mem::addressof(self.some), VEG_FWD(args)...);
 	}
 };
 
@@ -488,9 +491,9 @@ struct
 	HEDLEY_ALWAYS_INLINE
 	VEG_CPP20(constexpr) ~option_storage_nontrivial_base() {
 		if (engaged == 1) {
-			destroy_at(addressof(some));
+			mem::destroy_at(mem::addressof(some));
 		} else {
-			destroy_at(addressof(none));
+			mem::destroy_at(mem::addressof(none));
 		}
 	}
 };
@@ -517,10 +520,13 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
 			VEG_CONCEPT(nothrow_invocable<Fn&&, Args&&...>)) {
 		VEG_INTERNAL_ASSERT(!is_engaged());
 
-		defer<do_if<make_none>> guard{{true, {addressof(none)}}};
+		defer<do_if<make_none>> guard{{true, {mem::addressof(none)}}};
 
-		construct_at(
-				addressof(some), storage::hidden_tag1{}, VEG_FWD(fn), VEG_FWD(args)...);
+		mem::construct_at(
+				mem::addressof(some),
+				storage::hidden_tag1{},
+				VEG_FWD(fn),
+				VEG_FWD(args)...);
 
 		guard.fn.cond = false;
 		set_engaged(true);
@@ -532,9 +538,10 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
 			VEG_CONCEPT(nothrow_constructible<T, Args&&...>)) {
 		VEG_INTERNAL_ASSERT(!is_engaged());
 
-		defer<do_if<make_none>> guard{{true, {addressof(none)}}};
+		defer<do_if<make_none>> guard{{true, {mem::addressof(none)}}};
 
-		construct_at(addressof(some), storage::hidden_tag0{}, VEG_FWD(args)...);
+		mem::construct_at(
+				mem::addressof(some), storage::hidden_tag0{}, VEG_FWD(args)...);
 
 		guard.fn.cond = false;
 		set_engaged(true);
@@ -543,8 +550,8 @@ struct option_storage_base<T, non_trivial> : option_storage_nontrivial_base<T> {
 	HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void destroy() noexcept {
 		VEG_INTERNAL_ASSERT(is_engaged());
 		set_engaged(false);
-		defer<make_none> guard{{addressof(none)}};
-		destroy_at(addressof(some));
+		defer<make_none> guard{{mem::addressof(none)}};
+		mem::destroy_at(mem::addressof(some));
 	}
 
 	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto _get() const& noexcept
@@ -800,7 +807,7 @@ struct option_move_ctor_base2
 			(typename Fn, typename... Args),
 			requires(
 					VEG_CONCEPT(invocable<Fn, Args...>) &&
-					VEG_SAME_AS(T, (meta::invoke_result_t<Fn, Args...>))),
+					VEG_CONCEPT(same<T, meta::invoke_result_t<Fn, Args...>>)),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) option_move_ctor_base2,
 
 			(/*tag*/, some_t),
@@ -829,7 +836,7 @@ struct option_move_ctor_base2<T&, true>
 			(typename Fn, typename... Args),
 			requires(
 					VEG_CONCEPT(invocable<Fn, Args...>) &&
-					VEG_SAME_AS(T, (meta::invoke_result_t<Fn, Args...>))),
+					VEG_CONCEPT(same<T, meta::invoke_result_t<Fn, Args...>>)),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) option_move_ctor_base2,
 
 			(/*tag*/, some_t),
@@ -848,7 +855,7 @@ struct option_move_ctor_base2<T, false> : option_move_assign_base<T> {
 			(typename Fn, typename... Args),
 			requires(
 					VEG_CONCEPT(invocable<Fn, Args...>) &&
-					VEG_SAME_AS(T, (meta::invoke_result_t<Fn, Args...>))),
+					VEG_CONCEPT(same<T, meta::invoke_result_t<Fn, Args...>>)),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) option_move_ctor_base2,
 
 			(/*tag*/, some_t),
@@ -1046,7 +1053,7 @@ struct VEG_NODISCARD option
 
 	using internal::option_::option_move_ctor_base2<T>::option_move_ctor_base2;
 	option() = default;
-	VEG_DEFAULTS(option);
+	VEG_DEFAULT_CTOR_ASSIGN(option);
 
 	VEG_CPP14(constexpr)
 	option // NOLINT(hicpp-explicit-conversions)
@@ -1073,7 +1080,7 @@ struct VEG_NODISCARD option
 			(typename Fn, typename... Args),
 			requires(
 					(VEG_CONCEPT(invocable<Fn, Args...>) &&
-	         VEG_SAME_AS(T, (meta::invoke_result_t<Fn, Args...>)))),
+	         VEG_CONCEPT(same<T, meta::invoke_result_t<Fn, Args...>>))),
 			VEG_CPP14(constexpr) void emplace_with,
 			(fn, Fn),
 			(... args, Args)) &
@@ -1137,8 +1144,8 @@ struct VEG_NODISCARD option
 			requires(
 					(VEG_CONCEPT(invocable<Fn, T>) && //
 	         VEG_CONCEPT(invocable<D>) &&     //
-	         VEG_SAME_AS(
-							 (meta::invoke_result_t<Fn, T>), (meta::invoke_result_t<D>)))),
+	         VEG_CONCEPT(
+							 same<meta::invoke_result_t<Fn, T>, meta::invoke_result_t<D>>))),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto map_or_else,
 			(fn, Fn&&),
 			(d, D&&)) &&
@@ -1177,8 +1184,9 @@ struct VEG_NODISCARD option
 
 	VEG_TEMPLATE(
 			(typename Fn),
-			requires VEG_CONCEPT(invocable<Fn>) &&
-					VEG_SAME_AS((meta::invoke_result_t<Fn>), veg::option<T>),
+			requires(
+					VEG_CONCEPT(invocable<Fn>) &&
+					VEG_CONCEPT(same<veg::option<T>, meta::invoke_result_t<Fn>>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto or_else,
 			(fn, Fn&&)) &&
 

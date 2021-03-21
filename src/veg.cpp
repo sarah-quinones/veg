@@ -14,38 +14,21 @@
 #include <chrono>
 #include "veg/internal/prologue.hpp"
 
+#ifdef __unix__
+#include <unistd.h>
+
+#define ISATTY ::isatty
+#define FILENO ::fileno
+#else
+#include <io.h>
+
+#define ISATTY ::_isatty
+#define FILENO ::_fileno
+#endif
+
 namespace veg {
 namespace abi {
 inline namespace VEG_ABI_VERSION {
-namespace time {
-void log_elapsed_time(i64 duration, char const* msg, std::FILE* out) noexcept {
-	i64 dt_unit[4] = {};
-
-	for (i64& i : dt_unit) {
-		i = duration % i64(1000);
-		duration /= i64(1000);
-	}
-
-	std::fprintf(
-			out,
-			"done: %s: "
-			"%3" PRId64 "s "
-			"%3" PRId64 "ms "
-			"%3" PRId64 "µs "
-			"%3" PRId64 "ns\n",
-			msg,
-			dt_unit[3],
-			dt_unit[2],
-			dt_unit[1],
-			dt_unit[0]);
-}
-auto monotonic_nanoseconds_since_epoch() noexcept -> i64 {
-	return static_cast<i64>(
-			std::chrono::duration_cast<std::chrono::nanoseconds>(
-					std::chrono::steady_clock::now().time_since_epoch())
-					.count());
-}
-} // namespace time
 
 namespace internal {
 string::~string() {
@@ -123,7 +106,10 @@ constexpr color_t azure = {240, 255, 255};
 constexpr color_t gray = {128, 128, 128};
 
 auto with_color(color_t c, std::string s) -> std::string {
-	s = "\x1b[38;2;000;000;000m" + std::move(s) + "\x1b[0m";
+	if (!ISATTY(FILENO(stderr))) {
+		return s;
+	}
+	s = "\x1b[38;2;000;000;000m" + VEG_FWD(s) + "\x1b[0m";
 
 	size_t i = 7;
 	s[i++] = '0' + c.r / 100;
@@ -357,7 +343,7 @@ struct parse_type_result_t {
 	bool multiline = false;
 };
 
-auto parse_type_loop(char_string_ref& code_str) -> parse_type_result_t {
+auto parse_type(char_string_ref& code_str) -> parse_type_result_t {
 
 	constexpr token_t newline = {{"\n", 1}, whitespace};
 	constexpr token_t indent = {{"| ", 2}, whitespace};
@@ -531,11 +517,7 @@ auto parse_type_loop(char_string_ref& code_str) -> parse_type_result_t {
 		state->entering = false;
 		state->token = token;
 	}
-	std::terminate();
-}
-
-auto parse_type(char_string_ref& code_str) -> parse_type_result_t {
-	return parse_type_loop(code_str);
+	terminate();
 }
 
 auto to_owned(char_string_ref ref) -> std::string {

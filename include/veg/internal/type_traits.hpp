@@ -466,31 +466,6 @@ struct invoke_result
 template <typename Fn, typename... Args>
 using invoke_result_t = typename invoke_result<Fn, Args...>::type;
 
-namespace internal {
-
-template <typename A, typename B>
-using cmp_eq = decltype(
-		void(static_cast<bool>(VEG_DECLVAL(A const&) == VEG_DECLVAL(B const&))));
-template <typename A, typename B>
-using cmp_lt = decltype(
-		void(static_cast<bool>(VEG_DECLVAL(A const&) < VEG_DECLVAL(B const&))));
-
-template <typename A, typename B>
-struct equality_comparable_impl
-		: bool_constant<
-					(VEG_SAME_AS(A, B) || (!std::is_enum<A>::value &&   //
-                                 !std::is_enum<B>::value)) && //
-					is_detected<cmp_eq, A, B>::value> {};
-
-template <typename A, typename B>
-struct less_than_comparable_impl
-		: bool_constant<
-					(VEG_SAME_AS(A, B) || (!std::is_enum<A>::value &&   //
-                                 !std::is_enum<B>::value)) && //
-					is_detected<cmp_lt, A, B>::value> {};
-
-} // namespace internal
-
 template <typename T>
 struct value_sentinel_for : std::integral_constant<i64, 0> {
 	static VEG_CPP14(constexpr) void invalid(i64 /*unused*/) noexcept;
@@ -524,7 +499,7 @@ VEG_DEF_CONCEPT(
       VEG_DEF_CONCEPT_FROM_BUILTIN_OR_STD  ((typename T, typename U), same, T, U);
       VEG_DEF_CONCEPT_FROM_BUILTIN_OR_STD  ((typename Derived, typename Base), base_of, Derived, Base);
 
-      VEG_DEF_CONCEPT(typename T, void_type, VEG_SAME_AS(T const volatile, void const volatile));
+      VEG_DEF_CONCEPT(typename T, void_type, VEG_CONCEPT(same<T const volatile, void const volatile>));
       VEG_DEF_CONCEPT_FROM_BUILTIN_OR_TRAIT(typename T, const_type, is_const, T);
 
       VEG_DEF_CONCEPT(typename T, scalar, std::is_scalar<T>::value);
@@ -559,11 +534,9 @@ VEG_DEF_CONCEPT(
       VEG_DEF_CONCEPT((typename Fn, typename... Args), invocable, VEG_CONCEPT(detected<meta::internal::call_expr, Fn, Args&&...>));
       VEG_DEF_CONCEPT((typename Fn, typename... Args), nothrow_invocable, VEG_CONCEPT(detected<meta::internal::nothrow_call_expr, Fn, Args&&...>));
 
-      VEG_DEF_CONCEPT_CONJUNCTION(typename T, signed_integral, ((integral<T>), (signed_type<T>)));
-      VEG_DEF_CONCEPT_CONJUNCTION(typename T, unsigned_integral, ((integral<T>), (unsigned_type<T>)));
-      VEG_DEF_CONCEPT_DISJUNCTION(typename T, arithmetic, ((integral<T>), (floating_point<T>)));
-
-      VEG_DEF_CONCEPT(typename T, bounded_array, meta::is_bounded_array<T>::value);
+      VEG_DEF_CONCEPT_CONJUNCTION(typename T, signed_integral, ((, integral<T>), (, signed_type<T>)));
+      VEG_DEF_CONCEPT_CONJUNCTION(typename T, unsigned_integral, ((, integral<T>), (, unsigned_type<T>)));
+      VEG_DEF_CONCEPT_DISJUNCTION(typename T, arithmetic, ((, integral<T>), (, floating_point<T>)));
 // clang-format on
 
 } // namespace concepts
@@ -575,8 +548,8 @@ struct invoke {
 			requires(VEG_CONCEPT(invocable<Fn, Args&&...>)),
 			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
-			(fn, Fn),
-			(... args, Args))
+			(fn, Fn&&),
+			(... args, Args&&))
 	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>))
 			->meta::invoke_result_t<Fn, Args&&...> {
 		return VEG_FWD(fn)(VEG_FWD(args)...);
@@ -638,6 +611,33 @@ namespace { // NOLINT(cert-dcl59-cpp)
 constexpr auto const& unsafe /* NOLINT */ = internal::make_unsafe<void>::value;
 } // namespace
 VEG_INLINE_VAR(safe, safe_t);
+
+namespace meta {
+namespace internal {
+
+template <typename A, typename B>
+using cmp_eq = decltype(
+		void(static_cast<bool>(VEG_DECLVAL(A const&) == VEG_DECLVAL(B const&))));
+template <typename A, typename B>
+using cmp_lt = decltype(
+		void(static_cast<bool>(VEG_DECLVAL(A const&) < VEG_DECLVAL(B const&))));
+
+template <typename A, typename B>
+struct equality_comparable_impl
+		: bool_constant<
+					(VEG_CONCEPT(same<A, B>) || (!std::is_enum<A>::value &&   //
+                                       !std::is_enum<B>::value)) && //
+					is_detected<cmp_eq, A, B>::value> {};
+
+template <typename A, typename B>
+struct less_than_comparable_impl
+		: bool_constant<
+					(VEG_CONCEPT(same<A, B>) || (!std::is_enum<A>::value &&   //
+                                       !std::is_enum<B>::value)) && //
+					is_detected<cmp_lt, A, B>::value> {};
+
+} // namespace internal
+} // namespace meta
 
 namespace concepts {
 VEG_DEF_CONCEPT(
@@ -713,15 +713,15 @@ VEG_DEF_CONCEPT(
 VEG_DEF_CONCEPT_CONJUNCTION(
 		(typename U, typename V),
 		move_swappable,
-		((same<U, V>),
-     (lvalue_reference<U>),
-     (move_constructible<unref_t<U>>),
-     (move_assignable<unref_t<U>>)));
+		((, same<U, V>),
+     (, lvalue_reference<U>),
+     (, move_constructible<unref_t<U>>),
+     (, move_assignable<unref_t<U>>)));
 
 VEG_DEF_CONCEPT_DISJUNCTION(
 		(typename U, typename V),
 		swappable,
-		((adl_swappable<U, V>), (move_swappable<U, V>)));
+		((, adl_swappable<U, V>), (, move_swappable<U, V>)));
 
 VEG_DEF_CONCEPT(
 		(typename U, typename V),
@@ -888,11 +888,15 @@ struct has_adl_get : meta::is_detected<
 } // namespace meta
 
 namespace concepts {
-VEG_DEF_CONCEPT_BOOL_CONJUNCTION(
+namespace aux {
+VEG_DEF_CONCEPT((usize I, usize N), less_than, (I < N));
+VEG_DEF_CONCEPT(typename T, bounded_array, meta::is_bounded_array<T>::value);
+} // namespace aux
+VEG_DEF_CONCEPT_CONJUNCTION(
 		(usize I, typename T),
 		array_gettable,
-		((meta::is_bounded_array<uncvref_t<T>>::value),
-     ((I < meta::array_extent<uncvref_t<T>>::value))));
+		((aux::, bounded_array<uncvref_t<T>>),
+     (aux::, less_than<I, meta::array_extent<uncvref_t<T>>::value>)));
 VEG_DEF_CONCEPT(
 		(usize I, typename T),
 		member_gettable,
@@ -911,9 +915,9 @@ VEG_DEF_CONCEPT(
 VEG_DEF_CONCEPT_DISJUNCTION(
 		(usize I, typename T),
 		gettable,
-		((array_gettable<I, T>), //
-     (member_gettable<I, T>),
-     (adl_gettable<I, T>)));
+		((, array_gettable<I, T>), //
+     (, member_gettable<I, T>),
+     (, adl_gettable<I, T>)));
 } // namespace concepts
 
 namespace niebloid {
@@ -1025,7 +1029,7 @@ namespace concepts {
 VEG_DEF_CONCEPT(
 		typename T,
 		meta_int,
-		VEG_SAME_AS(T, int_c::dyn) || meta::internal::is_fix<T>::value);
+		VEG_CONCEPT(same<T, int_c::dyn>) || meta::internal::is_fix<T>::value);
 } // namespace concepts
 } // namespace VEG_ABI
 } // namespace veg

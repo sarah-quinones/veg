@@ -182,9 +182,9 @@ public:
 
 	auto operator=(dynstack_alloc const&) -> dynstack_alloc& = delete;
 	auto operator=(dynstack_alloc&& rhs) noexcept -> dynstack_alloc& {
-		if (this != addressof(rhs)) {
-			destroy_at(this);
-			construct_at(this, VEG_FWD(rhs));
+		if (this != mem::addressof(rhs)) {
+			mem::destroy_at(this);
+			mem::construct_at(this, VEG_FWD(rhs));
 		}
 		return *this;
 	}
@@ -240,16 +240,16 @@ public:
 	dynstack_array(dynstack_array&&) noexcept = default;
 	auto operator=(dynstack_array const&) -> dynstack_array& = delete;
 	auto operator=(dynstack_array&& rhs) noexcept -> dynstack_array& {
-		if (this != addressof(rhs)) {
-			destroy_at(this);
-			construct_at(this, VEG_FWD(rhs));
+		if (this != mem::addressof(rhs)) {
+			mem::destroy_at(this);
+			mem::construct_at(this, VEG_FWD(rhs));
 		}
 		return *this;
 	}
 
 	~dynstack_array() {
 		for (i64 i = this->dynstack_alloc<T>::base::len - 1; i >= 0; --i) {
-			destroy_at(this->data() + i);
+			mem::destroy_at(this->data() + i);
 		}
 	}
 

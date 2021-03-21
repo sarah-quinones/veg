@@ -7,6 +7,8 @@
 
 #define MOV VEG_MOV
 #define FWD VEG_FWD
+#define ASSERT_SAME(...) STATIC_ASSERT(::std::is_same<__VA_ARGS__>::value)
+
 using namespace veg::literals;
 
 template <typename>
@@ -15,19 +17,19 @@ void get() = delete;
 TEST_CASE("tuple, adl_get") {
 	veg::tuple<int, float> t;
 	get<0>(t);
-	STATIC_ASSERT(VEG_SAME_AS(decltype(get<0>(t)), int&));
-	STATIC_ASSERT(VEG_SAME_AS(
-			decltype(get<0>(static_cast<veg::tuple<int, float> const&>(t))),
-			int const&));
-	STATIC_ASSERT(VEG_SAME_AS(
-			decltype(get<0>(static_cast<veg::tuple<int, float>&&>(t))), int&&));
+	STATIC_ASSERT(VEG_CONCEPT(same<decltype(get<0>(t)), int&>));
+	STATIC_ASSERT(VEG_CONCEPT(
+			same<
+					decltype(get<0>(static_cast<veg::tuple<int, float> const&>(t))),
+					int const&>));
+	STATIC_ASSERT(VEG_CONCEPT(
+			same<decltype(get<0>(static_cast<veg::tuple<int, float>&&>(t))), int&&>));
 }
 
 TEST_CASE("tuple, all") {
 	using namespace veg;
 
 	veg::tuple<int, char, bool> tup{1, 'c', true};
-	veg::tuple<int const, char const, bool> tup_c{1, 'c', true};
 	veg::tuple<int, char&&, char, bool&, bool const&> tup_ref{
 			1,
 			MOV(tup).as_ref()[1_c],
@@ -174,8 +176,6 @@ TEST_CASE("tuple, all") {
 	veg::tuple tup_deduce{1, 'c', true};
 #endif
 
-#define ASSERT_SAME(...) STATIC_ASSERT(::std::is_same<__VA_ARGS__>::value)
-
 	STATIC_ASSERT(std::is_copy_assignable<veg::tuple<int, char>>());
 	STATIC_ASSERT(std::is_trivially_copyable<veg::tuple<int, char>>());
 	STATIC_ASSERT(!std::is_copy_assignable<veg::tuple<int&, char&>>());
@@ -183,14 +183,10 @@ TEST_CASE("tuple, all") {
 	ASSERT_SAME(decltype(tup[0_c]), int&);
 	ASSERT_SAME(decltype(tup[0_c]), decltype(tup[0_c]));
 	ASSERT_SAME(decltype(MOV(tup)[0_c]), decltype(MOV(tup)[0_c]));
-	ASSERT_SAME(decltype(tup_c[1_c]), char const&);
 	ASSERT_SAME(decltype(MOV(tup)[0_c]), int);
 	ASSERT_SAME(decltype(MOV(tup).as_ref()[0_c]), int&&);
-	ASSERT_SAME(decltype(MOV(tup_c)[1_c]), char);
 
 	ASSERT_SAME(decltype(tup.as_ref()), veg::tuple<int&, char&, bool&>);
-	ASSERT_SAME(
-			decltype(tup_c.as_ref()), veg::tuple<int const&, char const&, bool&>);
 	ASSERT_SAME(decltype(MOV(tup).as_ref()), veg::tuple<int&&, char&&, bool&&>);
 
 	ASSERT_SAME(decltype(e), int&&);

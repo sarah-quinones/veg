@@ -1,8 +1,9 @@
 #include <cstring>
 
 namespace veg {
+namespace abi {
+inline namespace VEG_ABI_VERSION {
 namespace internal {
-namespace memory {
 using usize = decltype(sizeof(0));
 auto opaque_memmove(void* dest, void const* src, usize nbytes) noexcept
 		-> void* {
@@ -11,6 +12,7 @@ auto opaque_memmove(void* dest, void const* src, usize nbytes) noexcept
 	}
 	return dest;
 }
-} // namespace memory
 } // namespace internal
+} // namespace VEG_ABI_VERSION
+} // namespace abi
 } // namespace veg

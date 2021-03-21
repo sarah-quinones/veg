@@ -84,7 +84,7 @@ struct dbg_g {
 
 template <typename T>
 using choose_dbg = meta::conditional_t<
-		VEG_SAME_AS(T, bool),
+		VEG_CONCEPT(same<T, bool>),
 		internal::fmt::dbg_b,
 		meta::conditional_t<
 				VEG_CONCEPT(signed_integral<T>),

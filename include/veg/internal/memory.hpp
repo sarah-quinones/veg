@@ -21,28 +21,14 @@ auto opaque_memmove(void* dest, void const* src, usize nbytes) noexcept
 		-> void*;
 } // namespace internal
 
+namespace mem {
 auto aligned_alloc(i64 align, i64 nbytes) noexcept(false) -> void*;
 void aligned_free(void* ptr, i64 nbytes) noexcept;
+} // namespace mem
 } // namespace VEG_ABI_VERSION
 } // namespace abi
 
 inline namespace VEG_ABI {
-namespace niebloid {
-struct aligned_alloc {
-	auto operator()(i64 align, i64 nbytes) const noexcept(false) -> void* {
-		return abi::aligned_alloc(align, nbytes);
-	}
-};
-struct aligned_free {
-	void operator()(void* ptr, i64 nbytes) const noexcept {
-		if (ptr != nullptr) {
-			abi::aligned_free(ptr, nbytes);
-		}
-	}
-};
-} // namespace niebloid
-VEG_NIEBLOID(aligned_alloc);
-VEG_NIEBLOID(aligned_free);
 
 #if !(VEG_HAS_BUILTIN(__builtin_addressof) || __cplusplus >= 201703L)
 
@@ -103,7 +89,20 @@ VEG_CPP17(
 } // namespace memory
 } // namespace internal
 
+namespace mem {
 namespace niebloid {
+struct aligned_alloc {
+	auto operator()(i64 align, i64 nbytes) const noexcept(false) -> void* {
+		return abi::mem::aligned_alloc(align, nbytes);
+	}
+};
+struct aligned_free {
+	void operator()(void* ptr, i64 nbytes) const noexcept {
+		if (ptr != nullptr) {
+			abi::mem::aligned_free(ptr, nbytes);
+		}
+	}
+};
 
 struct aggregate_construct_at {
 	VEG_TEMPLATE(
@@ -152,7 +151,7 @@ struct construct_with {
 			(typename T, typename Fn, typename... Args),
 			requires(
 					!VEG_CONCEPT(const_type<T>) && VEG_CONCEPT(invocable<Fn, Args...>) &&
-					VEG_SAME_AS(T, (meta::invoke_result_t<Fn, Args...>))),
+					VEG_CONCEPT(same<T, meta::invoke_result_t<Fn, Args...>>)),
 			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) auto
 			operator(),
 			(mem, T*),
@@ -165,12 +164,12 @@ struct construct_with {
 				mem,
 				internal::memory::fn_to_convertible{
 						[&]() noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args...>)) -> T {
-							return invoke{}(VEG_FWD(fn), VEG_FWD(args)...);
+							return invoke(VEG_FWD(fn), VEG_FWD(args)...);
 						}}
 
 		);
 #else
-		return new (mem) T(invoke{}(VEG_FWD(fn), VEG_FWD(args)...));
+		return new (mem) T(invoke(VEG_FWD(fn), VEG_FWD(args)...));
 #endif
 	}
 };
@@ -207,12 +206,14 @@ struct addressof {
 	}
 };
 } // namespace niebloid
-
+VEG_NIEBLOID(aligned_alloc);
+VEG_NIEBLOID(aligned_free);
 VEG_NIEBLOID(aggregate_construct_at);
 VEG_NIEBLOID(construct_at);
 VEG_NIEBLOID(construct_with);
 VEG_NIEBLOID(destroy_at);
 VEG_NIEBLOID(addressof);
+} // namespace mem
 } // namespace VEG_ABI
 } // namespace veg
 

@@ -21,6 +21,7 @@ add_library(
   veg
   ${CMAKE_CURRENT_SOURCE_DIR}/src/veg.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/alloc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/time.cpp
 )
 target_link_libraries(veg PRIVATE _veg_ub)
 target_include_directories(veg PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

@@ -45,16 +45,16 @@ private:
 	struct raw_parts {
 		i64 begin;
 		i64 end;
-		fn::once_fn_view<void(i64) VEG_CPP17(noexcept)> fn;
+		fn::once_fn_view<fn::nothrow<void(i64)>> fn;
 	} self;
 
 public:
-	explicit raii_timer(fn::once_fn_view<void(i64)> fn) noexcept
+	explicit raii_timer(fn::once_fn_view<fn::nothrow<void(i64)>> fn) noexcept
 			: self{monotonic_nanoseconds_since_epoch(), 0, VEG_FWD(fn)} {}
 
 	~raii_timer() {
 		i64 dt = monotonic_nanoseconds_since_epoch() - self.begin;
-		VEG_FWD(self.fn)(dt);
+		VEG_FWD(self).fn(dt);
 	}
 	raii_timer(raii_timer const&) = delete;
 	raii_timer(raii_timer&&) = delete;

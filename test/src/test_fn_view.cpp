@@ -5,8 +5,6 @@
 #include <doctest.h>
 #include "veg/internal/prologue.hpp"
 
-#define NOEXCEPT VEG_CPP17(noexcept)
-
 using namespace veg::fn;
 TEST_CASE("function_view, no_args") {
 	static int global = 0;
@@ -32,7 +30,11 @@ TEST_CASE("function_view, no_args") {
 		return global;
 	};
 
-	fn_view<void() NOEXCEPT> f{inc_lambda};
+#if __cplusplus >= 201703L
+	fn_view<nothrow<void()>> f{inc_lambda};
+#else
+	fn_view<void()> f{inc_lambda};
+#endif
 	CHECK(i == 0);
 	f();
 	CHECK(i == 1);
@@ -48,10 +50,10 @@ TEST_CASE("function_view, no_args") {
 	STATIC_ASSERT(
 			std::is_constructible<once_fn_view<void()>, once_fn_view<void()>>::value);
 	STATIC_ASSERT(
-			std::is_constructible<once_fn_view<void()>, fn_view<void() NOEXCEPT>>::
+			std::is_constructible<once_fn_view<void()>, fn_view<nothrow<void()>>>::
 					value);
 	VEG_CPP17(STATIC_ASSERT(!std::is_constructible<
-													once_fn_view<void() noexcept>,
+													once_fn_view<nothrow<void()>>,
 													fn_view<void()>>::value);)
 
 	f = inc2_lambda;
@@ -98,7 +100,7 @@ auto baz(foo const& /*unused*/, foo /*unused*/, int /*unused*/) -> foo {
 }
 
 TEST_CASE("function_view, null") {
-  veg::option<fn_view<void()>> f;
+	veg::option<fn_view<void()>> f;
 	STATIC_ASSERT(sizeof(f) == sizeof(VEG_FWD(f).unwrap()));
 
 	CHECK(!f);

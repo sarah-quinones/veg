@@ -16,7 +16,7 @@ VEG_CPP20(constexpr) void backward_destroy_n(T* ptr, i64 n) noexcept {
 		return;
 	}
 	for (T* p = ptr + n - 1;;) {
-		destroy_at(p);
+		mem::destroy_at(p);
 
 		if (p == ptr) {
 			break;
@@ -44,7 +44,7 @@ void uninit_emplace_n(T* dest, T const* src, i64 n) noexcept(
 	i64 i = 0;
 	auto&& cleanup = make::defer(internal::algo::destroy_range_fn<T>{dest, i});
 	for (; i < n; ++i) {
-		construct_at(dest + i, const_cast<Cast>(src[i]));
+		mem::construct_at(dest + i, const_cast<Cast>(src[i]));
 	}
 	i = 0;
 }
@@ -57,7 +57,7 @@ void reloc_fallible(T* dest, T* src, i64 n) noexcept(
 	i64 i = 0;
 	auto&& cleanup = make::defer(destroy_range_fn<T>{dest, i});
 	for (; i < n; ++i) {
-		construct_at(dest + i, static_cast<Cast>(src[i]));
+		mem::construct_at(dest + i, static_cast<Cast>(src[i]));
 	}
 	cleanup.fn.cleanup_ptr = src;
 }
@@ -78,8 +78,8 @@ struct reloc_impl<which::nothrow_move> {
 	static VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) noexcept {
 		T* end = dest + n;
 		for (; dest < end; ++dest, ++src) {
-			construct_at(dest, static_cast<T&&>(*src));
-			destroy_at(*src);
+			mem::construct_at(dest, static_cast<T&&>(*src));
+			mem::destroy_at(*src);
 		}
 	}
 };
@@ -101,7 +101,8 @@ struct reloc_impl<which::trivial> {
 		)
 
 		{
-			abi::opaque_memmove(dest, src, static_cast<usize>(n) * sizeof(T));
+			abi::internal::opaque_memmove(
+					dest, src, static_cast<usize>(n) * sizeof(T));
 		}
 	}
 };
@@ -143,7 +144,7 @@ struct backward_destroy_n {
 			return;
 		}
 		for (T* p = ptr + n - 1;; --p) {
-			destroy_at(p);
+			mem::destroy_at(p);
 
 			if (p == ptr) {
 				break;
@@ -205,7 +206,7 @@ struct uninitialized_copy_n {
 			(src, T const*),
 			(n, i64))
 	const noexcept(VEG_CONCEPT(nothrow_copy_constructible<T>)) {
-		abi::opaque_memmove(dest, src, sizeof(T) * static_cast<usize>(n));
+		abi::internal::opaque_memmove(dest, src, sizeof(T) * static_cast<usize>(n));
 	}
 	VEG_TEMPLATE(
 			(typename T),
@@ -250,7 +251,7 @@ struct mixed_init_copy_n {
 			(n_init, i64))
 	const noexcept {
 		(void)n_init;
-		abi::opaque_memmove(dest, src, sizeof(T) * static_cast<usize>(n));
+		abi::internal::opaque_memmove(dest, src, sizeof(T) * static_cast<usize>(n));
 	}
 
 	VEG_TEMPLATE(
@@ -286,7 +287,7 @@ namespace algo {
 struct free_cleanup {
 	void* ptr;
 	i64 cap_bytes;
-	auto operator()() const noexcept { aligned_free(ptr, cap_bytes); }
+	auto operator()() const noexcept { mem::aligned_free(ptr, cap_bytes); }
 };
 
 template <typename T>
@@ -294,7 +295,7 @@ HEDLEY_ALWAYS_INLINE auto reallocate_memory(
 		T* src, i64 align, i64 size, i64 cap, i64 new_cap) noexcept(false) -> T* {
 
 	constexpr i64 s = static_cast<i64>(sizeof(T));
-	T* p = static_cast<T*>(aligned_alloc(align, new_cap * s));
+	T* p = static_cast<T*>(mem::aligned_alloc(align, new_cap * s));
 	auto&& cleanup = make::defer(free_cleanup{p, new_cap * s});
 
 	relocate_n(p, src, size);

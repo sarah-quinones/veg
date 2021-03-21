@@ -8,6 +8,9 @@ namespace veg {
 namespace abi {
 inline namespace VEG_ABI_VERSION {
 namespace fn {
+template <typename T>
+struct nothrow;
+
 union state_ptr {
 	void* ptr;
 	void (*fn)();
@@ -22,13 +25,11 @@ struct raw_parts<Ret(Args...)> {
 	auto (*fn_ptr)(state_ptr, Args...) -> Ret;
 };
 
-#if __cplusplus >= 201703L
 template <typename Ret, typename... Args>
-struct raw_parts<Ret(Args...) noexcept> {
+struct raw_parts<nothrow<Ret(Args...)>> {
 	state_ptr state;
 	auto (*fn_ptr)(state_ptr, Args...) noexcept -> Ret;
 };
-#endif
 } // namespace fn
 } // namespace VEG_ABI_VERSION
 } // namespace abi
@@ -92,13 +93,11 @@ template <typename Ret, typename... Args>
 struct fn_kind<Ret (*)(Args...)>
 		: std::integral_constant<fn_kind_e, fn_kind_e::fn_ptr> {};
 
-#if __cplusplus >= 201703L
-
+VEG_CPP17(
 template <typename Ret, typename... Args>
 struct fn_kind<Ret (*)(Args...) noexcept>
 		: std::integral_constant<fn_kind_e, fn_kind_e::fn_ptr> {};
-
-#endif
+)
 
 template <fn_kind_e Kind>
 struct fn_view_impl;
@@ -120,7 +119,7 @@ struct fn_view_impl<fn_kind_e::fn_obj> {
 	HEDLEY_ALWAYS_INLINE static auto call(state_ptr state, Args... args) noexcept(
 			VEG_CONCEPT(nothrow_invocable<Fn&&, Args&&...>)) -> Ret {
 		return discard_void<Ret>::apply(
-				VEG_FWD(*static_cast<meta::uncvref_t<Fn>*>(state.ptr)),
+				static_cast<Fn&&>(*static_cast<meta::uncvref_t<Fn>*>(state.ptr)),
 				VEG_FWD(args)...);
 	}
 };
@@ -147,7 +146,8 @@ struct fn_view_impl<fn_kind_e::fn_ptr> {
 
 template <bool No_Except, typename Ret, typename... Args>
 struct function_ref_impl {
-	using raw_parts = fn::raw_parts<Ret(Args...) VEG_CPP17(noexcept(No_Except))>;
+	using raw_parts = fn::raw_parts<
+			meta::conditional_t<No_Except, nothrow<Ret(Args...)>, Ret(Args...)>>;
 	raw_parts self = {};
 
 	constexpr function_ref_impl() = default;
@@ -206,7 +206,7 @@ public:
 					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, fn_view>) &&
 					VEG_CONCEPT(invocable<Fn&, Args&&...>) &&
 					(VEG_CONCEPT(void_type<Ret>) ||
-	         VEG_SAME_AS(Ret, (meta::invoke_result_t<Fn&, Args&&...>)))),
+	         VEG_CONCEPT(same<Ret, meta::invoke_result_t<Fn&, Args&&...>>))),
 			HEDLEY_ALWAYS_INLINE fn_view, // NOLINT
 			(fn, Fn&&))
 	noexcept
@@ -218,13 +218,9 @@ public:
 			: base{{}, parts} {}
 	auto into_raw_parts() const noexcept -> raw_parts { return base::self; }
 
-	VEG_CPP17(
-
-			HEDLEY_ALWAYS_INLINE fn_view /* NOLINT */ (
-					fn_view<Ret(Args...) noexcept> fn) noexcept
-			: base({}, {fn.self.state, fn.self.fn_ptr}){}
-
-	)
+	HEDLEY_ALWAYS_INLINE
+	fn_view /* NOLINT */ (fn_view<nothrow<Ret(Args...)>> fn) noexcept
+			: base({}, {fn.self.state, fn.self.fn_ptr}) {}
 
 	HEDLEY_ALWAYS_INLINE
 	auto operator()(Args... args) const -> Ret {
@@ -256,7 +252,7 @@ public:
 					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, once_fn_view>) &&
 					VEG_CONCEPT(invocable<Fn&&, Args&&...>) &&
 					(VEG_CONCEPT(void_type<Ret>) ||
-	         VEG_SAME_AS(Ret, (meta::invoke_result_t<Fn&&, Args&&...>)))),
+	         VEG_CONCEPT(same<Ret, meta::invoke_result_t<Fn&&, Args&&...>>))),
 			HEDLEY_ALWAYS_INLINE once_fn_view, // NOLINT
 			(fn, Fn&&))
 	noexcept
@@ -269,13 +265,10 @@ public:
 			: base{{}, parts} {}
 	auto into_raw_parts() const&& noexcept -> raw_parts { return base::self; }
 
-	VEG_CPP17(
+	HEDLEY_ALWAYS_INLINE
+	once_fn_view /* NOLINT */ (fn_view<nothrow<Ret(Args...)>> fn) noexcept
+			: base({}, {fn.self.state, fn.self.fn_ptr}) {}
 
-			HEDLEY_ALWAYS_INLINE once_fn_view /* NOLINT */ (
-					fn_view<Ret(Args...) noexcept> fn) noexcept
-			: base({}, {fn.self.state, fn.self.fn_ptr}){}
-
-	)
 	HEDLEY_ALWAYS_INLINE
 	once_fn_view /* NOLINT */ (fn_view<Ret(Args...)> fn) noexcept
 			: base({}, {fn.self.state, fn.self.fn_ptr}) {}
@@ -286,9 +279,8 @@ public:
 	}
 };
 
-#if __cplusplus >= 201703L
 template <typename Ret, typename... Args>
-struct fn_view<Ret(Args...) noexcept>
+struct fn_view<nothrow<Ret(Args...)>>
 		: private internal::fnref::function_ref_impl<true, Ret, Args...> {
 private:
 	using base = internal::fnref::function_ref_impl<true, Ret, Args...>;
@@ -309,7 +301,7 @@ public:
 					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, fn_view>) &&
 					VEG_CONCEPT(nothrow_invocable<Fn&, Args&&...>) &&
 					(VEG_CONCEPT(void_type<Ret>) ||
-	         VEG_SAME_AS(Ret, (meta::invoke_result_t<Fn&, Args&&...>)))),
+	         VEG_CONCEPT(same<Ret, meta::invoke_result_t<Fn&, Args&&...>>))),
 			HEDLEY_ALWAYS_INLINE fn_view, // NOLINT
 			(fn, Fn&&))
 	noexcept
@@ -328,7 +320,7 @@ public:
 };
 
 template <typename Ret, typename... Args>
-struct once_fn_view<Ret(Args...) noexcept>
+struct once_fn_view<nothrow<Ret(Args...)>>
 		: private internal::fnref::function_ref_impl<true, Ret, Args...>,
 			meta::internal::nocopy_ctor,
 			meta::internal::nocopy_assign {
@@ -351,7 +343,7 @@ public:
 					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, once_fn_view>) &&
 					VEG_CONCEPT(nothrow_invocable<Fn&&, Args&&...>) &&
 					(VEG_CONCEPT(void_type<Ret>) ||
-	         VEG_SAME_AS(Ret, (meta::invoke_result_t<Fn&&, Args&&...>)))),
+	         VEG_CONCEPT(same<Ret, meta::invoke_result_t<Fn&&, Args&&...>>))),
 			HEDLEY_ALWAYS_INLINE once_fn_view, // NOLINT
 			(fn, Fn&&))
 	noexcept
@@ -373,7 +365,6 @@ public:
 		return this->call_fn(VEG_FWD(args)...);
 	}
 };
-#endif
 
 } // namespace fn
 
