@@ -216,7 +216,7 @@ public:
 
 	using typename base::raw_parts;
 	HEDLEY_ALWAYS_INLINE
-	fn_view(from_raw_parts_t /*tag*/, raw_parts parts) noexcept
+	fn_view(from_raw_parts_t /*tag*/, raw_parts parts, unsafe_t /*tag*/) noexcept
 			: base{{}, parts} {}
 	auto into_raw_parts() const noexcept -> raw_parts { return base::self; }
 
@@ -266,7 +266,8 @@ public:
 
 	using typename base::raw_parts;
 	HEDLEY_ALWAYS_INLINE
-	once_fn_view(from_raw_parts_t /*tag*/, raw_parts parts) noexcept
+	once_fn_view(
+			from_raw_parts_t /*tag*/, raw_parts parts, unsafe_t /*tag*/) noexcept
 			: base{{}, parts} {}
 	auto into_raw_parts() const&& noexcept -> raw_parts { return base::self; }
 
@@ -318,7 +319,7 @@ public:
 
 	using typename base::raw_parts;
 	HEDLEY_ALWAYS_INLINE
-	fn_view(from_raw_parts_t /*tag*/, raw_parts parts) noexcept
+	fn_view(from_raw_parts_t /*tag*/, raw_parts parts, unsafe_t /*tag*/) noexcept
 			: base{{}, parts} {}
 	auto into_raw_parts() const noexcept -> raw_parts { return base::self; }
 
@@ -360,7 +361,8 @@ public:
 
 	using typename base::raw_parts;
 	HEDLEY_ALWAYS_INLINE
-	once_fn_view(from_raw_parts_t /*tag*/, raw_parts parts) noexcept
+	once_fn_view(
+			from_raw_parts_t /*tag*/, raw_parts parts, unsafe_t /*tag*/) noexcept
 			: base{{}, parts} {}
 	auto into_raw_parts() const&& noexcept -> raw_parts { return base::self; }
 
