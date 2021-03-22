@@ -144,8 +144,7 @@ struct assert_non_null_ref {
 struct assert_non_null_ptr {
 	HEDLEY_ALWAYS_INLINE
 	static void apply(state_ptr arg) noexcept {
-		bool is_null = arg.fn == nullptr;
-		VEG_ASSERT(!is_null);
+		VEG_ASSERT(bool(arg.fn != nullptr));
 	}
 };
 template <typename T>
@@ -178,8 +177,9 @@ struct function_ref_impl {
 
 	HEDLEY_ALWAYS_INLINE
 	auto call_fn(Args... args) const noexcept(No_Except) -> Ret {
-		void* fn_ptr = reinterpret_cast<void*>(self.fn_ptr);
-		VEG_INTERNAL_ASSERT(fn_ptr != nullptr);
+		auto* fn_ptr = reinterpret_cast<void (*)()>(self.fn_ptr);
+		(void)fn_ptr;
+		VEG_INTERNAL_ASSERT(bool(fn_ptr != nullptr));
 		return self.fn_ptr(self.state, VEG_FWD(args)...);
 	}
 
