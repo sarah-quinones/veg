@@ -78,7 +78,6 @@ struct discard_void<void> {
 
 enum struct fn_kind_e {
 	fn_ptr,
-	mem_fn_ptr,
 	fn_obj,
 };
 
@@ -111,9 +110,6 @@ struct fn_view_impl<fn_kind_e::fn_obj> {
 		using ptr = Fn*;
 		return {ptr(vptr(&char_ref(arg)))};
 	}
-	HEDLEY_ALWAYS_INLINE static auto is_null(state_ptr /*arg*/) noexcept -> bool {
-		return false;
-	}
 
 	template <typename Fn, typename Ret, typename... Args>
 	HEDLEY_ALWAYS_INLINE static auto call(state_ptr state, Args... args) noexcept(
@@ -131,9 +127,6 @@ struct fn_view_impl<fn_kind_e::fn_ptr> {
 		rv.fn = reinterpret_cast<void (*)()>(+arg);
 		return rv;
 	}
-	HEDLEY_ALWAYS_INLINE static auto is_null(state_ptr arg) noexcept -> bool {
-		return arg.fn == nullptr;
-	}
 
 	template <typename Fn, typename Ret, typename... Args>
 	HEDLEY_ALWAYS_INLINE static auto call(state_ptr state, Args... args) noexcept(
@@ -143,6 +136,22 @@ struct fn_view_impl<fn_kind_e::fn_ptr> {
 				VEG_FWD(args)...);
 	}
 };
+
+struct assert_non_null_ref {
+	HEDLEY_ALWAYS_INLINE
+	static void apply(state_ptr /*arg*/) noexcept {}
+};
+struct assert_non_null_ptr {
+	HEDLEY_ALWAYS_INLINE
+	static void apply(state_ptr arg) noexcept {
+		bool is_null = arg.fn == nullptr;
+		VEG_ASSERT(!is_null);
+	}
+};
+template <typename T>
+struct assert_non_null : assert_non_null_ref {};
+template <typename Ret, typename... Args>
+struct assert_non_null<Ret (*)(Args...)> : assert_non_null_ptr {};
 
 template <bool No_Except, typename Ret, typename... Args>
 struct function_ref_impl {
@@ -161,10 +170,7 @@ struct function_ref_impl {
 						fnref::fn_view_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::
 								template call<Fn, Ret, Args...>,
 				} {
-		bool null_fn_ptr =
-				fnref::fn_view_impl<fnref::fn_kind<meta::decay_t<Fn>>::value>::is_null(
-						self.state);
-		VEG_ASSERT(!null_fn_ptr);
+		assert_non_null<meta::uncvref_t<Fn>>::apply(self.state);
 	}
 
 	HEDLEY_ALWAYS_INLINE

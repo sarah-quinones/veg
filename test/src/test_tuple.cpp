@@ -14,7 +14,7 @@ using namespace veg::literals;
 template <typename>
 void get() = delete;
 
-TEST_CASE("tuple, adl_get") {
+TEST_CASE("tuple: adl_get") {
 	veg::tuple<int, float> t;
 	get<0>(t);
 	STATIC_ASSERT(VEG_CONCEPT(same<decltype(get<0>(t)), int&>));
@@ -26,7 +26,7 @@ TEST_CASE("tuple, adl_get") {
 			same<decltype(get<0>(static_cast<veg::tuple<int, float>&&>(t))), int&&>));
 }
 
-TEST_CASE("tuple, all") {
+TEST_CASE("tuple: all") {
 	using namespace veg;
 
 	veg::tuple<int, char, bool> tup{1, 'c', true};
@@ -224,7 +224,7 @@ TEST_CASE("tuple, all") {
 	STATIC_ASSERT(tuple<int, float>{1, 2.0F} != tuple<float, int>{2.0F, 2});
 }
 
-TEST_CASE("tuple, nested") {
+TEST_CASE("tuple: nested") {
 	using namespace veg;
 	tuple<int, tuple<int, float>> tup{1, {elems, 2, 3.0F}};
 	CHECK(tup[0_c] == 1);
@@ -240,7 +240,7 @@ TEST_CASE("tuple, nested") {
 	STATIC_ASSERT(sizeof(tuple<tuple<tuple<int>>>) == sizeof(int));
 }
 
-TEST_CASE("tuple, empty") {
+TEST_CASE("tuple: empty") {
 	using namespace veg;
 	tuple<> t1;
 	tuple<> t2(inplace);
@@ -249,7 +249,7 @@ TEST_CASE("tuple, empty") {
 	STATIC_ASSERT(tuple<>{} == tuple<>{});
 }
 
-TEST_CASE("tuple, cvt") {
+TEST_CASE("tuple: cvt") {
 	using namespace veg;
 	tuple<int, float> t1{1, 1.5F};
 	tuple<long, double> t2(3, 2.5);
@@ -263,7 +263,7 @@ TEST_CASE("tuple, cvt") {
 	CHECK(t1 == t2);
 }
 
-TEST_CASE("tuple, non_movable") {
+TEST_CASE("tuple: non_movable") {
 	struct S {
 		S() = default;
 		S(S&&) = delete;
@@ -280,7 +280,7 @@ TEST_CASE("tuple, non_movable") {
 	})
 }
 
-TEST_CASE("tuple, get") {
+TEST_CASE("tuple: get") {
 	using namespace veg;
 	int arr[] = {1, 2, 3};
 	niebloid::get<0>{}(arr);
@@ -296,7 +296,7 @@ struct Tref : veg::tuple<int&, float&> {
 	using tuple::operator=;
 };
 
-TEST_CASE("tuple, derived") {
+TEST_CASE("tuple: derived") {
 	T t{1, 2.0F};
 	T t2{3, 4.0F};
 

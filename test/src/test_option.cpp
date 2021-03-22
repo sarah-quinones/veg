@@ -15,8 +15,9 @@ struct nested_option<T, 0> {
 	using type = T;
 };
 
-TEST_CASE("option, all") {
+TEST_CASE("option: all") {
 
+	using make::mem::from_callable;
 	struct A {
 		VEG_CPP14(constexpr) auto operator()() const -> option<int> {
 			return {some, 13};
@@ -52,7 +53,8 @@ TEST_CASE("option, all") {
 	VEG_CPP14(constexpr) option<int> i = {some, 3};
 	VEG_CPP14(constexpr) option<int> j = none;
 	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).unwrap() == 1000. / 3);
-	STATIC_ASSERT_IF_17(option<int>{some, inplace, [&] { return 0; }});
+	STATIC_ASSERT_IF_17(
+			option<int>{some, inplace, from_callable([&] { return 0; })});
 	STATIC_ASSERT_IF_14(i.as_ref().map(B{}).unwrap() == 2000. / 3);
 
 	STATIC_ASSERT_IF_14(i.as_ref().map_or_else(B{}, C{}) == 2000. / 3);
@@ -126,7 +128,7 @@ TEST_CASE("option, all") {
 		VEG_CPP17(constexpr)
 		auto opt = [&] {
 			option<int> x;
-			x.emplace_with([&] { return 1; });
+			x.emplace(from_callable([&] { return 1; }));
 			return x;
 		}();
 
@@ -138,7 +140,7 @@ TEST_CASE("option, all") {
 		VEG_CPP17(constexpr)
 		auto opt = [&] {
 			option<option<int>> x;
-			x.emplace_with([&] { return some(1); });
+			x.emplace(from_callable([&] { return some(1); }));
 			return x;
 		}();
 
@@ -149,7 +151,11 @@ TEST_CASE("option, all") {
 
 		auto opt = [&] {
 			option<vector<int>> x;
-			x.emplace_with([&](int i_) { return vector<int>{1, 2, 3, i_}; }, 5);
+			x.emplace(from_callable(
+					[&](int i_) {
+						return vector<int>{1, 2, 3, i_};
+					},
+					5));
 			return x;
 		}();
 
@@ -163,7 +169,7 @@ TEST_CASE("option, all") {
 
 		auto opt = [&] {
 			option<option<vector<int>>> x;
-			x.emplace_with([&] { return some(vector<int>{1, 2, 3}); });
+			x.emplace(from_callable([&] { return some(vector<int>{1, 2, 3}); }));
 			return x;
 		}();
 
@@ -177,7 +183,9 @@ TEST_CASE("option, all") {
 
 		auto opt = [&] {
 			option<option<option<vector<int>>>> x;
-			x.emplace_with([&] { return some(some(vector<int>{1, 2, 3})); });
+			x.emplace(from_callable([&] {
+				return some(some(vector<int>{1, 2, 3}));
+			}));
 			return x;
 		}();
 
@@ -192,7 +200,9 @@ TEST_CASE("option, all") {
 
 		auto opt = [&] {
 			option<option<option<option<vector<int>>>>> x;
-			x.emplace_with([&] { return some(some(some(vector<int>{1, 2, 3}))); });
+			x.emplace(from_callable([&] {
+				return some(some(some(vector<int>{1, 2, 3})));
+			}));
 			return x;
 		}();
 

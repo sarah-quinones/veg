@@ -197,7 +197,8 @@ struct lhs_all_of_t {
 
 struct decomposer {
 	template <typename T>
-	constexpr auto operator<<(T const& lhs) const noexcept -> lhs_all_of_t<T> {
+	HEDLEY_ALWAYS_INLINE constexpr auto operator<<(T const& lhs) const noexcept
+			-> lhs_all_of_t<T> {
 		return {lhs};
 	}
 };

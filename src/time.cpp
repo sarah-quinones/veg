@@ -1,6 +1,7 @@
 #include "veg/timer.hpp"
 #include <chrono>
 #include <cinttypes>
+#include "veg/internal/prologue.hpp"
 
 namespace veg {
 namespace abi {
@@ -37,3 +38,4 @@ auto monotonic_nanoseconds_since_epoch() noexcept -> i64 {
 } // namespace VEG_ABI_VERSION
 } // namespace abi
 } // namespace veg
+#include "veg/internal/epilogue.hpp"

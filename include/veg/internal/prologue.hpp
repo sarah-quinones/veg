@@ -311,15 +311,15 @@
 #define VEG_NOM_SEMICOLON static_assert(true, ".")
 
 #if __cplusplus >= 202002L
-#define VEG_ABI abi20
+#define VEG_ABI _20
 #elif __cplusplus >= 201703L
-#define VEG_ABI abi17
+#define VEG_ABI _17
 #elif __cplusplus >= 201402L
-#define VEG_ABI abi14
+#define VEG_ABI _14
 #elif __cplusplus >= 201102L
-#define VEG_ABI abi11
+#define VEG_ABI _11
 #else
 #error "[veg] c++ standards earlier than c++11 are not supported"
 #endif
 
-#define VEG_ABI_VERSION lol
+#define VEG_ABI_VERSION v0

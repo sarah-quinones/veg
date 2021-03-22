@@ -3,6 +3,7 @@
 
 #include "veg/internal/type_traits.hpp"
 #include "veg/internal/std.hpp"
+#include "veg/tuple.hpp"
 #include "veg/internal/prologue.hpp"
 
 #if VEG_HAS_BUILTIN(__builtin_launder) || __GNUC__ >= 7
@@ -69,27 +70,43 @@ struct addr_impl
 
 #endif
 
-namespace internal {
-namespace memory {
+namespace mem {
 
-template <typename Fn>
-struct fn_to_convertible {
-	Fn&& fn;
-	HEDLEY_ALWAYS_INLINE constexpr explicit
-	operator meta::invoke_result_t<Fn>() const
-			noexcept(VEG_CONCEPT(nothrow_invocable<Fn>)) {
-		return VEG_FWD(fn)();
+template <typename Fn, typename... Args>
+struct from_callable {
+	Fn&& _fn;
+	internal::simple_tuple<Args&&...> _args;
+
+	HEDLEY_ALWAYS_INLINE constexpr operator meta::invoke_result_t<Fn, Args&&...>()
+			const&& noexcept(VEG_CONCEPT(nothrow_invocable<Fn>)) {
+		return internal::tuple::fn_apply_impl(
+				meta::type_sequence<Args&&...>{}, VEG_FWD(_fn), _args);
 	}
 };
-VEG_CPP17(
+} // namespace mem
 
-		template <typename Fn> fn_to_convertible(Fn&&) -> fn_to_convertible<Fn&&>;
-
-)
-} // namespace memory
-} // namespace internal
+namespace make {
+namespace mem {
+namespace niebloid {
+struct from_callable {
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args),
+			requires(VEG_CONCEPT(invocable<Fn, Args&&...>)),
+			constexpr auto
+			operator(),
+			(fn, Fn&&),
+			(... args, Args&&))
+	const noexcept->veg::mem::from_callable<Fn&&, Args&&...> {
+		return {VEG_FWD(fn), {elems, VEG_FWD(args)...}};
+	}
+};
+} // namespace niebloid
+VEG_NIEBLOID(from_callable);
+} // namespace mem
+} // namespace make
 
 namespace mem {
+
 namespace niebloid {
 struct aligned_alloc {
 	auto operator()(i64 align, i64 nbytes) const noexcept(false) -> void* {
@@ -118,9 +135,9 @@ struct aggregate_construct_at {
 #if __cplusplus >= 202002L
 		return ::std::construct_at(
 				mem,
-				internal::memory::fn_to_convertible{
+				make::mem::from_callable(
 						[&]() noexcept(VEG_CONCEPT(nothrow_brace_constructible<T, Args...>))
-								-> T { return T{VEG_FWD(args)...}; }});
+								-> T { return T{VEG_FWD(args)...}; }));
 #else
 		return new (mem) T{VEG_FWD(args)...};
 #endif
@@ -162,7 +179,7 @@ struct construct_with {
 
 		return ::std::construct_at(
 				mem,
-				internal::memory::fn_to_convertible{
+				from_callable<Fn&&>{
 						[&]() noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args...>)) -> T {
 							return invoke(VEG_FWD(fn), VEG_FWD(args)...);
 						}}
@@ -214,6 +231,7 @@ VEG_NIEBLOID(construct_with);
 VEG_NIEBLOID(destroy_at);
 VEG_NIEBLOID(addressof);
 } // namespace mem
+
 } // namespace VEG_ABI
 } // namespace veg
 

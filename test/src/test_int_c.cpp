@@ -3,7 +3,7 @@
 #include <ostream>
 #include <doctest.h>
 
-TEST_CASE("meta_int, all") {
+TEST_CASE("meta_int: all") {
 	using namespace veg;
 	using namespace veg::literals;
 

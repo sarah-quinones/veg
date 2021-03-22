@@ -1,16 +1,20 @@
 #ifndef VEG_ASSERT_DEATH_HPP_BXMINZAES
 #define VEG_ASSERT_DEATH_HPP_BXMINZAES
 
-#include "veg/fn_view.hpp"
+#include <veg/fn_view.hpp>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <exception>
+#include <vector>
+#include <string>
 
 #ifdef __unix
 
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <spawn.h>
 
 #else
 #error "not yet supported"
@@ -18,48 +22,64 @@
 
 namespace veg {
 
-inline auto is_terminating(fn::once_fn_view<void()> fn) -> bool {
+extern int argc;
+extern char** argv;
 
-#ifdef __unix
+inline auto is_terminating_impl(fn::once_fn_view<void()> fn, char const* id)
+		-> int {
+	char argname[] = "--veg-death-assertion-id";
 
-	pid_t pid = ::fork();
-	switch (pid) {
-	case -1: {
-		std::terminate();
-		break;
-	}
-
-	case 0: {
-		{
-			auto* _ = std::freopen("/dev/null", "w", stderr);
-			(void)_;
+	if (argc >= 3 && //
+	    (std::strcmp(argv[argc - 2], argname) == 0)) {
+		if (std::strcmp(argv[argc - 1], id) != 0) {
+			return 0; // unrelated child
 		}
-		{
-			auto* _ = std::freopen("/dev/null", "w", stdout);
-			(void)_;
-		}
-		std::set_terminate([] { std::abort(); });
 		VEG_FWD(fn)();
 		std::exit(0);
-		break;
-	}
+	} else {
+		auto uargc = usize(veg::argc);
 
-	default:
+		std::vector<char*> args;
+		args.reserve(uargc + 3);
+
+		std::string argvalue(id);
+
+		for (usize i = 0; i < usize(uargc); ++i) {
+			args.emplace_back(argv[i]);
+		}
+		args.emplace_back(&argname[0]);
+		args.emplace_back(&argvalue[0]);
+		args.emplace_back(nullptr);
+
+		pid_t process_pid{};
+
+		::posix_spawnp(
+				&process_pid, argv[0], nullptr, nullptr, args.data(), environ);
+
 		int stat{};
-		pid_t res = ::waitpid(pid, &stat, 0);
-		VEG_ASSERT(res == pid);
-		return stat != 0;
+		pid_t res = ::waitpid(process_pid, &stat, 0);
+		VEG_ASSERT(res == process_pid);
+		if (stat == 0) {
+			return 1;
+		}
+		return -1;
 	}
+}
 
-#else
-
-	return true; // why not haha
-
-#endif
+inline auto is_terminating(fn::once_fn_view<void()> fn, char const* id)
+		-> bool {
+	return is_terminating_impl(VEG_FWD(fn), id) != 1;
+}
+inline auto is_non_terminating(fn::once_fn_view<void()> fn, char const* id)
+		-> bool {
+	return is_terminating_impl(VEG_FWD(fn), id) != -1;
 }
 } // namespace veg
-#define CHECK_DEATH(...) CHECK(::veg::is_terminating([&]() -> void __VA_ARGS__))
+#define CHECK_DEATH(...)                                                       \
+	CHECK(::veg::is_terminating(                                                 \
+			[&]() -> void __VA_ARGS__, __VEG_PP_STRINGIZE(__LINE__)))
 #define CHECK_NO_DEATH(...)                                                    \
-	CHECK(!::veg::is_terminating([&]() -> void __VA_ARGS__))
+	CHECK(!::veg::is_terminating(                                                \
+			[&]() -> void __VA_ARGS__, __VEG_PP_STRINGIZE(__LINE__)))
 
 #endif /* end of include guard VEG_ASSERT_DEATH_HPP_BXMINZAES */

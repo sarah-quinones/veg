@@ -2,11 +2,12 @@
 #include "static_assert.hpp"
 #include <veg/fn_view.hpp>
 #include <veg/option.hpp>
+#include "assert_death.hpp"
 #include <doctest.h>
 #include "veg/internal/prologue.hpp"
 
 using namespace veg::fn;
-TEST_CASE("function_view, no_args") {
+TEST_CASE("function_view: no_args") {
 	static int global = 0;
 	int i = 0;
 	auto inc_lambda = [&i]() noexcept { ++i; };
@@ -99,20 +100,21 @@ auto baz(foo const& /*unused*/, foo /*unused*/, int /*unused*/) -> foo {
 	return {};
 }
 
-TEST_CASE("function_view, null") {
-	veg::option<fn_view<void()>> f;
-	STATIC_ASSERT(sizeof(f) == sizeof(VEG_FWD(f).unwrap()));
+TEST_CASE("function_view: null") {
+	{
+		veg::option<fn_view<void()>> f;
+		STATIC_ASSERT(sizeof(f) == sizeof(VEG_FWD(f).unwrap()));
 
-	CHECK(!f);
-	CHECK_DEATH({ void(f.as_ref().unwrap()); });
-	CHECK_DEATH({ void(VEG_MOV(f).unwrap()); });
+		CHECK(!f);
+		CHECK_DEATH({ void(f.as_ref().unwrap()); });
+		CHECK_DEATH({ void(VEG_MOV(f).unwrap()); });
 
-	f = {veg::some, [] {}};
-	CHECK(f);
-
-	void (*null)() = nullptr;
-
-	auto make_null = [&] { f.as_ref().unwrap() = {null}; };
-	CHECK_DEATH({ make_null(); });
+		f = {veg::some, [] {}};
+		CHECK(f);
+	}
+	{
+		void (*null)() = nullptr;
+		CHECK_DEATH({ fn_view<void()>{null}; });
+	}
 }
 #include "veg/internal/epilogue.hpp"

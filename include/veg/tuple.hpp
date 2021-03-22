@@ -39,6 +39,60 @@
 
 namespace veg {
 inline namespace VEG_ABI {
+
+namespace niebloid {
+struct unpack_args {
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args),
+			requires(VEG_CONCEPT(invocable<Fn, Args&&...>)),
+			HEDLEY_ALWAYS_INLINE constexpr auto
+			operator(),
+			(fn, Fn&&),
+			(args, tuple<Args...>&&))
+	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>))
+			-> meta::invoke_result_t<Fn, Args&&...> {
+		return internal::tuple::fn_apply_impl(
+				meta::type_sequence<Args&&...>{},
+				VEG_FWD(fn),
+				internal::tuple::get_inner(args));
+	}
+
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args),
+			requires(VEG_CONCEPT(invocable<Fn, Args const&...>)),
+			HEDLEY_ALWAYS_INLINE constexpr auto
+			operator(),
+			(fn, Fn&&),
+			(args, tuple<Args...> const&))
+	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args const&...>))
+			-> meta::invoke_result_t<Fn, Args const&...> {
+		return internal::tuple::fn_apply_impl(
+				meta::type_sequence<Args const&...>{},
+				VEG_FWD(fn),
+				internal::tuple::get_inner(args));
+	}
+
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args),
+			requires(VEG_CONCEPT(invocable<Fn, Args&...>)),
+			HEDLEY_ALWAYS_INLINE constexpr auto
+			operator(),
+			(fn, Fn&&),
+			(args, tuple<Args...>&))
+	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args&...>))
+			-> meta::invoke_result_t<Fn, Args&...> {
+		return internal::tuple::fn_apply_impl(
+				meta::type_sequence<Args&...>{},
+				VEG_FWD(fn),
+				internal::tuple::get_inner(args));
+	}
+
+	template <typename Fn, typename... Args>
+	void operator()(Fn&&, tuple<Args...> const&&) const noexcept = delete;
+};
+} // namespace niebloid
+VEG_NIEBLOID(unpack_args);
+
 namespace make {
 namespace niebloid {
 struct tuple : elems_t {

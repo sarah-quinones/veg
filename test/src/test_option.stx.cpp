@@ -105,11 +105,11 @@ struct FnConst {
 	auto operator()(int&& x) const -> int { return x; }
 };
 
-TEST_CASE("OptionTest, Misc") {
+TEST_CASE("OptionTest: Misc") {
 	CHECK(option<option<int>>({some, {some, 899}}).unwrap().unwrap() == 899);
 }
 
-TEST_CASE("OptionTest, ObjectConstructionTest") {
+TEST_CASE("OptionTest: ObjectConstructionTest") {
 	option<int> a = none;
 	auto b = some(89);
 	CHECK_DEATH({ void(VEG_MOV(a).unwrap()); });
@@ -129,7 +129,7 @@ TEST_CASE("OptionTest, ObjectConstructionTest") {
 	d = {some, make_mv<0>()};
 }
 
-TEST_CASE("OptionTest, CopyConstructionTest") {
+TEST_CASE("OptionTest: CopyConstructionTest") {
 	option<int> a = none;
 	option<int> b = a;
 	CHECK(a == b);
@@ -152,7 +152,7 @@ TEST_CASE("OptionTest, CopyConstructionTest") {
 	CHECK(d != f);
 }
 
-TEST_CASE("OptionTest, ObjectForwardingTest") {
+TEST_CASE("OptionTest: ObjectForwardingTest") {
 	auto fn_a = []() -> option<MoveOnly<0>> {
 		return {some, make_mv<0>()}; // NOLINT
 	};
@@ -181,7 +181,7 @@ TEST_CASE("OptionTest, ObjectForwardingTest") {
 	CHECK(!g);
 }
 
-TEST_CASE("OptionTest, Equality") {
+TEST_CASE("OptionTest: Equality") {
 	CHECK(some(0));
 	CHECK(some(90) == some(90));
 	CHECK(some(90) != some(70));
@@ -222,7 +222,7 @@ TEST_CASE("OptionTest, Equality") {
 	CHECK(some_ref(y) != some(101101));
 }
 
-TEST_CASE("OptionTest, Contains") {
+TEST_CASE("OptionTest: Contains") {
 	CHECK(some(vector<int>{1, 2, 3, 4}).contains(vector<int>{1, 2, 3, 4}));
 	CHECK(!some(vector<int>{1, 2, 3, 4}).contains(vector<int>{1, 2, 3, 4, 5}));
 
@@ -230,12 +230,12 @@ TEST_CASE("OptionTest, Contains") {
 	CHECK(!some(8).contains(88));
 }
 
-TEST_CASE("OptionLifetimeTest, Contains") {
+TEST_CASE("OptionLifetimeTest: Contains") {
 	CHECK_NO_DEATH({ (void)some(make_mv<0>()); });
 	CHECK_NO_DEATH({ (void)option<MoveOnly<1>>{none}.contains(make_mv<1>()); });
 }
 
-TEST_CASE("OptionTest, Exists") {
+TEST_CASE("OptionTest: Exists") {
 	auto const even = [](int const& x) { return x % 2 == 0; };
 
 	auto const all_even = [&](vector<int> const& x) {
@@ -249,7 +249,7 @@ TEST_CASE("OptionTest, Exists") {
 	CHECK(!some(vector<int>{2, 4, 6, 9, 10}).filter(all_even));
 }
 
-TEST_CASE("OptionTest, AsConstRef") {
+TEST_CASE("OptionTest: AsConstRef") {
 	auto const a = some(68);
 	CHECK(a.as_cref().unwrap() == 68);
 
@@ -263,7 +263,7 @@ TEST_CASE("OptionTest, AsConstRef") {
 	CHECK(!d.as_cref());
 }
 
-TEST_CASE("OptionTest, AsRef") {
+TEST_CASE("OptionTest: AsRef") {
 	auto a = some(68);
 	a.as_ref().unwrap() = 99;
 	CHECK(a == some(99));
@@ -279,7 +279,7 @@ TEST_CASE("OptionTest, AsRef") {
 	CHECK(!d.as_ref());
 }
 
-TEST_CASE("OptionLifeTimeTest, AsRef") {
+TEST_CASE("OptionLifeTimeTest: AsRef") {
 	auto a = some(make_mv<0>());
 	CHECK_NO_DEATH({ (void)a.as_ref().unwrap().done(); });
 
@@ -291,7 +291,7 @@ TEST_CASE("OptionLifeTimeTest, AsRef") {
 	});
 }
 
-TEST_CASE("OptionTest, Unwrap") {
+TEST_CASE("OptionTest: Unwrap") {
 	CHECK(some(0).unwrap() == 0);
 	CHECK_DEATH({ (void)option<int>(none).unwrap(); });
 
@@ -300,12 +300,12 @@ TEST_CASE("OptionTest, Unwrap") {
 	CHECK_DEATH({ (void)option<vector<int>>(none).unwrap(); });
 }
 
-TEST_CASE("OptionLifetimeTest, Unwrap") {
+TEST_CASE("OptionLifetimeTest: Unwrap") {
 	auto a = some(make_mv<0>());
 	CHECK_NO_DEATH({ VEG_FWD(a).unwrap().done(); });
 }
 
-// TEST_CASE("OptionTest, UnwrapOr") {
+// TEST_CASE("OptionTest: UnwrapOr") {
 //   EXPECT_EQ(some( 0).unwrap_or(90), 0);
 //   EXPECT_EQ(option<int>(none).unwrap_or(90), 90);
 
@@ -317,7 +317,7 @@ TEST_CASE("OptionLifetimeTest, Unwrap") {
 //       vector<int>{6, 7, 8, 9, 10});
 // }
 
-// TEST_CASE("OptionLifetimeTest, UnwrapOr") {
+// TEST_CASE("OptionLifetimeTest: UnwrapOr") {
 //  auto a = some( make_mv<0>()});
 //  EXPECT_NO_THROW(VEG_FWD(a).unwrap_or(make_mv<0>()).done());
 
@@ -325,7 +325,7 @@ TEST_CASE("OptionLifetimeTest, Unwrap") {
 //  EXPECT_NO_THROW(VEG_FWD(b).unwrap_or(make_mv<1>()).done());
 //}
 
-// TEST_CASE("OptionTest, UnwrapOrElse") {
+// TEST_CASE("OptionTest: UnwrapOrElse") {
 //  auto&& a = some( 0}).unwrap_or_else([]() { return 90; });
 //  EXPECT_EQ(a, 0);
 //  auto&& b = option<int>(none).unwrap_or_else([]() { return 90; });
@@ -342,7 +342,7 @@ TEST_CASE("OptionLifetimeTest, Unwrap") {
 //  EXPECT_EQ(d, vector<int>{6, 7, 8, 9, 10});
 //}
 
-// TEST_CASE("OptionLifetimeTest, UnwrapOrElse") {
+// TEST_CASE("OptionLifetimeTest: UnwrapOrElse") {
 //  auto a = some( make_mv<0>()});
 //  auto fn = []() { return make_mv<0>(); };
 //  EXPECT_NO_THROW(VEG_FWD(a).unwrap_or_else(fn).done());
@@ -352,7 +352,7 @@ TEST_CASE("OptionLifetimeTest, Unwrap") {
 //  EXPECT_NO_THROW(VEG_FWD(b).unwrap_or_else(fn_b).done());
 //}
 
-// TEST_CASE("OptionTest, Map") {
+// TEST_CASE("OptionTest: Map") {
 //  auto&& a = some( 90}).map([](int&& x) -> int { return x + 90; });
 //  EXPECT_EQ(a, {some, 180});
 
@@ -373,13 +373,13 @@ TEST_CASE("OptionLifetimeTest, Unwrap") {
 //  EXPECT_EQ(d, none);
 //}
 
-TEST_CASE("OptionLifetimeTest, Map") {
+TEST_CASE("OptionLifetimeTest: Map") {
 	auto a = some(make_mv<0>());
 	CHECK_NO_DEATH(
 			{ VEG_FWD(a).map([](MoveOnly<0> r) { return r; }).unwrap().done(); });
 }
 
-TEST_CASE("OptionTest, FnMutMap") {
+TEST_CASE("OptionTest: FnMutMap") {
 	auto fnmut_a = FnMut();
 	auto a1_ = some(90).map(fnmut_a);
 	auto a2_ = some(90).map(fnmut_a);
@@ -397,7 +397,7 @@ TEST_CASE("OptionTest, FnMutMap") {
 	(void)a1_, (void)a2_, (void)b1_, (void)b2_, (void)c;
 }
 
-TEST_CASE("OptionTest, MapOrElse") {
+TEST_CASE("OptionTest: MapOrElse") {
 	auto&& a = some(90).map_or_else(
 			[](int&& x) -> int { return x + 90; }, []() -> int { return 90; });
 	CHECK(a == 180);
@@ -407,14 +407,14 @@ TEST_CASE("OptionTest, MapOrElse") {
 	CHECK(b == 90);
 }
 
-TEST_CASE("OptionLifetimeTest, MapOrElse") {
+TEST_CASE("OptionLifetimeTest: MapOrElse") {
 	auto a = some(make_mv<0>());
 	auto fn = [](MoveOnly<0>) { return make_mv<0>(); };
 	auto fn_b = []() { return make_mv<0>(); };
 	CHECK_NO_DEATH({ VEG_FWD(a).map_or_else(fn, fn_b).done(); });
 }
 
-// TEST_CASE("OptionTest, And") {
+// TEST_CASE("OptionTest: And") {
 //  auto&& a = some( 90}).AND(some( 90.0f}));
 
 //  EXPECT_FLOAT_EQ(VEG_FWD(a).unwrap(), 90.0f);
@@ -435,7 +435,7 @@ TEST_CASE("OptionLifetimeTest, MapOrElse") {
 //  EXPECT_EQ(d, none);
 //}
 
-// TEST_CASE("OptionLifetimeTest, And") {
+// TEST_CASE("OptionLifetimeTest: And") {
 //  EXPECT_NO_THROW(some( make_mv<0>()})
 //                      .AND(some( make_mv<1>()}))
 //                      .unwrap()
@@ -443,7 +443,7 @@ TEST_CASE("OptionLifetimeTest, MapOrElse") {
 //  EXPECT_EQ(make_none<int>().AND(some( make_mv<2>()})), none);
 //}
 
-// TEST_CASE("OptionTest, AndThen") {
+// TEST_CASE("OptionTest: AndThen") {
 //  auto&& a = some( 90}).and_then([](int&& x) {
 //    return some( static_cast<float>(x) + 90.0f});
 //  });
@@ -458,7 +458,7 @@ TEST_CASE("OptionLifetimeTest, MapOrElse") {
 //  //
 //}
 
-TEST_CASE("OptionTest, Filter") {
+TEST_CASE("OptionTest: Filter") {
 	auto is_even = [](int const& num) { return num % 2 == 0; };
 	auto is_odd = [&](int const& num) { return !(is_even(num)); };
 
@@ -481,7 +481,7 @@ TEST_CASE("OptionTest, Filter") {
 	CHECK(!option<vector<int>>(none).filter(all_odd));
 }
 
-// TEST_CASE("OptionTest, FilterNot") {
+// TEST_CASE("OptionTest: FilterNot") {
 //  auto is_even = [](int const& num) { return num % 2 == 0; };
 
 //  EXPECT_EQ(some( 90}).filter_not(is_even), none);
@@ -504,7 +504,7 @@ TEST_CASE("OptionTest, Filter") {
 //  EXPECT_EQ(make_none<vector<int>>().filter_not(all_odd), none);
 //}
 
-// TEST_CASE("OptionTest, Or") {
+// TEST_CASE("OptionTest: Or") {
 //  auto&& a = some( 90}).OR(some( 89}));
 //  EXPECT_EQ(VEG_FWD(a).unwrap(), 90);
 
@@ -528,7 +528,7 @@ TEST_CASE("OptionTest, Filter") {
 //  EXPECT_EQ(f, none);
 //}
 
-// TEST_CASE("OptionTest, Xor") {
+// TEST_CASE("OptionTest: Xor") {
 //  auto&& a = some( 90}).XOR(some( 89}));
 //  EXPECT_EQ(a, none);
 
@@ -552,7 +552,7 @@ TEST_CASE("OptionTest, Filter") {
 //  EXPECT_EQ(f, none);
 //}
 
-TEST_CASE("OptionTest, Take") {
+TEST_CASE("OptionTest: Take") {
 	auto a = some(9);
 	CHECK(a.take().unwrap() == 9);
 	CHECK(!a);
@@ -571,7 +571,7 @@ TEST_CASE("OptionTest, Take") {
 	CHECK(!d);
 }
 
-// TEST_CASE("OptionTest, Replace") {
+// TEST_CASE("OptionTest: Replace") {
 //  auto a = some( 9});
 //  EXPECT_EQ(a.replace(27), {some, 9});
 //  EXPECT_EQ(a, {some, 27});
@@ -589,7 +589,7 @@ TEST_CASE("OptionTest, Take") {
 //  EXPECT_EQ(d, {some, vector<int>{1, 2, 3, 4, 5}});
 //}
 
-TEST_CASE("OptionTest, Clone") {
+TEST_CASE("OptionTest: Clone") {
 	auto a = some(9);
 	CHECK(a.clone() == some(9));
 	CHECK(a == some(9));
@@ -603,7 +603,7 @@ TEST_CASE("OptionTest, Clone") {
 	CHECK(c == some(vector<int>{1, 2, 3, 4, 5}));
 }
 
-TEST_CASE("OptionTest, OrElse") {
+TEST_CASE("OptionTest: OrElse") {
 	auto&& a = some(90.0F).or_else([]() { return some(0.5f); });
 	CHECK(VEG_FWD(a).unwrap() == 90.0F);
 

@@ -1,21 +1,16 @@
 include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/doctest.cmake)
 
-add_library(backward_cpp_main OBJECT src/backward.cpp)
-target_include_directories(
-  backward_cpp_main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-target_link_libraries(backward_cpp_main CONAN_PKG::backward-cpp)
-
 add_library(doctest_cpp_main src/doctest_main.cpp)
 target_include_directories(
   doctest_cpp_main PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+target_link_libraries(doctest_cpp_main CONAN_PKG::backward-cpp)
 
 add_library(veg.all INTERFACE)
 target_include_directories(
   veg.all INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-target_link_libraries(veg.all INTERFACE veg doctest_cpp_main backward_cpp_main)
+target_link_libraries(veg.all INTERFACE veg doctest_cpp_main)
 
 macro(
   add_test_std_version
@@ -58,7 +53,7 @@ macro(add_all_tests_std_version std_version)
 
   add_custom_target(
     check.${std_version}
-    COMMAND ${CMAKE_CTEST_COMMAND} --verbose --tests-regex test.${std_version}
+    COMMAND ${CMAKE_CTEST_COMMAND} --verbose --tests-regex test.${std_version}.
     DEPENDS ${test_list.${std_version}}
   )
 

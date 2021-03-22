@@ -79,6 +79,9 @@ using make_integer_sequence =
 
 template <usize N>
 using make_index_sequence = make_integer_sequence<usize, N>;
+
+template <typename... Ts>
+struct type_sequence;
 } // namespace internal
 
 template <usize N>
@@ -88,6 +91,8 @@ template <typename T, T... Nums>
 using integer_sequence = internal::integer_sequence<T, Nums...>*;
 template <usize... Nums>
 using index_sequence = integer_sequence<usize, Nums...>;
+template <typename... Ts>
+using type_sequence = internal::type_sequence<Ts...>*;
 
 } // namespace meta
 } // namespace veg
