@@ -65,6 +65,8 @@ public:
 
 	VEG_NODISCARD
 	auto remaining_bytes() const noexcept -> i64 { return stack_bytes; }
+	VEG_NODISCARD
+	auto data() const noexcept -> void* { return stack_data; }
 
 	VEG_TEMPLATE(
 			(typename T),

@@ -24,7 +24,7 @@ public:
 	~S() { --n_instances_mut(); }
 };
 
-TEST_CASE("dynamic_stack, raii") {
+TEST_CASE("dynamic stack: raii") {
 	unsigned char buf[4096];
 
 	dynamic_stack_view stack{slice<void>(buf)};
@@ -66,7 +66,7 @@ TEST_CASE("dynamic_stack, raii") {
 	CHECK(S::n_instances() == 3);
 }
 
-TEST_CASE("dynamic_stack, evil_reorder") {
+TEST_CASE("dynamic stack: evil_reorder") {
 	unsigned char buf[4096];
 	dynamic_stack_view stack{make::slice(buf)};
 	auto good = [&] {
@@ -83,7 +83,7 @@ TEST_CASE("dynamic_stack, evil_reorder") {
 	CHECK_DEATH({ bad(); });
 }
 
-TEST_CASE("dynamic_stack, assign") {
+TEST_CASE("dynamic stack: assign") {
 	alignas(double) unsigned char buf[100];
 	dynamic_stack_view stack{make::slice(buf)};
 
@@ -100,7 +100,7 @@ TEST_CASE("dynamic_stack, assign") {
 	CHECK(stack.remaining_bytes() == 100);
 }
 
-TEST_CASE("dynamic_stack, return") {
+TEST_CASE("dynamic stack: return") {
 	unsigned char buf[4096];
 	dynamic_stack_view stack(make::slice(buf));
 
@@ -120,7 +120,7 @@ TEST_CASE("dynamic_stack, return") {
 	CHECK(s.size() == 3);
 }
 
-TEST_CASE("dynamic_stack, manual_lifetimes") {
+TEST_CASE("dynamic stack: manual_lifetimes") {
 	unsigned char buf[4096];
 	dynamic_stack_view stack(make::slice(buf));
 
@@ -155,7 +155,7 @@ struct T : S {
 	int a = 0;
 };
 
-TEST_CASE("dynamic_stack, alignment") {
+TEST_CASE("dynamic stack: alignment") {
 	alignas(T) unsigned char buffer[4096 + 1];
 	dynamic_stack_view stack{{buffer + 1, 4096}};
 	CHECK(stack.remaining_bytes() == 4096);
@@ -193,7 +193,7 @@ public:
 	~throwing() { --n_instances_mut(); }
 };
 
-TEST_CASE("dynamic_stack, throwing") {
+TEST_CASE("dynamic stack: throwing") {
 	unsigned char buf[4096];
 	dynamic_stack_view stack{slice<void>(buf)};
 

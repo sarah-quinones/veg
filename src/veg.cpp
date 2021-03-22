@@ -872,12 +872,47 @@ void set_assert_params2(        //
 	failed_asserts.back().callback = msg;
 }
 
+// if possible:
+// aligns the pointer
+// then advances it by `size` bytes, and decreases `space` by `size`
+// returns the previous aligned value
+//
+// otherwise, if there is not enough space for aligning or advancing the
+// pointer, returns nullptr and the values are left unmodified
 auto align_next(i64 alignment, i64 size, void*& ptr, i64& space) noexcept
 		-> void* {
-	auto uspace = usize(space);
-	void* res = std::align(alignment, usize(size), ptr, uspace);
-	space = i64(uspace);
-	return res;
+	static_assert(
+			sizeof(std::uintptr_t) >= sizeof(void*),
+			"std::uintptr_t can't hold a pointer value");
+
+	using byte_ptr = unsigned char*;
+
+	// assert alignment is power of two
+	VEG_ASSERT_ALL_OF(
+			(alignment > 0), ((u64(alignment) & (u64(alignment) - 1)) == 0));
+
+	if (space < size) {
+		return nullptr;
+	}
+
+	std::uintptr_t lo_mask = alignment - 1;
+	std::uintptr_t hi_mask = ~lo_mask;
+
+	auto const intptr = reinterpret_cast<std::uintptr_t>(ptr);
+	auto* const byteptr = static_cast<byte_ptr>(ptr);
+
+	auto offset = ((intptr + alignment - 1) & hi_mask) - intptr;
+
+	if (space - size < offset) {
+		return nullptr;
+	}
+
+	void* const rv = byteptr + offset;
+
+	ptr = byteptr + (offset + size);
+	space = space - (offset + size);
+
+	return rv;
 }
 auto vsnprintf(char* out, usize n, char const* fmt, va_list args) -> int {
 	return std::vsnprintf(out, n, fmt, args);
