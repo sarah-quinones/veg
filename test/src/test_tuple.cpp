@@ -1,8 +1,10 @@
 #include "static_assert.hpp"
 #include <fmt/core.h>
+#include <limits>
 #include <veg/tuple.hpp>
 #include <utility>
 #include <doctest.h>
+#include "veg/memory/placement.hpp"
 #include "veg/internal/prologue.hpp"
 
 #define MOV VEG_MOV
@@ -10,12 +12,13 @@
 #define ASSERT_SAME(...) STATIC_ASSERT(::std::is_same<__VA_ARGS__>::value)
 
 using namespace veg::literals;
+using namespace veg::tags;
 
 template <typename>
 void get() = delete;
 
 TEST_CASE("tuple: adl_get") {
-	veg::tuple<int, float> t;
+	veg::tuple<int, float> t{};
 	get<0>(t);
 	STATIC_ASSERT(VEG_CONCEPT(same<decltype(get<0>(t)), int&>));
 	STATIC_ASSERT(VEG_CONCEPT(
@@ -29,13 +32,14 @@ TEST_CASE("tuple: adl_get") {
 TEST_CASE("tuple: all") {
 	using namespace veg;
 
-	veg::tuple<int, char, bool> tup{1, 'c', true};
+	veg::tuple<int, char, bool> tup{inplace, 1, 'c', true};
 	veg::tuple<int, char&&, char, bool&, bool const&> tup_ref{
+			inplace,
 			1,
 			MOV(tup).as_ref()[1_c],
 			'c',
-			niebloid::get<2>{}(tup),
-			niebloid::get<2>{}(tup)};
+			nb::get<2>{}(tup),
+			nb::get<2>{}(tup)};
 
 	{
 		STATIC_ASSERT(VEG_CONCEPT(trivially_relocatable<decltype(tup)>));
@@ -93,8 +97,8 @@ TEST_CASE("tuple: all") {
 	}
 	{
 		using val_tup = veg::tuple<int, bool>;
-		val_tup a{5, true};
-		val_tup b{3, false};
+		val_tup a{inplace, 5, true};
+		val_tup b{inplace, 3, false};
 		STATIC_ASSERT(VEG_CONCEPT(constructible<veg::tuple<long, bool>, val_tup>));
 		STATIC_ASSERT(
 				VEG_CONCEPT(constructible<veg::tuple<long, bool>, val_tup const&>));
@@ -104,16 +108,22 @@ TEST_CASE("tuple: all") {
 		CHECK(b[0_c] == 5);
 		CHECK(a[1_c] == false);
 		CHECK(b[1_c] == true);
+		STATIC_ASSERT(val_tup{inplace, 1, true} == val_tup{inplace, 1, true});
+		STATIC_ASSERT(
+				noexcept(val_tup{inplace, 1, true} == val_tup{inplace, 1, true}));
+		STATIC_ASSERT(
+				cmp::three_way(val_tup{inplace, 1, true}, val_tup{inplace, 1, true}) ==
+				0);
 
-		CHECK(a == (val_tup{3, false}));
-		CHECK(b == (val_tup{5, true}));
+		CHECK(a == (val_tup{inplace, 3, false}));
+		CHECK(b == (val_tup{inplace, 5, true}));
 	}
 	{
 		using ref_tup = veg::tuple<int&>;
 		using val_tup = veg::tuple<int>;
 		int i = 13;
-		val_tup j{12};
-		ref_tup a{i};
+		val_tup j{inplace, 12};
+		ref_tup a{inplace, i};
 		ref_tup const b{j};
 		veg::swap(FWD(a), FWD(b));
 
@@ -139,8 +149,8 @@ TEST_CASE("tuple: all") {
 		STATIC_ASSERT(!VEG_CONCEPT(constructible<ref_tup, rref_tup&&>));
 		int i = 13;
 		int j = 12;
-		ref_tup a{i};
-		rref_tup b{FWD(j)};
+		ref_tup a{inplace, i};
+		rref_tup b{inplace, FWD(j)};
 
 		veg::swap(a.as_ref(), b.as_ref());
 
@@ -173,7 +183,7 @@ TEST_CASE("tuple: all") {
 	CHECK(i == 1);
 	CHECK(c == 'c');
 	CHECK(b);
-	veg::tuple tup_deduce{1, 'c', true};
+	veg::tuple tup_deduce{inplace, 1, 'c', true};
 #endif
 
 	STATIC_ASSERT(std::is_copy_assignable<veg::tuple<int, char>>());
@@ -216,17 +226,23 @@ TEST_CASE("tuple: all") {
 	ASSERT_SAME(decltype(tup_deduce), veg::tuple<int, char, bool>);
 #endif
 
-	STATIC_ASSERT(tuple<int>{1} == tuple<int>{1});
-	STATIC_ASSERT(tuple<int>{1} == tuple<float>{1});
-	STATIC_ASSERT(tuple<int>{1} != tuple<float>{2});
-	STATIC_ASSERT(tuple<int, float>{1, 2.0F} == tuple<float, int>{1.0F, 2});
-	STATIC_ASSERT(tuple<int, float>{1, 2.0F} == tuple<float, int>{1.0F, 2});
-	STATIC_ASSERT(tuple<int, float>{1, 2.0F} != tuple<float, int>{2.0F, 2});
+	STATIC_ASSERT(tuple<int>{inplace, 1} == tuple<int>{inplace, 1});
+	STATIC_ASSERT(tuple<int>{inplace, 1} == tuple<double>{inplace, 1});
+	STATIC_ASSERT(tuple<int>{inplace, 1} != tuple<double>{inplace, 2});
+	STATIC_ASSERT(
+			tuple<int, double>{inplace, 1, 2.0F} ==
+			tuple<double, int>{inplace, 1.0F, 2});
+	STATIC_ASSERT(
+			tuple<int, double>{inplace, 1, 2.0F} ==
+			tuple<double, int>{inplace, 1.0F, 2});
+	STATIC_ASSERT(
+			tuple<int, double>{inplace, 1, 2.0F} !=
+			tuple<double, int>{inplace, 2.0F, 2});
 }
 
 TEST_CASE("tuple: nested") {
 	using namespace veg;
-	tuple<int, tuple<int, float>> tup{1, {elems, 2, 3.0F}};
+	tuple<int, tuple<int, float>> tup{inplace, 1, make::tuple(2, 3.0F)};
 	CHECK(tup[0_c] == 1);
 
 	CHECK(tup[1_c][1_c] == 3.0F);
@@ -240,21 +256,63 @@ TEST_CASE("tuple: nested") {
 	STATIC_ASSERT(sizeof(tuple<tuple<tuple<int>>>) == sizeof(int));
 }
 
+TEST_CASE("tuple: cmp") {
+	using namespace veg;
+	using veg::cmp::three_way;
+	using tup_i = tuple<int, int, int>;
+	using tup_d = tuple<int, int, double>;
+	constexpr double nan = std::numeric_limits<double>::quiet_NaN();
+
+	STATIC_ASSERT(VEG_CONCEPT(
+			same<decltype(three_way(tup_d{}, tup_d{})), cmp::partial_ordering>));
+	STATIC_ASSERT(VEG_CONCEPT(
+			same<decltype(cmp_3way(tup_i{}, tup_d{})), cmp::partial_ordering>));
+	STATIC_ASSERT(VEG_CONCEPT(
+			same<decltype(cmp_3way(tup_d{}, tup_i{})), cmp::partial_ordering>));
+	STATIC_ASSERT(VEG_CONCEPT(
+			same<decltype(cmp_3way(tup_i{}, tup_i{})), cmp::strong_ordering>));
+
+	{
+		constexpr auto t1 = make::tuple(1, 2, 3);
+		constexpr auto t2 = make::tuple(1, 2, 3);
+		constexpr auto t3 = make::tuple(0, 2, 3);
+		constexpr auto t4 = make::tuple(1, 2, 4);
+
+		STATIC_ASSERT(three_way(t1, t2) == 0);
+		STATIC_ASSERT(three_way(t1, t3) > 0);
+		STATIC_ASSERT(three_way(t1, t4) < 0);
+		STATIC_ASSERT(three_way(t2, t3) > 0);
+		STATIC_ASSERT(three_way(t2, t4) < 0);
+		STATIC_ASSERT(three_way(t3, t4) < 0);
+	}
+	CHECK(
+			three_way(make::tuple(1, 1, nan), make::tuple(1, 1, 0)) ==
+			cmp::partial_ordering::unordered);
+
+	CHECK(
+			three_way(make::tuple(0, 1, nan), make::tuple(1, 1, 0)) ==
+			cmp::partial_ordering::less);
+
+	CHECK(
+			three_way(make::tuple(1, 2, nan), make::tuple(1, 1, 0)) ==
+			cmp::partial_ordering::greater);
+}
+
 TEST_CASE("tuple: empty") {
 	using namespace veg;
-	tuple<> t1;
+	tuple<> t1{};
 	tuple<> t2(inplace);
 	CHECK(t1 == t2);
 	STATIC_ASSERT(sizeof(t1) == 1);
 	STATIC_ASSERT(tuple<>{} == tuple<>{});
 }
 
-TEST_CASE("tuple: cvt") {
+TEST_CASE("tuple: inplace") {
 	using namespace veg;
-	tuple<int, float> t1{1, 1.5F};
-	tuple<long, double> t2(3, 2.5);
+	tuple<int, double> t1{inplace, 1, 1.5F};
+	tuple<long, double> t2(inplace, 3, 2.5);
 	tuple<long, double> t3(t1);
-	tuple<int, float> t4(t3);
+	tuple<int, double> t4(t3);
 
 	STATIC_ASSERT(sizeof(t2) == sizeof(long) + sizeof(double));
 
@@ -275,7 +333,7 @@ TEST_CASE("tuple: non_movable") {
 		(void)s;
 	}
 	VEG_CPP17({
-		tuple<S> s{inplace, [] { return S{}; }};
+		tuple<S> s{inplace, make::from_callable([] { return S{}; })};
 		(void)s;
 	})
 }
@@ -283,8 +341,8 @@ TEST_CASE("tuple: non_movable") {
 TEST_CASE("tuple: get") {
 	using namespace veg;
 	int arr[] = {1, 2, 3};
-	niebloid::get<0>{}(arr);
-	niebloid::get<0>{}(FWD(arr));
+	nb::get<0>{}(arr);
+	nb::get<0>{}(FWD(arr));
 }
 
 struct T : veg::tuple<int, float> {
@@ -297,8 +355,8 @@ struct Tref : veg::tuple<int&, float&> {
 };
 
 TEST_CASE("tuple: derived") {
-	T t{1, 2.0F};
-	T t2{3, 4.0F};
+	T t{inplace, 1, 2.0F};
+	T t2{inplace, 3, 4.0F};
 
 	CHECK(t[0_c] == 1);
 	CHECK(t[1_c] == 2.0F);

@@ -1,7 +1,6 @@
-#ifndef __VEG_SIMPLE_STRING_HPP_OITPF0V1S
-#define __VEG_SIMPLE_STRING_HPP_OITPF0V1S
+#ifndef VEG_SIMPLE_STRING_HPP_OITPF0V1S
+#define VEG_SIMPLE_STRING_HPP_OITPF0V1S
 
-#include "veg/internal/type_traits.hpp"
 #include "veg/internal/fmt.hpp"
 #include "veg/internal/prologue.hpp"
 
@@ -44,4 +43,4 @@ struct string : fmt::buffer {
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard __VEG_SIMPLE_STRING_HPP_OITPF0V1S */
+#endif /* end of include guard VEG_SIMPLE_STRING_HPP_OITPF0V1S */

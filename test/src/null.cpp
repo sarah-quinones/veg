@@ -1,1 +1,0 @@
-#include "veg/assert.hpp"

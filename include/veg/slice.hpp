@@ -1,7 +1,7 @@
-#ifndef __VEG_SPAN_HPP_CBT4079WS
-#define __VEG_SPAN_HPP_CBT4079WS
+#ifndef VEG_SLICE_HPP_GKSTE2JDS
+#define VEG_SLICE_HPP_GKSTE2JDS
 
-#include "veg/assert.hpp"
+#include "veg/util/assert.hpp"
 #include "veg/option.hpp"
 #include "veg/internal/prologue.hpp"
 
@@ -12,28 +12,35 @@ struct array {
 	static_assert(N > 0, "");
 	T self[static_cast<usize>(N)];
 
-	VEG_NODISCARD auto data() noexcept -> T* { return self; }
-	VEG_NODISCARD auto data() const noexcept -> T const* { return self; }
-	VEG_NODISCARD auto size() const noexcept -> i64 { return N; }
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto data() noexcept -> T* { return self; }
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto data() const noexcept -> T const* {
+		return self;
+	}
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto size() const noexcept -> i64 {
+		return N;
+	}
 
-	VEG_NODISCARD auto operator[](i64 i) && noexcept -> T&& = delete;
-	VEG_NODISCARD auto operator[](i64 i) & noexcept -> T& {
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto operator[](i64 i) && noexcept
+			-> T&& = delete;
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto operator[](i64 i) & noexcept -> T& {
 		VEG_ASSERT_ALL_OF(i >= i64(0), i < N);
 		return self[i];
 	}
-	VEG_NODISCARD auto operator[](i64 i) const& noexcept -> T const& {
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto operator[](i64 i) const& noexcept
+			-> T const& {
 		VEG_ASSERT_ALL_OF(i >= i64(0), i < N);
 		return self[i];
 	}
 
 	VEG_NODISCARD auto at(i64 i) && noexcept -> option<T&&> = delete;
-	VEG_NODISCARD auto at(i64 i) & noexcept -> option<T&> {
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto at(i64 i) & noexcept -> option<T&> {
 		if (i >= 0 && i < N) {
 			return {some, self[i]};
 		}
 		return none;
 	}
-	VEG_NODISCARD auto at(i64 i) const& noexcept -> option<T const&> {
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto at(i64 i) const& noexcept
+			-> option<T const&> {
 		if (i >= 0 && i < N) {
 			return {some, self[i]};
 		}
@@ -55,33 +62,36 @@ struct member_fn_data_size {
 	using stype = decltype(void(static_cast<i64>(VEG_DECLVAL(T&).size())));
 
 	template <typename T>
-	static constexpr auto d(T& arg) noexcept -> decltype(arg.data()) {
+	HEDLEY_ALWAYS_INLINE static constexpr auto d(T& arg) noexcept
+			-> decltype(arg.data()) {
 		return arg.data();
 	}
 	template <typename T>
-	static constexpr auto s(T& arg) noexcept -> i64 {
+	HEDLEY_ALWAYS_INLINE static constexpr auto s(T& arg) noexcept -> i64 {
 		return i64(arg.size());
 	}
 };
 template <typename R, typename T>
 struct has_members_r
 		: meta::conjunction<
-					meta::is_detected<member_fn_data_size::dtype_r, R, T&>,
-					meta::is_detected<member_fn_data_size::stype, T&>>,
+					meta_::is_detected<member_fn_data_size::dtype_r, R, T&>,
+					meta_::is_detected<member_fn_data_size::stype, T&>>,
 			member_fn_data_size {};
 template <typename T>
 struct has_members : meta::conjunction<
-												 meta::is_detected<member_fn_data_size::dtype, T&>,
-												 meta::is_detected<member_fn_data_size::stype, T&>>,
+												 meta_::is_detected<member_fn_data_size::dtype, T&>,
+												 meta_::is_detected<member_fn_data_size::stype, T&>>,
 										 member_fn_data_size {};
 
 struct array_data_size {
 	template <typename T>
-	static constexpr auto d(T& arg) noexcept -> decltype(+arg) {
+	HEDLEY_ALWAYS_INLINE static constexpr auto d(T& arg) noexcept
+			-> decltype(+arg) {
 		return +arg;
 	}
 	template <typename T, usize N>
-	static constexpr auto s(T (&/*arg*/)[N]) noexcept -> i64 {
+	HEDLEY_ALWAYS_INLINE static constexpr auto s(T (&/*arg*/)[N]) noexcept
+			-> i64 {
 		return i64(N);
 	}
 };
@@ -113,9 +123,11 @@ template <typename T>
 struct slice_ctor_common {
 	slice_ctor_common() noexcept = default;
 
+	HEDLEY_ALWAYS_INLINE
 	constexpr slice_ctor_common(T* data, i64 count, unsafe_t /* tag */) noexcept
 			: m_begin{data}, m_count{count} {}
 
+	HEDLEY_ALWAYS_INLINE
 	constexpr slice_ctor_common(
 			T* data, i64 count, safe_t /* tag */ = {}) noexcept
 			:
@@ -144,8 +156,8 @@ struct slice_ctor_common {
 	VEG_TEMPLATE(
 			(typename Rng),
 			requires(internal::has_data_r<T, meta::uncvref_t<Rng>>::value),
-			constexpr slice_ctor_common, /* NOLINT(hicpp-explicit-conversions,
-	                                    bugprone-forwarding-reference-overload) */
+			HEDLEY_ALWAYS_INLINE constexpr,
+			slice_ctor_common,
 			(rng, Rng&&))
 	noexcept
 			: slice_ctor_common(
@@ -174,20 +186,27 @@ struct slice_ctor<T const> : slice_ctor_common<T const> {
 template <typename T>
 struct slice : private internal::slice_ctor<T> {
 	using internal::slice_ctor<T>::slice_ctor;
-	VEG_NODISCARD constexpr auto data() const noexcept -> T* {
+	VEG_NODISCARD
+	HEDLEY_ALWAYS_INLINE
+	constexpr auto data() const noexcept -> T* {
 		return internal::slice_ctor_common<T>::m_begin;
 	}
-	VEG_NODISCARD constexpr auto size() const noexcept -> i64 {
+	VEG_NODISCARD
+	HEDLEY_ALWAYS_INLINE
+	constexpr auto size() const noexcept -> i64 {
 		return internal::slice_ctor_common<T>::m_count;
 	}
-	VEG_NODISCARD constexpr auto operator[](i64 i) const noexcept -> T& {
+	VEG_NODISCARD
+	HEDLEY_ALWAYS_INLINE
+	constexpr auto operator[](i64 i) const noexcept -> T& {
 		return VEG_ASSERT_ALL_OF( //
 							 (i >= i64(0)),
 							 (i < size())),
 					 *(data() + i);
 	}
-	VEG_NODISCARD VEG_CPP14(constexpr) auto at(i64 i) const noexcept
-			-> option<T&> {
+	VEG_NODISCARD
+	HEDLEY_ALWAYS_INLINE
+	VEG_CPP14(constexpr) auto at(i64 i) const noexcept -> option<T&> {
 		if (i > 0 || i <= size()) {
 			return {some, *(data() + i)};
 		}
@@ -204,7 +223,8 @@ struct slice<void> : slice<unsigned char> {
 			requires(
 					!VEG_CONCEPT(const_type<T>) && //
 					VEG_CONCEPT(trivially_copyable<T>)),
-			slice, /* NOLINT(hicpp-explicit-conversions) */
+			HEDLEY_ALWAYS_INLINE,
+			slice,
 			(s, slice<T>))
 	noexcept
 			: slice(
@@ -217,7 +237,8 @@ struct slice<void const> : slice<unsigned char const> {
 	VEG_TEMPLATE(
 			(typename T),
 			requires VEG_CONCEPT(trivially_copyable<T>),
-			slice, /* NOLINT(hicpp-explicit-conversions) */
+			HEDLEY_ALWAYS_INLINE,
+			slice,
 			(s, slice<T>))
 	noexcept
 			: slice{
@@ -226,24 +247,25 @@ struct slice<void const> : slice<unsigned char const> {
 };
 
 namespace make {
-namespace niebloid {
+namespace nb {
 struct slice {
 	VEG_TEMPLATE(
 			(typename Rng),
 			requires(VEG_CONCEPT(constructible< //
-													 veg::slice<meta::remove_pointer_t<decltype(
+													 veg::slice<meta::unptr_t<decltype(
 															 internal::has_data<meta::uncvref_t<Rng>>::d(
 																	 VEG_DECLVAL(Rng&)))>>,
 													 Rng&&>)),
+			HEDLEY_ALWAYS_INLINE,
 			auto
 			operator(),
 			(rng, Rng&&))
-	const noexcept->veg::slice<meta::remove_pointer_t<decltype(
+	const noexcept->veg::slice<meta::unptr_t<decltype(
 			internal::has_data<meta::uncvref_t<Rng>>::d(rng))>> {
 		return {VEG_FWD(rng)};
 	}
 };
-} // namespace niebloid
+} // namespace nb
 VEG_NIEBLOID(slice);
 } // namespace make
 
@@ -255,4 +277,4 @@ struct is_mostly_trivial<slice<T>> : bool_constant<true> {};
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard __VEG_SPAN_HPP_CBT4079WS */
+#endif /* end of include guard VEG_SLICE_HPP_GKSTE2JDS */

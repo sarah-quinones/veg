@@ -12,6 +12,11 @@ target_include_directories(
 )
 target_link_libraries(veg.all INTERFACE veg doctest_cpp_main)
 
+macro(set_cxx_version target std_version)
+  set_target_properties(${target} PROPERTIES CXX_STANDARD ${std_version})
+  set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
+endmacro()
+
 macro(
   add_test_std_version
   std_version
@@ -20,9 +25,7 @@ macro(
 )
   add_executable(test.${std_version}.${name} ${filename})
   target_link_libraries(test.${std_version}.${name} veg.${std_version})
-  set_target_properties(
-    test.${std_version}.${name} PROPERTIES CXX_EXTENSIONS OFF
-  )
+  set_cxx_version(test.${std_version}.${name} ${std_version})
   doctest_discover_tests(
     test.${std_version}.${name} TEST_PREFIX test.${std_version}.
   )
@@ -34,14 +37,14 @@ macro(
 endmacro()
 
 macro(add_all_tests_std_version std_version)
-  add_library(veg.${std_version} INTERFACE)
+  add_library(veg.${std_version} OBJECT src/null.cpp)
   target_include_directories(
-    veg.${std_version} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include
+    veg.${std_version} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
   )
-  target_link_libraries(veg.${std_version} INTERFACE veg.all)
-  target_compile_features(veg.${std_version} INTERFACE cxx_std_${std_version})
+  target_link_libraries(veg.${std_version} veg.all)
+  set_cxx_version(veg.${std_version} ${std_version})
   target_compile_definitions(
-    veg.${std_version} INTERFACE -DVEG_INTERNAL_ASSERTIONS
+    veg.${std_version} PUBLIC -DVEG_INTERNAL_ASSERTIONS
   )
 
   add_test_std_version(${std_version} int src/test_int_c.cpp)

@@ -1,7 +1,7 @@
-#ifndef __VEG_BYTE_STRING_REF_HPP_NK1AVIX7S
-#define __VEG_BYTE_STRING_REF_HPP_NK1AVIX7S
+#ifndef VEG_BYTE_STRING_REF_HPP_NK1AVIX7S
+#define VEG_BYTE_STRING_REF_HPP_NK1AVIX7S
 
-#include "veg/internal/type_traits.hpp"
+#include "veg/type_traits/constructible.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
@@ -13,8 +13,7 @@ struct char_string_ref {
 			char const* data, i64 len) noexcept
 			: data_{data}, len_{len} {}
 
-	char_string_ref // NOLINT(hicpp-explicit-conversions)
-			(char const* str) noexcept;
+	char_string_ref(char const* str) noexcept;
 
 	VEG_TEMPLATE(
 			typename T,
@@ -25,7 +24,8 @@ struct char_string_ref {
 					VEG_CONCEPT(
 							constructible<i64, decltype(VEG_DECLVAL(T const&).size())>)),
 
-			HEDLEY_ALWAYS_INLINE constexpr char_string_ref, // NOLINT(hicpp-explicit-conversions)
+			HEDLEY_ALWAYS_INLINE constexpr,
+			char_string_ref,
 			(arg, T const&))
 	noexcept
 			: char_string_ref{
@@ -53,8 +53,7 @@ struct byte_str_static_const {
 	static constexpr T value = {"", 0};
 };
 template <typename T>
-constexpr T byte_str_static_const<
-		T>::value; // NOLINT(readability-redundant-declaration)
+constexpr T byte_str_static_const<T>::value;
 namespace /* NOLINT */ {
 constexpr auto const& empty_str /* NOLINT */ =
 		byte_str_static_const<char_string_ref>::value;
@@ -65,4 +64,4 @@ constexpr auto const& empty_str /* NOLINT */ =
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard __VEG_BYTE_STRING_REF_HPP_NK1AVIX7S */
+#endif /* end of include guard VEG_BYTE_STRING_REF_HPP_NK1AVIX7S */

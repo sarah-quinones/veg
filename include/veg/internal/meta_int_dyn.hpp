@@ -1,7 +1,7 @@
-#ifndef __VEG_META_INT_DYN_HPP_GC385NKBS
-#define __VEG_META_INT_DYN_HPP_GC385NKBS
+#ifndef VEG_META_INT_DYN_HPP_GC385NKBS
+#define VEG_META_INT_DYN_HPP_GC385NKBS
 
-#include "veg/assert.hpp"
+#include "veg/util/assert.hpp"
 #include "veg/internal/meta_int_fix.hpp"
 #include "veg/internal/narrow.hpp"
 #include "veg/internal/prologue.hpp"
@@ -226,7 +226,7 @@ struct binary_traits<dyn, fix<N>> : binary_traits<dyn, dyn> {
 inline namespace literals {
 HEDLEY_ALWAYS_INLINE constexpr auto operator"" _v(unsigned long long n) noexcept
 		-> dyn {
-	return niebloid::narrow<i64>{}(n);
+	return nb::narrow<i64>{}(n);
 }
 } // namespace literals
 
@@ -253,4 +253,4 @@ struct debug<dyn> {
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard __VEG_META_INT_DYN_HPP_GC385NKBS */
+#endif /* end of include guard VEG_META_INT_DYN_HPP_GC385NKBS */

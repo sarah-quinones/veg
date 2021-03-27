@@ -1,5 +1,5 @@
-#ifndef __VEG_TIMER_HPP_2SVNQDV6S
-#define __VEG_TIMER_HPP_2SVNQDV6S
+#ifndef VEG_TIMER_HPP_2SVNQDV6S
+#define VEG_TIMER_HPP_2SVNQDV6S
 
 #include "veg/internal/typedefs.hpp"
 #include "veg/fn_view.hpp"
@@ -18,13 +18,13 @@ void log_elapsed_time(i64 duration, char const* msg, std::FILE* out) noexcept;
 
 namespace time {
 inline namespace VEG_ABI {
-namespace niebloid {
+namespace nb {
 struct monotonic_nanoseconds_since_epoch {
 	auto operator()() const noexcept -> i64 {
 		return abi::time::monotonic_nanoseconds_since_epoch();
 	}
 };
-} // namespace niebloid
+} // namespace nb
 VEG_NIEBLOID(monotonic_nanoseconds_since_epoch);
 
 struct log_elapsed_time {
@@ -66,4 +66,4 @@ public:
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard __VEG_TIMER_HPP_2SVNQDV6S */
+#endif /* end of include guard VEG_TIMER_HPP_2SVNQDV6S */

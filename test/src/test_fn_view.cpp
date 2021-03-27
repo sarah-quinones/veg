@@ -21,8 +21,7 @@ TEST_CASE("function_view: no_args") {
 	using T = decltype(p);
 
 	STATIC_ASSERT(noexcept(p == nullptr));
-	STATIC_ASSERT(
-			veg::meta::internal::equality_comparable_impl<T, std::nullptr_t>::value);
+	STATIC_ASSERT(VEG_CONCEPT(equality_comparable_with<T, std::nullptr_t>));
 
 	void (*inc_fn_ptr)() noexcept = +[]() noexcept { ++global; };
 	auto inc2_global_lambda = []() noexcept { global += 2; };

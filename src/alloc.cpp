@@ -1,7 +1,8 @@
-#include "veg/internal/memory.hpp"
+#include "veg/memory/aligned_alloc.hpp"
 #include <cstdlib>
 #include <cstddef>
 #include <new>
+#include "veg/internal/.external/hedley.ext.h"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {

@@ -1,13 +1,16 @@
-#ifndef __VEG_ALGORITHM_HPP_PLKQ80IYS
-#define __VEG_ALGORITHM_HPP_PLKQ80IYS
+#ifndef VEG_ALGORITHM_HPP_PLKQ80IYS
+#define VEG_ALGORITHM_HPP_PLKQ80IYS
 
-#include "veg/internal/memory.hpp"
+#include "veg/memory/aligned_alloc.hpp"
+#include "veg/memory/address.hpp"
+#include "veg/memory/placement.hpp"
+#include "veg/memory/aligned_alloc.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
 inline namespace VEG_ABI {
 namespace internal {
-namespace algo {
+namespace algo_ {
 
 template <typename T, typename... Args>
 HEDLEY_ALWAYS_INLINE
@@ -32,7 +35,7 @@ struct destroy_range_fn {
 
 	VEG_CPP20(constexpr)
 	void operator()() const noexcept {
-		algo::backward_destroy_n(cleanup_ptr, size);
+		algo_::backward_destroy_n(cleanup_ptr, size);
 	}
 };
 
@@ -42,7 +45,7 @@ void uninit_emplace_n(T* dest, T const* src, i64 n) noexcept(
 		VEG_CONCEPT(nothrow_constructible<T, Cast>)) {
 
 	i64 i = 0;
-	auto&& cleanup = make::defer(internal::algo::destroy_range_fn<T>{dest, i});
+	auto&& cleanup = make::defer(internal::algo_::destroy_range_fn<T>{dest, i});
 	for (; i < n; ++i) {
 		mem::construct_at(dest + i, const_cast<Cast>(src[i]));
 	}
@@ -112,7 +115,7 @@ struct reloc_impl<which::copy> {
 	template <typename T>
 	static VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) noexcept(
 			VEG_CONCEPT(nothrow_constructible<T, T const&>)) {
-		algo::reloc_fallible<T const&>(dest, src, n);
+		algo_::reloc_fallible<T const&>(dest, src, n);
 	}
 };
 
@@ -122,11 +125,11 @@ struct reloc_impl<which::throw_move> {
 	HEDLEY_ALWAYS_INLINE static VEG_CPP20(constexpr) void apply(
 			T* dest, T* src, i64 n) //
 			noexcept(false) {
-		algo::reloc_fallible<T&&>(dest, src, n);
+		algo_::reloc_fallible<T&&>(dest, src, n);
 	}
 };
 
-} // namespace algo
+} // namespace algo_
 } // namespace internal
 
 namespace fn {
@@ -135,7 +138,8 @@ struct backward_destroy_n {
 	VEG_TEMPLATE(
 			(typename T, typename... Args),
 			requires !VEG_CONCEPT(void_type<T>),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
+			void
 			operator(),
 			(ptr, T*),
 			(n, i64))
@@ -159,7 +163,8 @@ struct relocate_n {
 			requires(
 					!VEG_CONCEPT(const_type<T>) && (VEG_CONCEPT(move_constructible<T>) ||
 	                                        VEG_CONCEPT(copy_constructible<T>))),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
+			void
 			operator(),
 			(dest, T*),
 			(src, T*),
@@ -168,7 +173,7 @@ struct relocate_n {
 			VEG_CONCEPT(nothrow_move_constructible<T>) ||
 			VEG_CONCEPT(nothrow_constructible<T, T const&>)) {
 
-		namespace impl = internal::algo;
+		namespace impl = internal::algo_;
 		impl::reloc_impl<
 				VEG_CONCEPT(trivially_relocatable<T>)            //
 						? impl::which::trivial                       //
@@ -185,13 +190,14 @@ struct uninitialized_move_n {
 	VEG_TEMPLATE(
 			(typename T),
 			requires VEG_CONCEPT(move_constructible<T>),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
+			void
 			operator(),
 			(dest, T*),
 			(src, T*),
 			(n, i64))
 	const noexcept(VEG_CONCEPT(nothrow_move_constructible<T>)) {
-		internal::algo::uninit_emplace_n<T&&>(dest, src, n);
+		internal::algo_::uninit_emplace_n<T&&>(dest, src, n);
 	}
 };
 
@@ -200,7 +206,8 @@ struct uninitialized_copy_n {
 			(typename T, int = 0),
 			requires VEG_CONCEPT(trivially_copyable<T>) &&
 					VEG_CONCEPT(copy_constructible<T>),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
+			void
 			operator(),
 			(dest, T*),
 			(src, T const*),
@@ -212,13 +219,14 @@ struct uninitialized_copy_n {
 			(typename T),
 			requires !VEG_CONCEPT(trivially_copyable<T>) &&
 					VEG_CONCEPT(copy_constructible<T>),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
+			void
 			operator(),
 			(dest, T*),
 			(src, T const*),
 			(n, i64))
 	const noexcept(VEG_CONCEPT(nothrow_copy_constructible<T>)) {
-		internal::algo::uninit_emplace_n<T const&>(dest, src, n);
+		internal::algo_::uninit_emplace_n<T const&>(dest, src, n);
 	}
 };
 
@@ -226,7 +234,8 @@ struct copy_n {
 	VEG_TEMPLATE(
 			(typename T),
 			requires VEG_CONCEPT(copy_assignable<T>),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
+			void
 			operator(),
 			(dest, T*),
 			(src, T const*),
@@ -243,7 +252,8 @@ struct mixed_init_copy_n {
 			(typename T, int = 0),
 			requires VEG_CONCEPT(trivially_copyable<T>) &&
 					VEG_CONCEPT(copy_assignable<T>) && VEG_CONCEPT(copy_constructible<T>),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
+			void
 			operator(),
 			(dest, T*),
 			(src, T const*),
@@ -258,7 +268,8 @@ struct mixed_init_copy_n {
 			(typename T),
 			requires !VEG_CONCEPT(trivially_copyable<T>) &&
 					VEG_CONCEPT(copy_assignable<T>) && VEG_CONCEPT(copy_constructible<T>),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
+			void
 			operator(),
 			(dest, T*),
 			(src, T const*),
@@ -282,7 +293,7 @@ VEG_INLINE_VAR(copy_n, fn::copy_n);
 VEG_INLINE_VAR(mixed_init_copy_n, fn::mixed_init_copy_n);
 
 namespace internal {
-namespace algo {
+namespace algo_ {
 
 struct free_cleanup {
 	void* ptr;
@@ -306,10 +317,10 @@ HEDLEY_ALWAYS_INLINE auto reallocate_memory(
 	return p;
 }
 
-} // namespace algo
+} // namespace algo_
 } // namespace internal
 } // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard __VEG_ALGORITHM_HPP_PLKQ80IYS */
+#endif /* end of include guard VEG_ALGORITHM_HPP_PLKQ80IYS */

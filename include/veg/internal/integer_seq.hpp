@@ -1,14 +1,21 @@
-#ifndef __VEG_INTEGER_SEQ_HPP_JBT0EKAQS
-#define __VEG_INTEGER_SEQ_HPP_JBT0EKAQS
+#ifndef VEG_INTEGER_SEQ_HPP_JBT0EKAQS
+#define VEG_INTEGER_SEQ_HPP_JBT0EKAQS
 
-#include "veg/internal/type_traits.hpp"
+#include "veg/internal/typedefs.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace meta {
-using usize = decltype(sizeof(int));
-
+inline namespace VEG_ABI {
+using usize = decltype(sizeof(0));
 namespace internal {
+
+template <i64 I>
+struct empty_i {};
+
+using empty = empty_i<0>;
+using empty_arr = empty[];
+namespace meta_ {
+
 template <typename T, T... Nums>
 struct integer_sequence;
 
@@ -82,20 +89,23 @@ using make_index_sequence = make_integer_sequence<usize, N>;
 
 template <typename... Ts>
 struct type_sequence;
+} // namespace meta_
 } // namespace internal
+namespace meta {
 
 template <usize N>
-using make_index_sequence = internal::make_integer_sequence<usize, N>*;
+using make_index_sequence = internal::meta_::make_integer_sequence<usize, N>*;
 
 template <typename T, T... Nums>
-using integer_sequence = internal::integer_sequence<T, Nums...>*;
+using integer_sequence = internal::meta_::integer_sequence<T, Nums...>*;
 template <usize... Nums>
 using index_sequence = integer_sequence<usize, Nums...>;
 template <typename... Ts>
-using type_sequence = internal::type_sequence<Ts...>*;
+using type_sequence = internal::meta_::type_sequence<Ts...>*;
 
 } // namespace meta
+} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard __VEG_INTEGER_SEQ_HPP_JBT0EKAQS */
+#endif /* end of include guard VEG_INTEGER_SEQ_HPP_JBT0EKAQS */

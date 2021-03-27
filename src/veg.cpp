@@ -1,5 +1,5 @@
-#include "veg/assert.hpp"
-#include "veg/timer.hpp"
+#include "veg/util/assert.hpp"
+#include "veg/util/timer.hpp"
 #include <cinttypes>
 #include <memory>
 
@@ -53,7 +53,8 @@ void string::insert(i64 pos, char const* data_, i64 len) {
 	i64 pre_new_size = len + old_size;
 	i64 new_size =
 			(pre_new_size > (2 * old_size)) ? pre_new_size : (2 * old_size);
-	resize(new_size);
+	reserve(new_size);
+  resize(pre_new_size);
 	if (len > 0) {
 		std::memmove(data() + pos + len, data() + pos, std::size_t(old_size - pos));
 		std::memmove(data() + pos, data_, std::size_t(len));
@@ -914,8 +915,18 @@ auto align_next(i64 alignment, i64 size, void*& ptr, i64& space) noexcept
 
 	return rv;
 }
-auto vsnprintf(char* out, usize n, char const* fmt, va_list args) -> int {
-	return std::vsnprintf(out, n, fmt, args);
+auto snprintf1(char* out, usize n, char const* fmt, void* arg) -> int {
+#define PRINT1(Type, Fmt)                                                      \
+	if (std::strcmp(fmt, "%" #Fmt) == 0) {                                       \
+		return std::snprintf(out, n, fmt, *static_cast<Type*>(arg));               \
+	}                                                                            \
+	(void)0
+
+	PRINT1(long long signed, lld);
+	PRINT1(long long unsigned, llu);
+	PRINT1(long double, Lf);
+	PRINT1(void*, p);
+	terminate();
 }
 } // namespace internal
 } // namespace VEG_ABI_VERSION

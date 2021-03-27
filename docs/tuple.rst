@@ -19,15 +19,15 @@ tuple
     | ``noexcept`` if `nothrow_default_constructible<Ti>
       <https://en.cppreference.com/w/cpp/types/is_default_constructible>`__
 
-  .. cpp:function:: constexpr tuple(elems_t, Ts... args) noexcept(conditionally)
+  .. cpp:function:: template <typename... Us> constexpr tuple(elems_t, Us&&... args) noexcept(conditionally)
 
     | direct constructor: each member is constructed by forwarding the
       corresponding parameter ``Ti(FWD(args_i))``
-    | viable if `move_constructible<Ti>
-      <https://en.cppreference.com/w/cpp/types/is_move_constructible>`__ for all
+    | viable if `constructible<Ti, Ui&&>
+      <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for all
       ``i``
-    | ``noexcept`` if `nothrow_move_constructible<Ti>
-      <https://en.cppreference.com/w/cpp/types/is_move_constructible>`__ for
+    | ``noexcept`` if `nothrow_constructible<Ti, Ui&&>
+      <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for
       all ``i``
 
   .. cpp:function:: template<typename... Fn> constexpr tuple(inplace_t, Fn&&... fn) noexcept(conditionally)

@@ -31,4 +31,8 @@ TEST_CASE("meta_int: all") {
 	CHECK(boolean<yes>());
 	CHECK_DEATH({ fix<2>{3}; });
 	CHECK_DEATH({ void(2_c / 0_v); });
+
+	VEG_ASSERT(0_v < 2_c);
+	CHECK_DEATH({ VEG_ASSERT(0_v > 2_c); });
+	CHECK_DEATH({ VEG_ASSERT(0_v == 2_c); });
 }

@@ -1,11 +1,11 @@
-#ifndef __VEG_DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS
-#define __VEG_DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS
+#ifndef VEG_DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS
+#define VEG_DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS
 
-#include "veg/internal/meta_int.hpp"
-#include "veg/internal/type_traits.hpp"
-#include "veg/assert.hpp"
+#include "veg/util/assert.hpp"
 #include "veg/slice.hpp"
-#include "veg/internal/memory.hpp"
+#include "veg/type_traits/constructible.hpp"
+#include "veg/memory/placement.hpp"
+#include "veg/memory/address.hpp"
 #include "veg/option.hpp"
 #include "veg/internal/narrow.hpp"
 #include "veg/internal/prologue.hpp"
@@ -71,7 +71,8 @@ public:
 	VEG_TEMPLATE(
 			(typename T),
 			requires VEG_CONCEPT(constructible<T>),
-			VEG_NODISCARD auto make_new,
+			VEG_NODISCARD,
+			auto make_new,
 			(/*unused*/, tag_t<T>),
 			(len, i64),
 			(align = alignof(T), i64))
@@ -87,7 +88,8 @@ public:
 	VEG_TEMPLATE(
 			(typename T),
 			requires VEG_CONCEPT(constructible<T>),
-			VEG_NODISCARD auto make_new_for_overwrite,
+			VEG_NODISCARD,
+			auto make_new_for_overwrite,
 			(/*unused*/, tag_t<T>),
 			(len, i64),
 			(align = alignof(T), i64))
@@ -144,8 +146,8 @@ struct cleanup {
 struct dynamic_alloc_base {
 	dynamic_stack_view& parent;
 	void* old_pos;
-	void const volatile* data = nullptr;
-	i64 len = 0;
+	void const volatile* data;
+	i64 len;
 
 	void destroy(void const volatile* void_data_end) noexcept {
 		if (len != 0) {
@@ -159,7 +161,7 @@ struct dynamic_alloc_base {
 					parent_stack_data == data_end,
 					parent_stack_data >= old_position);
 
-			parent.stack_bytes += niebloid::narrow<i64>{}(
+			parent.stack_bytes += nb::narrow<i64>{}(
 					static_cast<unsigned char*>(parent.stack_data) -
 					static_cast<unsigned char*>(old_pos));
 			parent.stack_data = old_pos;
@@ -206,7 +208,7 @@ private:
 			i64 alloc_size,
 			i64 align,
 			Fn fn) noexcept(VEG_CONCEPT(nothrow_constructible<T>))
-			: base{parent_ref, parent_ref.stack_data} {
+			: base{parent_ref, parent_ref.stack_data, nullptr, 0} {
 
 		void* const parent_data = parent_ref.stack_data;
 		i64 const parent_bytes = parent_ref.stack_bytes;
@@ -263,5 +265,5 @@ private:
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard __VEG_DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS \
+#endif /* end of include guard VEG_DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS \
         */

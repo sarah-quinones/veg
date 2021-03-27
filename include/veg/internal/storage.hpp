@@ -1,165 +1,83 @@
-#ifndef __VEG_STORAGE_HPP_X0B4XDKES
-#define __VEG_STORAGE_HPP_X0B4XDKES
+#ifndef VEG_STORAGE_HPP_X0B4XDKES
+#define VEG_STORAGE_HPP_X0B4XDKES
 
-#include "veg/internal/type_traits.hpp"
-#include "veg/internal/memory.hpp"
+#include "veg/internal/terminate.hpp"
+#include "veg/memory/address.hpp"
+#include "veg/type_traits/cpo/tombstone.hpp"
+#include "veg/type_traits/constructible.hpp"
+#include "veg/type_traits/assignable.hpp"
+#include "veg/internal/delete_special_members.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
 inline namespace VEG_ABI {
 namespace internal {
-namespace storage {
-
-template <typename T, typename Arg>
-struct arg_ctor_to_fn {
-	Arg&& arg;
-	HEDLEY_ALWAYS_INLINE constexpr auto operator()() const
-			noexcept(VEG_CONCEPT(nothrow_constructible<T, Arg&&>)) -> T {
-		return T{VEG_FWD(arg)};
-	}
-};
-template <typename T>
-using copy_ctor_fn = arg_ctor_to_fn<T, T const&>;
-template <typename T>
-using move_ctor_fn = arg_ctor_to_fn<T, T&&>;
-
-struct hidden_tag0 {};
-struct hidden_tag1 {};
-struct hidden_tag2 {};
+namespace storage_ {
 
 template <typename T>
-struct storage {
-	T inner;
-
-	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto _get() const noexcept
-			-> T const& {
-		return inner;
-	}
-	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mut() noexcept -> T& {
-		return inner;
-	}
-	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mov_ref() && noexcept
-			-> T&& {
-		return static_cast<T&&>(inner);
-	}
-};
-
-template <typename T>
-HEDLEY_ALWAYS_INLINE constexpr auto as_lvalue(T&& arg) noexcept -> T& {
-	return arg;
-}
-struct null_key {};
+struct storage;
 
 template <typename T>
 struct storage<T&> {
-	T* inner_ptr = nullptr;
+	T* inner_ptr;
 
+	storage() = default;
 	HEDLEY_ALWAYS_INLINE constexpr storage(T& arg) noexcept
 			: inner_ptr{mem::addressof(arg)} {}
 
-	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto _get() const noexcept -> T& {
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto operator=(T& arg) noexcept
+			-> storage& {
+		inner_ptr = mem::addressof(arg);
+		return *this;
+	}
+	HEDLEY_ALWAYS_INLINE constexpr operator T&() const noexcept {
 		return *inner_ptr;
 	}
-	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mut() noexcept -> T& {
-		return *inner_ptr;
-	}
-	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mov_ref() && noexcept
-			-> T& {
-		return *inner_ptr;
-	}
-
-private:
-	HEDLEY_ALWAYS_INLINE explicit constexpr storage(
-			null_key /*unused*/) noexcept {}
-	HEDLEY_ALWAYS_INLINE static constexpr auto null() noexcept -> storage {
-		return storage{null_key{}};
-	}
-	template <typename U>
-	friend struct meta::value_sentinel_for;
 };
 
 template <typename T>
-struct storage<T&&> : meta::internal::nocopy_ctor,
-											meta::internal::nocopy_assign {
-	T* inner_ptr = nullptr;
+struct storage<T&&> : internal::nocopy_ctor, internal::nocopy_assign {
+	T* inner_ptr;
 
 	storage() = default;
 	HEDLEY_ALWAYS_INLINE constexpr storage(T&& arg) noexcept
 			: inner_ptr{mem::addressof(arg)} {}
 
-	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto _get() const noexcept -> T& {
-		return *inner_ptr;
+	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto operator=(T&& arg) noexcept
+			-> storage& {
+		inner_ptr = mem::addressof(arg);
+		return *this;
 	}
-	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mut() noexcept -> T& {
-		return *inner_ptr;
-	}
-	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mov_ref() && noexcept
-			-> T&& {
+	HEDLEY_ALWAYS_INLINE constexpr operator T&&() const&& noexcept {
 		return static_cast<T&&>(*inner_ptr);
 	}
-	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto get_mov() && noexcept -> T&& {
-		return static_cast<T&&>(*inner_ptr);
+	HEDLEY_ALWAYS_INLINE constexpr operator T&() const& noexcept {
+		return *inner_ptr;
 	}
-
-private:
-	HEDLEY_ALWAYS_INLINE explicit constexpr storage(
-			null_key /*unused*/) noexcept {}
-	HEDLEY_ALWAYS_INLINE static constexpr auto null() noexcept -> storage {
-		return storage{null_key{}};
-	}
-	template <typename U>
-	friend struct meta::value_sentinel_for;
 };
 
 // intentionally unsupported. please don't
 template <typename T>
 struct storage<T const&&>;
 
-} // namespace storage
+} // namespace storage_
 } // namespace internal
 
 template <typename T>
-struct meta::value_sentinel_for<veg::internal::storage::storage<T&>>
-		: std::integral_constant<i64, 1> {
-	HEDLEY_ALWAYS_INLINE static constexpr auto invalid(i64 i) noexcept
-			-> ::veg::internal::storage::storage<T&> {
-		return ((i == 0) ? (void)0 : abi::internal::terminate()),
-					 ::veg::internal::storage::storage<T&>::null();
-	}
-	HEDLEY_ALWAYS_INLINE static constexpr auto
-	id(::veg::internal::storage::storage<T&> const& arg) noexcept -> i64 {
-		return arg.inner_ptr == nullptr ? 0 : -1;
-	}
-};
+struct meta::tombstone_traits<veg::internal::storage_::storage<T>> {
+	static constexpr i64 spare_representations = 1;
 
-template <typename T>
-struct meta::value_sentinel_for<veg::internal::storage::storage<T&&>>
-		: std::integral_constant<i64, 1> {
-	HEDLEY_ALWAYS_INLINE static constexpr auto invalid(i64 i) noexcept
-			-> ::veg::internal::storage::storage<T&&> {
-		return ((i == 0) ? (void)0 : abi::internal::terminate()),
-					 ::veg::internal::storage::storage<T&&>::null();
+	HEDLEY_ALWAYS_INLINE static VEG_CPP14(constexpr) void set_spare_representation(
+			internal::storage_::storage<T>* p, i64 /*i*/) noexcept {
+		p->inner_ptr = nullptr;
 	}
-	HEDLEY_ALWAYS_INLINE static constexpr auto
-	id(::veg::internal::storage::storage<T&&> const& arg) noexcept -> i64 {
-		return arg.inner_ptr == nullptr ? 0 : -1;
-	}
-};
-
-template <typename T>
-struct meta::value_sentinel_for<veg::internal::storage::storage<T>>
-		: std::integral_constant<i64, meta::value_sentinel_for<T>::value> {
-	HEDLEY_ALWAYS_INLINE static constexpr auto invalid(i64 i) noexcept
-			-> ::veg::internal::storage::storage<T> {
-		return {meta::value_sentinel_for<T>::invalid(i)};
-	}
-	HEDLEY_ALWAYS_INLINE static constexpr auto
-	id(::veg::internal::storage::storage<T> const& arg) noexcept -> i64 {
-		return meta::value_sentinel_for<T>::id(arg.inner);
+	HEDLEY_ALWAYS_INLINE static VEG_CPP14(constexpr) auto index(
+			internal::storage_::storage<T> const* p) noexcept -> i64 {
+		return (p->inner_ptr == nullptr) ? 0 : -1;
 	}
 };
 } // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard __VEG_STORAGE_HPP_X0B4XDKES */
+#endif /* end of include guard VEG_STORAGE_HPP_X0B4XDKES */

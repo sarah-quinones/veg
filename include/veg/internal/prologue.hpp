@@ -3,13 +3,6 @@
 #endif
 #define VEG_PROLOGUE
 
-#if (                                                                          \
-		!defined(VEG_DISABLE_CPP14_EXTENSIONS) &&                                  \
-		(defined(VEG_ENABLE_CPP14_EXTENSIONS) || defined(__clang__))) ||           \
-		__cplusplus >= 201402L
-#define VEG_HAS_CPP14_EXTENSIONS
-#endif
-
 #define VEG_DECLVAL(...) (static_cast<__VA_ARGS__ (*)()>(nullptr)())
 
 #if __cplusplus >= 201703L
@@ -17,7 +10,7 @@
 	(static_cast<__VA_ARGS__ (*)() noexcept>(nullptr)())
 #else
 #define VEG_DECLVAL_NOEXCEPT(...)                                              \
-	(::veg::meta::internal::declval<__VA_ARGS__>())
+	(::veg::internal::meta_::declval<__VA_ARGS__>())
 #endif
 
 #define VEG_DEDUCE_RET(...)                                                    \
@@ -26,12 +19,18 @@
 	}                                                                            \
 	VEG_NOM_SEMICOLON
 
-#define VEG_CHECK_CONCEPT(...) ::veg::concepts::check_##__VA_ARGS__()
-
 #define VEG_IMPL_AND(r, _, param) &&__VEG_PP_UNWRAP(param)
 #define VEG_IMPL_OR(r, _, param) || __VEG_PP_UNWRAP(param)
 
 #define __VEG_PP_UNWRAP(...) __VEG_PP_HEAD __VA_ARGS__ __VEG_PP_TAIL __VA_ARGS__
+
+#if __cplusplus >= 201703L
+#define VEG_ALL_OF(...) __VA_ARGS__&&...
+#define VEG_ANY_OF(...) __VA_ARGS__ || ...
+#else
+#define VEG_ALL_OF(...) ::veg::meta::all_of({(__VA_ARGS__)...})
+#define VEG_ANY_OF(...) ::veg::meta::any_of({(__VA_ARGS__)...})
+#endif
 
 #if __cplusplus >= 202002L
 
@@ -45,17 +44,16 @@
 
 #define VEG_DEF_CONCEPT(tpl, name, ...)                                        \
 	template <__VEG_PP_REMOVE_PAREN1(tpl)>                                       \
-	concept name = __VA_ARGS__;                                                  \
-	template <__VEG_PP_REMOVE_PAREN1(tpl)>                                       \
-	requires(__VA_ARGS__) void check_##name()
+	concept name = __VA_ARGS__;
 
-#define VEG_CONCEPT(...) (::veg::concepts::__VA_ARGS__)
+#define VEG_CHECK_CONCEPT(...)                                                 \
+	static_assert(                                                               \
+			::veg::concepts::__VA_ARGS__, __VEG_PP_STRINGIZE(__VA_ARGS__) " failed")
+#define VEG_CONCEPT(...) ::veg::concepts::__VA_ARGS__
 #define VEG_DEF_CONCEPT_CONJUNCTION(tpl, name, terms)                          \
 	VEG_DEF_CONCEPT(tpl, name, VEG_IMPL_CONJUNCTION terms)
 #define VEG_DEF_CONCEPT_DISJUNCTION(tpl, name, terms)                          \
 	VEG_DEF_CONCEPT(tpl, name, VEG_IMPL_DISJUNCTION terms)
-
-#define VEG_ALL_OF(...) ((__VA_ARGS__) && ...)
 
 #else
 
@@ -67,13 +65,13 @@
 	}                                                                            \
 	template <__VEG_PP_REMOVE_PAREN1(tpl)>                                       \
 	inline constexpr bool const& name = Value
-#elif __cplusplus >= 201402L || defined(VEG_HAS_CPP14_EXTENSIONS)
+#elif __cplusplus >= 201402L
 #define VEG_IMPL_DEF_CONCEPT(tpl, name, Value, ...)                            \
 	namespace _ {                                                                \
 	template <__VEG_PP_REMOVE_PAREN1(tpl)>                                       \
 	struct name : __VA_ARGS__ {};                                                \
 	}                                                                            \
-	namespace /* NOLINT */ {                                                     \
+	namespace {                                                                  \
 	VEG_IGNORE_CPP14_EXTENSION_WARNING(                                          \
 			template <__VEG_PP_REMOVE_PAREN1(tpl)>                                   \
 			constexpr bool const& name = ::veg::meta::bool_constant<Value>::value);  \
@@ -85,7 +83,7 @@
 	struct name : __VA_ARGS__ {}
 #endif
 
-#if __cplusplus >= 201402L || defined(VEG_HAS_CPP14_EXTENSIONS)
+#if __cplusplus >= 201402L
 #define VEG_CONCEPT(...) ::veg::concepts::__VA_ARGS__
 #define VEG_IMPL_ADD_VALUE(r, _, param) (param)
 #define VEG_IMPL_TRAIT(param) __VEG_PP_HEAD param _::__VEG_PP_TAIL param
@@ -96,19 +94,24 @@
 #endif
 #define VEG_IMPL_PUT_TRAIT(r, _, param) , VEG_IMPL_TRAIT(param)
 
+#define VEG_CHECK_CONCEPT(...)                                                 \
+	static_assert(                                                               \
+			decltype(::veg::concepts::check_##__VA_ARGS__())::value,                 \
+			__VEG_PP_STRINGIZE(__VA_ARGS__) " failed")
 #define VEG_DEF_CONCEPT(tpl, name, ...)                                        \
 	VEG_IMPL_DEF_CONCEPT(                                                        \
 			tpl, name, (__VA_ARGS__), ::veg::meta::bool_constant<__VA_ARGS__>);      \
-	VEG_TEMPLATE(tpl, requires(__VA_ARGS__), void check_##name, (_ = 0, int))    \
-	noexcept
+	VEG_TEMPLATE(                                                                \
+			tpl, requires(__VA_ARGS__), , constexpr auto check_##name, (_ = 0, int)) \
+	noexcept->::veg::meta::true_type
 
 #define VEG_IMPL_SFINAE(r, _, param)                                           \
-	, typename ::veg::meta::enable_if<__VEG_PP_UNWRAP(param), int>::type = 0
+	, ::veg::meta::enable_if_t<__VEG_PP_UNWRAP(param), int> = 0
 
 #define VEG_IMPL_OVERLOAD(r, name_tpl, param)                                  \
 	template <                                                                   \
 			__VEG_PP_REMOVE_PAREN(__VEG_PP_TAIL name_tpl),                           \
-			typename ::veg::meta::enable_if<__VEG_PP_UNWRAP(param), int>::type = 0>  \
+			::veg::meta::enable_if_t<__VEG_PP_UNWRAP(param), int> = 0>               \
 	void __VEG_PP_CAT(check_, __VEG_PP_HEAD name_tpl)() noexcept;
 
 #define VEG_DEF_CONCEPT_BOOL_CONJUNCTION_IMPL(tpl, name, base, seq)            \
@@ -152,12 +155,6 @@
 	disjunction<VEG_IMPL_TRAIT(First) __VEG_PP_SEQ_FOR_EACH(                     \
 			VEG_IMPL_PUT_TRAIT, _, __VEG_PP_VARIADIC_TO_SEQ(__VA_ARGS__))>
 
-#if __cplusplus >= 201703L
-#define VEG_ALL_OF(...) ((__VA_ARGS__) && ...)
-#else
-#define VEG_ALL_OF(...) (::veg::meta::all_of({(__VA_ARGS__)...}))
-#endif
-
 #endif
 
 #define VEG_IMPL_PARAM_EXPAND(r, _, param)                                     \
@@ -166,62 +163,67 @@
 			__VEG_PP_IS_BEGIN_PARENS(param),                                         \
 			(__VEG_PP_TAIL param)__VEG_PP_HEAD param, ))
 
-#define VEG_TEMPLATE(tparams, requirement, attr_name, ...)                     \
+#define VEG_TEMPLATE(tparams, requirement, attr, name, ...)                    \
 	VEG_IMPL_TEMPLATE(                                                           \
-			attr_name, tparams, requirement, __VEG_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+			attr, name, tparams, requirement, __VEG_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
 #if __cplusplus >= 202002L
 #define VEG_TEMPLATE_EXPLICIT(                                                 \
-		cond, tparams, requirement, attr_name, args, ...)                          \
+		cond, tparams, requirement, attr, name, args, ...)                         \
 	VEG_TEMPLATE(                                                                \
 			tparams,                                                                 \
 			requirement,                                                             \
-			explicit(cond) attr_name,                                                \
+			explicit(cond) attr,                                                     \
+			name,                                                                    \
 			__VEG_PP_REMOVE_PAREN(args))                                             \
 	__VA_ARGS__
 #else
 #define VEG_TEMPLATE_EXPLICIT(                                                 \
-		cond, tparams, requirement, attr_name, args, ...)                          \
+		cond, tparams, requirement, attr, name, args, ...)                         \
 	VEG_TEMPLATE(                                                                \
 			(__VEG_PP_REMOVE_PAREN tparams,                                          \
-	     typename ::veg::meta::enable_if<(cond), int>::type = 0),                \
+	     ::veg::meta::enable_if_t<(cond), int> = 0),                             \
 			requirement,                                                             \
-			explicit attr_name,                                                      \
+			explicit attr,                                                           \
+			name,                                                                    \
 			__VEG_PP_REMOVE_PAREN(args))                                             \
 	__VA_ARGS__                                                                  \
 	VEG_TEMPLATE(                                                                \
 			(__VEG_PP_REMOVE_PAREN tparams,                                          \
-	     typename ::veg::meta::enable_if<!(cond), unsigned>::type = 0),          \
+	     ::veg::meta::enable_if_t<!(cond), unsigned> = 0),                       \
 			requirement,                                                             \
-			attr_name,                                                               \
+			attr,                                                                    \
+			name,                                                                    \
 			__VEG_PP_REMOVE_PAREN(args))                                             \
 	__VA_ARGS__
 #endif
 
-#define VEG_IMPL_TEMPLATE(attr_name, tparams, requirement, args)               \
+#define VEG_IMPL_TEMPLATE(attr, name, tparams, requirement, args)              \
 	VEG_IMPL_TEMPLATE2(                                                          \
-			attr_name,                                                               \
+			attr,                                                                    \
+			name,                                                                    \
 			tparams,                                                                 \
-			(__VEG_PP_CAT2(VEG_IMPL_PREFIX_, requirement)),                          \
+			__VEG_PP_CAT2(VEG_IMPL_PREFIX_, requirement),                            \
 			__VEG_PP_SEQ_HEAD(args),                                                 \
 			__VEG_PP_SEQ_TAIL(args))
 
 #define VEG_IMPL_PREFIX_requires
 
 #if __cplusplus >= 202002L
-#define VEG_IMPL_TEMPLATE2(attr_name, tparams, requirement, first_param, args) \
+#define VEG_IMPL_TEMPLATE2(                                                    \
+		attr, name, tparams, requirement, first_param, args)                       \
 	template <__VEG_PP_REMOVE_PAREN(tparams)>                                    \
-	requires(requirement) attr_name /* NOLINT */ (                               \
+	requires requirement attr name(                                              \
 			__VEG_PP_TAIL first_param __VEG_PP_HEAD first_param                      \
 					__VEG_PP_SEQ_FOR_EACH(VEG_IMPL_PARAM_EXPAND, _, args))
 #else
-#define VEG_IMPL_TEMPLATE2(attr_name, tparams, requirement, first_param, args) \
+#define VEG_IMPL_TEMPLATE2(                                                    \
+		attr, name, tparams, requirement, first_param, args)                       \
 	template <__VEG_PP_REMOVE_PAREN(tparams)>                                    \
-	attr_name /* NOLINT */ (                                                     \
-			::veg::meta::discard_1st<                                                \
-					typename ::veg::meta::enable_if<(requirement)>::type,                \
-					__VEG_PP_TAIL first_param> __VEG_PP_HEAD first_param                 \
-					__VEG_PP_SEQ_FOR_EACH(VEG_IMPL_PARAM_EXPAND, _, args))
+	attr name(::veg::internal::meta_::discard_1st<                               \
+						::veg::meta::enable_if_t<(requirement)>,                           \
+						__VEG_PP_TAIL first_param> __VEG_PP_HEAD first_param               \
+	              __VEG_PP_SEQ_FOR_EACH(VEG_IMPL_PARAM_EXPAND, _, args))
 
 #endif
 
@@ -242,10 +244,10 @@
 			tpl, trait, __VEG_PP_CAT(is_, trait), __VA_ARGS__)
 
 #define VEG_DEFAULT_CTOR_ASSIGN(class_name)                                    \
-	~class_name() = default;                                                     \
-	class_name /* NOLINT */ (class_name &&) = default;                           \
+	~class_name() = default; /**/                                                \
+	class_name(class_name&&) = default;                                          \
 	class_name(class_name const&) = default;                                     \
-	auto operator= /* NOLINT */(class_name&&)&->class_name& = default;           \
+	auto operator=(class_name&&)&->class_name& = default;                        \
 	auto operator=(class_name const&)&->class_name& = default
 
 #if __cplusplus >= 201402L
@@ -288,24 +290,11 @@
 	VEG_DEBUG_ASSERT_ELSE("inner assertion failed", __VA_ARGS__)
 #endif
 
-#ifdef VEG_HAS_CPP14_EXTENSIONS
+#if __cplusplus >= 201402L
 
-#ifdef HEDLEY_HAS_WARNING
-#if HEDLEY_HAS_WARNING("-Wc++14-extensions")
-#define VEG_IGNORE_CPP14_EXTENSION_WARNING(...)                                \
-	HEDLEY_DIAGNOSTIC_PUSH                                                       \
-	HEDLEY_PRAGMA(clang diagnostic ignored "-Wc++14-extensions")                 \
-	__VA_ARGS__                                                                  \
-	HEDLEY_DIAGNOSTIC_POP
-#else
 #define VEG_IGNORE_CPP14_EXTENSION_WARNING(...) __VA_ARGS__
-#endif
 #else
-#error "[veg] hedley.h missing"
-#endif
-
-#else
-#define VEG_IGNORE_CPP14_EXTENSION_WARNING(...) VEG_NOM_SEMICOLON
+#define VEG_IGNORE_CPP14_EXTENSION_WARNING(...)
 #endif
 
 #define VEG_NOM_SEMICOLON static_assert(true, ".")
@@ -323,3 +312,14 @@
 #endif
 
 #define VEG_ABI_VERSION v0
+
+#ifdef VEG_MODE_DOCS
+#define VEG_DOC(...) __VA_ARGS__
+#define VEG_DOC_LOCATION char loc[__LINE__] = __FILE__
+#else
+#define VEG_DOC(...)
+#define VEG_DOC_LOCATION VEG_NOM_SEMICOLON
+#endif
+#define VEG_DOC_FN VEG_DOC_LOCATION;    /* veg::@func */
+#define VEG_DOC_CTOR VEG_DOC_LOCATION;  /* veg::@ctor */
+#define VEG_DOC_CLASS VEG_DOC_LOCATION; /* veg::@class */

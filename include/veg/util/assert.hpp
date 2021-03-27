@@ -1,10 +1,10 @@
-#ifndef __VEG_ASSERT_HPP_VQDAJ2IBS
-#define __VEG_ASSERT_HPP_VQDAJ2IBS
+#ifndef VEG_ASSERT_HPP_VQDAJ2IBS
+#define VEG_ASSERT_HPP_VQDAJ2IBS
 
 #include "veg/internal/meta_int_fix.hpp"
 #include "veg/internal/typedefs.hpp"
-#include "veg/internal/type_traits.hpp"
-#include "veg/internal/cmp.hpp"
+#include "veg/util/compare.hpp"
+#include "veg/util/defer.hpp"
 #include "veg/internal/byte_string_ref.hpp"
 #include "veg/internal/simple_string.hpp"
 #include "veg/internal/fmt.hpp"
@@ -66,7 +66,7 @@ auto to_string(T const& arg) -> abi::internal::string {
 		abi::internal::incr_counter();
 		auto&& cleanup = make::defer(abi::internal::decr_counter);
 		(void)cleanup;
-		veg::fmt::debug<T>::to_string(buf, arg);
+		veg::fmt::debug<meta::decay_t<T>>::to_string(buf, arg);
 	}
 
 	return buf;
@@ -117,60 +117,77 @@ struct lhs_all_of_t {
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(equality_comparable_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			HEDLEY_ALWAYS_INLINE constexpr,
+			auto
 			operator==,
 			(rhs, U const&))
 	const->bool {
-		return process_op(cmp_equal(lhs, rhs), rhs, {" == ", sizeof(" == ") - 1});
+		return process_op(
+				(veg::cmp::equal)(lhs, rhs), rhs, {" == ", sizeof(" == ") - 1});
 	}
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(equality_comparable_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			HEDLEY_ALWAYS_INLINE constexpr,
+			auto
 			operator!=,
 			(rhs, U const&))
 	const->bool {
 		return process_op(
-				cmp_not_equal(lhs, rhs), rhs, {" != ", sizeof(" != ") - 1});
+				!((veg::cmp::equal)(lhs, rhs)), rhs, {" != ", sizeof(" != ") - 1});
 	}
 
 	VEG_TEMPLATE(
 			typename U,
-			requires(VEG_CONCEPT(partially_ordered_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			requires(VEG_CONCEPT(synth_three_way_comparable_with<T, U>)),
+			HEDLEY_ALWAYS_INLINE constexpr,
+			auto
 			operator<,
 			(rhs, U const&))
 	const->bool {
-		return process_op(cmp_less(lhs, rhs), rhs, {" < ", sizeof(" < ") - 1});
+		return process_op(
+				(veg::cmp::synth_three_way)(lhs, rhs) < 0,
+				rhs,
+				{" < ", sizeof(" < ") - 1});
 	}
 	VEG_TEMPLATE(
 			typename U,
-			requires(VEG_CONCEPT(partially_ordered_with<U, T>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			requires(VEG_CONCEPT(synth_three_way_comparable_with<T, U>)),
+			HEDLEY_ALWAYS_INLINE constexpr,
+			auto
 			operator>,
 			(rhs, U const&))
 	const->bool {
-		return process_op(cmp_greater(lhs, rhs), rhs, {" > ", sizeof(" > ") - 1});
+		return process_op(
+				(veg::cmp::synth_three_way)(lhs, rhs) > 0,
+				rhs,
+				{" > ", sizeof(" > ") - 1});
 	}
 	VEG_TEMPLATE(
 			typename U,
-			requires(VEG_CONCEPT(partially_ordered_with<U, T>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			requires(VEG_CONCEPT(synth_three_way_comparable_with<T, U>)),
+			HEDLEY_ALWAYS_INLINE constexpr,
+			auto
 			operator<=,
 			(rhs, U const&))
 	const->bool {
 		return process_op(
-				cmp_less_equal(lhs, rhs), rhs, {" <= ", sizeof(" <= ") - 1});
+				(veg::cmp::synth_three_way)(lhs, rhs) <= 0,
+				rhs,
+				{" <= ", sizeof(" <= ") - 1});
 	}
 	VEG_TEMPLATE(
 			typename U,
-			requires(VEG_CONCEPT(partially_ordered_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			requires(VEG_CONCEPT(synth_three_way_comparable_with<T, U>)),
+			HEDLEY_ALWAYS_INLINE constexpr,
+			auto
 			operator>=,
 			(rhs, U const&))
 	const->bool {
 		return process_op(
-				cmp_greater_equal(lhs, rhs), rhs, {" >= ", sizeof(" >= ") - 1});
+				(veg::cmp::three_way)(lhs, rhs) >= 0,
+				rhs,
+				{" >= ", sizeof(" >= ") - 1});
 	}
 
 #undef VEG_DISABLE
@@ -207,7 +224,7 @@ struct decomposer {
 	static_cast<void>(                                                           \
 			(::veg::internal::assert_::decomposer{} << __VA_ARGS__)                  \
 					? (void)(0)                                                          \
-					: (::veg::abi::internal::cleanup{},                                  \
+					: ((void)(::veg::abi::internal::cleanup{}),                          \
 	           ::veg::abi::internal::set_assert_params2(                         \
 								 ::veg::abi::internal::char_string_ref{                        \
 										 static_cast<char const*>(#__VA_ARGS__),                   \
@@ -260,9 +277,9 @@ struct decomposer {
 	       ::veg::abi::internal::set_assert_params2(                             \
 						 {static_cast<char const*>(                                        \
 									__VEG_PP_STRINGIZE(__VEG_PP_TAIL Elem)),                     \
-	            sizeof(__VEG_PP_STRINGIZE(__VEG_PP_TAIL Elem)) - 1},             \
-						 __VEG_PP_HEAD Elem),                                              \
-	       false),
+									sizeof(__VEG_PP_STRINGIZE(__VEG_PP_TAIL Elem)) - 1},         \
+	            __VEG_PP_HEAD Elem),                                             \
+						 false),
 
 #define __VEG_IMPL_ALL_OF_2(Ftor, Decomposer, Callback, Seq)                   \
 	(::veg::meta::all_of({__VEG_PP_SEQ_FOR_EACH(Ftor, Decomposer, Seq)})         \
@@ -311,7 +328,7 @@ struct decomposer {
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard __VEG_ASSERT_HPP_VQDAJ2IBS */
+#endif /* end of include guard VEG_ASSERT_HPP_VQDAJ2IBS */
 
 #ifdef VEG_DEBUG_ASSERT
 #undef VEG_DEBUG_ASSERT

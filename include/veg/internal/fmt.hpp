@@ -1,15 +1,15 @@
-#ifndef __VEG_FMT_HPP_GQU8XFRUS
-#define __VEG_FMT_HPP_GQU8XFRUS
+#ifndef VEG_FMT_HPP_GQU8XFRUS
+#define VEG_FMT_HPP_GQU8XFRUS
 
-#include "veg/internal/type_traits.hpp"
+#include "veg/type_traits/primitives.hpp"
+#include "veg/type_traits/constructible.hpp"
 #include "veg/internal/prologue.hpp"
-#include <cstdarg>
 
 namespace veg {
 namespace abi {
 inline namespace VEG_ABI_VERSION {
 namespace internal {
-auto vsnprintf(char* out, usize n, char const* fmt, va_list args) -> int;
+auto snprintf1(char* out, usize n, char const* fmt, void* arg) -> int;
 }
 } // namespace VEG_ABI_VERSION
 } // namespace abi
@@ -32,36 +32,34 @@ namespace fmt {
 
 using buffer = veg::fmt::buffer;
 
-inline void to_string_impl(buffer& out, char const* fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-	int n = abi::internal::vsnprintf(nullptr, 0, fmt, args) + 1;
-	va_end(args);
+inline void to_string_impl(buffer& out, char const* fmt, void* arg) {
+	int n = abi::internal::snprintf1(nullptr, 0, fmt, arg) + 1;
 
-	va_start(args, fmt);
 	i64 old_size = out.size();
-	out.resize(out.size() + n + 1);
-	abi::internal::vsnprintf(out.data() + old_size, usize(n + 1), fmt, args);
-	out.resize(n - 1);
-	va_end(args);
+	out.resize(out.size() + n);
+	abi::internal::snprintf1(out.data() + old_size, usize(n), fmt, arg);
+	out.resize(old_size + n - 1);
 }
 
 struct dbg_i {
 	template <typename T>
 	static void to_string(buffer& out, T arg) {
-		fmt::to_string_impl(out, "%lld", static_cast<long long signed>(arg));
+		auto _ = static_cast<long long signed>(arg);
+		fmt::to_string_impl(out, "%lld", &_);
 	}
 };
 struct dbg_u {
 	template <typename T>
 	static void to_string(buffer& out, T arg) {
-		fmt::to_string_impl(out, "%llu", static_cast<long long unsigned>(arg));
+		auto _ = static_cast<long long unsigned>(arg);
+		fmt::to_string_impl(out, "%llu", &_);
 	}
 };
 struct dbg_f {
 	template <typename T>
 	static void to_string(buffer& out, T arg) {
-		fmt::to_string_impl(out, "%Lf", static_cast<long double>(arg));
+		auto _ = static_cast<long double>(arg);
+		fmt::to_string_impl(out, "%Lf", &_);
 	}
 };
 struct dbg_b {
@@ -72,7 +70,15 @@ struct dbg_b {
 };
 struct dbg_p {
 	static void to_string(buffer& out, void const volatile* arg) {
-		fmt::to_string_impl(out, "%p", const_cast<void*>(arg));
+		auto* _ = const_cast<void*>(arg);
+		fmt::to_string_impl(out, "%p", &_);
+	}
+};
+struct dbg_pf {
+	template <typename Ret, typename... Args>
+	static void to_string(buffer& out, Ret (*arg)(Args...)) {
+		auto* _ = reinterpret_cast<void*>(arg);
+		fmt::to_string_impl(out, "%p", &_);
 	}
 };
 struct dbg_g {
@@ -111,10 +117,12 @@ template <typename T>
 struct debug<T*> : internal::fmt::dbg_p {};
 template <>
 struct debug<decltype(nullptr)> : internal::fmt::dbg_p {};
+template <typename Ret, typename... Args>
+struct debug<Ret (*)(Args...)> : internal::fmt::dbg_pf {};
 
 } // namespace fmt
 } // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard __VEG_FMT_HPP_GQU8XFRUS */
+#endif /* end of include guard VEG_FMT_HPP_GQU8XFRUS */

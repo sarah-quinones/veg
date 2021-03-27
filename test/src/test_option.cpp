@@ -17,7 +17,7 @@ struct nested_option<T, 0> {
 
 TEST_CASE("option: all") {
 
-	using make::mem::from_callable;
+	using make::from_callable;
 	struct A {
 		VEG_CPP14(constexpr) auto operator()() const -> option<int> {
 			return {some, 13};
@@ -41,6 +41,10 @@ TEST_CASE("option: all") {
 	struct C {
 		VEG_CPP14(constexpr) auto operator()() const -> double { return 2000.; }
 	};
+
+	STATIC_ASSERT(sizeof(option<bool>) == sizeof(bool) * 2);
+	STATIC_ASSERT(sizeof(option<option<bool>>) == sizeof(bool) * 2);
+	STATIC_ASSERT(sizeof(option<option<option<bool>>>) == sizeof(bool) * 2);
 
 	STATIC_ASSERT(sizeof(option<int>) == sizeof(int) * 2);
 	STATIC_ASSERT(sizeof(option<option<int>>) == sizeof(int) * 2);
@@ -165,7 +169,8 @@ TEST_CASE("option: all") {
 		using std::vector;
 
 		STATIC_ASSERT_IF_14(
-				meta::value_sentinel_for<option<vector<int>>>::value == 253);
+				+meta::tombstone_traits<option<vector<int>>>::spare_representations ==
+				253);
 
 		auto opt = [&] {
 			option<option<vector<int>>> x;
@@ -179,7 +184,8 @@ TEST_CASE("option: all") {
 		using std::vector;
 
 		STATIC_ASSERT_IF_14(
-				meta::value_sentinel_for<option<option<vector<int>>>>::value == 252);
+				+meta::tombstone_traits<
+						option<option<vector<int>>>>::spare_representations == 252);
 
 		auto opt = [&] {
 			option<option<option<vector<int>>>> x;
@@ -195,8 +201,8 @@ TEST_CASE("option: all") {
 		using std::vector;
 
 		STATIC_ASSERT_IF_14(
-				meta::value_sentinel_for<option<option<option<vector<int>>>>>::value ==
-				251);
+				+meta::tombstone_traits<
+						option<option<option<vector<int>>>>>::spare_representations == 251);
 
 		auto opt = [&] {
 			option<option<option<option<vector<int>>>>> x;
@@ -213,7 +219,8 @@ TEST_CASE("option: all") {
 		using std::vector;
 
 		STATIC_ASSERT_IF_14(
-				meta::value_sentinel_for<option<vector<int>>>::value == 253);
+				+meta::tombstone_traits<option<vector<int>>>::spare_representations ==
+				253);
 
 		auto opt = [&] {
 			option<option<vector<int>>> x;
@@ -227,7 +234,8 @@ TEST_CASE("option: all") {
 		using std::vector;
 
 		STATIC_ASSERT_IF_14(
-				meta::value_sentinel_for<option<option<vector<int>>>>::value == 252);
+				+meta::tombstone_traits<
+						option<option<vector<int>>>>::spare_representations == 252);
 
 		auto opt = [&] {
 			option<option<option<vector<int>>>> x;
@@ -241,8 +249,8 @@ TEST_CASE("option: all") {
 		using std::vector;
 
 		STATIC_ASSERT_IF_14(
-				meta::value_sentinel_for<option<option<option<vector<int>>>>>::value ==
-				251);
+				+meta::tombstone_traits<
+						option<option<option<vector<int>>>>>::spare_representations == 251);
 
 		auto opt = [&] {
 			option<option<option<option<vector<int>>>>> x;

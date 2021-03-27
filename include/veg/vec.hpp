@@ -1,7 +1,7 @@
-#ifndef __VEG_VECTOR_HPP_QWFSH3ROS
-#define __VEG_VECTOR_HPP_QWFSH3ROS
+#ifndef VEG_VECTOR_HPP_QWFSH3ROS
+#define VEG_VECTOR_HPP_QWFSH3ROS
 
-#include "veg/internal/memory.hpp"
+#include "veg/memory/aligned_alloc.hpp"
 #include "veg/internal/algorithm.hpp"
 #include "veg/internal/narrow.hpp"
 #include "veg/slice.hpp"
@@ -72,7 +72,8 @@ public:
 	VEG_TEMPLATE(
 			(typename... Args),
 			requires(VEG_CONCEPT(constructible<T, Args&&...>)),
-			HEDLEY_ALWAYS_INLINE auto emplace_back,
+			HEDLEY_ALWAYS_INLINE,
+			auto emplace_back,
 			(... args, Args&&))
 	noexcept(false) -> T& {
 		_grow_to(_self().capacity() + 1);
@@ -94,7 +95,7 @@ public:
 					_self().size(),
 					_self().capacity(),
 					new_capacity);
-			_self().self.cap = fn::narrow<usize>{}(new_capacity);
+			_self().self.cap = nb::narrow<usize>{}(new_capacity);
 		}
 	}
 };
@@ -123,14 +124,14 @@ public:
 			: vec_base{
 						from_raw_parts,
 						raw_parts{
-								static_cast<T*>(internal::memory::aligned_alloc(
+								static_cast<T*>(mem::aligned_alloc(
 										alignof(T), static_cast<i64>(sizeof(T)) * slice.size())),
 								0,
 								slice.size()},
 						unsafe,
 				} {
 		uninitialized_copy_n(_self().data(), slice.data(), slice.size());
-		self.len = fn::narrow<usize>{}(slice.size());
+		self.len = nb::narrow<usize>{}(slice.size());
 	}
 
 	HEDLEY_ALWAYS_INLINE
@@ -147,7 +148,7 @@ public:
 			: self{parts} {}
 
 	HEDLEY_ALWAYS_INLINE
-	~vec_base() { aligned_free(self.begin, fn::narrow<usize>{}(self.cap)); }
+	~vec_base() { aligned_free(self.begin, nb::narrow<usize>{}(self.cap)); }
 
 	HEDLEY_ALWAYS_INLINE
 	auto operator=(vec_base const& rhs) & noexcept(false) -> vec_base& {
@@ -167,7 +168,7 @@ public:
 
 	HEDLEY_ALWAYS_INLINE
 	void destroy() noexcept {
-		aligned_free(self.begin, fn::narrow<usize>{}(self.cap));
+		aligned_free(self.begin, nb::narrow<usize>{}(self.cap));
 	}
 };
 
@@ -239,4 +240,4 @@ struct meta::is_trivially_swappable<vec<T>&> : true_type {};
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard __VEG_VECTOR_HPP_QWFSH3ROS */
+#endif /* end of include guard VEG_VECTOR_HPP_QWFSH3ROS */

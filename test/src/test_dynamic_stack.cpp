@@ -1,4 +1,4 @@
-#include "veg/dynamic_stack.hpp"
+#include "veg/memory/dynamic_stack.hpp"
 #include "assert_death.hpp"
 #include <doctest.h>
 

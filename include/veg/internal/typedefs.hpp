@@ -1,5 +1,5 @@
-#ifndef __VEG_TYPEDEFS_HPP_2UKLEQTSS
-#define __VEG_TYPEDEFS_HPP_2UKLEQTSS
+#ifndef VEG_TYPEDEFS_HPP_2UKLEQTSS
+#define VEG_TYPEDEFS_HPP_2UKLEQTSS
 
 #include <cstdint>
 #include <cstddef>
@@ -19,4 +19,4 @@ using i8 = std::int8_t;
 
 } // namespace veg
 
-#endif /* end of include guard __VEG_TYPEDEFS_HPP_2UKLEQTSS */
+#endif /* end of include guard VEG_TYPEDEFS_HPP_2UKLEQTSS */

@@ -1,5 +1,5 @@
-#ifndef __VEG_STD_HPP_NS3C5ON6S
-#define __VEG_STD_HPP_NS3C5ON6S
+#ifndef VEG_STD_HPP_NS3C5ON6S
+#define VEG_STD_HPP_NS3C5ON6S
 
 #ifdef __has_include
 #define __VEG_HAS_INCLUDE(x) __has_include(x)
@@ -12,9 +12,11 @@
 #include <new>              // placement new, launder
 #include <utility>          // std::tuple_{size,element}
 
-// clang-format off
 // construct_at, addressof
-#if __VEG_HAS_INCLUDE(<bits/stl_construct.h>) && __VEG_HAS_INCLUDE(<bits/move.h>) && __VEG_HAS_INCLUDE(<bits/stl_iterator_base_types.h>) && __VEG_HAS_INCLUDE(<bits/stl_iterator_base_funcs.h>)
+#if __VEG_HAS_INCLUDE(<bits/stl_construct.h>) &&                                              \
+		__VEG_HAS_INCLUDE(<bits/move.h>) &&                                                   \
+				__VEG_HAS_INCLUDE(<bits/stl_iterator_base_types.h>) &&                            \
+						__VEG_HAS_INCLUDE(<bits/stl_iterator_base_funcs.h>)
 #include <bits/stl_iterator_base_types.h>
 #include <bits/stl_iterator_base_funcs.h>
 #include <bits/stl_construct.h>
@@ -22,9 +24,5 @@
 #else
 #include <memory>
 #endif
-// clang-format on
 
-#include <type_traits> // lots
-#include <iosfwd>      // basic_ostream
-
-#endif /* end of include guard __VEG_STD_HPP_NS3C5ON6S */
+#endif /* end of include guard VEG_STD_HPP_NS3C5ON6S */

@@ -3,6 +3,25 @@ import sys
 MACRO_PREFIX = "__VEG"
 
 
+def remove_include(line):
+    if "include" in line:
+        return ""
+    return line
+
+
+def replace_prefix(line):
+    line = line.replace("BOOST_PREPROCESSOR", f"{MACRO_PREFIX}_BOOST_PREPROCESSOR")
+    line = line.replace("BOOST_PP_", f"{MACRO_PREFIX}_PP_")
+    return line
+
+
+def remove_comment(line):
+    i = line.find("//")
+    if i == -1:
+        return line
+    return line[:i]
+
+
 def main():
     """
     merge boost preprocessor files
@@ -88,19 +107,28 @@ def main():
             old_paths[i], old_paths[0] = old_paths[0], old_paths[i]
             break
 
+    total_lines = []
     for name in old_paths:
         with open(name) as file:
-            line: str = file.readline()
-            while line:
-                line = line.replace(
-                    "BOOST_PREPROCESSOR", f"{MACRO_PREFIX}_BOOST_PREPROCESSOR"
-                )
-                line = line.replace("BOOST_PP_", f"{MACRO_PREFIX}_PP_")
-                if "include" in line:
-                    line = ""
-                print(line, end="")
-                line = file.readline()
+            lines = file.readlines()
+        lines[:] = (remove_include(replace_prefix(line)) for line in lines)
+        total_lines.extend(lines)
 
+    text = "".join(total_lines)
+
+    while True:
+        begin = text.find("/*")
+        if begin == -1:
+            break
+        end = text.find("*/", begin + 2)
+        text = text[:begin] + text[end + 2 :]
+
+        begin = end
+    lines = text.split("\n")
+    text = "\n".join([remove_comment(line) for line in lines])
+    print("// clang-format off")
+    print(text)
+    print("// clang-format on")
 
 if __name__ == "__main__":
     main()

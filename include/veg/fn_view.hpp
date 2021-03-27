@@ -1,7 +1,9 @@
-#ifndef __VEG_FN_REF_HPP_IDVWA3EYS
-#define __VEG_FN_REF_HPP_IDVWA3EYS
+#ifndef VEG_FN_VIEW_HPP_2EMSNQIXS
+#define VEG_FN_VIEW_HPP_2EMSNQIXS
 
-#include "veg/assert.hpp"
+#include "veg/util/assert.hpp"
+#include "veg/type_traits/cpo/tombstone.hpp"
+#include "veg/internal/delete_special_members.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
@@ -11,6 +13,7 @@ namespace fn {
 template <typename T>
 struct nothrow;
 
+// veg::@class
 union state_ptr {
 	void* ptr;
 	void (*fn)();
@@ -35,22 +38,18 @@ struct raw_parts<nothrow<Ret(Args...)>> {
 } // namespace abi
 
 inline namespace VEG_ABI {
-namespace fn {
+namespace internal {
+namespace fnref {
 using namespace abi::fn;
 
 template <typename T>
-struct fn_view;
-template <typename T>
-struct once_fn_view;
-
-namespace internal {
-namespace fnref {
-
-template <typename T>
-struct is_fn_ptr : std::false_type {};
+struct is_fn_ptr : meta::false_type {};
 template <typename Ret, typename... Args>
-struct is_fn_ptr<Ret (*)(Args...)> : std::true_type {};
-
+struct is_fn_ptr<Ret (*)(Args...)> : meta::true_type {};
+VEG_CPP17(
+template <typename Ret, typename... Args>
+struct is_fn_ptr<Ret (*)(Args...)noexcept> : meta::true_type {};
+)
 template <typename T>
 using unary_plus = decltype(+VEG_DECLVAL(T &&));
 
@@ -63,16 +62,16 @@ struct discard_void {
 	// non void case
 	template <typename Fn, typename... Args>
 	HEDLEY_ALWAYS_INLINE static auto apply(Fn&& fn, Args&&... args) noexcept(
-			VEG_CONCEPT(nothrow_invocable<Fn&&, Args&&...>)) -> Ret {
-		return invoke(VEG_FWD(fn), VEG_FWD(args)...);
+			VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>)) -> Ret {
+		return VEG_FWD(fn)(VEG_FWD(args)...);
 	}
 };
 template <>
 struct discard_void<void> {
 	template <typename Fn, typename... Args>
 	HEDLEY_ALWAYS_INLINE static auto apply(Fn&& fn, Args&&... args) noexcept(
-			VEG_CONCEPT(nothrow_invocable<Fn&&, Args&&...>)) -> void {
-		void(invoke(VEG_FWD(fn), VEG_FWD(args)...));
+			VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>)) -> void {
+		void(VEG_FWD(fn)(VEG_FWD(args)...));
 	}
 };
 
@@ -82,7 +81,7 @@ enum struct fn_kind_e {
 };
 
 template <typename T>
-struct fn_kind : std::integral_constant<
+struct fn_kind : meta::constant<
 										 fn_kind_e,
 										 is_convertible_to_fn_ptr_with_unary_plus<T>::value
 												 ? fn_kind_e::fn_ptr
@@ -90,12 +89,12 @@ struct fn_kind : std::integral_constant<
 
 template <typename Ret, typename... Args>
 struct fn_kind<Ret (*)(Args...)>
-		: std::integral_constant<fn_kind_e, fn_kind_e::fn_ptr> {};
+		: meta::constant<fn_kind_e, fn_kind_e::fn_ptr> {};
 
 VEG_CPP17(
 template <typename Ret, typename... Args>
 struct fn_kind<Ret (*)(Args...) noexcept>
-		: std::integral_constant<fn_kind_e, fn_kind_e::fn_ptr> {};
+    : meta::constant<fn_kind_e, fn_kind_e::fn_ptr> {};
 )
 
 template <fn_kind_e Kind>
@@ -113,7 +112,7 @@ struct fn_view_impl<fn_kind_e::fn_obj> {
 
 	template <typename Fn, typename Ret, typename... Args>
 	HEDLEY_ALWAYS_INLINE static auto call(state_ptr state, Args... args) noexcept(
-			VEG_CONCEPT(nothrow_invocable<Fn&&, Args&&...>)) -> Ret {
+			VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>)) -> Ret {
 		return discard_void<Ret>::apply(
 				static_cast<Fn&&>(*static_cast<meta::uncvref_t<Fn>*>(state.ptr)),
 				VEG_FWD(args)...);
@@ -130,7 +129,7 @@ struct fn_view_impl<fn_kind_e::fn_ptr> {
 
 	template <typename Fn, typename Ret, typename... Args>
 	HEDLEY_ALWAYS_INLINE static auto call(state_ptr state, Args... args) noexcept(
-			VEG_CONCEPT(nothrow_invocable<Fn&&, Args&&...>)) -> Ret {
+			VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>)) -> Ret {
 		return discard_void<Ret>::apply(
 				reinterpret_cast<decltype(+VEG_DECLVAL(Fn&))>(state.fn),
 				VEG_FWD(args)...);
@@ -154,7 +153,7 @@ struct assert_non_null<Ret (*)(Args...)> : assert_non_null_ptr {};
 
 template <bool No_Except, typename Ret, typename... Args>
 struct function_ref_impl {
-	using raw_parts = fn::raw_parts<
+	using raw_parts = fnref::raw_parts<
 			meta::conditional_t<No_Except, nothrow<Ret(Args...)>, Ret(Args...)>>;
 	raw_parts self = {};
 
@@ -190,6 +189,14 @@ struct function_ref_impl {
 } // namespace fnref
 } // namespace internal
 
+namespace fn {
+using namespace abi::fn;
+
+template <typename T>
+struct fn_view;
+template <typename T>
+struct once_fn_view;
+
 template <typename Ret, typename... Args>
 struct fn_view<Ret(Args...)>
 		: private internal::fnref::function_ref_impl<false, Ret, Args...> {
@@ -197,7 +204,7 @@ private:
 	using base = internal::fnref::function_ref_impl<false, Ret, Args...>;
 	explicit constexpr fn_view(unsafe_t /*unused*/) noexcept : base(){};
 	template <typename T>
-	friend struct meta::value_sentinel_for;
+	friend struct meta::tombstone_traits;
 	template <typename T>
 	friend struct fn_view;
 	template <typename T>
@@ -210,10 +217,9 @@ public:
 			(typename Fn),
 			requires(
 					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, fn_view>) &&
-					VEG_CONCEPT(invocable<Fn&, Args&&...>) &&
-					(VEG_CONCEPT(void_type<Ret>) ||
-	         VEG_CONCEPT(same<Ret, meta::invoke_result_t<Fn&, Args&&...>>))),
-			HEDLEY_ALWAYS_INLINE fn_view, // NOLINT
+					VEG_CONCEPT(invocable_r<Fn&, Ret, Args&&...>)),
+			HEDLEY_ALWAYS_INLINE,
+			fn_view,
 			(fn, Fn&&))
 	noexcept
 			: base({}, {}, fn) {}
@@ -225,7 +231,7 @@ public:
 	auto into_raw_parts() const noexcept -> raw_parts { return base::self; }
 
 	HEDLEY_ALWAYS_INLINE
-	fn_view /* NOLINT */ (fn_view<nothrow<Ret(Args...)>> fn) noexcept
+	fn_view(fn_view<nothrow<Ret(Args...)>> fn) noexcept
 			: base({}, {fn.self.state, fn.self.fn_ptr}) {}
 
 	HEDLEY_ALWAYS_INLINE
@@ -237,13 +243,13 @@ public:
 template <typename Ret, typename... Args>
 struct once_fn_view<Ret(Args...)>
 		: private internal::fnref::function_ref_impl<false, Ret, Args...>,
-			meta::internal::nocopy_ctor,
-			meta::internal::nocopy_assign {
+			internal::nocopy_ctor,
+			internal::nocopy_assign {
 private:
 	using base = internal::fnref::function_ref_impl<false, Ret, Args...>;
 	explicit constexpr once_fn_view(unsafe_t /*unused*/) noexcept : base(){};
 	template <typename T>
-	friend struct meta::value_sentinel_for;
+	friend struct meta::tombstone_traits;
 	template <typename T>
 	friend struct fn_view;
 	template <typename T>
@@ -256,10 +262,9 @@ public:
 			(typename Fn),
 			requires(
 					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, once_fn_view>) &&
-					VEG_CONCEPT(invocable<Fn&&, Args&&...>) &&
-					(VEG_CONCEPT(void_type<Ret>) ||
-	         VEG_CONCEPT(same<Ret, meta::invoke_result_t<Fn&&, Args&&...>>))),
-			HEDLEY_ALWAYS_INLINE once_fn_view, // NOLINT
+					VEG_CONCEPT(invocable_r<Fn, Ret, Args&&...>)),
+			HEDLEY_ALWAYS_INLINE,
+			once_fn_view,
 			(fn, Fn&&))
 	noexcept
 			: base({}, {}, VEG_FWD(fn)) {}
@@ -272,11 +277,11 @@ public:
 	auto into_raw_parts() const&& noexcept -> raw_parts { return base::self; }
 
 	HEDLEY_ALWAYS_INLINE
-	once_fn_view /* NOLINT */ (fn_view<nothrow<Ret(Args...)>> fn) noexcept
+	once_fn_view(fn_view<nothrow<Ret(Args...)>> fn) noexcept
 			: base({}, {fn.self.state, fn.self.fn_ptr}) {}
 
 	HEDLEY_ALWAYS_INLINE
-	once_fn_view /* NOLINT */ (fn_view<Ret(Args...)> fn) noexcept
+	once_fn_view(fn_view<Ret(Args...)> fn) noexcept
 			: base({}, {fn.self.state, fn.self.fn_ptr}) {}
 
 	HEDLEY_ALWAYS_INLINE
@@ -292,7 +297,7 @@ private:
 	using base = internal::fnref::function_ref_impl<true, Ret, Args...>;
 	explicit constexpr fn_view(unsafe_t /*unused*/) noexcept : base(){};
 	template <typename T>
-	friend struct meta::value_sentinel_for;
+	friend struct meta::tombstone_traits;
 	template <typename T>
 	friend struct fn_view;
 	template <typename T>
@@ -305,10 +310,9 @@ public:
 			(typename Fn),
 			requires(
 					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, fn_view>) &&
-					VEG_CONCEPT(nothrow_invocable<Fn&, Args&&...>) &&
-					(VEG_CONCEPT(void_type<Ret>) ||
-	         VEG_CONCEPT(same<Ret, meta::invoke_result_t<Fn&, Args&&...>>))),
-			HEDLEY_ALWAYS_INLINE fn_view, // NOLINT
+					VEG_CONCEPT(nothrow_invocable_r<Fn&, Ret, Args&&...>)),
+			HEDLEY_ALWAYS_INLINE,
+			fn_view,
 			(fn, Fn&&))
 	noexcept
 			: base({}, {}, fn) {}
@@ -328,13 +332,13 @@ public:
 template <typename Ret, typename... Args>
 struct once_fn_view<nothrow<Ret(Args...)>>
 		: private internal::fnref::function_ref_impl<true, Ret, Args...>,
-			meta::internal::nocopy_ctor,
-			meta::internal::nocopy_assign {
+			internal::nocopy_ctor,
+			internal::nocopy_assign {
 private:
 	using base = internal::fnref::function_ref_impl<true, Ret, Args...>;
 	explicit constexpr once_fn_view(unsafe_t /*unused*/) noexcept : base(){};
 	template <typename T>
-	friend struct meta::value_sentinel_for;
+	friend struct meta::tombstone_traits;
 	template <typename T>
 	friend struct fn_view;
 	template <typename T>
@@ -347,10 +351,9 @@ public:
 			(typename Fn),
 			requires(
 					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, once_fn_view>) &&
-					VEG_CONCEPT(nothrow_invocable<Fn&&, Args&&...>) &&
-					(VEG_CONCEPT(void_type<Ret>) ||
-	         VEG_CONCEPT(same<Ret, meta::invoke_result_t<Fn&&, Args&&...>>))),
-			HEDLEY_ALWAYS_INLINE once_fn_view, // NOLINT
+					VEG_CONCEPT(nothrow_invocable_r<Fn, Ret, Args&&...>)),
+			HEDLEY_ALWAYS_INLINE,
+			once_fn_view,
 			(fn, Fn&&))
 	noexcept
 			: base({}, {}, VEG_FWD(fn)) {}
@@ -363,7 +366,7 @@ public:
 	auto into_raw_parts() const&& noexcept -> raw_parts { return base::self; }
 
 	HEDLEY_ALWAYS_INLINE
-	once_fn_view /* NOLINT */ (fn_view<Ret(Args...) noexcept> fn) noexcept
+	once_fn_view(fn_view<Ret(Args...) noexcept> fn) noexcept
 			: base({}, {fn.self.state, fn.self.fn_ptr}) {}
 
 	HEDLEY_ALWAYS_INLINE
@@ -375,32 +378,36 @@ public:
 } // namespace fn
 
 template <typename T>
-struct meta::value_sentinel_for<fn::fn_view<T>>
-		: std::integral_constant<i64, 1> {
+struct meta::tombstone_traits<fn::fn_view<T>> {
+	static constexpr i64 spare_representations = 1;
+
 	HEDLEY_ALWAYS_INLINE
-	static constexpr auto invalid(i64 i) noexcept -> fn::fn_view<T> {
-		return (void)i, VEG_INTERNAL_ASSERT(i == i64(0)), fn::fn_view<T>{unsafe};
+	static VEG_CPP14(constexpr) void set_spare_representation(
+			fn::fn_view<T>* p, i64 i) noexcept {
+		(void)i, VEG_INTERNAL_ASSERT(i == i64(0)), (*p = fn::fn_view<T>{unsafe});
 	}
 	HEDLEY_ALWAYS_INLINE
-	static constexpr auto id(fn::fn_view<T> arg) -> i64 {
-		return arg.self.fn_ptr == nullptr ? 0 : -1;
+	static constexpr auto index(fn::fn_view<T> const* p) -> i64 {
+		return p->self.fn_ptr == nullptr ? 0 : -1;
 	}
 };
 template <typename T>
-struct meta::value_sentinel_for<fn::once_fn_view<T>>
-		: std::integral_constant<i64, 1> {
+struct meta::tombstone_traits<fn::once_fn_view<T>> {
+	static constexpr i64 spare_representations = 1;
+
 	HEDLEY_ALWAYS_INLINE
-	static constexpr auto invalid(i64 i) noexcept -> fn::once_fn_view<T> {
-		return (void)i, VEG_INTERNAL_ASSERT(i == i64(0)),
-					 fn::once_fn_view<T>{unsafe};
+	static VEG_CPP14(constexpr) void set_spare_representation(
+			fn::fn_view<T>* p, i64 i) noexcept {
+		(void)i, VEG_INTERNAL_ASSERT(i == i64(0)), (*p = fn::fn_view<T>{unsafe});
 	}
 	HEDLEY_ALWAYS_INLINE
-	static constexpr auto id(fn::once_fn_view<T> arg) -> i64 {
-		return arg.self.fn_ptr == nullptr ? 0 : -1;
+	static constexpr auto index(fn::fn_view<T> const* p) -> i64 {
+		return p->self.fn_ptr == nullptr ? 0 : -1;
 	}
 };
 } // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard __VEG_FN_REF_HPP_IDVWA3EYS */
+
+#endif /* end of include guard VEG_FN_VIEW_HPP_2EMSNQIXS */

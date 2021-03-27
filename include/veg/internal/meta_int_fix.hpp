@@ -1,15 +1,36 @@
-#ifndef __VEG_META_INT_FIX_HPP_7S9Y48TFS
-#define __VEG_META_INT_FIX_HPP_7S9Y48TFS
+#ifndef VEG_META_INT_FIX_HPP_7S9Y48TFS
+#define VEG_META_INT_FIX_HPP_7S9Y48TFS
 
-#include "veg/internal/type_traits.hpp"
+#include "veg/type_traits/tags.hpp"
 #include "veg/internal/std.hpp"
-#include "veg/internal/byte_string_ref.hpp"
-#include "veg/internal/simple_string.hpp"
 #include "veg/internal/fmt.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
 inline namespace VEG_ABI {
+
+namespace int_c {
+struct dyn;
+template <i64 N>
+struct fix;
+} // namespace int_c
+
+namespace internal {
+namespace meta_ {
+template <typename T>
+struct is_fix : std::false_type {};
+template <i64 N>
+struct is_fix<int_c::fix<N>> : std::true_type {};
+} // namespace meta_
+} // namespace internal
+
+namespace concepts {
+VEG_DEF_CONCEPT(
+		typename T,
+		meta_int,
+		VEG_CONCEPT(same<T, int_c::dyn>) || internal::meta_::is_fix<T>::value);
+} // namespace concepts
+
 enum struct ternary_e : unsigned char {
 	no,
 	maybe,
@@ -19,9 +40,9 @@ enum struct ternary_e : unsigned char {
 constexpr auto no = ternary_e::no;
 constexpr auto maybe = ternary_e::maybe;
 constexpr auto yes = ternary_e::yes;
-using no_c = std::integral_constant<ternary_e, ternary_e::no>;
-using maybe_c = std::integral_constant<ternary_e, ternary_e::maybe>;
-using yes_c = std::integral_constant<ternary_e, ternary_e::yes>;
+using no_c = meta::constant<ternary_e, ternary_e::no>;
+using maybe_c = meta::constant<ternary_e, ternary_e::maybe>;
+using yes_c = meta::constant<ternary_e, ternary_e::yes>;
 
 namespace int_c {
 
@@ -31,7 +52,7 @@ struct boolean;
 template <ternary_e T>
 struct boolean {
 	constexpr boolean() noexcept = default;
-	using type = std::integral_constant<ternary_e, T>;
+	using type = meta::constant<ternary_e, T>;
 
 	HEDLEY_ALWAYS_INLINE constexpr boolean(
 			boolean<maybe> /*b*/, unsafe_t /*tag*/) noexcept;
@@ -67,7 +88,7 @@ struct fix {
 	HEDLEY_ALWAYS_INLINE constexpr fix(dyn /*arg*/, unsafe_t /*tag*/) noexcept;
 	HEDLEY_ALWAYS_INLINE constexpr fix // NOLINT(hicpp-explicit-conversions)
 			(dyn arg, safe_t /*tag*/ = {}) noexcept;
-	VEG_TEMPLATE((i64 M), requires(M != N), constexpr fix, (/*arg*/, fix<M>)) =
+	VEG_TEMPLATE((i64 M), requires((M != N)), constexpr, fix, (/*arg*/, fix<M>)) =
 			delete;
 
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE explicit constexpr
@@ -224,7 +245,8 @@ struct binary_traits<fix<N>, fix<M>> {
 VEG_TEMPLATE(
 		(typename L, typename R),
 		requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr,
+		auto
 		operator+,
 		(a, L),
 		(b, R))
@@ -233,7 +255,8 @@ VEG_DEDUCE_RET(internal::binary_traits<L, R>::add_fn(a, b));
 VEG_TEMPLATE(
 		(typename L, typename R),
 		requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr,
+		auto
 		operator-,
 		(a, L),
 		(b, R))
@@ -242,7 +265,8 @@ VEG_DEDUCE_RET(internal::binary_traits<L, R>::sub_fn(a, b));
 VEG_TEMPLATE(
 		(typename L, typename R),
 		requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr,
+		auto
 		operator*,
 		(a, L),
 		(b, R))
@@ -254,7 +278,8 @@ VEG_TEMPLATE(
 				VEG_CONCEPT(meta_int<L>) && //
 				VEG_CONCEPT(meta_int<R>) &&
 				VEG_CONCEPT(meta_int<typename internal::binary_traits<L, R>::div>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr,
+		auto
 		operator/,
 		(a, L),
 		(b, R))
@@ -266,7 +291,8 @@ VEG_TEMPLATE(
 				VEG_CONCEPT(meta_int<L>) && //
 				VEG_CONCEPT(meta_int<R>) &&
 				VEG_CONCEPT(meta_int<typename internal::binary_traits<L, R>::mod>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr,
+		auto
 		operator%,
 		(a, L),
 		(b, R))
@@ -276,7 +302,8 @@ VEG_DEDUCE_RET(internal::binary_traits<L, R>::mod_fn(a, b));
 	VEG_TEMPLATE(                                                                \
 			(typename L, typename R),                                                \
 			requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),          \
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto                        \
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr,                            \
+			auto                                                                     \
 			operator Op,                                                             \
 			(a, L),                                                                  \
 			(b, R))                                                                  \
@@ -331,4 +358,4 @@ struct debug<fix<N>> {
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard __VEG_META_INT_FIX_HPP_7S9Y48TFS */
+#endif /* end of include guard VEG_META_INT_FIX_HPP_7S9Y48TFS */
