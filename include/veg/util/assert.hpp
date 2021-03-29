@@ -261,16 +261,14 @@ struct decomposer {
 			__VA_ARGS__)
 
 #define __VEG_IMPL_ALL_OF_1(Ftor, Decomposer, Callback, ...)                   \
-	__VEG_IMPL_ALL_OF_2(                                                         \
-			Ftor, Decomposer, Callback, __VEG_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+	__VEG_IMPL_ALL_OF_2(Ftor, Decomposer, Callback, (__VA_ARGS__))
 
-#define __VEG_IMPL_ASSERT_FTOR_EMPTY(_, Decomposer, Elem)                      \
+#define __VEG_IMPL_ASSERT_FTOR_EMPTY(Decomposer, Elem)                         \
 	__VEG_IMPL_ASSERT_FTOR(                                                      \
-			_,                                                                       \
 			Decomposer,                                                              \
-			(::veg::abi::internal::empty_str, __VEG_PP_REMOVE_PARENS(Elem)))
+			(::veg::abi::internal::empty_str, __VEG_PP_REMOVE_PAREN(Elem)))
 
-#define __VEG_IMPL_ASSERT_FTOR(_, Decomposer, Elem)                            \
+#define __VEG_IMPL_ASSERT_FTOR(Decomposer, Elem)                               \
 	(::veg::internal::assert_::Decomposer{} << __VEG_PP_TAIL Elem)               \
 			? true                                                                   \
 			: ((void)(::veg::abi::internal::cleanup{}),                              \
@@ -281,8 +279,8 @@ struct decomposer {
 	            __VEG_PP_HEAD Elem),                                             \
 						 false),
 
-#define __VEG_IMPL_ALL_OF_2(Ftor, Decomposer, Callback, Seq)                   \
-	(::veg::meta::all_of({__VEG_PP_SEQ_FOR_EACH(Ftor, Decomposer, Seq)})         \
+#define __VEG_IMPL_ALL_OF_2(Ftor, Decomposer, Callback, Tuple)                 \
+	(::veg::meta::all_of({__VEG_PP_TUPLE_FOR_EACH(Ftor, Decomposer, Tuple)})     \
 	     ? (void)(0)                                                             \
 	     : ::veg::abi::internal::Callback(                                       \
 						 __LINE__,                                                         \

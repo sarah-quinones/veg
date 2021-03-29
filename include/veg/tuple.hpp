@@ -7,19 +7,23 @@
 #include "veg/util/get.hpp"
 #include "veg/internal/prologue.hpp"
 
-/******************************************************************************/
-#define __VEG_IMPL_BIND(r, Tuple, Index, Identifier)                           \
-	auto&& Identifier = ::veg::nb::get<Index>{}(VEG_FWD(Tuple));
+// STD INCLUDE: std::tuple_{size,element}
+#include <utility>
 
-#define __VEG_IMPL_BIND_ID_SEQ(CV_Auto, Identifiers, Tuple, SeqSize, TupleId)  \
+/******************************************************************************/
+#define __VEG_IMPL_BIND(I, Tuple, Identifier)                                  \
+	auto&& Identifier = ::veg::nb::get<I>{}(VEG_FWD(Tuple));
+
+#define __VEG_IMPL_BIND_ID_SEQ(                                                \
+		CV_Auto, Identifiers, Tuple, Tuple_Size, TupleId)                          \
 	CV_Auto TupleId = Tuple;                                                     \
 	static_assert(                                                               \
 			::std::tuple_size<                                                       \
-					typename ::std::remove_const<typename ::std::remove_reference<       \
-							decltype(TupleId)>::type>::type>::value == SeqSize,              \
-			"Wrong number of identifiers.");                                         \
-	__VEG_PP_SEQ_FOR_EACH_I(__VEG_IMPL_BIND, TupleId, Identifiers)               \
-	static_assert(true, "")
+					typename ::veg::meta::uncvref_t<decltype(TupleId)>>::value ==        \
+					Tuple_Size,                                                          \
+			"wrong number of identifiers");                                         \
+	__VEG_PP_TUPLE_FOR_EACH_I(__VEG_IMPL_BIND, TupleId, Identifiers)             \
+	VEG_NOM_SEMICOLON
 
 // example: difference vs c++17 structure bindings
 // auto get() -> tuple<A, B&, C&&>;
@@ -34,7 +38,7 @@
 #define VEG_BIND(CV_Auto, Identifiers, Tuple)                                  \
 	__VEG_IMPL_BIND_ID_SEQ(                                                      \
 			CV_Auto,                                                                 \
-			__VEG_PP_TUPLE_TO_SEQ(Identifiers),                                      \
+			Identifiers,                                                             \
 			Tuple,                                                                   \
 			__VEG_PP_TUPLE_SIZE(Identifiers),                                        \
 			__VEG_PP_CAT(_dummy_tuple_variable_id_, __LINE__))

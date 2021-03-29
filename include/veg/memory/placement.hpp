@@ -6,10 +6,30 @@
 #include "veg/tuple.hpp"
 #include "veg/internal/prologue.hpp"
 
+// STD INDCLUDE: launder
+#include <new>
+
+// construct_at
+#if __cplusplus >= 202002L
+
+// STD INDCLUDE: construct_at
+#if __VEG_HAS_INCLUDE(<bits/stl_construct.h>) &&                                              \
+		__VEG_HAS_INCLUDE(<bits/stl_iterator_base_types.h>) &&                                \
+				__VEG_HAS_INCLUDE(<bits/stl_iterator_base_funcs.h>)
+#include <bits/stl_iterator_base_types.h>
+#include <bits/stl_iterator_base_funcs.h>
+#include <bits/stl_construct.h>
+#else
+#include <memory>
+#endif
+
+#endif
+
 #if VEG_HAS_BUILTIN(__builtin_launder) || __GNUC__ >= 7
-#define VEG_LAUNDER(p) __builtin_launder(p)
+#define VEG_LAUNDER(p) (__builtin_launder(p))
 #elif __cplusplus >= 201703L
-#define VEG_LAUNDER(p) ::std::launder(p)
+#include <new>
+#define VEG_LAUNDER(p) (::std::launder(p))
 #else
 #define VEG_LAUNDER(p) (+p)
 #endif
@@ -55,6 +75,18 @@ VEG_NIEBLOID(from_callable);
 
 namespace mem {
 namespace nb {
+struct launder {
+	VEG_TEMPLATE(
+			typename T,
+			requires(!VEG_CONCEPT(void_type<T>)),
+			HEDLEY_ALWAYS_INLINE constexpr,
+			auto
+			operator(),
+			(mem, T*))
+	const noexcept->T* { return VEG_LAUNDER(mem); }
+};
+#undef VEG_LAUNDER
+
 struct construct_at {
 	VEG_TEMPLATE(
 			(typename T, typename... Args),
@@ -115,6 +147,7 @@ struct destroy_at {
 	const noexcept { mem->~T(); }
 };
 } // namespace nb
+VEG_NIEBLOID(launder);
 VEG_NIEBLOID(construct_at);
 VEG_NIEBLOID(construct_with);
 VEG_NIEBLOID(destroy_at);

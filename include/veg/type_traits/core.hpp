@@ -125,6 +125,11 @@ struct detector : _detector<void, Default, Ftor, Args...> {};
 template <template <typename...> class Op, typename... Args>
 using is_detected = typename detector<meta_::none, Op, Args...>::value_type;
 
+template <typename T>
+struct is_pointer : false_type, type_identity<T> {};
+template <typename T>
+struct is_pointer<T*> : true_type, type_identity<T> {};
+
 struct wrapper_base {
 	static auto test(...) -> false_type;
 };
@@ -147,11 +152,6 @@ using is_base_of =
 		decltype(baseof_wrapper<Base>::test(static_cast<Derived>(nullptr)));
 
 template <typename T>
-struct is_pointer : false_type, type_identity<T> {};
-template <typename T>
-struct is_pointer<T*> : true_type, type_identity<T> {};
-
-template <typename T>
 struct is_lvalue_reference : false_type {};
 template <typename T>
 struct is_lvalue_reference<T&> : true_type {};
@@ -161,24 +161,9 @@ template <typename T>
 struct is_rvalue_reference<T&&> : true_type {};
 
 template <typename T>
-using is_reference = bool_constant<
-		is_lvalue_reference<T>::value || is_rvalue_reference<T>::value>;
-
-template <typename T>
 struct is_const : false_type {};
 template <typename T>
 struct is_const<T const> : true_type {};
-
-template <typename T>
-struct is_void : false_type {};
-template <>
-struct is_void<void> : true_type {};
-template <>
-struct is_void<void const> : true_type {};
-template <>
-struct is_void<void volatile> : true_type {};
-template <>
-struct is_void<void const volatile> : true_type {};
 
 } // namespace meta_
 } // namespace internal

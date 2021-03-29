@@ -177,7 +177,7 @@ struct impl_cmp {
 	template <typename... Us>
 	HEDLEY_ALWAYS_INLINE static constexpr auto
 	eq(Ts const&... ts, Us const&... us) noexcept -> bool {
-		return (veg::cmp::equal(ts, us) && ... && true);
+		return ((ts == us) && ... && true);
 	}
 
 	template <typename Ret, typename... Us>
@@ -206,7 +206,7 @@ struct impl_cmp<T0, Ts...> {
 	HEDLEY_ALWAYS_INLINE static constexpr auto
 	eq(T0 const& t0, Ts const&... ts, U0 const& u0, Us const&... us) noexcept
 			-> bool {
-		return veg::cmp::equal(t0, u0) && impl_cmp<Ts...>::eq(ts..., us...);
+		return (t0 == u0) && impl_cmp<Ts...>::eq(ts..., us...);
 	}
 
 	template <typename Ret, typename U0, typename... Us>

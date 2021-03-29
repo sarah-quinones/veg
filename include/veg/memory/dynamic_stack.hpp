@@ -44,7 +44,7 @@ struct zero_init_fn {
 struct no_init_fn {
 	template <typename T>
 	auto make(void* ptr, i64 len) -> T* {
-		return VEG_LAUNDER(static_cast<T*>(static_cast<void*>(
+		return mem::launder(static_cast<T*>(static_cast<void*>(
 				new (ptr) unsigned char[static_cast<usize>(len) * sizeof(T)])));
 	}
 };
@@ -265,5 +265,5 @@ private:
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard VEG_DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS \
+#endif /* end of include guard VEG_DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS   \
         */
