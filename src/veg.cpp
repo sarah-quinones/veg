@@ -1,6 +1,7 @@
 #include "veg/util/assert.hpp"
 #include "veg/util/timer.hpp"
 #include <cinttypes>
+#include <iostream>
 #include <memory>
 
 #include <cstdio>
@@ -829,12 +830,12 @@ auto on_fail(
 }
 
 void on_expect_fail(long line, char_string_ref file, char_string_ref func) {
-	std::fputs(on_fail(line, file, func, false).c_str(), stderr);
+  std::cerr << on_fail(line, file, func, false);
 }
 
 [[noreturn]] void
 on_assert_fail(long line, char_string_ref file, char_string_ref func) {
-	std::fputs(on_fail(line, file, func, false).c_str(), stderr);
+  std::cerr << on_fail(line, file, func, false);
 	std::terminate();
 }
 
