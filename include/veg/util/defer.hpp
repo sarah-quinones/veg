@@ -36,8 +36,7 @@ struct defer {
 			typename Fn,
 			requires(
 					VEG_CONCEPT(move_constructible<Fn>) && VEG_CONCEPT(invocable<Fn>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
-			auto
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) auto
 			operator(),
 			(fn, Fn))
 	const noexcept(VEG_CONCEPT(nothrow_move_constructible<Fn>))->veg::defer<Fn> {

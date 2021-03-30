@@ -12,8 +12,7 @@ struct narrow {
 	VEG_TEMPLATE(
 			(typename From),
 			requires VEG_CONCEPT(integral<From>) && VEG_CONCEPT(integral<To>),
-			constexpr,
-			auto
+			constexpr auto
 			operator(),
 			(from, From))
 	const noexcept->To {

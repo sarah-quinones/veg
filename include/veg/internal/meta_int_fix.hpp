@@ -88,7 +88,7 @@ struct fix {
 	HEDLEY_ALWAYS_INLINE constexpr fix(dyn /*arg*/, unsafe_t /*tag*/) noexcept;
 	HEDLEY_ALWAYS_INLINE constexpr fix // NOLINT(hicpp-explicit-conversions)
 			(dyn arg, safe_t /*tag*/ = {}) noexcept;
-	VEG_TEMPLATE((i64 M), requires((M != N)), constexpr, fix, (/*arg*/, fix<M>)) =
+	VEG_TEMPLATE((i64 M), requires((M != N)), constexpr fix, (/*arg*/, fix<M>)) =
 			delete;
 
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE explicit constexpr
@@ -245,8 +245,7 @@ struct binary_traits<fix<N>, fix<M>> {
 VEG_TEMPLATE(
 		(typename L, typename R),
 		requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr,
-		auto
+		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator+,
 		(a, L),
 		(b, R))
@@ -255,8 +254,7 @@ VEG_DEDUCE_RET(internal::binary_traits<L, R>::add_fn(a, b));
 VEG_TEMPLATE(
 		(typename L, typename R),
 		requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr,
-		auto
+		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator-,
 		(a, L),
 		(b, R))
@@ -265,8 +263,7 @@ VEG_DEDUCE_RET(internal::binary_traits<L, R>::sub_fn(a, b));
 VEG_TEMPLATE(
 		(typename L, typename R),
 		requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr,
-		auto
+		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator*,
 		(a, L),
 		(b, R))
@@ -278,8 +275,7 @@ VEG_TEMPLATE(
 				VEG_CONCEPT(meta_int<L>) && //
 				VEG_CONCEPT(meta_int<R>) &&
 				VEG_CONCEPT(meta_int<typename internal::binary_traits<L, R>::div>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr,
-		auto
+		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator/,
 		(a, L),
 		(b, R))
@@ -291,8 +287,7 @@ VEG_TEMPLATE(
 				VEG_CONCEPT(meta_int<L>) && //
 				VEG_CONCEPT(meta_int<R>) &&
 				VEG_CONCEPT(meta_int<typename internal::binary_traits<L, R>::mod>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr,
-		auto
+		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator%,
 		(a, L),
 		(b, R))
@@ -302,8 +297,7 @@ VEG_DEDUCE_RET(internal::binary_traits<L, R>::mod_fn(a, b));
 	VEG_TEMPLATE(                                                                \
 			(typename L, typename R),                                                \
 			requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),          \
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr,                            \
-			auto                                                                     \
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto                        \
 			operator Op,                                                             \
 			(a, L),                                                                  \
 			(b, R))                                                                  \

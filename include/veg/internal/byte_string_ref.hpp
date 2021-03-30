@@ -24,8 +24,7 @@ struct char_string_ref {
 					VEG_CONCEPT(
 							constructible<i64, decltype(VEG_DECLVAL(T const&).size())>)),
 
-			HEDLEY_ALWAYS_INLINE constexpr,
-			char_string_ref,
+			HEDLEY_ALWAYS_INLINE constexpr char_string_ref,
 			(arg, T const&))
 	noexcept
 			: char_string_ref{

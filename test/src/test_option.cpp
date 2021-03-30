@@ -57,8 +57,7 @@ TEST_CASE("option: all") {
 	VEG_CPP14(constexpr) option<int> i = {some, 3};
 	VEG_CPP14(constexpr) option<int> j = none;
 	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).unwrap() == 1000. / 3);
-	STATIC_ASSERT_IF_17(
-			option<int>{some, inplace, from_callable([&] { return 0; })});
+	STATIC_ASSERT_IF_17(option<int>{some, from_callable([&] { return 0; })});
 	STATIC_ASSERT_IF_14(i.as_ref().map(B{}).unwrap() == 2000. / 3);
 
 	STATIC_ASSERT_IF_14(i.as_ref().map_or_else(B{}, C{}) == 2000. / 3);
@@ -68,9 +67,9 @@ TEST_CASE("option: all") {
 	STATIC_ASSERT_IF_17(
 			i.as_ref().map([](int k) { return 2.0 * k; }) == some(6.0));
 
-	STATIC_ASSERT_IF_14(!option<int>{0}.and_then(A{}));
-	STATIC_ASSERT_IF_14(option<int>{3}.and_then(A{}).unwrap() == 1000. / 3);
-	STATIC_ASSERT_IF_14(option<int>{42}.take().unwrap() == 42);
+	STATIC_ASSERT_IF_14(!option<int>{some, 0}.and_then(A{}));
+	STATIC_ASSERT_IF_14(option<int>{some, 3}.and_then(A{}).unwrap() == 1000. / 3);
+	STATIC_ASSERT_IF_14(option<int>{some, 42}.take().unwrap() == 42);
 	STATIC_ASSERT_IF_14(!option<int>{none}.take());
 	STATIC_ASSERT_IF_14(!j.as_ref().and_then(A{}));
 
@@ -81,11 +80,11 @@ TEST_CASE("option: all") {
 
 	{
 		VEG_CPP14(constexpr)
-		option<option<option<int>>> opt = {some, {some, {some, 3}}};
+		option<option<option<int>>> opt = some(some(some(3)));
 		VEG_CPP14(constexpr)
 		option<option<option<int>>> opt_also = some(some(some(3)));
 		VEG_CPP14(constexpr)
-		option<option<option<int>>> opt2 = {some, {some, {none}}};
+		option<option<option<int>>> opt2 = some(some(option<int>(none)));
 		STATIC_ASSERT_IF_14(opt == opt_also);
 		STATIC_ASSERT_IF_14(
 				opt //

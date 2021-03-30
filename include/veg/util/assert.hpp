@@ -117,8 +117,7 @@ struct lhs_all_of_t {
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(equality_comparable_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr,
-			auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator==,
 			(rhs, U const&))
 	const->bool {
@@ -128,8 +127,7 @@ struct lhs_all_of_t {
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(equality_comparable_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr,
-			auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator!=,
 			(rhs, U const&))
 	const->bool {
@@ -140,8 +138,7 @@ struct lhs_all_of_t {
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(synth_three_way_comparable_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr,
-			auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator<,
 			(rhs, U const&))
 	const->bool {
@@ -153,8 +150,7 @@ struct lhs_all_of_t {
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(synth_three_way_comparable_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr,
-			auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator>,
 			(rhs, U const&))
 	const->bool {
@@ -166,8 +162,7 @@ struct lhs_all_of_t {
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(synth_three_way_comparable_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr,
-			auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator<=,
 			(rhs, U const&))
 	const->bool {
@@ -179,8 +174,7 @@ struct lhs_all_of_t {
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(synth_three_way_comparable_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr,
-			auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator>=,
 			(rhs, U const&))
 	const->bool {

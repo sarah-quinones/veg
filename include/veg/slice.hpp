@@ -157,8 +157,7 @@ struct slice_ctor_common {
 	VEG_TEMPLATE(
 			(typename Rng),
 			requires(internal::has_data_r<T, meta::uncvref_t<Rng>>::value),
-			HEDLEY_ALWAYS_INLINE constexpr,
-			slice_ctor_common,
+			HEDLEY_ALWAYS_INLINE constexpr slice_ctor_common,
 			(rng, Rng&&))
 	noexcept
 			: slice_ctor_common(
@@ -224,8 +223,7 @@ struct slice<void> : slice<unsigned char> {
 			requires(
 					!VEG_CONCEPT(const_type<T>) && //
 					VEG_CONCEPT(trivially_copyable<T>)),
-			HEDLEY_ALWAYS_INLINE,
-			slice,
+			HEDLEY_ALWAYS_INLINE slice,
 			(s, slice<T>))
 	noexcept
 			: slice(
@@ -238,8 +236,7 @@ struct slice<void const> : slice<unsigned char const> {
 	VEG_TEMPLATE(
 			(typename T),
 			requires VEG_CONCEPT(trivially_copyable<T>),
-			HEDLEY_ALWAYS_INLINE,
-			slice,
+			HEDLEY_ALWAYS_INLINE slice,
 			(s, slice<T>))
 	noexcept
 			: slice{
@@ -257,8 +254,7 @@ struct slice {
 															 internal::has_data<meta::uncvref_t<Rng>>::d(
 																	 VEG_DECLVAL(Rng&)))>>,
 													 Rng&&>)),
-			HEDLEY_ALWAYS_INLINE,
-			auto
+			HEDLEY_ALWAYS_INLINE auto
 			operator(),
 			(rng, Rng&&))
 	const noexcept->veg::slice<meta::unptr_t<decltype(

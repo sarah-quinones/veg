@@ -64,7 +64,6 @@ struct zero {
 	VEG_TEMPLATE(
 			(typename T),
 			requires(VEG_CONCEPT(pointer<T>) || VEG_CONCEPT(same<T, std::nullptr_t>)),
-			,
 			zero,
 			(arg, T)) = delete;
 };
@@ -310,8 +309,7 @@ struct compare_three_way_generic {
 	VEG_TEMPLATE(
 			(typename L, typename R),
 			requires(VEG_CONCEPT(partially_ordered_with<L, R>)),
-			HEDLEY_ALWAYS_INLINE static constexpr,
-			auto fn,
+			HEDLEY_ALWAYS_INLINE static constexpr auto fn,
 			(lhs, L const&),
 			(rhs, R const&))
 	noexcept -> weak_ordering {
@@ -770,8 +768,7 @@ struct three_way {
 	VEG_TEMPLATE(
 			(typename A, typename B),
 			requires(VEG_CONCEPT(three_way_comparable_with<A, B>)),
-			HEDLEY_ALWAYS_INLINE constexpr,
-			auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(a, A const&),
 			(b, B const&))
@@ -786,8 +783,7 @@ struct synth_three_way {
 	VEG_TEMPLATE(
 			(typename A, typename B),
 			requires(VEG_CONCEPT(three_way_comparable_with<A, B>)),
-			HEDLEY_ALWAYS_INLINE constexpr,
-			auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(a, A const&),
 			(b, B const&))
@@ -801,8 +797,7 @@ struct synth_three_way {
 			requires(
 					!VEG_CONCEPT(three_way_comparable_with<A, B>) &&
 					VEG_CONCEPT(partially_ordered_with<A, B>)),
-			constexpr,
-			auto
+			constexpr auto
 			operator(),
 			(a, A const&),
 			(b, B const&))
@@ -819,8 +814,7 @@ struct equal {
 	VEG_TEMPLATE(
 			(typename A, typename B),
 			requires(VEG_CONCEPT(equality_comparable_with<A, B>)),
-			HEDLEY_ALWAYS_INLINE constexpr,
-			auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(a, A&&),
 			(b, B&&))

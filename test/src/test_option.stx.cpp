@@ -106,7 +106,7 @@ struct FnConst {
 };
 
 TEST_CASE("OptionTest: Misc") {
-	CHECK(option<option<int>>({some, {some, 899}}).unwrap().unwrap() == 899);
+	CHECK(option<option<int>>({some, some(899)}).unwrap().unwrap() == 899);
 }
 
 TEST_CASE("OptionTest: ObjectConstructionTest") {

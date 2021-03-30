@@ -39,8 +39,7 @@ struct some_t {
 	VEG_TEMPLATE(
 			typename T,
 			requires(VEG_CONCEPT(constructible<meta::uncvref_t<T>, T&&>)),
-			VEG_CPP14(constexpr),
-			auto
+			VEG_CPP14(constexpr) auto
 			operator(),
 			(arg, T&&))
 	const noexcept(VEG_CONCEPT(nothrow_constructible<meta::uncvref_t<T>, T&&>))
@@ -68,7 +67,17 @@ struct is_option : false_type {};
 template <typename T>
 struct is_option<option<T>> : true_type {};
 
+template <typename T>
+struct option_type : type_identity<internal::meta_::none> {};
+template <typename T>
+struct option_type<option<T>> : type_identity<T> {};
+
+template <typename T>
+using option_type_t = typename option_type<T>::type;
 } // namespace meta
+namespace concepts {
+VEG_DEF_CONCEPT(typename T, option, meta::is_option<T>::value);
+} // namespace concepts
 struct some_ref_t {
 	template <typename T>
 	VEG_CPP14(constexpr)
@@ -243,12 +252,14 @@ struct option_storage_tombstone {
 	}
 	void _destroy() noexcept {
 		VEG_INTERNAL_ASSERT(is_engaged());
-		mem::destroy_at(_ptr());
+		mem::destroy_at(mem::launder(_ptr()));
 		disengage();
 	}
-	auto _get() && noexcept -> T&& { return static_cast<T&&>(*_ptr()); }
-	auto _get() & noexcept -> T& { return *_ptr(); }
-	auto _get() const& noexcept -> T const& { return *_ptr(); }
+	auto _get() && noexcept -> T&& {
+		return static_cast<T&&>(*mem::launder(_ptr()));
+	}
+	auto _get() & noexcept -> T& { return *mem::launder(_ptr()); }
+	auto _get() const& noexcept -> T const& { return *mem::launder(_ptr()); }
 };
 
 template <typename T>
@@ -514,47 +525,6 @@ using choose_base = meta::conditional_t<
 		option_storage_base<T>,
 		option_move_assign<T>>;
 
-template <typename T, bool = VEG_CONCEPT(move_constructible<T>)>
-struct option_move_ctor_base2 : choose_base<T> {
-
-	option_move_ctor_base2() = default;
-	explicit VEG_CPP14(constexpr) option_move_ctor_base2(T value) noexcept(
-			VEG_CONCEPT(nothrow_move_constructible<T>))
-			: choose_base<T>(hidden_tag{}, VEG_FWD(value)) {}
-
-	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr)
-			option_move_ctor_base2(some_t /*tag*/, T value) noexcept(
-					VEG_CONCEPT(nothrow_move_constructible<T>))
-			: choose_base<T>(hidden_tag{}, VEG_FWD(value)) {}
-
-	VEG_TEMPLATE(
-			(typename... Args),
-			requires(VEG_CONCEPT(constructible<T, Args...>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr),
-			option_move_ctor_base2,
-			(/*tag*/, some_t),
-			(/*tag*/, inplace_t),
-			(... args, Args&&))
-	noexcept(VEG_CONCEPT(nothrow_constructible<T, Args...>))
-			: choose_base<T>(internal::option_::hidden_tag{}, VEG_FWD(args)...) {}
-};
-
-template <typename T>
-struct option_move_ctor_base2<T, false> : option_move_assign<T> {
-	option_move_ctor_base2() = default;
-	VEG_TEMPLATE(
-			(typename... Args),
-			requires(VEG_CONCEPT(constructible<T, Args...>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr),
-			option_move_ctor_base2,
-			(/*tag*/, some_t),
-			(/*tag*/, inplace_t),
-			(... args, Args&&))
-	noexcept(VEG_CONCEPT(nothrow_constructible<T, Args...>))
-			: option_move_assign<T>(
-						internal::option_::hidden_tag{}, VEG_FWD(args)...) {}
-};
-
 template <typename To>
 struct into_fn {
 	template <typename T>
@@ -564,104 +534,19 @@ struct into_fn {
 	}
 };
 
-template <typename T, bool = VEG_CONCEPT(move_constructible<T>)>
-struct option_move_interface_base {
-	VEG_CPP14(constexpr)
-	auto clone() && noexcept(VEG_CONCEPT(nothrow_move_constructible<T>))
-			-> option<T> {
-		auto&& self = static_cast<option<T>&&>(*this);
-		return VEG_FWD(self)._get().map(into_fn<T>{});
-	}
-
-	VEG_NODISCARD
-	VEG_CPP14(constexpr)
-	auto take() noexcept(VEG_CONCEPT(move_constructible<T>)) -> option<T> {
-		auto& self = static_cast<option<T>&>(*this);
-		if (self) {
-			T val = static_cast<option<T>&&>(self)._get();
-			self = none;
-			return {some, VEG_FWD(val)};
-		}
-		return none;
-	}
-
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto unwrap_unchecked(
-			unsafe_t /*tag*/) && noexcept(VEG_CONCEPT(nothrow_move_constructible<T>))
-			-> T {
-		auto&& self = static_cast<option<T>&&>(*this);
-		return VEG_FWD(self)._get();
-	}
-
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE
-	VEG_CPP14(constexpr) auto unwrap() && noexcept(
-			VEG_CONCEPT(nothrow_move_constructible<T>)) -> T {
-		auto& self = static_cast<option<T>&>(*this);
-		self.unwrap_assert();
-		return static_cast<option<T>&&>(self).unwrap_unchecked(unsafe);
-	}
-
-	VEG_TEMPLATE(
-			(typename Fn),
-			requires(
-					VEG_CONCEPT(invocable<Fn, meta::uncvref_t<T> const&>) &&
-					VEG_CONCEPT(constructible<
-											bool,
-											meta::invoke_result_t<Fn, meta::uncvref_t<T> const&>>)),
-			VEG_NODISCARD VEG_CPP14(constexpr),
-			auto filter,
-			(fn, Fn&&)) &&
-
-			noexcept(
-					(VEG_CONCEPT(nothrow_invocable<Fn&&, meta::uncvref_t<T> const&>) &&
-	         VEG_CONCEPT(nothrow_move_constructible<T>))) -> option<T> {
-		auto&& self = static_cast<option<T>&&>(*this);
-		if (self) {
-			if (VEG_FWD(fn)(self.as_cref().unwrap_unchecked(unsafe))) {
-				return {some, VEG_FWD(self).as_ref().unwrap_unchecked(unsafe)};
-			}
-		}
-		return none;
-	}
-};
-
-template <typename T, bool = VEG_CONCEPT(copy_constructible<T>)>
-struct option_copy_interface_base {
-
-	VEG_CPP14(constexpr)
-	auto clone() const& noexcept(VEG_CONCEPT(nothrow_copy_constructible<T>))
-			-> option<T> {
-		auto const& self = static_cast<option<T> const&>(*this);
-		return self.as_ref().map(into_fn<T>{});
-	}
-};
-
-template <typename T>
-struct option_copy_interface_base<T, false> {};
-template <typename T>
-struct option_move_interface_base<T, false> {};
-
-template <
-		typename T,
-		bool B1 = VEG_CONCEPT(copy_constructible<T>),
-		bool B2 = VEG_CONCEPT(move_constructible<T>)>
-struct option_copymove_interface_base : option_copy_interface_base<T, B1>,
-																				option_move_interface_base<T, B2> {};
-
-template <typename T>
-struct option_copymove_interface_base<T, true, true>
-		: option_copy_interface_base<T, true>, option_move_interface_base<T, true> {
-	using option_copy_interface_base<T, true>::clone;
-	using option_move_interface_base<T, true>::clone;
-};
-
-template <typename T, typename U, typename Fn>
-HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto cmp(
-		option<T> const& lhs, option<U> const& rhs, Fn fn) noexcept -> bool {
+VEG_TEMPLATE(
+		(typename T, typename U),
+		requires(VEG_CONCEPT(equality_comparable_with<T const&, U const&>)),
+		VEG_NODISCARD HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto
+		operator==,
+		(lhs, option<T> const&),
+		(rhs, option<U> const&))
+noexcept -> bool {
 	if (lhs) {
 		if (rhs) {
 			return static_cast<bool>(
-					fn(lhs.as_cref().unwrap_unchecked(unsafe),
-			       rhs.as_cref().unwrap_unchecked(unsafe)));
+					lhs.as_cref().unwrap_unchecked(unsafe) ==
+					rhs.as_cref().unwrap_unchecked(unsafe));
 		}
 	}
 	return (static_cast<bool>(lhs) == static_cast<bool>(rhs));
@@ -670,20 +555,7 @@ HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto cmp(
 VEG_TEMPLATE(
 		(typename T, typename U),
 		requires(VEG_CONCEPT(equality_comparable_with<T const&, U const&>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr),
-		auto
-		operator==,
-		(lhs, option<T> const&),
-		(rhs, option<U> const&))
-noexcept -> bool {
-	return option_::cmp(lhs, rhs, veg::cmp::equal);
-}
-
-VEG_TEMPLATE(
-		(typename T, typename U),
-		requires(VEG_CONCEPT(equality_comparable_with<T const&, U const&>)),
-		HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr),
-		auto
+		HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto
 		operator!=,
 		(a, option<T> const&),
 		(b, option<U> const&))
@@ -692,24 +564,10 @@ noexcept -> bool {
 }
 
 template <typename T>
-struct option_flatten_base {};
-
-template <typename T>
 struct ret_none {
 	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto operator()() const noexcept
-			-> option<T> {
+			-> T {
 		return none;
-	}
-};
-
-template <typename T>
-struct option_flatten_base<option<T>> {
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE
-	VEG_CPP14(constexpr) auto flatten() && noexcept(
-			VEG_CONCEPT(nothrow_move_constructible<T>)) -> option<T> {
-		auto&& self = static_cast<option<option<T>>&&>(*this);
-		return VEG_FWD(self).as_ref().map_or_else(
-				into_fn<option<T>>{}, ret_none<T>{});
 	}
 };
 
@@ -727,12 +585,8 @@ struct cmp_with_fn {
 } // namespace internal
 
 template <typename T>
-struct VEG_NODISCARD option
-		: private internal::option_::option_move_ctor_base2<T>,
-			public internal::option_::option_copymove_interface_base<T>,
-			public internal::option_::option_flatten_base<T> {
+struct VEG_NODISCARD option : private internal::option_::choose_base<T> {
 
-	using internal::option_::option_move_ctor_base2<T>::option_move_ctor_base2;
 	option() = default;
 	VEG_DEFAULT_CTOR_ASSIGN(option);
 
@@ -741,6 +595,16 @@ struct VEG_NODISCARD option
 			(none_t /*tag*/) noexcept
 			: option{} {}
 
+	VEG_TEMPLATE(
+			(typename... Args),
+			requires(VEG_CONCEPT(constructible<T, Args...>)),
+			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) option,
+			(/*tag*/, some_t),
+			(... args, Args&&))
+	noexcept(VEG_CONCEPT(nothrow_constructible<T, Args&&...>))
+			: internal::option_::choose_base<T>(
+						internal::option_::hidden_tag{}, VEG_FWD(args)...) {}
+
 	VEG_CPP14(constexpr) auto operator=(none_t /*arg*/) noexcept -> option& {
 		if (*this) {
 			this->_destroy();
@@ -748,11 +612,89 @@ struct VEG_NODISCARD option
 		return *this;
 	}
 
+	VEG_CONSTRAINED_MEMBER_FN(
+			requires(VEG_CONCEPT(option<T>)),
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto flatten,
+			((/*tag*/ = {}, safe_t)),
+			&& noexcept(VEG_CONCEPT(nothrow_move_constructible<T>)) -> T) {
+		return static_cast<option<T>&&>(*this).map_or_else(
+				internal::option_::into_fn<T>{}, internal::option_::ret_none<T>{});
+	}
+
+	VEG_CONSTRAINED_MEMBER_FN(
+			requires(VEG_CONCEPT(copy_constructible<T>)),
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto clone,
+			((/*tag*/ = {}, safe_t)),
+			const& noexcept(VEG_CONCEPT(nothrow_copy_constructible<T>))->option<T>) {
+		return as_ref().map(internal::option_::into_fn<T>{});
+	}
+
+	VEG_CONSTRAINED_MEMBER_FN(
+			requires(VEG_CONCEPT(move_constructible<T>)),
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto clone,
+			((/*tag*/ = {}, safe_t)),
+			&& noexcept(VEG_CONCEPT(nothrow_move_constructible<T>))->option<T>) {
+		return static_cast<option<T>&&>(*this).map(internal::option_::into_fn<T>{});
+	}
+
+	VEG_CONSTRAINED_MEMBER_FN(
+			requires(VEG_CONCEPT(move_constructible<T>)),
+			VEG_NODISCARD VEG_CPP14(constexpr) auto take,
+			((/*tag*/ = {}, safe_t)),
+			noexcept(VEG_CONCEPT(nothrow_move_constructible<T>))->option<T>) {
+		if (this->is_engaged()) {
+			T val = static_cast<option<T>&&>(*this)._get();
+			*this = none;
+			return {some, VEG_FWD(val)};
+		}
+		return none;
+	}
+
+	VEG_CONSTRAINED_MEMBER_FN(
+			requires(VEG_CONCEPT(move_constructible<T>)),
+			VEG_NODISCARD VEG_CPP14(constexpr) auto unwrap_unchecked,
+			((/*tag*/ , unsafe_t)), &&
+			noexcept(VEG_CONCEPT(nothrow_move_constructible<T>))->T) {
+		VEG_INTERNAL_ASSERT(*this);
+		return static_cast<option<T>&&>(*this)._get();
+	}
+
+	VEG_CONSTRAINED_MEMBER_FN(
+			requires(VEG_CONCEPT(move_constructible<T>)),
+			VEG_NODISCARD VEG_CPP14(constexpr) auto unwrap,
+			((/*tag*/ = {}, safe_t)), &&
+			noexcept(VEG_CONCEPT(nothrow_move_constructible<T>))->T) {
+		VEG_ASSERT(*this);
+		return static_cast<option<T>&&>(*this)._get();
+	}
+
+	VEG_TEMPLATE(
+			(typename Fn),
+			requires(
+					VEG_CONCEPT(move_constructible<T>) &&
+					VEG_CONCEPT(invocable<Fn, meta::uncvref_t<T> const&>) &&
+					VEG_CONCEPT(constructible<
+											bool,
+											meta::invoke_result_t<Fn, meta::uncvref_t<T> const&>>)),
+			VEG_NODISCARD VEG_CPP14(constexpr) auto filter,
+			(fn, Fn&&)) &&
+
+			noexcept(
+					(VEG_CONCEPT(nothrow_invocable<Fn&&, meta::uncvref_t<T> const&>) &&
+	         VEG_CONCEPT(nothrow_move_constructible<T>))) -> option<T> {
+		auto&& self = static_cast<option<T>&&>(*this);
+		if (self) {
+			if (VEG_FWD(fn)(self.as_cref().unwrap_unchecked(unsafe))) {
+				return {some, VEG_FWD(self).as_ref().unwrap_unchecked(unsafe)};
+			}
+		}
+		return none;
+	}
+
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(equality_comparable_with<T const&, U const&>)),
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr),
-			auto contains,
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto contains,
 			(val, U const&))
 	const noexcept->bool {
 		return as_ref().map_or(internal::option_::cmp_with_fn<U>{val}, false);
@@ -761,8 +703,7 @@ struct VEG_NODISCARD option
 	VEG_TEMPLATE(
 			(typename... Args),
 			requires(VEG_CONCEPT(constructible<T, Args...>)),
-			VEG_CPP14(constexpr),
-			void emplace,
+			VEG_CPP14(constexpr) void emplace,
 			(... args, Args)) &
 
 			noexcept(VEG_CONCEPT(nothrow_constructible<T, Args...>)) {
@@ -775,17 +716,14 @@ struct VEG_NODISCARD option
 	VEG_TEMPLATE(
 			(typename Fn),
 			requires(VEG_CONCEPT(invocable<Fn, T&&>)),
-			VEG_NODISCARD VEG_CPP14(constexpr),
-			auto map,
+			VEG_NODISCARD VEG_CPP14(constexpr) auto map,
 			(fn, Fn&&)) &&
 
 			noexcept(VEG_CONCEPT(nothrow_invocable<Fn, T&&>))
 					-> option<meta::invoke_result_t<Fn, T>> {
-
 		if (*this) {
 			return option<meta::invoke_result_t<Fn, T>>{
 					some,
-					inplace,
 					make::from_callable(
 							VEG_FWD(fn), static_cast<option&&>(*this)._get())};
 		}
@@ -797,8 +735,7 @@ struct VEG_NODISCARD option
 			requires(
 					VEG_CONCEPT(invocable<Fn, T&&>) &&
 					meta::is_option<meta::invoke_result_t<Fn, T>>::value),
-			VEG_NODISCARD VEG_CPP14(constexpr),
-			auto and_then,
+			VEG_NODISCARD VEG_CPP14(constexpr) auto and_then,
 			(fn, Fn&&)) &&
 
 			noexcept(VEG_CONCEPT(nothrow_invocable<Fn, T&&>))
@@ -817,8 +754,7 @@ struct VEG_NODISCARD option
 	         VEG_CONCEPT(invocable<D>) &&       //
 	         VEG_CONCEPT(
 							 same<meta::invoke_result_t<Fn, T>, meta::invoke_result_t<D>>))),
-			VEG_NODISCARD VEG_CPP14(constexpr),
-			auto map_or_else,
+			VEG_NODISCARD VEG_CPP14(constexpr) auto map_or_else,
 			(fn, Fn&&),
 			(d, D&&)) &&
 
@@ -836,8 +772,7 @@ struct VEG_NODISCARD option
 			requires(
 					VEG_CONCEPT(invocable<Fn, T&&>) &&
 					VEG_CONCEPT(move_constructible<meta::invoke_result_t<Fn, T>>)),
-			VEG_NODISCARD VEG_CPP14(constexpr),
-			auto map_or,
+			VEG_NODISCARD VEG_CPP14(constexpr) auto map_or,
 			(fn, Fn&&),
 			(d, meta::invoke_result_t<Fn, T>)) &&
 
@@ -858,8 +793,7 @@ struct VEG_NODISCARD option
 			requires(
 					VEG_CONCEPT(invocable<Fn>) &&
 					VEG_CONCEPT(same<veg::option<T>, meta::invoke_result_t<Fn>>)),
-			VEG_NODISCARD VEG_CPP14(constexpr),
-			auto or_else,
+			VEG_NODISCARD VEG_CPP14(constexpr) auto or_else,
 			(fn, Fn&&)) &&
 
 			noexcept(
@@ -918,9 +852,6 @@ private:
 	friend struct meta::tombstone_traits<option<T>>;
 	friend struct internal::option_::option_storage_base<T>;
 	friend struct internal::option_::option_storage_tombstone<T>;
-
-	friend struct internal::option_::option_copy_interface_base<T>;
-	friend struct internal::option_::option_move_interface_base<T>;
 };
 VEG_CPP17(
 

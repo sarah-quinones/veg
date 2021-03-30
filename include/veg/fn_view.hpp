@@ -218,8 +218,7 @@ public:
 			requires(
 					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, fn_view>) &&
 					VEG_CONCEPT(invocable_r<Fn&, Ret, Args&&...>)),
-			HEDLEY_ALWAYS_INLINE,
-			fn_view,
+			HEDLEY_ALWAYS_INLINE fn_view,
 			(fn, Fn&&))
 	noexcept
 			: base({}, {}, fn) {}
@@ -263,8 +262,7 @@ public:
 			requires(
 					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, once_fn_view>) &&
 					VEG_CONCEPT(invocable_r<Fn, Ret, Args&&...>)),
-			HEDLEY_ALWAYS_INLINE,
-			once_fn_view,
+			HEDLEY_ALWAYS_INLINE once_fn_view,
 			(fn, Fn&&))
 	noexcept
 			: base({}, {}, VEG_FWD(fn)) {}
@@ -311,8 +309,7 @@ public:
 			requires(
 					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, fn_view>) &&
 					VEG_CONCEPT(nothrow_invocable_r<Fn&, Ret, Args&&...>)),
-			HEDLEY_ALWAYS_INLINE,
-			fn_view,
+			HEDLEY_ALWAYS_INLINE fn_view,
 			(fn, Fn&&))
 	noexcept
 			: base({}, {}, fn) {}
@@ -352,8 +349,7 @@ public:
 			requires(
 					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, once_fn_view>) &&
 					VEG_CONCEPT(nothrow_invocable_r<Fn, Ret, Args&&...>)),
-			HEDLEY_ALWAYS_INLINE,
-			once_fn_view,
+			HEDLEY_ALWAYS_INLINE once_fn_view,
 			(fn, Fn&&))
 	noexcept
 			: base({}, {}, VEG_FWD(fn)) {}

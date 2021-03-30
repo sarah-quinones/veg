@@ -59,13 +59,12 @@ struct from_callable {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Args),
 			requires(VEG_CONCEPT(invocable<Fn, Args&&...>)),
-			constexpr,
-			auto
+			constexpr auto
 			operator(),
 			(fn, Fn&&),
 			(... args, Args&&))
 	const noexcept->internal::mem_::from_callable<Fn&&, Args&&...> {
-		return {VEG_FWD(fn), {inplace_t{}, VEG_FWD(args)...}};
+		return {VEG_FWD(fn), {cvt_t{}, VEG_FWD(args)...}};
 	}
 };
 } // namespace nb
@@ -78,8 +77,7 @@ struct launder {
 	VEG_TEMPLATE(
 			typename T,
 			requires(!VEG_CONCEPT(void_type<T>)),
-			HEDLEY_ALWAYS_INLINE constexpr,
-			auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(mem, T*))
 	const noexcept->T* { return VEG_LAUNDER(mem); }
@@ -92,8 +90,7 @@ struct construct_at {
 			requires(
 					!VEG_CONCEPT(const_type<T>) &&
 					VEG_CONCEPT(constructible<T, Args...>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
-			auto
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) auto
 			operator(),
 			(mem, T*),
 			(... args, Args&&))
@@ -112,8 +109,7 @@ struct construct_with {
 			requires(
 					!VEG_CONCEPT(const_type<T>) && VEG_CONCEPT(invocable<Fn, Args...>) &&
 					VEG_CONCEPT(same<T, meta::invoke_result_t<Fn, Args...>>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
-			auto
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) auto
 			operator(),
 			(mem, T*),
 			(fn, Fn&&),
@@ -139,8 +135,7 @@ struct destroy_at {
 	VEG_TEMPLATE(
 			(typename T, typename... Args),
 			requires(!VEG_CONCEPT(void_type<T>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
-			void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(mem, T*))
 	const noexcept { mem->~T(); }

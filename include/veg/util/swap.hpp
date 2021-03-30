@@ -89,8 +89,7 @@ struct swap {
 	VEG_TEMPLATE(
 			(typename U, typename V),
 			requires(VEG_CONCEPT(swappable<U&&, V&&>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr),
-			void
+			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
 			operator(),
 			(u, U&&),
 			(v, V&&))

@@ -139,8 +139,7 @@ struct backward_destroy_n {
 	VEG_TEMPLATE(
 			(typename T, typename... Args),
 			requires !VEG_CONCEPT(void_type<T>),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
-			void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(ptr, T*),
 			(n, i64))
@@ -164,8 +163,7 @@ struct relocate_n {
 			requires(
 					!VEG_CONCEPT(const_type<T>) && (VEG_CONCEPT(move_constructible<T>) ||
 	                                        VEG_CONCEPT(copy_constructible<T>))),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
-			void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T*),
@@ -191,8 +189,7 @@ struct uninitialized_move_n {
 	VEG_TEMPLATE(
 			(typename T),
 			requires VEG_CONCEPT(move_constructible<T>),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
-			void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T*),
@@ -207,8 +204,7 @@ struct uninitialized_copy_n {
 			(typename T, int = 0),
 			requires VEG_CONCEPT(trivially_copyable<T>) &&
 					VEG_CONCEPT(copy_constructible<T>),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
-			void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T const*),
@@ -220,8 +216,7 @@ struct uninitialized_copy_n {
 			(typename T),
 			requires !VEG_CONCEPT(trivially_copyable<T>) &&
 					VEG_CONCEPT(copy_constructible<T>),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
-			void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T const*),
@@ -235,8 +230,7 @@ struct copy_n {
 	VEG_TEMPLATE(
 			(typename T),
 			requires VEG_CONCEPT(copy_assignable<T>),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
-			void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T const*),
@@ -253,8 +247,7 @@ struct mixed_init_copy_n {
 			(typename T, int = 0),
 			requires VEG_CONCEPT(trivially_copyable<T>) &&
 					VEG_CONCEPT(copy_assignable<T>) && VEG_CONCEPT(copy_constructible<T>),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
-			void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T const*),
@@ -269,8 +262,7 @@ struct mixed_init_copy_n {
 			(typename T),
 			requires !VEG_CONCEPT(trivially_copyable<T>) &&
 					VEG_CONCEPT(copy_assignable<T>) && VEG_CONCEPT(copy_constructible<T>),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr),
-			void
+			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T const*),

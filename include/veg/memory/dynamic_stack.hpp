@@ -71,8 +71,7 @@ public:
 	VEG_TEMPLATE(
 			(typename T),
 			requires VEG_CONCEPT(constructible<T>),
-			VEG_NODISCARD,
-			auto make_new,
+			VEG_NODISCARD auto make_new,
 			(/*unused*/, tag_t<T>),
 			(len, i64),
 			(align = alignof(T), i64))
@@ -88,8 +87,7 @@ public:
 	VEG_TEMPLATE(
 			(typename T),
 			requires VEG_CONCEPT(constructible<T>),
-			VEG_NODISCARD,
-			auto make_new_for_overwrite,
+			VEG_NODISCARD auto make_new_for_overwrite,
 			(/*unused*/, tag_t<T>),
 			(len, i64),
 			(align = alignof(T), i64))
@@ -144,7 +142,7 @@ struct cleanup {
 };
 
 struct dynamic_alloc_base {
-	dynamic_stack_view& parent;
+	dynamic_stack_view* parent;
 	void* old_pos;
 	void const volatile* data;
 	i64 len;
@@ -152,7 +150,7 @@ struct dynamic_alloc_base {
 	void destroy(void const volatile* void_data_end) noexcept {
 		if (len != 0) {
 			// in case resource lifetimes are reodered by moving ownership
-			auto* parent_stack_data = static_cast<unsigned char*>(parent.stack_data);
+			auto* parent_stack_data = static_cast<unsigned char*>(parent->stack_data);
 			auto* old_position = static_cast<unsigned char*>(old_pos);
 			auto* data_end =
 					static_cast<unsigned char*>(const_cast<void*>(void_data_end));
@@ -161,10 +159,10 @@ struct dynamic_alloc_base {
 					parent_stack_data == data_end,
 					parent_stack_data >= old_position);
 
-			parent.stack_bytes += nb::narrow<i64>{}(
-					static_cast<unsigned char*>(parent.stack_data) -
+			parent->stack_bytes += nb::narrow<i64>{}(
+					static_cast<unsigned char*>(parent->stack_data) -
 					static_cast<unsigned char*>(old_pos));
-			parent.stack_data = old_pos;
+			parent->stack_data = old_pos;
 		}
 	}
 };
@@ -186,10 +184,9 @@ public:
 
 	auto operator=(dynstack_alloc const&) -> dynstack_alloc& = delete;
 	auto operator=(dynstack_alloc&& rhs) noexcept -> dynstack_alloc& {
-		if (this != mem::addressof(rhs)) {
-			mem::destroy_at(this);
-			mem::construct_at(this, VEG_FWD(rhs));
-		}
+		base::destroy(data() + base::len);
+		static_cast<base&>(*this) = static_cast<base&>(rhs);
+		static_cast<base&>(rhs) = {};
 		return *this;
 	}
 
@@ -208,7 +205,7 @@ private:
 			i64 alloc_size,
 			i64 align,
 			Fn fn) noexcept(VEG_CONCEPT(nothrow_constructible<T>))
-			: base{parent_ref, parent_ref.stack_data, nullptr, 0} {
+			: base{&parent_ref, parent_ref.stack_data, nullptr, 0} {
 
 		void* const parent_data = parent_ref.stack_data;
 		i64 const parent_bytes = parent_ref.stack_bytes;
@@ -222,7 +219,7 @@ private:
 		if (data != nullptr) {
 			bool success = false;
 			auto&& cleanup = make::defer(internal::dynstack::cleanup{
-					success, parent, parent_data, parent_bytes});
+					success, *parent, parent_data, parent_bytes});
 			(void)cleanup;
 
 			base::len = alloc_size;
@@ -235,6 +232,8 @@ private:
 
 template <typename T>
 struct dynstack_array : private dynstack_alloc<T> {
+private:
+	using base = internal::dynstack::dynamic_alloc_base;
 
 public:
 	using dynstack_alloc<T>::data;
@@ -243,11 +242,14 @@ public:
 	dynstack_array(dynstack_array const&) = delete;
 	dynstack_array(dynstack_array&&) noexcept = default;
 	auto operator=(dynstack_array const&) -> dynstack_array& = delete;
+
 	auto operator=(dynstack_array&& rhs) noexcept -> dynstack_array& {
-		if (this != mem::addressof(rhs)) {
-			mem::destroy_at(this);
-			mem::construct_at(this, VEG_FWD(rhs));
+		for (i64 i = this->dynstack_alloc<T>::base::len - 1; i >= 0; --i) {
+			mem::destroy_at(this->data() + i);
 		}
+		base::destroy(data() + base::len);
+		static_cast<base&>(*this) = static_cast<base&>(rhs);
+		static_cast<base&>(rhs) = {};
 		return *this;
 	}
 

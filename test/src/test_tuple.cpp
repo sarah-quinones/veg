@@ -32,9 +32,9 @@ TEST_CASE("tuple: adl_get") {
 TEST_CASE("tuple: all") {
 	using namespace veg;
 
-	veg::tuple<int, char, bool> tup{inplace, 1, 'c', true};
+	veg::tuple<int, char, bool> tup{cvt, 1, 'c', true};
 	veg::tuple<int, char&&, char, bool&, bool const&> tup_ref{
-			inplace,
+			cvt,
 			1,
 			MOV(tup).as_ref()[1_c],
 			'c',
@@ -97,8 +97,8 @@ TEST_CASE("tuple: all") {
 	}
 	{
 		using val_tup = veg::tuple<int, bool>;
-		val_tup a{inplace, 5, true};
-		val_tup b{inplace, 3, false};
+		val_tup a{cvt, 5, true};
+		val_tup b{cvt, 3, false};
 		STATIC_ASSERT(VEG_CONCEPT(constructible<veg::tuple<long, bool>, val_tup>));
 		STATIC_ASSERT(
 				VEG_CONCEPT(constructible<veg::tuple<long, bool>, val_tup const&>));
@@ -108,22 +108,20 @@ TEST_CASE("tuple: all") {
 		CHECK(b[0_c] == 5);
 		CHECK(a[1_c] == false);
 		CHECK(b[1_c] == true);
-		STATIC_ASSERT(val_tup{inplace, 1, true} == val_tup{inplace, 1, true});
+		STATIC_ASSERT(val_tup{cvt, 1, true} == val_tup{cvt, 1, true});
+		STATIC_ASSERT(noexcept(val_tup{cvt, 1, true} == val_tup{cvt, 1, true}));
 		STATIC_ASSERT(
-				noexcept(val_tup{inplace, 1, true} == val_tup{inplace, 1, true}));
-		STATIC_ASSERT(
-				cmp::three_way(val_tup{inplace, 1, true}, val_tup{inplace, 1, true}) ==
-				0);
+				cmp::three_way(val_tup{cvt, 1, true}, val_tup{cvt, 1, true}) == 0);
 
-		CHECK(a == (val_tup{inplace, 3, false}));
-		CHECK(b == (val_tup{inplace, 5, true}));
+		CHECK(a == (val_tup{cvt, 3, false}));
+		CHECK(b == (val_tup{cvt, 5, true}));
 	}
 	{
 		using ref_tup = veg::tuple<int&>;
 		using val_tup = veg::tuple<int>;
 		int i = 13;
-		val_tup j{inplace, 12};
-		ref_tup a{inplace, i};
+		val_tup j{cvt, 12};
+		ref_tup a{cvt, i};
 		ref_tup const b{j};
 		veg::swap(FWD(a), FWD(b));
 
@@ -149,8 +147,8 @@ TEST_CASE("tuple: all") {
 		STATIC_ASSERT(!VEG_CONCEPT(constructible<ref_tup, rref_tup&&>));
 		int i = 13;
 		int j = 12;
-		ref_tup a{inplace, i};
-		rref_tup b{inplace, FWD(j)};
+		ref_tup a{cvt, i};
+		rref_tup b{cvt, FWD(j)};
 
 		veg::swap(a.as_ref(), b.as_ref());
 
@@ -183,7 +181,7 @@ TEST_CASE("tuple: all") {
 	CHECK(i == 1);
 	CHECK(c == 'c');
 	CHECK(b);
-	veg::tuple tup_deduce{inplace, 1, 'c', true};
+	veg::tuple tup_deduce{cvt, 1, 'c', true};
 #endif
 
 	STATIC_ASSERT(std::is_copy_assignable<veg::tuple<int, char>>());
@@ -226,23 +224,20 @@ TEST_CASE("tuple: all") {
 	ASSERT_SAME(decltype(tup_deduce), veg::tuple<int, char, bool>);
 #endif
 
-	STATIC_ASSERT(tuple<int>{inplace, 1} == tuple<int>{inplace, 1});
-	STATIC_ASSERT(tuple<int>{inplace, 1} == tuple<double>{inplace, 1});
-	STATIC_ASSERT(tuple<int>{inplace, 1} != tuple<double>{inplace, 2});
+	STATIC_ASSERT(tuple<int>{cvt, 1} == tuple<int>{cvt, 1});
+	STATIC_ASSERT(tuple<int>{cvt, 1} == tuple<double>{cvt, 1});
+	STATIC_ASSERT(tuple<int>{cvt, 1} != tuple<double>{cvt, 2});
 	STATIC_ASSERT(
-			tuple<int, double>{inplace, 1, 2.0F} ==
-			tuple<double, int>{inplace, 1.0F, 2});
+			tuple<int, double>{cvt, 1, 2.0F} == tuple<double, int>{cvt, 1.0F, 2});
 	STATIC_ASSERT(
-			tuple<int, double>{inplace, 1, 2.0F} ==
-			tuple<double, int>{inplace, 1.0F, 2});
+			tuple<int, double>{cvt, 1, 2.0F} == tuple<double, int>{cvt, 1.0F, 2});
 	STATIC_ASSERT(
-			tuple<int, double>{inplace, 1, 2.0F} !=
-			tuple<double, int>{inplace, 2.0F, 2});
+			tuple<int, double>{cvt, 1, 2.0F} != tuple<double, int>{cvt, 2.0F, 2});
 }
 
 TEST_CASE("tuple: nested") {
 	using namespace veg;
-	tuple<int, tuple<int, float>> tup{inplace, 1, make::tuple(2, 3.0F)};
+	tuple<int, tuple<int, float>> tup{cvt, 1, make::tuple(2, 3.0F)};
 	CHECK(tup[0_c] == 1);
 
 	CHECK(tup[1_c][1_c] == 3.0F);
@@ -301,16 +296,16 @@ TEST_CASE("tuple: cmp") {
 TEST_CASE("tuple: empty") {
 	using namespace veg;
 	tuple<> t1{};
-	tuple<> t2(inplace);
+	tuple<> t2(cvt);
 	CHECK(t1 == t2);
 	STATIC_ASSERT(sizeof(t1) == 1);
 	STATIC_ASSERT(tuple<>{} == tuple<>{});
 }
 
-TEST_CASE("tuple: inplace") {
+TEST_CASE("tuple: cvt") {
 	using namespace veg;
-	tuple<int, double> t1{inplace, 1, 1.5F};
-	tuple<long, double> t2(inplace, 3, 2.5);
+	tuple<int, double> t1{cvt, 1, 1.5F};
+	tuple<long, double> t2(cvt, 3, 2.5);
 	tuple<long, double> t3(t1);
 	tuple<int, double> t4(t3);
 
@@ -333,7 +328,7 @@ TEST_CASE("tuple: non_movable") {
 		(void)s;
 	}
 	VEG_CPP17({
-		tuple<S> s{inplace, make::from_callable([] { return S{}; })};
+		tuple<S> s{cvt, make::from_callable([] { return S{}; })};
 		(void)s;
 	})
 }
@@ -355,8 +350,8 @@ struct Tref : veg::tuple<int&, float&> {
 };
 
 TEST_CASE("tuple: derived") {
-	T t{inplace, 1, 2.0F};
-	T t2{inplace, 3, 4.0F};
+	T t{cvt, 1, 2.0F};
+	T t2{cvt, 3, 4.0F};
 
 	CHECK(t[0_c] == 1);
 	CHECK(t[1_c] == 2.0F);

@@ -120,8 +120,7 @@ struct get {
 					 internal::meta_::has_adl_get<I, T>,
 					 internal::meta_::none_found>),
 			requires(VEG_CONCEPT(gettable<I, T>)),
-			HEDLEY_ALWAYS_INLINE constexpr,
-			auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(arg, T&&))
 	const noexcept(noexcept(Impl::template apply<I>(VEG_FWD(arg))))

@@ -95,7 +95,8 @@ TEST_CASE("dynamic stack: assign") {
 		s3 = VEG_FWD(s1);
 		CHECK(stack.remaining_bytes() == 70);
 		s3 = VEG_FWD(s3);
-		CHECK(stack.remaining_bytes() == 70);
+    // either no-op or destroys
+		CHECK((stack.remaining_bytes() == 70 || stack.remaining_bytes() == 100));
 	}
 	CHECK(stack.remaining_bytes() == 100);
 }
