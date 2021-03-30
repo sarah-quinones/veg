@@ -289,46 +289,6 @@ HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void swap_impl(
 			rhs);
 }
 
-template <typename... Ts>
-auto detect_tuple(tuple<Ts...> const&) noexcept -> tuple<Ts...>;
-template <typename T>
-using detect_tuple_t = decltype(detect_tuple(VEG_DECLVAL(T &&)));
-template <typename T>
-struct is_tuple : meta_::is_detected<detect_tuple_t, T> {};
-
-template <typename... Ts>
-struct is_tuple<tuple<Ts...>> : meta::true_type {};
-template <typename... Ts>
-struct is_tuple<tuple<Ts...> const> : meta::true_type {};
-template <typename... Ts>
-struct is_tuple<tuple<Ts...>&> : meta::true_type {};
-template <typename... Ts>
-struct is_tuple<tuple<Ts...> const&> : meta::true_type {};
-
-template <typename T, bool = is_tuple<T>::value>
-struct bare_tuple_type_impl {};
-template <typename T>
-struct bare_tuple_type_impl<T, true> {
-	using type = detect_tuple_t<T>;
-};
-
-template <typename T, bool = is_tuple<T>::value>
-struct tuple_type_impl {};
-template <typename T>
-struct tuple_type_impl<T, true> {
-	using type = meta::collapse_category_t<detect_tuple_t<T>, T>;
-};
-
-template <typename T>
-struct base_tuple : tuple_type_impl<T> {};
-template <typename T>
-struct bare_base_tuple : bare_tuple_type_impl<T> {};
-
-template <typename T>
-using base_tuple_t = typename base_tuple<T>::type;
-template <typename T>
-using bare_base_tuple_t = typename bare_base_tuple<T>::type;
-
 template <typename T>
 HEDLEY_ALWAYS_INLINE constexpr auto get_inner(T&& tup) noexcept
 		-> decltype((VEG_FWD(tup).m_impl))&& {

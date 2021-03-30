@@ -85,22 +85,6 @@ namespace internal {
 
 template <>
 struct binary_traits<dyn, dyn> {
-	template <i64 I>
-	struct dims {
-		HEDLEY_ALWAYS_INLINE constexpr dims(dyn r, dyn c) noexcept
-				: m_rows(r), m_cols(c) {}
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto nrows() const noexcept
-				-> dyn {
-			return m_rows;
-		}
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto ncols() const noexcept
-				-> dyn {
-			return m_cols;
-		}
-		dyn m_rows;
-		dyn m_cols;
-	};
-
 #define VEG_OP(Name, Op)                                                       \
 	using Name /* NOLINT(bugprone-macro-parentheses) */ = dyn;                   \
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE static constexpr auto Name##_fn(          \
@@ -143,39 +127,10 @@ struct binary_traits<dyn, dyn> {
 };
 
 template <i64 N>
-struct binary_traits<fix<N>, dyn> : binary_traits<dyn, dyn> {
-	template <i64 I>
-	struct dims {
-		HEDLEY_ALWAYS_INLINE constexpr dims(fix<N> /*r*/, dyn c) noexcept
-				: m_cols(c) {}
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto nrows() const noexcept
-				-> fix<N> {
-			return {};
-		}
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto ncols() const noexcept
-				-> dyn {
-			return m_cols;
-		}
-		dyn m_cols;
-	};
-};
+struct binary_traits<fix<N>, dyn> : binary_traits<dyn, dyn> {};
 
 template <>
 struct binary_traits<fix<0>, dyn> : binary_traits<dyn, dyn> {
-	template <i64 I>
-	struct dims {
-		HEDLEY_ALWAYS_INLINE constexpr dims(fix<0> /*r*/, dyn c) noexcept
-				: m_cols(c) {}
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto nrows() const noexcept
-				-> fix<0> {
-			return {};
-		}
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto ncols() const noexcept -> dyn {
-			return m_cols;
-		}
-		dyn m_cols;
-	};
-
 	using mul = fix<0>;
 	VEG_NODISCARD
 	constexpr HEDLEY_ALWAYS_INLINE static auto
@@ -186,21 +141,6 @@ struct binary_traits<fix<0>, dyn> : binary_traits<dyn, dyn> {
 
 template <i64 N>
 struct binary_traits<dyn, fix<N>> : binary_traits<dyn, dyn> {
-	template <i64 I>
-	struct dims {
-		HEDLEY_ALWAYS_INLINE constexpr dims(dyn r, fix<N> /*c*/) noexcept
-				: m_rows(r) {}
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto nrows() const noexcept
-				-> dyn {
-			return m_rows;
-		}
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto ncols() const noexcept
-				-> fix<N> {
-			return {};
-		}
-		dyn m_rows;
-	};
-
 	using mul = typename binary_traits<fix<N>, dyn>::mul;
 	HEDLEY_ALWAYS_INLINE static constexpr auto
 	mul_fn(dyn a, fix<N> /*b*/) noexcept -> mul {

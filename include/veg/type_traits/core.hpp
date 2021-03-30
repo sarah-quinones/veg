@@ -3,6 +3,7 @@
 
 #include "veg/internal/macros.hpp"
 #include "veg/internal/typedefs.hpp"
+#include "veg/internal/integer_seq.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
@@ -27,6 +28,7 @@ struct none {};
 } // namespace internal
 
 namespace meta {
+
 template <template <typename...> class F, typename... Ts>
 struct meta_apply {
 	using type = F<Ts...>;
@@ -52,6 +54,25 @@ using bool_constant = constant<bool, B>;
 
 using true_type = bool_constant<true>;
 using false_type = bool_constant<false>;
+
+template <typename Seq, typename... Bs>
+struct and_test : false_type {};
+template <typename Seq, typename... Bs>
+struct or_test : true_type {};
+
+template <usize Is, typename T>
+using indexed = T;
+
+template <typename... Ts>
+struct pack_size {
+	static constexpr usize value = sizeof...(Ts);
+};
+template <usize... Is>
+struct and_test<index_sequence<Is...>, indexed<Is, true_type>...> : true_type {
+};
+template <usize... Is>
+struct or_test<index_sequence<Is...>, indexed<Is, false_type>...> : false_type {
+};
 
 template <typename...>
 using void_t = void;
@@ -88,42 +109,35 @@ struct decay_helper<T[N]> : meta::type_identity<T*> {};
 
 using namespace meta;
 
-#if __cplusplus >= 202002L
+#if __cplusplus >= 201402L
 
-template <typename Default, template <typename...> class Ftor, typename... Args>
-struct detector {
-	using value_type = bool_constant<(requires { typename Ftor<Args...>; })>;
-	using type = typename conditional_t<
-			value_type::value,
-			meta_apply<Ftor, Args...>,
-			type_identity<Default>>::type;
-};
+template <typename Enable, template <typename...> class Ftor, typename... Args>
+constexpr bool _is_detected_v = false;
+template <template <typename...> class Ftor, typename... Args>
+constexpr bool _is_detected_v<meta::void_t<Ftor<Args...>>, Ftor, Args...> =
+		true;
+
+template <template <typename...> class Op, typename... Args>
+constexpr bool is_detected_v = _is_detected_v<void, Op, Args...>;
 
 #else
 
-template <
-		typename Enable,
-		typename Default,
-		template <typename...>
-		class Ftor,
-		typename... Args>
+template <typename Enable, template <typename...> class Ftor, typename... Args>
 struct _detector {
 	using value_type = false_type;
-	using type = Default;
 };
-template <typename Default, template <typename...> class Ftor, typename... Args>
-struct _detector<meta::void_t<Ftor<Args...>>, Default, Ftor, Args...> {
+template <template <typename...> class Ftor, typename... Args>
+struct _detector<meta::void_t<Ftor<Args...>>, Ftor, Args...> {
 	using value_type = true_type;
-	using type = Ftor<Args...>;
 };
 
 template <typename Default, template <typename...> class Ftor, typename... Args>
-struct detector : _detector<void, Default, Ftor, Args...> {};
-
-#endif
+struct detector : _detector<void, Ftor, Args...> {};
 
 template <template <typename...> class Op, typename... Args>
 using is_detected = typename detector<meta_::none, Op, Args...>::value_type;
+
+#endif
 
 template <typename T>
 struct is_pointer : false_type, type_identity<T> {};
@@ -168,22 +182,6 @@ struct is_const<T const> : true_type {};
 } // namespace meta_
 } // namespace internal
 
-namespace meta {
-template <typename T>
-using unref_t = typename internal::meta_::unref<T&>::type;
-template <typename T>
-using unptr_t = typename internal::meta_::is_pointer<T>::type;
-
-using internal::meta_::detector;
-
-template <template <typename...> class Op, typename... Args>
-using detected_t = typename internal::meta_::
-		detector<internal::meta_::none, Op, Args...>::type;
-
-template <typename T>
-using decay_t = typename internal::meta_::decay_helper<unref_t<T>>::type;
-} // namespace meta
-
 namespace concepts {
 using meta::conjunction;
 using meta::disjunction;
@@ -202,6 +200,11 @@ VEG_DEF_CONCEPT(
 		(template <typename...> class Op, typename... Args), detected, requires {
 			typename Op<Args...>;
 		});
+#elif __cplusplus >= 201402L
+VEG_DEF_CONCEPT(
+		(template <typename...> class Op, typename... Args),
+		detected,
+		internal::meta_::is_detected_v<Op, Args...>);
 #else
 VEG_DEF_CONCEPT(
 		(template <typename...> class Op, typename... Args),
@@ -232,6 +235,25 @@ VEG_DEF_CONCEPT_DISJUNCTION(
 		typename T, reference, ((, lvalue_reference<T>), (, rvalue_reference<T>)));
 
 } // namespace concepts
+
+namespace meta {
+template <typename T>
+using unref_t = typename internal::meta_::unref<T&>::type;
+template <typename T>
+using unptr_t = typename internal::meta_::is_pointer<T>::type;
+
+template <typename Default, template <typename...> class Op, typename... Args>
+using detected_or_t = typename meta::conditional_t<
+		VEG_CONCEPT(detected<Op, Args...>),
+		meta::meta_apply<Op, Args...>,
+		meta::type_identity<Default>>::type;
+
+template <template <typename...> class Op, typename... Args>
+using detected_t = detected_or_t<internal::meta_::none, Op, Args...>;
+
+template <typename T>
+using decay_t = typename internal::meta_::decay_helper<unref_t<T>>::type;
+} // namespace meta
 } // namespace VEG_ABI
 } // namespace veg
 

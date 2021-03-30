@@ -37,7 +37,9 @@ struct mov_fn_swap {
 };
 
 template <typename U, typename V>
-struct has_adl_swap : is_detected<adl_fn_swap::type, U, V>, adl_fn_swap {};
+struct has_adl_swap
+		: bool_constant<VEG_CONCEPT(detected<adl_fn_swap::type, U, V>)>,
+			adl_fn_swap {};
 
 template <typename U, typename V>
 struct has_mov_swap : meta::false_type {};

@@ -59,8 +59,16 @@
 #define VEG_ALL_OF(...) (__VA_ARGS__ && ... && true)
 #define VEG_ANY_OF(...) (__VA_ARGS__ || ... || false)
 #else
-#define VEG_ALL_OF(...) ::veg::meta::all_of({(__VA_ARGS__)...})
-#define VEG_ANY_OF(...) ::veg::meta::any_of({(__VA_ARGS__)...})
+#define VEG_ALL_OF(...)                                                        \
+	::veg::meta::and_test<                                                       \
+			::veg::meta::make_index_sequence<                                        \
+					::veg::meta::pack_size<decltype((void)(__VA_ARGS__))...>::value>,    \
+			::veg::meta::bool_constant<(__VA_ARGS__)>...>::value
+#define VEG_ANY_OF(...)                                                        \
+	::veg::meta::or_test<                                                        \
+			::veg::meta::make_index_sequence<                                        \
+					::veg::meta::pack_size<decltype((void)(__VA_ARGS__))...>::value>,    \
+			::veg::meta::bool_constant<(__VA_ARGS__)>...>::value
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -405,26 +413,21 @@ struct unused {
 } // namespace nb
 VEG_NIEBLOID(unused);
 
+namespace internal {
+constexpr auto all_of_slice(bool const* arr, i64 size) noexcept -> bool {
+	return size == 0 ? true
+									 : (arr[0] && internal::all_of_slice(arr + 1, size - 1));
+}
+constexpr auto all_of(std::initializer_list<bool> lst) noexcept -> bool {
+	return internal::all_of_slice(lst.begin(), static_cast<i64>(lst.size()));
+}
+} // namespace internal
 namespace meta {
 template <bool B, typename T = void>
 using enable_if_t = typename internal::meta_::enable_if<B, T>::type;
 
 template <typename T>
 using uncvref_t = typename internal::meta_::uncvlref<T&>::type;
-
-constexpr auto all_of_slice(bool const* arr, i64 size) noexcept -> bool {
-	return size == 0 ? true : (arr[0] && meta::all_of_slice(arr + 1, size - 1));
-}
-constexpr auto all_of(std::initializer_list<bool> lst) noexcept -> bool {
-	return meta::all_of_slice(lst.begin(), static_cast<i64>(lst.size()));
-}
-
-constexpr auto any_of_slice(bool const* arr, i64 size) noexcept -> bool {
-	return size == 0 ? false : (arr[0] || meta::any_of_slice(arr + 1, size - 1));
-}
-constexpr auto any_of(std::initializer_list<bool> lst) noexcept -> bool {
-	return meta::any_of_slice(lst.begin(), static_cast<i64>(lst.size()));
-}
 } // namespace meta
 using meta::uncvref_t;
 } // namespace VEG_ABI

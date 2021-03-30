@@ -216,7 +216,7 @@ public:
 	VEG_TEMPLATE(
 			(typename Fn),
 			requires(
-					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, fn_view>) &&
+					!VEG_CONCEPT(constructible<fn_view*, meta::uncvref_t<Fn>*>) &&
 					VEG_CONCEPT(invocable_r<Fn&, Ret, Args&&...>)),
 			HEDLEY_ALWAYS_INLINE fn_view,
 			(fn, Fn&&))
@@ -260,7 +260,10 @@ public:
 	VEG_TEMPLATE(
 			(typename Fn),
 			requires(
-					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, once_fn_view>) &&
+					!VEG_CONCEPT(constructible<
+											 once_fn_view*,
+											 meta::uncvref_t<Fn>*,
+											 once_fn_view>) &&
 					VEG_CONCEPT(invocable_r<Fn, Ret, Args&&...>)),
 			HEDLEY_ALWAYS_INLINE once_fn_view,
 			(fn, Fn&&))
@@ -307,7 +310,7 @@ public:
 	VEG_TEMPLATE(
 			(typename Fn),
 			requires(
-					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, fn_view>) &&
+					!VEG_CONCEPT(constructible<fn_view*, meta::uncvref_t<Fn>*>) &&
 					VEG_CONCEPT(nothrow_invocable_r<Fn&, Ret, Args&&...>)),
 			HEDLEY_ALWAYS_INLINE fn_view,
 			(fn, Fn&&))
@@ -347,7 +350,10 @@ public:
 	VEG_TEMPLATE(
 			(typename Fn),
 			requires(
-					!VEG_CONCEPT(base_of<meta::uncvref_t<Fn>, once_fn_view>) &&
+					!VEG_CONCEPT(constructible<
+											 once_fn_view*,
+											 meta::uncvref_t<Fn>*,
+											 once_fn_view>) &&
 					VEG_CONCEPT(nothrow_invocable_r<Fn, Ret, Args&&...>)),
 			HEDLEY_ALWAYS_INLINE once_fn_view,
 			(fn, Fn&&))

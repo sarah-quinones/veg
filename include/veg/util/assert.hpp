@@ -274,7 +274,7 @@ struct decomposer {
 						 false),
 
 #define __VEG_IMPL_ALL_OF_2(Ftor, Decomposer, Callback, Tuple)                 \
-	(::veg::meta::all_of({__VEG_PP_TUPLE_FOR_EACH(Ftor, Decomposer, Tuple)})     \
+	(::veg::internal::all_of({__VEG_PP_TUPLE_FOR_EACH(Ftor, Decomposer, Tuple)}) \
 	     ? (void)(0)                                                             \
 	     : ::veg::abi::internal::Callback(                                       \
 						 __LINE__,                                                         \

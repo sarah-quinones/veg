@@ -436,8 +436,7 @@ struct cmp_impl<which::int_unsigned_signed> {
 template <typename T>
 using pre_sizeof_ = meta::constant<usize, sizeof(T)>;
 template <typename T>
-using sizeof_ =
-		typename meta::detector<meta::constant<usize, 0>, pre_sizeof_, T>::type;
+using sizeof_ = meta::detected_or_t<meta::constant<usize, 0>, pre_sizeof_, T>;
 
 template <typename A, typename B>
 using same_size = meta::bool_constant<sizeof_<A>::value == sizeof_<B>::value>;

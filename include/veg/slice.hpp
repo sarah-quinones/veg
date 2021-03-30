@@ -73,15 +73,18 @@ struct member_fn_data_size {
 	}
 };
 template <typename R, typename T>
-struct has_members_r
-		: meta::conjunction<
-					meta_::is_detected<member_fn_data_size::dtype_r, R, T&>,
-					meta_::is_detected<member_fn_data_size::stype, T&>>,
-			member_fn_data_size {};
+struct has_members_r : meta::conjunction<
+													 meta::bool_constant<VEG_CONCEPT(
+															 detected<member_fn_data_size::dtype_r, R, T&>)>,
+													 meta::bool_constant<VEG_CONCEPT(
+															 detected<member_fn_data_size::stype, T&>)>>,
+											 member_fn_data_size {};
 template <typename T>
 struct has_members : meta::conjunction<
-												 meta_::is_detected<member_fn_data_size::dtype, T&>,
-												 meta_::is_detected<member_fn_data_size::stype, T&>>,
+												 meta::bool_constant<VEG_CONCEPT(
+														 detected<member_fn_data_size::dtype, T&>)>,
+												 meta::bool_constant<VEG_CONCEPT(
+														 detected<member_fn_data_size::stype, T&>)>>,
 										 member_fn_data_size {};
 
 struct array_data_size {

@@ -69,11 +69,14 @@ struct has_array_get
 
 template <usize I, typename T>
 struct has_member_get
-		: is_detected<member_get::result_type, constant<usize, I>, T&&>,
+		: bool_constant<VEG_CONCEPT(
+					detected<member_get::result_type, constant<usize, I>, T&&>)>,
 			member_get {};
 template <usize I, typename T>
-struct has_adl_get : is_detected<adl_get::result_type, constant<usize, I>, T&&>,
-										 adl_get {};
+struct has_adl_get
+		: bool_constant<VEG_CONCEPT(
+					detected<adl_get::result_type, constant<usize, I>, T&&>)>,
+			adl_get {};
 
 } // namespace meta_
 } // namespace internal

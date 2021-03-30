@@ -580,8 +580,8 @@ struct tuple {
 			constexpr auto
 			operator(),
 			(... args, Ts&&))
-	const noexcept(meta::all_of({VEG_CONCEPT(
-										 nothrow_constructible<meta::decay_t<Ts>, Ts&&>)...}))
+	const noexcept(
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<meta::decay_t<Ts>, Ts&&>)))
 			->veg::tuple<meta::decay_t<Ts>...> {
 		return {cvt_t{}, VEG_FWD(args)...};
 	}
@@ -602,8 +602,7 @@ struct tuple_fwd {
 			constexpr auto
 			operator(),
 			(... args, Ts&&))
-	const noexcept(
-			meta::all_of({VEG_CONCEPT(nothrow_constructible<Ts, Ts&&>)...}))
+	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Ts&&>)))
 			->veg::tuple<Ts...> {
 		return {cvt_t{}, VEG_FWD(args)...};
 	}

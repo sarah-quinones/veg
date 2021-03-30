@@ -163,9 +163,10 @@ constexpr auto parse_int(char const* str, u64 len, error e) noexcept -> u64 {
 	                  : parse_num(str, len, 10, e));
 }
 
-constexpr auto init_parse_int(std::initializer_list<char> str) noexcept -> u64 {
-	return parse_int(str.begin(), str.size(), error{});
-}
+template <char... Chars>
+struct char_seq {
+	static constexpr char value[] = {Chars...};
+};
 
 template <typename L, typename R>
 struct binary_traits {
@@ -184,18 +185,6 @@ struct binary_traits {
 
 template <i64 N, i64 M>
 struct binary_traits<fix<N>, fix<M>> {
-	template <i64 I>
-	struct dims {
-		HEDLEY_ALWAYS_INLINE constexpr dims(fix<N> /*r*/, fix<M> /*c*/) noexcept {}
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto nrows() const noexcept
-				-> fix<N> {
-			return {};
-		}
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto ncols() const noexcept
-				-> fix<M> {
-			return {};
-		}
-	};
 
 #define VEG_OP(Name, Op)                                                       \
 	using Name /* NOLINT(bugprone-macro-parentheses) */ = fix<N Op M>;           \
@@ -320,7 +309,10 @@ using int_c::fix;
 inline namespace literals {
 template <char... Chars>
 HEDLEY_ALWAYS_INLINE constexpr auto operator"" _c() noexcept
-		-> fix<int_c::internal::init_parse_int({Chars...})> {
+		-> fix<int_c::internal::parse_int(
+				int_c::internal::char_seq<Chars...>::value,
+				sizeof...(Chars),
+				int_c::internal::error{})> {
 	return {};
 }
 } // namespace literals
