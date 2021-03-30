@@ -21,7 +21,7 @@
 			::std::tuple_size<                                                       \
 					typename ::veg::meta::uncvref_t<decltype(TupleId)>>::value ==        \
 					Tuple_Size,                                                          \
-			"wrong number of identifiers");                                         \
+			"wrong number of identifiers");                                          \
 	__VEG_PP_TUPLE_FOR_EACH_I(__VEG_IMPL_BIND, TupleId, Identifiers)             \
 	VEG_NOM_SEMICOLON
 
@@ -111,9 +111,9 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us&&>))))
 			: m_impl(
 					internal::tup_::hidden_tag2{},
-					static_cast<std::integral_constant<
-							meta::category_e,
-							meta::category_e::ref_mov>*>(nullptr),
+					static_cast<
+							meta::constant<meta::category_e, meta::category_e::ref_mov>*>(
+							nullptr),
 					internal::tup_::get_inner(VEG_FWD(tup))){})
 
 	VEG_DOC_CTOR
@@ -129,9 +129,9 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us&>))))
 			: m_impl(
 					internal::tup_::hidden_tag2{},
-					static_cast<std::integral_constant<
-							meta::category_e,
-							meta::category_e::ref_mut>*>(nullptr),
+					static_cast<
+							meta::constant<meta::category_e, meta::category_e::ref_mut>*>(
+							nullptr),
 					internal::tup_::get_inner(VEG_FWD(tup))){})
 
 	VEG_DOC_CTOR
@@ -147,8 +147,7 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us const&>))))
 			: m_impl(
 					internal::tup_::hidden_tag2{},
-					static_cast<
-							std::integral_constant<meta::category_e, meta::category_e::ref>*>(
+					static_cast<meta::constant<meta::category_e, meta::category_e::ref>*>(
 							nullptr),
 					internal::tup_::get_inner(VEG_FWD(tup))){})
 

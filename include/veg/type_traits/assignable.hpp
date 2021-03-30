@@ -1,7 +1,6 @@
 #ifndef VEG_ASSIGNABLE_HPP_4ZNCRTO7S
 #define VEG_ASSIGNABLE_HPP_4ZNCRTO7S
 
-#include "veg/internal/macros.hpp"
 #include "veg/type_traits/core.hpp"
 #include "veg/internal/prologue.hpp"
 

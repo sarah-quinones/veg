@@ -1,7 +1,6 @@
 #ifndef VEG_TAGS_HPP_FYDE7Q6ZS
 #define VEG_TAGS_HPP_FYDE7Q6ZS
 
-#include "veg/internal/macros.hpp"
 #include "veg/type_traits/core.hpp"
 #include "veg/internal/prologue.hpp"
 

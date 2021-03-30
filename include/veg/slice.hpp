@@ -3,6 +3,7 @@
 
 #include "veg/util/assert.hpp"
 #include "veg/option.hpp"
+#include "veg/util/get.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {

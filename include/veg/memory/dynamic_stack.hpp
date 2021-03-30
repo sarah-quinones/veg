@@ -30,14 +30,14 @@ struct dynamic_alloc_base;
 struct default_init_fn {
 	template <typename T>
 	auto make(void* ptr, i64 len) -> T* {
-		return new (ptr) T[static_cast<usize>(len)];
+		return ::new (ptr) T[static_cast<usize>(len)];
 	}
 };
 
 struct zero_init_fn {
 	template <typename T>
 	auto make(void* ptr, i64 len) -> T* {
-		return new (ptr) T[static_cast<usize>(len)]{};
+		return ::new (ptr) T[static_cast<usize>(len)]{};
 	}
 };
 
@@ -45,7 +45,7 @@ struct no_init_fn {
 	template <typename T>
 	auto make(void* ptr, i64 len) -> T* {
 		return mem::launder(static_cast<T*>(static_cast<void*>(
-				new (ptr) unsigned char[static_cast<usize>(len) * sizeof(T)])));
+				::new (ptr) unsigned char[static_cast<usize>(len) * sizeof(T)])));
 	}
 };
 

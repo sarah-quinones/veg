@@ -18,9 +18,9 @@ struct fix;
 namespace internal {
 namespace meta_ {
 template <typename T>
-struct is_fix : std::false_type {};
+struct is_fix : false_type {};
 template <i64 N>
-struct is_fix<int_c::fix<N>> : std::true_type {};
+struct is_fix<int_c::fix<N>> : true_type {};
 } // namespace meta_
 } // namespace internal
 

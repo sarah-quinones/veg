@@ -1,7 +1,6 @@
 #ifndef VEG_CONSTRUCTIBLE_HPP_D6CRVBJYS
 #define VEG_CONSTRUCTIBLE_HPP_D6CRVBJYS
 
-#include "veg/internal/macros.hpp"
 #include "veg/type_traits/core.hpp"
 #include "veg/internal/prologue.hpp"
 
@@ -9,7 +8,7 @@
 		!VEG_HAS_BUILTIN(__is_trivially_constructible) ||                          \
 		!VEG_HAS_BUILTIN(__is_constructible) ||                                    \
 		!VEG_HAS_BUILTIN(__is_nothrow_constructible) ||                            \
-		!VEG_HAS_BUILTIN(__is_trivially_copyable) || VEG_HAS_BUILTIN(__is_trivial)
+		!VEG_HAS_BUILTIN(__is_trivially_copyable) || !VEG_HAS_BUILTIN(__is_trivial)
 #include <type_traits>
 #endif
 

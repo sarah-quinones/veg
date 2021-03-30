@@ -36,7 +36,7 @@ struct adl_addr : member_addr {
 	template <typename T>
 	using type = decltype(void(operator&(VEG_DECLVAL(T&))));
 };
-struct builtin_addr : std::true_type {
+struct builtin_addr : meta::true_type {
 	template <typename T>
 	HEDLEY_ALWAYS_INLINE static constexpr auto apply(T& var) noexcept -> T* {
 		return &var;

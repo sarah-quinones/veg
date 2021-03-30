@@ -86,7 +86,7 @@ struct tuple_impl<meta::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
 	template <meta::category_e C, typename... Us>
 	HEDLEY_ALWAYS_INLINE constexpr explicit tuple_impl(
 			hidden_tag2 /*unused*/,
-			std::integral_constant<meta::category_e, C>* /*unused*/,
+			meta::constant<meta::category_e, C>* /*unused*/,
 			tuple_impl<meta::index_sequence<Is...>, Us...> const& tup)
 
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(

@@ -77,7 +77,7 @@ public:
 			(... args, Args&&))
 	noexcept(false) -> T& {
 		_grow_to(_self().capacity() + 1);
-		T& ref = *new (_self().data() + _self().size()) T(VEG_FWD(args)...);
+		T& ref = * ::new (_self().data() + _self().size()) T(VEG_FWD(args)...);
 		++_self().self.len;
 		return ref;
 	}
@@ -89,7 +89,7 @@ public:
 	HEDLEY_ALWAYS_INLINE
 	void reserve(i64 new_capacity) noexcept(false) {
 		if (new_capacity > _self().capacity()) {
-			_self().self.begin = internal::algo::reallocate_memory(
+			_self().self.begin = internal::algo_::reallocate_memory(
 					_self().data(),
 					alignof(T),
 					_self().size(),
@@ -181,14 +181,14 @@ struct vec : internal::vec_::vec_base<T>,
 						 internal::vec_::vec_copy_base<T>,
 						 meta::conditional_t<
 								 VEG_CONCEPT(copy_constructible<T>),
-								 meta::internal::empty_i<0>,
-								 meta::internal::nocopy_ctor>,
+								 internal::empty_i<0>,
+								 internal::nocopy_ctor>,
 						 meta::conditional_t<
 								 VEG_CONCEPT(copy_assignable<T>) &&
 										 (VEG_CONCEPT(move_constructible<T>) ||
                       VEG_CONCEPT(copy_constructible<T>)),
-								 meta::internal::empty_i<1>,
-								 meta::internal::nocopy_assign> {
+								 internal::empty_i<1>,
+								 internal::nocopy_assign> {
 
 	using typename internal::vec_::vec_base<T>::raw_parts;
 	using internal::vec_::vec_base<T>::vec_base;

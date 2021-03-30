@@ -1,7 +1,6 @@
 #ifndef VEG_INVOCABLE_HPP_GVSWRKAYS
 #define VEG_INVOCABLE_HPP_GVSWRKAYS
 
-#include "veg/internal/macros.hpp"
 #include "veg/type_traits/core.hpp"
 #include "veg/internal/prologue.hpp"
 

@@ -2,7 +2,6 @@
 #define VEG_GET_HPP_QRS8GNSHS
 
 #include "veg/type_traits/core.hpp"
-#include "veg/internal/macros.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {

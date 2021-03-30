@@ -327,19 +327,8 @@
 	__VEG_IMPL_PP_SEQ_HEAD_0 Seq)
 #define __VEG_PP_SEQ_TAIL(Seq) __VEG_IMPL_PP_CONSUME Seq
 
-// #define __VEG_PP_HEAD(arg, ...) __VEG_IMPL_PP_HEAD(arg, __VA_ARGS__)
-// #define __VEG_PP_TAIL(arg, ...) __VEG_IMPL_PP_TAIL(arg, __VA_ARGS__)
-
-#define __VEG_PP_HEAD(...)                                                     \
-	__VEG_PP_CAT2(                                                               \
-			__VEG_IMPL_PP_HEAD_,                                                     \
-			__VEG_IMPL_PP_IS_1(__VEG_PP_TUPLE_SIZE((__VA_ARGS__))))                  \
-	(__VA_ARGS__)
-#define __VEG_PP_TAIL(...)                                                     \
-	__VEG_PP_CAT2(                                                               \
-			__VEG_IMPL_PP_TAIL_,                                                     \
-			__VEG_IMPL_PP_IS_1(__VEG_PP_TUPLE_SIZE((__VA_ARGS__))))                  \
-	(__VA_ARGS__)
+#define __VEG_PP_HEAD(...) __VEG_IMPL_PP_HEAD_0(__VA_ARGS__)
+#define __VEG_PP_TAIL(...) __VEG_IMPL_PP_TAIL_0(__VA_ARGS__)
 
 #define __VEG_PP_STRINGIZE(...) __VEG_IMPL_PP_STRINGIZE(__VA_ARGS__)
 #define __VEG_PP_CAT(A, ...) __VEG_IMPL_PP_CAT(A, __VA_ARGS__)

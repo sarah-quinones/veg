@@ -1,6 +1,7 @@
 #ifndef VEG_ALGORITHM_HPP_PLKQ80IYS
 #define VEG_ALGORITHM_HPP_PLKQ80IYS
 
+#include "veg/util/defer.hpp"
 #include "veg/memory/aligned_alloc.hpp"
 #include "veg/memory/address.hpp"
 #include "veg/memory/placement.hpp"
