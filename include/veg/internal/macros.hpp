@@ -190,10 +190,10 @@
 
 #define VEG_CONSTRAINED_MEMBER_FN(Constraint, Attr_Name, Params, ...)          \
 	VEG_TEMPLATE(                                                                \
-			(bool __VEG_PP_CAT2(Dummy, __LINE__) = true),                            \
+			(int _ = 0),                                                             \
 			requires(                                                                \
 					__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint) &&                     \
-					::veg::meta::bool_constant<__VEG_PP_CAT2(Dummy, __LINE__)>::value),  \
+					::veg::meta::bool_constant<(_ == 0)>::value),                        \
 			Attr_Name,                                                               \
 			__VEG_PP_REMOVE_PAREN(Params))                                           \
 	__VA_ARGS__
