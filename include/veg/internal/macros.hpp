@@ -6,6 +6,55 @@
 #include "veg/internal/preprocessor.hpp"
 #include "veg/internal/prologue.hpp"
 
+////////////////////////////////////////////////////////////////////////////////
+
+#if HEDLEY_MSVC_VERSION_CHECK(14, 0, 0) ||                                     \
+		HEDLEY_INTEL_CL_VERSION_CHECK(2021, 1, 0)
+#define VEG_DEPRECATED(Reason) __declspec(deprecated(Reason))
+#elif HEDLEY_HAS_EXTENSION(attribute_deprecated_with_message) ||               \
+		HEDLEY_GCC_VERSION_CHECK(4, 5, 0) ||                                       \
+		HEDLEY_INTEL_VERSION_CHECK(13, 0, 0) ||                                    \
+		HEDLEY_ARM_VERSION_CHECK(5, 6, 0) ||                                       \
+		HEDLEY_SUNPRO_VERSION_CHECK(5, 13, 0) ||                                   \
+		HEDLEY_PGI_VERSION_CHECK(17, 10, 0) ||                                     \
+		HEDLEY_TI_VERSION_CHECK(18, 1, 0) ||                                       \
+		HEDLEY_TI_ARMCL_VERSION_CHECK(18, 1, 0) ||                                 \
+		HEDLEY_TI_CL6X_VERSION_CHECK(8, 3, 0) ||                                   \
+		HEDLEY_TI_CL7X_VERSION_CHECK(1, 2, 0) ||                                   \
+		HEDLEY_TI_CLPRU_VERSION_CHECK(2, 3, 0)
+#define VEG_DEPRECATED(Reason) __attribute__((__deprecated__(Reason)))
+#elif defined(__cplusplus) && (__cplusplus >= 201402L)
+#define VEG_DEPRECATED(Reason)                                                 \
+	HEDLEY_DIAGNOSTIC_DISABLE_CPP98_COMPAT_WRAP_([[deprecated(Reason)]])
+#elif HEDLEY_HAS_ATTRIBUTE(deprecated) || HEDLEY_GCC_VERSION_CHECK(3, 1, 0) || \
+		HEDLEY_ARM_VERSION_CHECK(4, 1, 0) || HEDLEY_TI_VERSION_CHECK(15, 12, 0) || \
+		(HEDLEY_TI_ARMCL_VERSION_CHECK(4, 8, 0) &&                                 \
+     defined(__TI_GNU_ATTRIBUTE_SUPPORT__)) ||                                 \
+		HEDLEY_TI_ARMCL_VERSION_CHECK(5, 2, 0) ||                                  \
+		(HEDLEY_TI_CL2000_VERSION_CHECK(6, 0, 0) &&                                \
+     defined(__TI_GNU_ATTRIBUTE_SUPPORT__)) ||                                 \
+		HEDLEY_TI_CL2000_VERSION_CHECK(6, 4, 0) ||                                 \
+		(HEDLEY_TI_CL430_VERSION_CHECK(4, 0, 0) &&                                 \
+     defined(__TI_GNU_ATTRIBUTE_SUPPORT__)) ||                                 \
+		HEDLEY_TI_CL430_VERSION_CHECK(4, 3, 0) ||                                  \
+		(HEDLEY_TI_CL6X_VERSION_CHECK(7, 2, 0) &&                                  \
+     defined(__TI_GNU_ATTRIBUTE_SUPPORT__)) ||                                 \
+		HEDLEY_TI_CL6X_VERSION_CHECK(7, 5, 0) ||                                   \
+		HEDLEY_TI_CL7X_VERSION_CHECK(1, 2, 0) ||                                   \
+		HEDLEY_TI_CLPRU_VERSION_CHECK(2, 1, 0)
+#define VEG_DEPRECATED(Reason) __attribute__((__deprecated__))
+#elif HEDLEY_MSVC_VERSION_CHECK(13, 10, 0) ||                                  \
+		HEDLEY_PELLES_VERSION_CHECK(6, 50, 0) ||                                   \
+		HEDLEY_INTEL_CL_VERSION_CHECK(2021, 1, 0)
+#define VEG_DEPRECATED(Reason) __declspec(deprecated)
+#elif HEDLEY_IAR_VERSION_CHECK(8, 0, 0)
+#define VEG_DEPRECATED(Reason) _Pragma("deprecated")
+#else
+#define VEG_DEPRECATED(Reason)
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+
 #if __cplusplus >= 201703L
 #define VEG_ALL_OF(...) (__VA_ARGS__ && ... && true)
 #define VEG_ANY_OF(...) (__VA_ARGS__ || ... || false)
@@ -233,45 +282,53 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define VEG_INLINE_VAR(name, obj)                                              \
+#define VEG_INLINE_VAR(Name, Obj)                                              \
 	namespace /* NOLINT */ {                                                     \
-	constexpr auto const& name =                                                 \
-			::veg::internal::meta_::static_const<obj>::value;                        \
+	constexpr auto const& Name = ::veg::meta::static_const<Obj>::value;          \
 	}                                                                            \
-	static_assert((void(name), true), ".")
+	static_assert((void(Name), true), ".")
 
-#define VEG_NIEBLOID(name)                                   /* NOLINT */      \
-	namespace /* NOLINT */ {                                   /* NOLINT */      \
-	constexpr auto const& name =                               /* NOLINT */      \
-			::veg::internal::meta_::static_const<nb::name>::value; /* NOLINT */      \
-	}                                                          /* NOLINT */      \
-	static_assert(((void)(name), true), ".")
+#if __cplusplus >= 201402L
+#define VEG_INLINE_VAR_TEMPLATE(Tpl, Name, ...) /* NOLINT */                   \
+	namespace /* NOLINT */ {                      /* NOLINT */                   \
+	template <__VEG_PP_REMOVE_PAREN(Tpl)>                                        \
+	constexpr auto const& Name =                       /* NOLINT */              \
+			::veg::meta::static_const<__VA_ARGS__>::value; /* NOLINT */              \
+	}                                                                            \
+	VEG_NOM_SEMICOLON /* NOLINT */
+#else
+#define VEG_INLINE_VAR_TEMPLATE(Tpl, Name, ...) VEG_NOM_SEMICOLON
+#endif
 
-#define VEG_FWD(x) static_cast<decltype(x)&&>(x)
+#define VEG_NIEBLOID(Name) VEG_INLINE_VAR(Name, nb::Name)
+
+#define VEG_NIEBLOID_TEMPLATE(Tpl, Name, ...)                                  \
+	VEG_INLINE_VAR_TEMPLATE(Tpl, Name, nb::Name<__VA_ARGS__>)
+
+#define VEG_FWD(X) static_cast<decltype(X)&&>(X)
 
 // disallows moving const rvalues
-#define VEG_MOV(x) static_cast<typename ::veg::uncvref_t<decltype(x)>&&>(x)
+#define VEG_MOV(X) static_cast<typename ::veg::uncvref_t<decltype(X)>&&>(X)
 
 #ifdef VEG_NO_INSTANTIATE
-#define VEG_INSTANTIATE(fn, ...) VEG_NOM_SEMICOLON
-#define VEG_INSTANTIATE_CLASS(class_name, ...) VEG_NOM_SEMICOLON
+#define VEG_INSTANTIATE(Fn, ...) VEG_NOM_SEMICOLON
+#define VEG_INSTANTIATE_CLASS(Class, ...) VEG_NOM_SEMICOLON
 #else
-#define VEG_INSTANTIATE(fn, ...)                                               \
+#define VEG_INSTANTIATE(Fn, ...)                                               \
 	__VEG_IMPL_INSTANTIATE(                                                      \
-			fn,                                                                      \
+			Fn,                                                                      \
 			__VEG_PP_CAT(                                                            \
 					__VEG_PP_CAT(_dummy_explicit_instantiation, __LINE__),               \
 					__VEG_PP_CAT(_, __COUNTER__)),                                       \
 			__VA_ARGS__)
-#define __VEG_IMPL_INSTANTIATE(fn, name, ...)                                  \
+#define __VEG_IMPL_INSTANTIATE(Fn, Name, ...)                                  \
 	template <typename... Ts>                                                    \
-	struct name {                                                                \
-		void apply(Ts&&... args) { fn(VEG_FWD(args)...); }                         \
+	struct Name {                                                                \
+		void apply(Ts&&... args) { Fn(VEG_FWD(args)...); }                         \
 	};                                                                           \
-	template struct name<__VA_ARGS__>
+	template struct Name<__VA_ARGS__>
 
-#define VEG_INSTANTIATE_CLASS(class_name, ...)                                 \
-	template struct class_name<__VA_ARGS__>
+#define VEG_INSTANTIATE_CLASS(Class, ...) template struct Class<__VA_ARGS__>
 #endif
 
 namespace veg {
@@ -314,6 +371,13 @@ template <typename T>
 struct unref<T&> {
 	using type = T;
 };
+
+template <typename T>
+auto declval() noexcept -> T;
+} // namespace meta_
+} // namespace internal
+
+namespace meta {
 template <typename T>
 struct static_const {
 	static constexpr T value{};
@@ -321,16 +385,25 @@ struct static_const {
 
 template <typename T>
 constexpr T static_const<T>::value; // NOLINT(readability-redundant-declaration)
-
-template <typename T>
-auto declval() noexcept -> T;
-} // namespace meta_
-} // namespace internal
+} // namespace meta
 
 template <typename... Ts>
 struct incomplete_t;
+
 template <typename... Types, typename... Args>
-auto show_types(Args&&...) -> incomplete_t<Types..., Args...>;
+auto print_types_halt(Args&&...) -> incomplete_t<Types..., Args...>;
+template <typename... Types, typename... Args>
+VEG_DEPRECATED("")
+void print_types(Args&&... /*unused*/) {}
+
+namespace nb {
+struct unused {
+	template <typename... Ts>
+	VEG_CPP14(constexpr)
+	void operator()(Ts const&... /*unused*/) const noexcept {}
+};
+} // namespace nb
+VEG_NIEBLOID(unused);
 
 namespace meta {
 template <bool B, typename T = void>

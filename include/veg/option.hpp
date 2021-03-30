@@ -31,7 +31,7 @@ private:
 	constexpr none_t() = default;
 	constexpr explicit none_t(none_t* /*unused*/) noexcept {}
 	template <typename T>
-	friend struct internal::meta_::static_const;
+	friend struct meta::static_const;
 };
 VEG_INLINE_VAR(none, none_t);
 
@@ -51,7 +51,7 @@ private:
 	constexpr some_t() = default;
 	constexpr explicit some_t(some_t* /*unused*/) noexcept {}
 	template <typename T>
-	friend struct veg::internal::meta_::static_const;
+	friend struct meta::static_const;
 };
 VEG_INLINE_VAR(some, some_t);
 } // namespace tags
@@ -89,7 +89,7 @@ private:
 	constexpr some_ref_t() = default;
 	constexpr explicit some_ref_t(some_ref_t* /*unused*/) noexcept {}
 	template <typename T>
-	friend struct veg::internal::meta_::static_const;
+	friend struct meta::static_const;
 };
 VEG_INLINE_VAR(some_ref, some_ref_t);
 

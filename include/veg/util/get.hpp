@@ -131,12 +131,7 @@ struct get {
 };
 } // namespace nb
 
-VEG_IGNORE_CPP14_EXTENSION_WARNING(namespace {
-	template <usize I>
-	constexpr auto const& get /* NOLINT */ =
-			veg::internal::meta_::static_const<veg::nb::get<I>>::value;
-} // namespace
-)
+VEG_NIEBLOID_TEMPLATE(usize I, get, I);
 } // namespace VEG_ABI
 } // namespace veg
 

@@ -28,27 +28,11 @@ struct safety_tag_t<safety_e::safe> : meta::constant<safety_e, safety_e::safe> {
 template <>
 struct safety_tag_t<safety_e::unsafe>
 		: meta::constant<safety_e, safety_e::unsafe> {
-	constexpr operator safe_t() const noexcept { return {}; }
-
 private:
-	friend struct internal::make_unsafe<void>;
-	constexpr safety_tag_t() = default;
+	safety_tag_t() = default;
+	constexpr operator safe_t() const noexcept { return {}; }
+	friend struct meta::static_const<safety_tag_t>;
 };
-} // namespace tags
-
-namespace internal {
-template <typename T>
-struct make_unsafe {
-	static constexpr unsafe_t value = {};
-};
-template <typename T>
-constexpr unsafe_t make_unsafe<T>::value;
-} // namespace internal
-
-inline namespace tags {
-namespace {
-constexpr auto const& unsafe /* NOLINT */ = internal::make_unsafe<void>::value;
-} // namespace
 
 template <typename T>
 struct tag_t {};
@@ -57,17 +41,13 @@ struct init_list_t {};
 struct from_raw_parts_t {};
 struct inplace_t {};
 
-VEG_IGNORE_CPP14_EXTENSION_WARNING(namespace {
-	template <typename T>
-	constexpr auto const& tag = internal::meta_::static_const<tag_t<T>>::value;
-} // namespace
-)
-
+VEG_INLINE_VAR_TEMPLATE(typename T, tag, tag_t<T>);
 VEG_INLINE_VAR(init_list, init_list_t);
 VEG_INLINE_VAR(inplace, inplace_t);
 VEG_INLINE_VAR(cvt, cvt_t);
 VEG_INLINE_VAR(from_raw_parts, from_raw_parts_t);
 VEG_INLINE_VAR(safe, safe_t);
+VEG_INLINE_VAR(unsafe, unsafe_t);
 } // namespace tags
 
 } // namespace VEG_ABI

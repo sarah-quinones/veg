@@ -30,12 +30,7 @@ struct narrow {
 	}
 };
 } // namespace nb
-VEG_IGNORE_CPP14_EXTENSION_WARNING(namespace /* NOLINT */ {
-	template <typename To>
-	constexpr auto const& narrow =
-			internal::meta_::static_const<nb::narrow<To>>::value;
-} // namespace
-)
+VEG_NIEBLOID_TEMPLATE(typename To, narrow, To);
 } // namespace VEG_ABI
 } // namespace veg
 

@@ -76,7 +76,7 @@ namespace nb {
 struct launder {
 	VEG_TEMPLATE(
 			typename T,
-			requires(!VEG_CONCEPT(void_type<T>)),
+			requires(VEG_CONCEPT(complete<T>)),
 			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(mem, T*))

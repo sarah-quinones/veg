@@ -221,6 +221,7 @@ VEG_DEF_CONCEPT(
 		typename T,
 		void_type,
 		VEG_CONCEPT(same<void const volatile, T const volatile>));
+VEG_DEF_CONCEPT(typename T, complete, (sizeof(T) == sizeof(T)));
 
 // can't use __is_pointer because of <bits/cpp_type_traits.h> header
 VEG_DEF_CONCEPT(typename T, pointer, internal::meta_::is_pointer<T>::value);
