@@ -89,8 +89,6 @@
 #define VEG_IGNORE_CPP14_EXTENSION_WARNING(...)
 #endif
 
-#define VEG_NOM_SEMICOLON static_assert(true, ".")
-
 #if __cplusplus >= 202002L
 #define VEG_ABI _20
 #elif __cplusplus >= 201703L

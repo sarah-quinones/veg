@@ -339,6 +339,8 @@
 #define VEG_INSTANTIATE_CLASS(Class, ...) template struct Class<__VA_ARGS__>
 #endif
 
+#define VEG_NOM_SEMICOLON static_assert(true, ".")
+
 namespace veg {
 inline namespace VEG_ABI {
 namespace internal {
