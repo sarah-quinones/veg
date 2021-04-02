@@ -31,7 +31,7 @@ TEST_CASE("function_view: no_args") {
 	};
 
 #if __cplusplus >= 201703L
-	fn_view<nothrow<void()>> f{inc_lambda};
+	fn_view<void() noexcept> f{inc_lambda};
 #else
 	fn_view<void()> f{inc_lambda};
 #endif
@@ -50,10 +50,10 @@ TEST_CASE("function_view: no_args") {
 	STATIC_ASSERT(
 			std::is_constructible<fn_once_view<void()>, fn_once_view<void()>>::value);
 	STATIC_ASSERT(
-			std::is_constructible<fn_once_view<void()>, fn_view<nothrow<void()>>>::
+			std::is_constructible<fn_once_view<void()>, fn_view<void() noexcept>>::
 					value);
 	VEG_CPP17(STATIC_ASSERT(!std::is_constructible<
-													fn_once_view<nothrow<void()>>,
+													fn_once_view<void() noexcept>,
 													fn_view<void()>>::value);)
 
 	f = inc2_lambda;

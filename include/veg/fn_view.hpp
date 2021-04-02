@@ -7,11 +7,10 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace abi {
-inline namespace VEG_ABI_VERSION {
-namespace fn {
-template <typename T>
-struct nothrow;
+
+inline namespace VEG_ABI {
+namespace internal {
+namespace fnref {
 
 // veg::@class
 union state_ptr {
@@ -19,28 +18,17 @@ union state_ptr {
 	void (*fn)();
 };
 
-template <typename T>
-struct raw_parts;
-
-template <typename Ret, typename... Args>
-struct raw_parts<Ret(Args...)> {
+template <bool No_Except, typename Ret, typename... Args>
+struct raw_parts {
 	state_ptr state;
 	auto (*fn_ptr)(state_ptr, Args...) -> Ret;
 };
 
 template <typename Ret, typename... Args>
-struct raw_parts<nothrow<Ret(Args...)>> {
+struct raw_parts<true, Ret, Args...> {
 	state_ptr state;
 	auto (*fn_ptr)(state_ptr, Args...) noexcept -> Ret;
 };
-} // namespace fn
-} // namespace VEG_ABI_VERSION
-} // namespace abi
-
-inline namespace VEG_ABI {
-namespace internal {
-namespace fnref {
-using namespace abi::fn;
 
 template <typename T>
 struct is_fn_ptr : meta::false_type {};
@@ -153,8 +141,7 @@ struct assert_non_null<Ret (*)(Args...)> : assert_non_null_ptr {};
 
 template <bool No_Except, typename Ret, typename... Args>
 struct function_ref_impl {
-	using raw_parts = fnref::raw_parts<
-			meta::conditional_t<No_Except, nothrow<Ret(Args...)>, Ret(Args...)>>;
+	using raw_parts = fnref::raw_parts<No_Except, Ret, Args...>;
 	raw_parts self = {};
 
 	constexpr function_ref_impl() = default;
@@ -190,7 +177,6 @@ struct function_ref_impl {
 } // namespace internal
 
 namespace fn {
-using namespace abi::fn;
 
 template <typename T>
 struct fn_view;
@@ -229,9 +215,11 @@ public:
 			: base{{}, parts} {}
 	auto into_raw_parts() const noexcept -> raw_parts { return base::self; }
 
+#if __cplusplus >= 201703L
 	HEDLEY_ALWAYS_INLINE
-	fn_view(fn_view<nothrow<Ret(Args...)>> fn) noexcept
+	fn_view(fn_view<Ret(Args...) noexcept> fn) noexcept
 			: base({}, {fn.self.state, fn.self.fn_ptr}) {}
+#endif
 
 	HEDLEY_ALWAYS_INLINE
 	auto operator()(Args... args) const -> Ret {
@@ -277,9 +265,11 @@ public:
 			: base{{}, parts} {}
 	auto into_raw_parts() const&& noexcept -> raw_parts { return base::self; }
 
+#if __cplusplus >= 201703L
 	HEDLEY_ALWAYS_INLINE
-	fn_once_view(fn_view<nothrow<Ret(Args...)>> fn) noexcept
+	fn_once_view(fn_view<Ret(Args...) noexcept> fn) noexcept
 			: base({}, {fn.self.state, fn.self.fn_ptr}) {}
+#endif
 
 	HEDLEY_ALWAYS_INLINE
 	fn_once_view(fn_view<Ret(Args...)> fn) noexcept
@@ -291,8 +281,9 @@ public:
 	}
 };
 
+#if __cplusplus >= 201703L
 template <typename Ret, typename... Args>
-struct fn_view<nothrow<Ret(Args...)>>
+struct fn_view<Ret(Args...) noexcept>
 		: private internal::fnref::function_ref_impl<true, Ret, Args...> {
 private:
 	using base = internal::fnref::function_ref_impl<true, Ret, Args...>;
@@ -330,7 +321,7 @@ public:
 };
 
 template <typename Ret, typename... Args>
-struct fn_once_view<nothrow<Ret(Args...)>>
+struct fn_once_view<Ret(Args...) noexcept>
 		: private internal::fnref::function_ref_impl<true, Ret, Args...>,
 			internal::nocopy_ctor,
 			internal::nocopy_assign {
@@ -376,6 +367,7 @@ public:
 		return this->call_fn(VEG_FWD(args)...);
 	}
 };
+#endif
 
 } // namespace fn
 
