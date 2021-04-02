@@ -10,8 +10,7 @@ inline namespace VEG_ABI {
 template <typename Fn>
 struct VEG_NODISCARD defer {
 	Fn fn;
-	constexpr defer /* NOLINT */ (Fn _fn) noexcept(
-			VEG_CONCEPT(nothrow_move_constructible<Fn>))
+	constexpr defer(Fn _fn) noexcept(VEG_CONCEPT(nothrow_move_constructible<Fn>))
 			: fn(VEG_FWD(_fn)) {}
 	defer(defer const&) = delete;
 	defer(defer&&) noexcept = delete;
@@ -38,7 +37,7 @@ struct defer {
 					VEG_CONCEPT(move_constructible<Fn>) && VEG_CONCEPT(invocable<Fn>)),
 			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) auto
 			operator(),
-			(fn, Fn))
+			(fn, Fn&&))
 	const noexcept(VEG_CONCEPT(nothrow_move_constructible<Fn>))->veg::defer<Fn> {
 		return {VEG_FWD(fn)};
 	}

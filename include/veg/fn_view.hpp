@@ -195,7 +195,7 @@ using namespace abi::fn;
 template <typename T>
 struct fn_view;
 template <typename T>
-struct once_fn_view;
+struct fn_once_view;
 
 template <typename Ret, typename... Args>
 struct fn_view<Ret(Args...)>
@@ -208,7 +208,7 @@ private:
 	template <typename T>
 	friend struct fn_view;
 	template <typename T>
-	friend struct once_fn_view;
+	friend struct fn_once_view;
 
 public:
 	fn_view() = delete;
@@ -240,49 +240,49 @@ public:
 };
 
 template <typename Ret, typename... Args>
-struct once_fn_view<Ret(Args...)>
+struct fn_once_view<Ret(Args...)>
 		: private internal::fnref::function_ref_impl<false, Ret, Args...>,
 			internal::nocopy_ctor,
 			internal::nocopy_assign {
 private:
 	using base = internal::fnref::function_ref_impl<false, Ret, Args...>;
-	explicit constexpr once_fn_view(unsafe_t /*unused*/) noexcept : base(){};
+	explicit constexpr fn_once_view(unsafe_t /*unused*/) noexcept : base(){};
 	template <typename T>
 	friend struct meta::tombstone_traits;
 	template <typename T>
 	friend struct fn_view;
 	template <typename T>
-	friend struct once_fn_view;
+	friend struct fn_once_view;
 
 public:
-	once_fn_view() = delete;
+	fn_once_view() = delete;
 
 	VEG_TEMPLATE(
 			(typename Fn),
 			requires(
 					!VEG_CONCEPT(constructible<
-											 once_fn_view*,
+											 fn_once_view*,
 											 meta::uncvref_t<Fn>*,
-											 once_fn_view>) &&
+											 fn_once_view>) &&
 					VEG_CONCEPT(invocable_r<Fn, Ret, Args&&...>)),
-			HEDLEY_ALWAYS_INLINE once_fn_view,
+			HEDLEY_ALWAYS_INLINE fn_once_view,
 			(fn, Fn&&))
 	noexcept
 			: base({}, {}, VEG_FWD(fn)) {}
 
 	using typename base::raw_parts;
 	HEDLEY_ALWAYS_INLINE
-	once_fn_view(
+	fn_once_view(
 			from_raw_parts_t /*tag*/, raw_parts parts, unsafe_t /*tag*/) noexcept
 			: base{{}, parts} {}
 	auto into_raw_parts() const&& noexcept -> raw_parts { return base::self; }
 
 	HEDLEY_ALWAYS_INLINE
-	once_fn_view(fn_view<nothrow<Ret(Args...)>> fn) noexcept
+	fn_once_view(fn_view<nothrow<Ret(Args...)>> fn) noexcept
 			: base({}, {fn.self.state, fn.self.fn_ptr}) {}
 
 	HEDLEY_ALWAYS_INLINE
-	once_fn_view(fn_view<Ret(Args...)> fn) noexcept
+	fn_once_view(fn_view<Ret(Args...)> fn) noexcept
 			: base({}, {fn.self.state, fn.self.fn_ptr}) {}
 
 	HEDLEY_ALWAYS_INLINE
@@ -302,7 +302,7 @@ private:
 	template <typename T>
 	friend struct fn_view;
 	template <typename T>
-	friend struct once_fn_view;
+	friend struct fn_once_view;
 
 public:
 	fn_view() = delete;
@@ -330,45 +330,45 @@ public:
 };
 
 template <typename Ret, typename... Args>
-struct once_fn_view<nothrow<Ret(Args...)>>
+struct fn_once_view<nothrow<Ret(Args...)>>
 		: private internal::fnref::function_ref_impl<true, Ret, Args...>,
 			internal::nocopy_ctor,
 			internal::nocopy_assign {
 private:
 	using base = internal::fnref::function_ref_impl<true, Ret, Args...>;
-	explicit constexpr once_fn_view(unsafe_t /*unused*/) noexcept : base(){};
+	explicit constexpr fn_once_view(unsafe_t /*unused*/) noexcept : base(){};
 	template <typename T>
 	friend struct meta::tombstone_traits;
 	template <typename T>
 	friend struct fn_view;
 	template <typename T>
-	friend struct once_fn_view;
+	friend struct fn_once_view;
 
 public:
-	once_fn_view() = delete;
+	fn_once_view() = delete;
 
 	VEG_TEMPLATE(
 			(typename Fn),
 			requires(
 					!VEG_CONCEPT(constructible<
-											 once_fn_view*,
+											 fn_once_view*,
 											 meta::uncvref_t<Fn>*,
-											 once_fn_view>) &&
+											 fn_once_view>) &&
 					VEG_CONCEPT(nothrow_invocable_r<Fn, Ret, Args&&...>)),
-			HEDLEY_ALWAYS_INLINE once_fn_view,
+			HEDLEY_ALWAYS_INLINE fn_once_view,
 			(fn, Fn&&))
 	noexcept
 			: base({}, {}, VEG_FWD(fn)) {}
 
 	using typename base::raw_parts;
 	HEDLEY_ALWAYS_INLINE
-	once_fn_view(
+	fn_once_view(
 			from_raw_parts_t /*tag*/, raw_parts parts, unsafe_t /*tag*/) noexcept
 			: base{{}, parts} {}
 	auto into_raw_parts() const&& noexcept -> raw_parts { return base::self; }
 
 	HEDLEY_ALWAYS_INLINE
-	once_fn_view(fn_view<Ret(Args...) noexcept> fn) noexcept
+	fn_once_view(fn_view<Ret(Args...) noexcept> fn) noexcept
 			: base({}, {fn.self.state, fn.self.fn_ptr}) {}
 
 	HEDLEY_ALWAYS_INLINE
@@ -394,7 +394,7 @@ struct meta::tombstone_traits<fn::fn_view<T>> {
 	}
 };
 template <typename T>
-struct meta::tombstone_traits<fn::once_fn_view<T>> {
+struct meta::tombstone_traits<fn::fn_once_view<T>> {
 	static constexpr i64 spare_representations = 1;
 
 	HEDLEY_ALWAYS_INLINE

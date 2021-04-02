@@ -42,18 +42,18 @@ TEST_CASE("function_view: no_args") {
 	CHECK(i == 2);
 	fn_view<void()>{f}();
 	CHECK(i == 3);
-	once_fn_view<void()>{f}();
+	fn_once_view<void()>{f}();
 	CHECK(i == 4);
 
 	STATIC_ASSERT(
-			!std::is_constructible<fn_view<void()>, once_fn_view<void()>>::value);
+			!std::is_constructible<fn_view<void()>, fn_once_view<void()>>::value);
 	STATIC_ASSERT(
-			std::is_constructible<once_fn_view<void()>, once_fn_view<void()>>::value);
+			std::is_constructible<fn_once_view<void()>, fn_once_view<void()>>::value);
 	STATIC_ASSERT(
-			std::is_constructible<once_fn_view<void()>, fn_view<nothrow<void()>>>::
+			std::is_constructible<fn_once_view<void()>, fn_view<nothrow<void()>>>::
 					value);
 	VEG_CPP17(STATIC_ASSERT(!std::is_constructible<
-													once_fn_view<nothrow<void()>>,
+													fn_once_view<nothrow<void()>>,
 													fn_view<void()>>::value);)
 
 	f = inc2_lambda;

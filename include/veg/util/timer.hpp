@@ -16,6 +16,26 @@ void log_elapsed_time(i64 duration, char const* msg, std::FILE* out) noexcept;
 } // namespace VEG_ABI_VERSION
 } // namespace abi
 
+namespace internal {
+namespace time_ {
+template <typename Fn>
+struct raii_timer_wrapper {
+	struct raw_parts {
+		i64 begin;
+		Fn fn;
+	} self;
+
+	raii_timer_wrapper(Fn fn) noexcept
+			: self{abi::time::monotonic_nanoseconds_since_epoch(), VEG_FWD(fn)} {}
+
+	auto operator()() noexcept(noexcept(VEG_FWD(self).fn)) {
+		VEG_FWD(self.fn)
+		(i64(abi::time::monotonic_nanoseconds_since_epoch() - self.begin));
+	}
+};
+} // namespace time_
+} // namespace internal
+
 namespace time {
 inline namespace VEG_ABI {
 namespace nb {
@@ -40,27 +60,32 @@ struct log_elapsed_time {
 	}
 };
 
-struct raii_timer {
-private:
-	struct raw_parts {
-		i64 begin;
-		i64 end;
-		fn::once_fn_view<fn::nothrow<void(i64)>> fn;
-	} self;
-
-public:
-	explicit raii_timer(fn::once_fn_view<fn::nothrow<void(i64)>> fn) noexcept
-			: self{monotonic_nanoseconds_since_epoch(), 0, VEG_FWD(fn)} {}
-
-	~raii_timer() {
-		i64 dt = monotonic_nanoseconds_since_epoch() - self.begin;
-		VEG_FWD(self).fn(dt);
-	}
-	raii_timer(raii_timer const&) = delete;
-	raii_timer(raii_timer&&) = delete;
-	auto operator=(raii_timer const&) -> raii_timer& = delete;
-	auto operator=(raii_timer&&) -> raii_timer& = delete;
+template <typename Fn>
+struct raii_timer : defer<internal::time_::raii_timer_wrapper<Fn>> {
+	VEG_CHECK_CONCEPT(invocable<Fn, i64>);
+	using defer<internal::time_::raii_timer_wrapper<Fn>>::defer;
+	using defer<internal::time_::raii_timer_wrapper<Fn>>::fn;
 };
+
+namespace make {
+namespace nb {
+struct raii_timer {
+	VEG_TEMPLATE(
+			typename Fn,
+			requires(
+					VEG_CONCEPT(invocable<Fn, i64>) &&
+					VEG_CONCEPT(move_constructible<Fn>)),
+			auto
+			operator(),
+			(fn, Fn&&))
+	const noexcept(VEG_CONCEPT(nothrow_move_constructible<Fn>))
+			->time::raii_timer<Fn> {
+		return {VEG_FWD(fn)};
+	}
+};
+} // namespace nb
+VEG_NIEBLOID(raii_timer);
+} // namespace make
 } // namespace VEG_ABI
 } // namespace time
 } // namespace veg
