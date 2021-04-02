@@ -92,8 +92,8 @@
 
 #define VEG_CHECK_CONCEPT_MACRO(Namespace, ...)                                \
 	static_assert(                                                               \
-			::Namespace::__VA_ARGS__, __VEG_PP_STRINGIZE(__VA_ARGS__) " failed")
-#define VEG_CONCEPT_MACRO(Namespace, ...) ::Namespace::__VA_ARGS__
+			Namespace::__VA_ARGS__, __VEG_PP_STRINGIZE(__VA_ARGS__) " failed")
+#define VEG_CONCEPT_MACRO(Namespace, ...) Namespace::__VA_ARGS__
 
 #define VEG_DEF_CONCEPT_CONJUNCTION(Tpl, Name, Terms)                          \
 	VEG_DEF_CONCEPT(Tpl, Name, __VEG_IMPL_CONJUNCTION Terms)
@@ -129,11 +129,11 @@
 #endif
 
 #if __cplusplus >= 201402L
-#define VEG_CONCEPT_MACRO(Namespace, ...) ::Namespace::__VA_ARGS__
+#define VEG_CONCEPT_MACRO(Namespace, ...) Namespace::__VA_ARGS__
 #define __VEG_IMPL_ADD_VALUE(I, _, Param) (Param)
 #define __VEG_IMPL_TRAIT(Param) __VEG_PP_HEAD Param _::__VEG_PP_TAIL Param
 #else
-#define VEG_CONCEPT_MACRO(Namespace, ...) ::Namespace::__VA_ARGS__::value
+#define VEG_CONCEPT_MACRO(Namespace, ...) Namespace::__VA_ARGS__::value
 #define __VEG_IMPL_ADD_VALUE(I, _, Param)                                      \
 	((__VEG_PP_REMOVE_PAREN(Param)::value))
 #define __VEG_IMPL_TRAIT(Param) __VEG_PP_UNWRAP(Param)
@@ -142,7 +142,7 @@
 
 #define VEG_CHECK_CONCEPT_MACRO(Namespace, ...)                                \
 	static_assert(                                                               \
-			decltype(::Namespace::check_##__VA_ARGS__())::value,                     \
+			decltype(Namespace::check_##__VA_ARGS__())::value,                       \
 			__VEG_PP_STRINGIZE(__VA_ARGS__) " failed")
 #define VEG_DEF_CONCEPT(Tpl, Name, ...)                                        \
 	__VEG_IMPL_DEF_CONCEPT(                                                      \
@@ -168,7 +168,7 @@
 			__VEG_PP_REMOVE_PAREN1(Base));                                           \
 	template <__VEG_PP_REMOVE_PAREN(Tpl)                                         \
 	              __VEG_PP_TUPLE_FOR_EACH(__VEG_IMPL_SFINAE, _, Seq)>            \
-	void check_##Name() noexcept
+	auto check_##Name() noexcept->::veg::meta::true_type
 #define VEG_DEF_CONCEPT_BOOL_DISJUNCTION_IMPL(Tpl, Name, Base, Seq)            \
 	__VEG_IMPL_DEF_CONCEPT(                                                      \
 			Tpl,                                                                     \
@@ -436,8 +436,8 @@ using meta::uncvref_t;
 } // namespace veg
 
 #define VEG_CHECK_CONCEPT(...)                                                 \
-	VEG_CHECK_CONCEPT_MACRO(veg::concepts, __VA_ARGS__)
-#define VEG_CONCEPT(...) VEG_CONCEPT_MACRO(veg::concepts, __VA_ARGS__)
+	VEG_CHECK_CONCEPT_MACRO(::veg::concepts, __VA_ARGS__)
+#define VEG_CONCEPT(...) VEG_CONCEPT_MACRO(::veg::concepts, __VA_ARGS__)
 
 #include "veg/internal/epilogue.hpp"
 #endif /* end of include guard VEG_MACROS_HPP_HSTLSKZXS */

@@ -815,11 +815,9 @@ struct equal {
 			requires(VEG_CONCEPT(equality_comparable_with<A, B>)),
 			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
-			(a, A&&),
-			(b, B&&))
-	const noexcept->bool {
-		return internal::cmp::cmp_impl_<A&&, B&&>::eq(VEG_FWD(a), VEG_FWD(b));
-	}
+			(a, A const&),
+			(b, B const&))
+	const noexcept->bool { return internal::cmp::cmp_impl_<A, B>::eq(a, b); }
 };
 } // namespace nb
 VEG_NIEBLOID(three_way);
