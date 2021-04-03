@@ -193,10 +193,10 @@
 			__VEG_PP_TUPLE_TRANSFORM_I(__VEG_IMPL_ADD_VALUE, _, Terms))
 
 #define __VEG_IMPL_CONJUNCTION(Tuple)                                          \
-	conjunction<__VEG_PP_REMOVE_PAREN(                                           \
+	::veg::meta::conjunction<__VEG_PP_REMOVE_PAREN(                              \
 			__VEG_PP_TUPLE_TRANSFORM_I(__VEG_IMPL_PUT_TRAIT, _, Tuple))>
 #define __VEG_IMPL_DISJUNCTION(Tuple)                                          \
-	disjunction<__VEG_PP_REMOVE_PAREN(                                           \
+	::veg::meta::disjunction<__VEG_PP_REMOVE_PAREN(                              \
 			__VEG_PP_TUPLE_TRANSFORM_I(__VEG_IMPL_PUT_TRAIT, _, Tuple))>
 
 #endif
