@@ -133,9 +133,8 @@
 	struct Name : __VA_ARGS__ {};                                                \
 	}                                                                            \
 	namespace {                                                                  \
-	VEG_IGNORE_CPP14_EXTENSION_WARNING(                                          \
-			template <__VEG_PP_REMOVE_PAREN1(Tpl)>                                   \
-			constexpr bool const& Name = ::veg::meta::bool_constant<Value>::value);  \
+	template <__VEG_PP_REMOVE_PAREN1(Tpl)>                                       \
+	constexpr bool const& Name = ::veg::meta::bool_constant<Value>::value;       \
 	}                                                                            \
 	VEG_NOM_SEMICOLON
 #else
