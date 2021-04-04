@@ -55,6 +55,22 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#define VEG_DECLVAL(...) (static_cast<__VA_ARGS__ (*)()>(nullptr)())
+
+#if __cplusplus >= 201703L
+#define VEG_DECLVAL_NOEXCEPT(...)                                              \
+	(static_cast<__VA_ARGS__ (*)() noexcept>(nullptr)())
+#else
+#define VEG_DECLVAL_NOEXCEPT(...)                                              \
+	(::veg::internal::meta_::declval<__VA_ARGS__>())
+#endif
+
+#define VEG_DEDUCE_RET(...)                                                    \
+	noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) {                     \
+		return __VA_ARGS__;                                                        \
+	}                                                                            \
+	VEG_NOM_SEMICOLON
+
 #if __cplusplus >= 201703L
 #define VEG_ALL_OF(...) (__VA_ARGS__ && ... && true)
 #define VEG_ANY_OF(...) (__VA_ARGS__ || ... || false)

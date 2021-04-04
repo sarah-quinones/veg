@@ -3,9 +3,6 @@
 #endif
 #undef VEG_PROLOGUE
 
-#undef VEG_DECLVAL
-#undef VEG_DECLVAL_NOEXCEPT
-#undef VEG_DEDUCE_RET
 #undef VEG_HAS_BUILTIN_OR_0
 #undef VEG_HAS_BUILTIN_OR_1
 #undef VEG_HAS_BUILTIN_OR

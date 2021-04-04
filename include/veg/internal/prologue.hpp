@@ -3,22 +3,6 @@
 #endif
 #define VEG_PROLOGUE
 
-#define VEG_DECLVAL(...) (static_cast<__VA_ARGS__ (*)()>(nullptr)())
-
-#if __cplusplus >= 201703L
-#define VEG_DECLVAL_NOEXCEPT(...)                                              \
-	(static_cast<__VA_ARGS__ (*)() noexcept>(nullptr)())
-#else
-#define VEG_DECLVAL_NOEXCEPT(...)                                              \
-	(::veg::internal::meta_::declval<__VA_ARGS__>())
-#endif
-
-#define VEG_DEDUCE_RET(...)                                                    \
-	noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) {                     \
-		return __VA_ARGS__;                                                        \
-	}                                                                            \
-	VEG_NOM_SEMICOLON
-
 #define VEG_HAS_BUILTIN_OR_0(True, False) __VEG_PP_REMOVE_PAREN(False)
 #define VEG_HAS_BUILTIN_OR_1(True, False) __VEG_PP_REMOVE_PAREN(True)
 #define VEG_HAS_BUILTIN_OR(Builtin, True, False)                               \
