@@ -36,6 +36,7 @@ private:
 template <typename T>
 struct Tag {};
 struct Cvt {};
+struct Into {};
 struct InitList {};
 struct FromRawParts {};
 struct InPlace {};
@@ -44,6 +45,7 @@ VEG_INLINE_VAR_TEMPLATE(typename T, tag, Tag<T>);
 VEG_INLINE_VAR(init_list, InitList);
 VEG_INLINE_VAR(inplace, InPlace);
 VEG_INLINE_VAR(cvt, Cvt);
+VEG_INLINE_VAR(into, Into);
 VEG_INLINE_VAR(from_raw_parts, FromRawParts);
 VEG_INLINE_VAR(safe, Safe);
 VEG_INLINE_VAR(unsafe, Unsafe);

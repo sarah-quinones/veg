@@ -296,9 +296,9 @@ struct impl {
 	static HEDLEY_ALWAYS_INLINE
 	VEG_CPP14(constexpr) void apply(Tup& ts, Tup& us) noexcept {
 		static_assert(NoExcept, "no");
-		Tup tmp = ts;
-		ts = us;
-		us = tmp;
+		Tup tmp = static_cast<Tup&&>(ts);
+		ts = static_cast<Tup&&>(us);
+		us = static_cast<Tup&&>(tmp);
 	}
 };
 template <>

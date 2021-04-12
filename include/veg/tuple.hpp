@@ -151,52 +151,53 @@ struct Tuple
 	VEG_DOC_CTOR
 	/// tuple converting move constructor
 	/// initializes the member `arg_i` from `FWD(other.arg_i)`
-	VEG_TEMPLATE_EXPLICIT(
+	VEG_TEMPLATE(
 			(typename... Us),
 			requires(VEG_ALL_OF(VEG_CONCEPT(constructible<Ts, Us&&>))),
-			explicit(VEG_ANY_OF(!VEG_CONCEPT(convertible<Us&&, Ts>))),
 			HEDLEY_ALWAYS_INLINE constexpr Tuple,
-			((tup, Tuple<Us...>&&)),
-			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us&&>))))
+			(/*tag*/, Into),
+			(tup, Tuple<Us...>&&))
+	noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us&&>))))
 			: Indexed(
-					internal::tup_::hidden_tag2{},
-					static_cast<
-							meta::constant<meta::category_e, meta::category_e::ref_mov>*>(
-							nullptr),
-					tup){})
+						internal::tup_::hidden_tag2{},
+						static_cast<
+								meta::constant<meta::category_e, meta::category_e::ref_mov>*>(
+								nullptr),
+						tup) {}
 
 	VEG_DOC_CTOR
 	/// tuple converting constructor
 	/// initializes the member `arg_i` from `other.arg_i`
-	VEG_TEMPLATE_EXPLICIT(
+	VEG_TEMPLATE(
 			(typename... Us),
 			requires(VEG_ALL_OF((VEG_CONCEPT(constructible<Ts, Us&>)))),
-			explicit(VEG_ANY_OF(!VEG_CONCEPT(convertible<Us&, Ts>))),
 			HEDLEY_ALWAYS_INLINE constexpr Tuple,
-			((tup, Tuple<Us...>&)),
-			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us&>))))
+			(/*tag*/, Into),
+			(tup, Tuple<Us...>&))
+	noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us&>))))
 			: Indexed(
-					internal::tup_::hidden_tag2{},
-					static_cast<
-							meta::constant<meta::category_e, meta::category_e::ref_mut>*>(
-							nullptr),
-					tup){})
+						internal::tup_::hidden_tag2{},
+						static_cast<
+								meta::constant<meta::category_e, meta::category_e::ref_mut>*>(
+								nullptr),
+						tup) {}
 
 	VEG_DOC_CTOR
 	/// tuple converting copy constructor
 	/// initializes the member `arg_i` from `other.arg_i`
-	VEG_TEMPLATE_EXPLICIT(
+	VEG_TEMPLATE(
 			(typename... Us),
 			requires(VEG_ALL_OF(VEG_CONCEPT(constructible<Ts, Us const&>))),
-			explicit(VEG_ANY_OF(!VEG_CONCEPT(convertible<Us const&, Ts>))),
 			HEDLEY_ALWAYS_INLINE constexpr Tuple,
-			((tup, Tuple<Us...> const&)),
-			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us const&>))))
+			(/*tag*/, Into),
+			(tup, Tuple<Us...> const&))
+	noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us const&>))))
 			: Indexed(
-					internal::tup_::hidden_tag2{},
-					static_cast<meta::constant<meta::category_e, meta::category_e::ref>*>(
-							nullptr),
-					tup){})
+						internal::tup_::hidden_tag2{},
+						static_cast<
+								meta::constant<meta::category_e, meta::category_e::ref>*>(
+								nullptr),
+						tup) {}
 
 	VEG_DOC_CTOR
 	template <typename... Us>
@@ -616,7 +617,7 @@ struct tuple_cat {
 	VEG_TEMPLATE(
 			(typename... Tuples),
 			requires(VEG_ALL_OF(VEG_CONCEPT(tuple<Tuples>))),
-			constexpr auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(... tups, Tuples))
 	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Tuples>)))
@@ -630,7 +631,7 @@ private:
 	static constexpr auto apply() noexcept -> Tuple<> { return {}; }
 
 	template <usize... Is, typename... Ts, typename... Tuples>
-	static constexpr auto apply(
+	HEDLEY_ALWAYS_INLINE static constexpr auto apply(
 			IndexedTuple<meta::index_sequence<Is...>, Ts...>&& first,
 			Tuples&&... rest) noexcept
 			-> meta::type_sequence_apply<
@@ -643,7 +644,7 @@ private:
 	}
 
 	template <usize... Is, typename... Ts, usize... Js, typename... Us>
-	static constexpr auto apply2(
+	HEDLEY_ALWAYS_INLINE static constexpr auto apply2(
 			IndexedTuple<meta::index_sequence<Is...>, Ts...>&& first,
 			IndexedTuple<meta::index_sequence<Js...>, Us...>&& second) noexcept
 			-> Tuple<Ts..., Us...> {
@@ -662,11 +663,12 @@ struct tuple_unpack {
 			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(fn, Fn&&),
-			(args, Tuple<Args...>))
+			(args, IndexedTuple<meta::index_sequence<Is...>, Args...>))
 	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>))
 			->meta::invoke_result_t<Fn, Args&&...> {
-		return internal::tup_::unpack_args_impl(
-				meta::type_sequence<Args&&...>{}, VEG_FWD(fn), VEG_FWD(args));
+
+		return VEG_FWD(fn)(
+				static_cast<Args&&>(internal::tup_::get_impl<Is>(args))...);
 	}
 };
 
@@ -782,7 +784,7 @@ struct tuple_fwd {
 	VEG_TEMPLATE(
 			typename... Ts,
 			requires(VEG_ALL_OF(VEG_CONCEPT(constructible<Ts, Ts&&>))),
-			constexpr auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(... args, Ts&&))
 	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Ts&&>)))

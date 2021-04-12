@@ -5,6 +5,7 @@
 #include <utility>
 #include <doctest.h>
 #include "veg/memory/placement.hpp"
+#include "veg/functional/utils.hpp"
 #include "veg/internal/prologue.hpp"
 
 #define MOV VEG_MOV
@@ -99,9 +100,10 @@ TEST_CASE("tuple: all") {
 		using val_tup = veg::Tuple<int, bool>;
 		val_tup a{cvt, 5, true};
 		val_tup b{cvt, 3, false};
-		STATIC_ASSERT(VEG_CONCEPT(constructible<veg::Tuple<long, bool>, val_tup>));
 		STATIC_ASSERT(
-				VEG_CONCEPT(constructible<veg::Tuple<long, bool>, val_tup const&>));
+				VEG_CONCEPT(constructible<veg::Tuple<long, bool>, Into, val_tup>));
+		STATIC_ASSERT(VEG_CONCEPT(
+				constructible<veg::Tuple<long, bool>, Into, val_tup const&>));
 
 		veg::swap(a, b);
 		CHECK(a[0_c] == 3);
@@ -122,7 +124,7 @@ TEST_CASE("tuple: all") {
 		int i = 13;
 		val_tup j{cvt, 12};
 		ref_tup a{cvt, i};
-		ref_tup const b{j};
+		ref_tup const b{into, j};
 		veg::swap(FWD(a), FWD(b));
 
 		CHECK(i == 12);
@@ -142,8 +144,8 @@ TEST_CASE("tuple: all") {
 		STATIC_ASSERT(VEG_CONCEPT(trivially_copyable<rref_tup>));
 		STATIC_ASSERT(VEG_CONCEPT(constructible<ref_tup, ref_tup>));
 		STATIC_ASSERT(VEG_CONCEPT(constructible<ref_tup, ref_tup&>));
-		STATIC_ASSERT(VEG_CONCEPT(constructible<ref_tup, rref_tup&>));
-		STATIC_ASSERT(VEG_CONCEPT(constructible<ref_tup, rref_tup const&>));
+		STATIC_ASSERT(VEG_CONCEPT(constructible<ref_tup, Into, rref_tup&>));
+		STATIC_ASSERT(VEG_CONCEPT(constructible<ref_tup, Into, rref_tup const&>));
 		STATIC_ASSERT(!VEG_CONCEPT(constructible<ref_tup, rref_tup&&>));
 		int i = 13;
 		int j = 12;
@@ -169,15 +171,17 @@ TEST_CASE("tuple: all") {
 	CHECK(tup[2_c]);
 
 	{
-		auto&& ref = VEG_MOV(tup)[2_c];
+		auto&& ref1 = VEG_MOV(tup)[2_c];
 		auto&& ref2 = VEG_MOV(tup).as_ref()[2_c];
-		CHECK(&ref != &tup[2_c]);
+		CHECK(&ref1 != &tup[2_c]);
 		CHECK(&ref2 == &tup[2_c]);
 	}
 
-	VEG_BIND(auto, (e, f, g), [&] { return tup; }());
+	using veg::clone;
+
+	VEG_BIND(auto, (e, f, g), [&] { return clone(tup); }());
 #if __cplusplus >= 201703L
-	auto [i, c, b] = [&] { return tup; }();
+	auto [i, c, b] = [&] { return clone(tup); }();
 	CHECK(i == 1);
 	CHECK(c == 'c');
 	CHECK(b);
@@ -306,8 +310,8 @@ TEST_CASE("tuple: cvt") {
 	using namespace veg;
 	Tuple<int, double> t1{cvt, 1, 1.5F};
 	Tuple<long, double> t2(cvt, 3, 2.5);
-	Tuple<long, double> t3(t1);
-	Tuple<int, double> t4(t3);
+	Tuple<long, double> t3{into, t1};
+	Tuple<int, double> t4{into, t3};
 
 	STATIC_ASSERT(sizeof(t2) == sizeof(long) + sizeof(double));
 
@@ -358,7 +362,7 @@ TEST_CASE("tuple: derived") {
 	swap(t, t);
 	CHECK(t[0_c] == 1);
 	CHECK(t[1_c] == 2.0F);
-	Tref r{t};
+	Tref r{into, t};
 	swap(t, FWD(r));
 	CHECK(t[0_c] == 1);
 	CHECK(t[1_c] == 2.0F);
