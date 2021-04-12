@@ -1,9 +1,9 @@
 #ifndef VEG_COMPOSE_HPP_XCUOP6MPS
 #define VEG_COMPOSE_HPP_XCUOP6MPS
 
-#include <veg/type_traits/invocable.hpp>
-#include <veg/type_traits/constructible.hpp>
-#include <veg/internal/prologue.hpp>
+#include "veg/type_traits/invocable.hpp"
+#include "veg/type_traits/constructible.hpp"
+#include "veg/internal/prologue.hpp"
 
 namespace veg {
 inline namespace VEG_ABI {
@@ -61,5 +61,5 @@ VEG_NIEBLOID(compose_fwd);
 } // namespace VEG_ABI
 } // namespace veg
 
-#include <veg/internal/epilogue.hpp>
+#include "veg/internal/epilogue.hpp"
 #endif /* end of include guard VEG_COMPOSE_HPP_XCUOP6MPS */

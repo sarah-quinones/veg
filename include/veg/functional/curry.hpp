@@ -1,10 +1,10 @@
 #ifndef VEG_CURRY_HPP_KV8QZWDES
 #define VEG_CURRY_HPP_KV8QZWDES
 
-#include <veg/type_traits/invocable.hpp>
-#include <veg/type_traits/constructible.hpp>
-#include <veg/internal/tuple_generic.hpp>
-#include <veg/internal/prologue.hpp>
+#include "veg/type_traits/invocable.hpp"
+#include "veg/type_traits/constructible.hpp"
+#include "veg/internal/tuple_generic.hpp"
+#include "veg/internal/prologue.hpp"
 
 namespace veg {
 inline namespace VEG_ABI {
@@ -191,5 +191,5 @@ VEG_NIEBLOID(rcurry_fwd);
 } // namespace VEG_ABI
 } // namespace veg
 
-#include <veg/internal/epilogue.hpp>
+#include "veg/internal/epilogue.hpp"
 #endif /* end of include guard VEG_CURRY_HPP_KV8QZWDES */

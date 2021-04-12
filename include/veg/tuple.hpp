@@ -658,9 +658,7 @@ private:
 struct tuple_unpack {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Args, usize... Is),
-			requires(
-					VEG_ALL_OF(VEG_CONCEPT(reference<Args>)) &&
-					VEG_CONCEPT(invocable<Fn, Args&&...>)),
+			requires(VEG_CONCEPT(invocable<Fn, Args&&...>)),
 			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(fn, Fn&&),
@@ -675,9 +673,7 @@ struct tuple_unpack {
 struct tuple_for_each_i {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Args, usize... Is),
-			requires(
-					VEG_ALL_OF(VEG_CONCEPT(reference<Args>)) &&
-					VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Fix<i64{Is}>, Args&&>))),
+			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Fix<i64{Is}>, Args&&>))),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
 			operator(),
 			(fn, Fn&&),
@@ -692,9 +688,7 @@ struct tuple_for_each_i {
 struct tuple_for_each {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Args),
-			requires(
-					VEG_ALL_OF(VEG_CONCEPT(reference<Args>)) &&
-					VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Args&&>))),
+			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Args&&>))),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
 			operator(),
 			(fn, Fn&&),
