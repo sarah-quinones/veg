@@ -36,11 +36,11 @@ VEG_DEF_CONCEPT(
 
 template <typename Fn, typename... Args>
 concept invocable = requires(Fn&& fn, Args&&... args) {
-	VEG_FWD(fn)(VEG_FWD(args)...);
+	static_cast<Fn&&>(fn)(static_cast<Args&&>(args)...);
 };
 template <typename Fn, typename... Args>
 concept nothrow_invocable = requires(Fn&& fn, Args&&... args) {
-	requires noexcept(VEG_FWD(fn)(VEG_FWD(args)...));
+	requires noexcept(static_cast<Fn&&>(fn)(static_cast<Args&&>(args)...));
 };
 
 #else
