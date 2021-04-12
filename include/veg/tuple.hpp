@@ -683,7 +683,7 @@ struct tuple_for_each_i {
 		static_cast<void>(internal::EmptyArr{
 				(static_cast<void>(
 						 fn(Fix<i64{Is}>{},
-		            static_cast<Args&&>(internal::tup_::get_impl(args)))),
+		            static_cast<Args&&>(internal::tup_::get_impl<Is>(args)))),
 		     internal::Empty{})...});
 	}
 };
@@ -699,7 +699,7 @@ struct tuple_for_each {
 	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Args&&>))) {
 		static_cast<void>(internal::EmptyArr{
 				(static_cast<void>(
-						 fn(static_cast<Args&&>(internal::tup_::get_impl(args)))),
+						 fn(static_cast<Args&&>(internal::tup_::get_impl<Is>(args)))),
 		     internal::Empty{})...});
 	}
 };
