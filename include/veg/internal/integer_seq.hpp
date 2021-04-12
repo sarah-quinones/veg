@@ -89,6 +89,7 @@ using make_index_sequence = make_integer_sequence<usize, N>;
 
 template <typename... Ts>
 struct type_sequence;
+
 } // namespace meta_
 } // namespace internal
 namespace meta {
@@ -105,6 +106,53 @@ using index_sequence = integer_sequence<usize, Nums...>;
 template <typename... Ts>
 using type_sequence = internal::meta_::type_sequence<Ts...>*;
 
+} // namespace meta
+namespace internal {
+namespace meta_ {
+template <template <typename...> class F, typename Seq>
+struct apply_type_seq;
+template <template <typename...> class F, typename... Ts>
+struct apply_type_seq<F, meta::type_sequence<Ts...>> {
+	using type = F<Ts...>;
+};
+
+template <typename... Seqs>
+struct concat_type_seq;
+
+template <>
+struct concat_type_seq<> {
+	using type = meta::type_sequence<>;
+};
+
+template <typename... Ts>
+struct concat_type_seq<meta::type_sequence<Ts...>> {
+	using type = meta::type_sequence<Ts...>;
+};
+
+template <typename... Ts, typename... Us>
+struct concat_type_seq<meta::type_sequence<Ts...>, meta::type_sequence<Us...>> {
+	using type = meta::type_sequence<Ts..., Us...>;
+};
+
+template <typename... Ts, typename... Us, typename... Seqs>
+struct concat_type_seq<
+		meta::type_sequence<Ts...>,
+		meta::type_sequence<Us...>,
+		Seqs...> {
+	using type = typename concat_type_seq<
+			meta::type_sequence<Ts..., Us...>,
+			typename concat_type_seq<Seqs...>::type>::type;
+};
+} // namespace meta_
+} // namespace internal
+namespace meta {
+template <typename... Seqs>
+using type_sequence_cat =
+		typename internal::meta_::concat_type_seq<Seqs...>::type;
+
+template <template <typename...> class F, typename Seq>
+using type_sequence_apply =
+		typename internal::meta_::apply_type_seq<F, Seq>::type;
 } // namespace meta
 } // namespace VEG_ABI
 } // namespace veg

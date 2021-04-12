@@ -62,6 +62,10 @@ struct is_tuple_helper {
 	static auto element(void*) noexcept -> void;
 	template <usize I, typename... Ts>
 	static auto element(Tuple<Ts...>*) noexcept -> ith<I, Ts...>;
+
+	static auto seq(void*) noexcept -> void;
+	template <typename... Ts>
+	static auto seq(Tuple<Ts...>*) noexcept -> meta::type_sequence<Ts...>;
 };
 } // namespace meta_
 } // namespace internal
@@ -76,6 +80,10 @@ using tuple_size =
 template <usize I, typename T>
 using tuple_element_t = decltype(
 		internal::meta_::is_tuple_helper::template element<I>(VEG_DECLVAL(T*)));
+
+template <typename T>
+using tuple_seq_t =
+		decltype(internal::meta_::is_tuple_helper::seq(VEG_DECLVAL(T*)));
 } // namespace meta
 
 namespace concepts {
@@ -561,10 +569,10 @@ struct tuple_zip {
 		using type = Tuple<T, meta::tuple_element_t<I, Ts>...>;
 
 		template <typename... Ts>
-		constexpr auto apply(Ts&&... tups) const noexcept(
-				VEG_CONCEPT(nothrow_move_constructible<T>) &&
-				VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>)))
-				-> type<Ts...> {
+		using type_ref = Tuple<T&&, meta::tuple_element_t<I, Ts>&&...>;
+
+		template <typename... Ts>
+		constexpr auto apply(Ts&&... tups) const noexcept -> type_ref<Ts...> {
 			return {
 					Cvt{},
 					VEG_FWD(first),
@@ -597,6 +605,55 @@ struct tuple_zip {
 				tuple_zip_helper<Is, Ts>{
 						static_cast<Ts&&>(internal::tup_::get_impl<Is>(tup))}
 						.template apply<Tuples...>(VEG_FWD(tups)...)...};
+	}
+};
+
+struct tuple_cat {
+	template <typename ISeq, typename... Ts>
+	using IndexedTuple = internal::tup_::IndexedTuple<ISeq, Ts...>;
+
+	template <typename... Ts>
+	using TupleRef = Tuple<Ts&&...>;
+
+	VEG_TEMPLATE(
+			(typename... Tuples),
+			requires(VEG_ALL_OF(VEG_CONCEPT(tuple<Tuples>))),
+			constexpr auto
+			operator(),
+			(... tups, Tuples))
+	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Tuples>)))
+			->meta::type_sequence_apply<
+					Tuple,
+					meta::type_sequence_cat<meta::tuple_seq_t<Tuples>...>> {
+		return tuple_cat::apply(VEG_FWD(tups).as_ref()...);
+	}
+
+private:
+	static constexpr auto apply() noexcept -> Tuple<> { return {}; }
+
+	template <usize... Is, typename... Ts, typename... Tuples>
+	static constexpr auto apply(
+			IndexedTuple<meta::index_sequence<Is...>, Ts...>&& first,
+			Tuples&&... rest) noexcept
+			-> meta::type_sequence_apply<
+					Tuple,
+					meta::type_sequence_cat<
+							meta::type_sequence<Ts...>,
+							meta::tuple_seq_t<Tuples>...>> {
+		return tuple_cat::apply2(
+				VEG_FWD(first), tuple_cat::apply(VEG_FWD(rest)...));
+	}
+
+	template <usize... Is, typename... Ts, usize... Js, typename... Us>
+	static constexpr auto apply2(
+			IndexedTuple<meta::index_sequence<Is...>, Ts...>&& first,
+			IndexedTuple<meta::index_sequence<Js...>, Us...>&& second) noexcept
+			-> Tuple<Ts..., Us...> {
+		return {
+				Cvt{},
+				static_cast<Ts&&>(internal::tup_::get_impl<Is>(first))...,
+				static_cast<Us&&>(internal::tup_::get_impl<Js>(second))...,
+		};
 	}
 };
 
@@ -740,6 +797,7 @@ VEG_NIEBLOID(tuple_unpack);
 VEG_NIEBLOID(tuple_for_each_i);
 VEG_NIEBLOID(tuple_for_each);
 VEG_NIEBLOID(tuple_zip);
+VEG_NIEBLOID(tuple_cat);
 
 namespace nb {
 struct tuple {

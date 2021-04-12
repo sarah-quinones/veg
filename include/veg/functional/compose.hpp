@@ -1,10 +1,12 @@
+#ifndef VEG_COMPOSE_HPP_XCUOP6MPS
+#define VEG_COMPOSE_HPP_XCUOP6MPS
+
 #include <veg/type_traits/invocable.hpp>
 #include <veg/type_traits/constructible.hpp>
 #include <veg/internal/prologue.hpp>
 
 namespace veg {
 inline namespace VEG_ABI {
-namespace fn {
 namespace internal {
 namespace compose_ {
 template <typename... Ts>
@@ -54,6 +56,8 @@ struct ComposeImpl<First, Rest...> {
 } // namespace compose_
 } // namespace internal
 
+namespace fn {
+
 template <typename... Fns>
 struct Compose {
 	using Impl = internal::compose_::ComposeImpl<Fns...>;
@@ -76,7 +80,7 @@ struct Compose {
 			typename... Args,
 			requires(VEG_CONCEPT(
 					detected<Impl::template return_type_t, Impl&&, Args&&...>)),
-			auto constexpr
+			auto VEG_CPP14(constexpr)
 			operator(),
 			(... args, Args&&))
 	&&noexcept(noexcept(Impl::call(VEG_FWD(impl), VEG_FWD(args)...)))
@@ -88,7 +92,7 @@ struct Compose {
 			typename... Args,
 			requires(VEG_CONCEPT(
 					detected<Impl::template return_type_t, Impl&, Args&&...>)),
-			auto constexpr
+			auto VEG_CPP14(constexpr)
 			operator(),
 			(... args, Args&&))
 	&noexcept(noexcept(Impl::call(impl, VEG_FWD(args)...)))
@@ -120,3 +124,4 @@ VEG_NIEBLOID(compose_fwd);
 } // namespace veg
 
 #include <veg/internal/epilogue.hpp>
+#endif /* end of include guard VEG_COMPOSE_HPP_XCUOP6MPS */
