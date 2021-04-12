@@ -557,11 +557,11 @@ noexcept -> meta::common_comparison_category_t<
 } // namespace internal
 
 namespace nb {
+template <typename ISeq, typename... Ts>
+using IndexedTuple = internal::tup_::IndexedTuple<ISeq, Ts...>;
+
 struct tuple_zip {
 	constexpr auto operator()() const noexcept -> Tuple<> { return {}; }
-
-	template <typename ISeq, typename... Ts>
-	using IndexedTuple = internal::tup_::IndexedTuple<ISeq, Ts...>;
 
 	template <usize I, typename T>
 	struct tuple_zip_helper {
@@ -609,8 +609,6 @@ struct tuple_zip {
 };
 
 struct tuple_cat {
-	template <typename ISeq, typename... Ts>
-	using IndexedTuple = internal::tup_::IndexedTuple<ISeq, Ts...>;
 
 	template <typename... Ts>
 	using TupleRef = Tuple<Ts&&...>;
@@ -659,138 +657,52 @@ private:
 
 struct tuple_unpack {
 	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
-			requires(VEG_CONCEPT(invocable<Fn, Args&&...>)),
+			(typename Fn, typename... Args, usize... Is),
+			requires(
+					VEG_ALL_OF(VEG_CONCEPT(reference<Args>)) &&
+					VEG_CONCEPT(invocable<Fn, Args&&...>)),
 			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(fn, Fn&&),
-			(args, Tuple<Args...>&&))
+			(args, Tuple<Args...>))
 	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>))
 			->meta::invoke_result_t<Fn, Args&&...> {
 		return internal::tup_::unpack_args_impl(
 				meta::type_sequence<Args&&...>{}, VEG_FWD(fn), VEG_FWD(args));
 	}
-
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
-			requires(VEG_CONCEPT(invocable<Fn, Args const&...>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
-			operator(),
-			(fn, Fn&&),
-			(args, Tuple<Args...> const&))
-	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args const&...>))
-			->meta::invoke_result_t<Fn, Args const&...> {
-		return internal::tup_::unpack_args_impl(
-				meta::type_sequence<Args const&...>{}, VEG_FWD(fn), VEG_FWD(args));
-	}
-
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
-			requires(VEG_CONCEPT(invocable<Fn, Args&...>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
-			operator(),
-			(fn, Fn&&),
-			(args, Tuple<Args...>&))
-	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args&...>))
-			->meta::invoke_result_t<Fn, Args&...> {
-		return internal::tup_::unpack_args_impl(
-				meta::type_sequence<Args&...>{}, VEG_FWD(fn), VEG_FWD(args));
-	}
-
-	template <typename Fn, typename... Args>
-	void operator()(Fn&&, Tuple<Args...> const&&) const noexcept = delete;
 };
 
 struct tuple_for_each_i {
-	template <typename ISeq, typename... Ts>
-	using IndexedTuple = internal::tup_::IndexedTuple<ISeq, Ts...>;
-
 	VEG_TEMPLATE(
 			(typename Fn, typename... Args, usize... Is),
-			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Fix<i64{Is}>, Args&&>))),
+			requires(
+					VEG_ALL_OF(VEG_CONCEPT(reference<Args>)) &&
+					VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Fix<i64{Is}>, Args&&>))),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
 			operator(),
 			(fn, Fn&&),
-			(args, IndexedTuple<meta::index_sequence<Is...>, Args...>&&))
+			(args, IndexedTuple<meta::index_sequence<Is...>, Args...>))
 	const noexcept(
 			VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Fix<i64{Is}>, Args&&>))) {
 		internal::tup_::for_each_i_impl(
 				meta::type_sequence<Args&&...>{}, fn, VEG_FWD(args));
 	}
-
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args, usize... Is),
-			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Fix<i64{Is}>, Args&>))),
-			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
-			operator(),
-			(fn, Fn&&),
-			(args, IndexedTuple<meta::index_sequence<Is...>, Args...>&))
-	const noexcept(
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Fix<i64{Is}>, Args&>))) {
-		internal::tup_::for_each_i_impl(
-				meta::type_sequence<Args&...>{}, fn, VEG_FWD(args));
-	}
-
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args, usize... Is),
-			requires(
-					VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Fix<i64{Is}>, Args const&>))),
-			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
-			operator(),
-			(fn, Fn&&),
-			(args, IndexedTuple<meta::index_sequence<Is...>, Args...> const&))
-	const noexcept(VEG_ALL_OF(
-			VEG_CONCEPT(nothrow_invocable<Fn&, Fix<i64{Is}>, Args const&>))) {
-		internal::tup_::for_each_i_impl(
-				meta::type_sequence<Args const&...>{}, fn, VEG_FWD(args));
-	}
-
-	template <typename Fn, typename... Args, usize... Is>
-	void
-	operator()(Fn&&, IndexedTuple<meta::index_sequence<Is...>, Args...> const&&)
-			const noexcept = delete;
 };
 
 struct tuple_for_each {
-
 	VEG_TEMPLATE(
 			(typename Fn, typename... Args),
-			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Args&&>))),
+			requires(
+					VEG_ALL_OF(VEG_CONCEPT(reference<Args>)) &&
+					VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Args&&>))),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
 			operator(),
 			(fn, Fn&&),
-			(args, Tuple<Args...>&&))
+			(args, Tuple<Args...>))
 	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Args&&>))) {
 		internal::tup_::for_each_impl(
 				meta::type_sequence<Args&&...>{}, fn, VEG_FWD(args));
 	}
-
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
-			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Args&>))),
-			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
-			operator(),
-			(fn, Fn&&),
-			(args, Tuple<Args...>&))
-	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Args&>))) {
-		internal::tup_::for_each_impl(
-				meta::type_sequence<Args&...>{}, fn, VEG_FWD(args));
-	}
-
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
-			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Args const&>))),
-			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
-			operator(),
-			(fn, Fn&&),
-			(args, Tuple<Args...> const&))
-	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Args const&>))) {
-		internal::tup_::for_each_impl(
-				meta::type_sequence<Args const&...>{}, fn, VEG_FWD(args));
-	}
-
-	template <typename Fn, typename... Args>
-	void operator()(Fn&&, Tuple<Args...> const&&) const noexcept = delete;
 };
 } // namespace nb
 VEG_NIEBLOID(tuple_unpack);

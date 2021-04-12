@@ -8,11 +8,8 @@
 
 namespace veg {
 inline namespace VEG_ABI {
-namespace internal {
-namespace curry_ {} // namespace curry_
-} // namespace internal
-
 namespace fn {
+
 template <typename Fn, typename... StoredArgs>
 struct Curried {
 	Fn fn;
@@ -38,42 +35,13 @@ struct Curried {
 			constexpr auto
 			operator(),
 			(... args,
-	     Args&&)) && noexcept(VEG_FWD(fn)(VEG_FWD(args)..., VEG_DECLVAL_NOEXCEPT(StoredArgs&&)...))
+	     Args&&)) && noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args&&..., StoredArgs&&...>))
 			-> meta::invoke_result_t<Fn, Args&&..., StoredArgs&&...> {
-		return Curried::call(
+		return Curried::template call<
+				(VEG_CONCEPT(nothrow_invocable<Fn, Args&&..., StoredArgs&&...>)),
+				meta::invoke_result_t<Fn, Args&&..., StoredArgs&&...>>(
 				meta::make_index_sequence<sizeof...(StoredArgs)>{},
-				meta::type_sequence<StoredArgs&&...>{},
 				static_cast<Curried&&>(*this),
-				VEG_FWD(args)...);
-	}
-	VEG_TEMPLATE(
-			typename... Args,
-			requires(VEG_CONCEPT(invocable<Fn, Args&&..., StoredArgs&...>)),
-			constexpr auto
-			operator(),
-			(... args,
-	     Args&&)) & noexcept(fn(VEG_FWD(args)..., VEG_DECLVAL_NOEXCEPT(StoredArgs&)...))
-			-> meta::invoke_result_t<Fn&, Args&&..., StoredArgs&...> {
-		return Curried::call(
-				meta::make_index_sequence<sizeof...(StoredArgs)>{},
-				meta::type_sequence<StoredArgs&...>{},
-				*this,
-				VEG_FWD(args)...);
-	}
-	VEG_TEMPLATE(
-			typename... Args,
-			requires(
-					VEG_CONCEPT(invocable<Fn const&, Args&&..., StoredArgs const&...>)),
-			constexpr auto
-			operator(),
-			(... args, Args&&))
-	const& noexcept(fn(VEG_FWD(args)...,
-	                   VEG_DECLVAL_NOEXCEPT(StoredArgs const&)...))
-			->meta::invoke_result_t<Fn&, Args&&..., StoredArgs const&...> {
-		return Curried::call(
-				meta::make_index_sequence<sizeof...(StoredArgs)>{},
-				meta::type_sequence<StoredArgs const&...>{},
-				*this,
 				VEG_FWD(args)...);
 	}
 
@@ -83,16 +51,14 @@ private:
 			typename Ret,
 			typename Self,
 			typename... Args,
-			typename... Actual_Stored,
 			usize... Is>
 	static constexpr auto call(
 			meta::index_sequence<Is...> /*iseq*/,
-			meta::type_sequence<Actual_Stored...> /*tseq*/,
 			Self&& self,
 			Args&&... args) noexcept(NoExcept) -> Ret {
 		return (VEG_FWD(self).fn)(
 				VEG_FWD(args)...,
-				static_cast<Actual_Stored&&>(
+				static_cast<StoredArgs&&>(
 						internal::tup_::get_impl<Is>(self.stored_args))...);
 	}
 
@@ -112,6 +78,76 @@ private:
 		     static_cast<Ts&&>(internal::tup_::get_impl<Is>(stored))...}};
 	}
 };
+
+template <typename Fn, typename... StoredArgs>
+struct RCurried {
+	Fn fn;
+	veg::internal::SimpleTuple<StoredArgs...> stored_args;
+
+	VEG_TEMPLATE(
+			typename... Args,
+			requires(
+					VEG_CONCEPT(move_constructible<Fn>) &&
+					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
+			constexpr auto push_fwd,
+			(... args, Args&&))
+	&&noexcept(
+				VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
+				VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
+				->RCurried<Fn, Args..., StoredArgs...> {
+		return push_fwd_impl(VEG_FWD(args)..., VEG_FWD(stored_args));
+	}
+
+	VEG_TEMPLATE(
+			typename... Args,
+			requires(VEG_CONCEPT(invocable<Fn, StoredArgs&&..., Args&&...>)),
+			constexpr auto
+			operator(),
+			(... args,
+	     Args&&)) && noexcept(VEG_CONCEPT(nothrow_invocable<Fn, StoredArgs&&..., Args&&...>))
+			-> meta::invoke_result_t<Fn, StoredArgs&&..., Args&&...> {
+		return RCurried::template call<
+				(VEG_CONCEPT(nothrow_invocable<Fn, StoredArgs&&..., Args&&...>)),
+				meta::invoke_result_t<Fn, StoredArgs&&..., Args&&...>>(
+				meta::make_index_sequence<sizeof...(StoredArgs)>{},
+				static_cast<RCurried&&>(*this),
+				VEG_FWD(args)...);
+	}
+
+private:
+	template <
+			bool NoExcept,
+			typename Ret,
+			typename Self,
+			typename... Args,
+			usize... Is>
+	static constexpr auto call(
+			meta::index_sequence<Is...> /*iseq*/,
+			Self&& self,
+			Args&&... args) noexcept(NoExcept) -> Ret {
+		return (VEG_FWD(self).fn)(
+				static_cast<StoredArgs&&>(
+						internal::tup_::get_impl<Is>(self.stored_args))...,
+				VEG_FWD(args)...);
+	}
+
+	template <typename... Args, usize... Is, typename... Ts>
+	constexpr auto push_fwd_impl(
+			Args&&... args,
+			internal::tup_::IndexedTuple<meta::index_sequence<Is...>, Ts...>&&
+					stored) //
+			&& noexcept(
+					VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
+					-> RCurried<Fn, Args..., StoredArgs...> {
+		return {
+				VEG_FWD(fn),
+				{Cvt{},
+		     VEG_FWD(args)...,
+		     static_cast<Ts&&>(internal::tup_::get_impl<Is>(stored))...}};
+	}
+};
+
 } // namespace fn
 } // namespace VEG_ABI
 } // namespace veg
