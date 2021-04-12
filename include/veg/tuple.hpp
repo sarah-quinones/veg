@@ -118,7 +118,7 @@ struct Tuple
 	VEG_DOC_CTOR
 	/// copy constructor
 	/// copy constructs the elements memberwise
-	Tuple(Tuple const&)
+	explicit Tuple(Tuple const&)
 			VEG_DOC(noexcept(nothrow_copy_constructible<Ts>&&...) requires(
 					(copy_constructible<Ts>)&&...)) = default;
 
