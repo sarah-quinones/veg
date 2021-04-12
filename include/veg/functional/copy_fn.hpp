@@ -24,7 +24,7 @@ struct CopyFn {
 			VEG_CONCEPT(nothrow_copy_constructible<Fn>) &&
 			VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>))
 			->meta::invoke_result_t<Fn, Args&&...> {
-		return (clone)(fn)(VEG_FWD(args)...);
+		return Fn(fn)(VEG_FWD(args)...);
 	}
 };
 namespace nb {

@@ -20,45 +20,40 @@ struct Compose<> {
 	}
 };
 
-template <typename First, typename... Rest>
-struct Compose<First, Rest...> {
+template <typename First, typename... RestElems>
+struct Compose<First, RestElems...> {
+	using Rest = Compose<RestElems...>;
 	First first;
-	Compose<Rest...> rest;
+	Rest rest;
 
 	VEG_TEMPLATE(
 			(typename... Args),
 			requires(
-					VEG_CONCEPT(invocable<Compose<Rest...>, Args&&...>) &&
-					VEG_CONCEPT(invocable<
-											First,
-											meta::invoke_result_t<Compose<Rest...>, Args&&...>>)),
+					VEG_CONCEPT(invocable<Rest, Args&&...>) &&
+					VEG_CONCEPT(
+							invocable<First, meta::invoke_result_t<Rest, Args&&...>>)),
 			constexpr auto
 			operator(),
 			(... args,
 	     Args&&)) && noexcept(noexcept(VEG_FWD(first)(VEG_FWD(rest)(VEG_FWD(args)...))))
-			-> meta::invoke_result_t<
-					First,
-					meta::invoke_result_t<Compose<Rest...>, Args&&...>> {
+			-> meta::invoke_result_t<First, meta::invoke_result_t<Rest, Args&&...>> {
 		return VEG_FWD(first)(VEG_FWD(rest)(VEG_FWD(args)...));
 	}
 
 	VEG_TEMPLATE(
 			(typename... Args),
 			requires(
-					VEG_CONCEPT(copy_constructible<First>) &&
-					VEG_ALL_OF(VEG_CONCEPT(copy_constructible<Rest>)) &&
-					VEG_CONCEPT(invocable<Compose<Rest...>, Args&&...>) &&
-					VEG_CONCEPT(invocable<
-											First,
-											meta::invoke_result_t<Compose<Rest...>, Args&&...>>)),
+					VEG_CONCEPT(trivially_copy_constructible<First>) &&
+					VEG_ALL_OF(VEG_CONCEPT(trivially_copy_constructible<RestElems>)) &&
+					VEG_CONCEPT(invocable<Rest, Args&&...>) &&
+					VEG_CONCEPT(
+							invocable<First, meta::invoke_result_t<Rest, Args&&...>>)),
 			constexpr auto
 			operator(),
 			(... args, Args&&))
-	const& noexcept(noexcept(VEG_FWD(first)(VEG_FWD(rest)(VEG_FWD(args)...))))
-			->meta::invoke_result_t<
-					First,
-					meta::invoke_result_t<Compose<Rest...>, Args&&...>> {
-		return VEG_FWD((clone)(first))(VEG_FWD((clone)(rest))(VEG_FWD(args)...));
+	const& noexcept(noexcept(First(first)(Rest(rest)(VEG_FWD(args)...))))
+			->meta::invoke_result_t<First, meta::invoke_result_t<Rest, Args&&...>> {
+		return VEG_FWD(First(first))(VEG_FWD(Rest(rest))(VEG_FWD(args)...));
 	}
 };
 

@@ -45,6 +45,26 @@ struct Curried {
 				VEG_FWD(args)...);
 	}
 
+	VEG_TEMPLATE(
+			typename... Args,
+			requires(
+					VEG_CONCEPT(trivially_copy_constructible<Fn>) &&
+					VEG_ALL_OF(VEG_CONCEPT(trivially_copy_constructible<StoredArgs>)) &&
+					VEG_CONCEPT(invocable<Fn, Args&&..., StoredArgs&&...>)),
+			HEDLEY_ALWAYS_INLINE constexpr auto
+			operator(),
+			(... args, Args&&))
+	const& noexcept(
+			VEG_CONCEPT(nothrow_invocable<Fn, Args&&..., StoredArgs&&...>))
+			->meta::invoke_result_t<Fn, Args&&..., StoredArgs&&...> {
+		return Curried::template call<
+				(VEG_CONCEPT(nothrow_invocable<Fn, Args&&..., StoredArgs&&...>)),
+				meta::invoke_result_t<Fn, Args&&..., StoredArgs&&...>>(
+				meta::make_index_sequence<sizeof...(StoredArgs)>{},
+				static_cast<Curried&&>(*this),
+				VEG_FWD(args)...);
+	}
+
 private:
 	template <
 			bool NoExcept,
