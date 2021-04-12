@@ -32,6 +32,18 @@ VEG_DEF_CONCEPT(
 		noexcept(VEG_DECLVAL_NOEXCEPT(Fn&&)(VEG_DECLVAL_NOEXCEPT(Args&&)...)));
 } // namespace aux
 
+#if __cplusplus >= 202002L
+
+template <typename Fn, typename... Args>
+concept invocable = requires(Fn&& fn, Args&&... args) {
+	VEG_FWD(fn)(VEG_FWD(args)...);
+};
+template <typename Fn, typename... Args>
+concept nothrow_invocable = requires(Fn&& fn, Args&&... args) {
+	requires noexcept(VEG_FWD(fn)(VEG_FWD(args)...));
+};
+
+#else
 VEG_DEF_CONCEPT(
 		(typename Fn, typename... Args),
 		invocable,
@@ -42,6 +54,7 @@ VEG_DEF_CONCEPT_CONJUNCTION(
 		nothrow_invocable,
 		((, invocable<Fn, Args&&...>),
      (aux::, nothrow_invocable_pre<Fn, Args&&...>)));
+#endif
 
 VEG_DEF_CONCEPT_CONJUNCTION(
 		(typename Fn, typename Ret, typename... Args),
