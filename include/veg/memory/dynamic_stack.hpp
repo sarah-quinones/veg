@@ -25,7 +25,7 @@ namespace internal {
 namespace dynstack {
 
 struct cleanup;
-struct dynamic_alloc_base;
+struct DynAllocBase;
 
 struct default_init_fn {
 	template <typename T>
@@ -53,14 +53,13 @@ struct no_init_fn {
 } // namespace internal
 
 template <typename T>
-struct dynstack_array;
+struct DynStackArray;
 template <typename T>
-struct dynstack_alloc;
+struct DynStackAlloc;
 
-struct dynamic_stack_view {
+struct DynStackView {
 public:
-	dynamic_stack_view /* NOLINT(hicpp-explicit-conversions) */ (
-			slice<void> s) noexcept
+	DynStackView /* NOLINT(hicpp-explicit-conversions) */ (Slice<void> s) noexcept
 			: stack_data(s.data()), stack_bytes(s.size()) {}
 
 	VEG_NODISCARD
@@ -72,12 +71,11 @@ public:
 			(typename T),
 			requires VEG_CONCEPT(constructible<T>),
 			VEG_NODISCARD auto make_new,
-			(/*unused*/, tag_t<T>),
+			(/*unused*/, Tag<T>),
 			(len, i64),
 			(align = alignof(T), i64))
-	noexcept(VEG_CONCEPT(nothrow_constructible<T>)) -> option<dynstack_array<T>> {
-		dynstack_array<T> get{
-				*this, len, align, internal::dynstack::zero_init_fn{}};
+	noexcept(VEG_CONCEPT(nothrow_constructible<T>)) -> Option<DynStackArray<T>> {
+		DynStackArray<T> get{*this, len, align, internal::dynstack::zero_init_fn{}};
 		if (get.data() == nullptr) {
 			return none;
 		}
@@ -88,12 +86,12 @@ public:
 			(typename T),
 			requires VEG_CONCEPT(constructible<T>),
 			VEG_NODISCARD auto make_new_for_overwrite,
-			(/*unused*/, tag_t<T>),
+			(/*unused*/, Tag<T>),
 			(len, i64),
 			(align = alignof(T), i64))
 
-	noexcept(VEG_CONCEPT(nothrow_constructible<T>)) -> option<dynstack_array<T>> {
-		dynstack_array<T> get{
+	noexcept(VEG_CONCEPT(nothrow_constructible<T>)) -> Option<DynStackArray<T>> {
+		DynStackArray<T> get{
 				*this, len, align, internal::dynstack::default_init_fn{}};
 		if (get.data() == nullptr) {
 			return none;
@@ -103,9 +101,9 @@ public:
 
 	template <typename T>
 	VEG_NODISCARD auto
-	make_alloc(tag_t<T> /*unused*/, i64 len, i64 align = alignof(T)) noexcept
-			-> option<dynstack_alloc<T>> {
-		dynstack_alloc<T> get{*this, len, align, internal::dynstack::no_init_fn{}};
+	make_alloc(Tag<T> /*unused*/, i64 len, i64 align = alignof(T)) noexcept
+			-> Option<DynStackAlloc<T>> {
+		DynStackAlloc<T> get{*this, len, align, internal::dynstack::no_init_fn{}};
 		if (get.data() == nullptr) {
 			return none;
 		}
@@ -117,11 +115,11 @@ private:
 	i64 stack_bytes;
 
 	template <typename T>
-	friend struct dynstack_alloc;
+	friend struct DynStackAlloc;
 	template <typename T>
-	friend struct dynstack_array;
+	friend struct DynStackArray;
 	friend struct internal::dynstack::cleanup;
-	friend struct internal::dynstack::dynamic_alloc_base;
+	friend struct internal::dynstack::DynAllocBase;
 };
 
 namespace internal {
@@ -129,7 +127,7 @@ namespace dynstack {
 
 struct cleanup {
 	bool const& success;
-	dynamic_stack_view& parent;
+	DynStackView& parent;
 	void* old_data;
 	i64 old_rem_bytes;
 
@@ -141,8 +139,8 @@ struct cleanup {
 	}
 };
 
-struct dynamic_alloc_base {
-	dynamic_stack_view* parent;
+struct DynAllocBase {
+	DynStackView* parent;
 	void* old_pos;
 	void const volatile* data;
 	i64 len;
@@ -170,20 +168,20 @@ struct dynamic_alloc_base {
 } // namespace internal
 
 template <typename T>
-struct dynstack_alloc : internal::dynstack::dynamic_alloc_base {
+struct DynStackAlloc : internal::dynstack::DynAllocBase {
 private:
-	using base = internal::dynstack::dynamic_alloc_base;
+	using base = internal::dynstack::DynAllocBase;
 
 public:
-	~dynstack_alloc() { base::destroy(data() + base::len); }
-	dynstack_alloc(dynstack_alloc const&) = delete;
-	dynstack_alloc(dynstack_alloc&& other) noexcept : base{base(other)} {
+	~DynStackAlloc() { base::destroy(data() + base::len); }
+	DynStackAlloc(DynStackAlloc const&) = delete;
+	DynStackAlloc(DynStackAlloc&& other) noexcept : base{base(other)} {
 		other.base::len = 0;
 		other.base::data = nullptr;
 	};
 
-	auto operator=(dynstack_alloc const&) -> dynstack_alloc& = delete;
-	auto operator=(dynstack_alloc&& rhs) noexcept -> dynstack_alloc& {
+	auto operator=(DynStackAlloc const&) -> DynStackAlloc& = delete;
+	auto operator=(DynStackAlloc&& rhs) noexcept -> DynStackAlloc& {
 		base::destroy(data() + base::len);
 		static_cast<base&>(*this) = static_cast<base&>(rhs);
 		static_cast<base&>(rhs) = {};
@@ -196,12 +194,12 @@ public:
 	VEG_NODISCARD auto size() const noexcept -> i64 { return base::len; }
 
 private:
-	friend struct dynstack_array<T>;
-	friend struct dynamic_stack_view;
+	friend struct DynStackArray<T>;
+	friend struct DynStackView;
 
 	template <typename Fn>
-	dynstack_alloc(
-			dynamic_stack_view& parent_ref,
+	DynStackAlloc(
+			DynStackView& parent_ref,
 			i64 alloc_size,
 			i64 align,
 			Fn fn) noexcept(VEG_CONCEPT(nothrow_constructible<T>))
@@ -218,7 +216,7 @@ private:
 
 		if (data != nullptr) {
 			bool success = false;
-			auto&& cleanup = make::defer(internal::dynstack::cleanup{
+			auto&& cleanup = defer(internal::dynstack::cleanup{
 					success, *parent, parent_data, parent_bytes});
 			(void)cleanup;
 
@@ -231,20 +229,20 @@ private:
 };
 
 template <typename T>
-struct dynstack_array : private dynstack_alloc<T> {
+struct DynStackArray : private DynStackAlloc<T> {
 private:
-	using base = internal::dynstack::dynamic_alloc_base;
+	using base = internal::dynstack::DynAllocBase;
 
 public:
-	using dynstack_alloc<T>::data;
-	using dynstack_alloc<T>::size;
+	using DynStackAlloc<T>::data;
+	using DynStackAlloc<T>::size;
 
-	dynstack_array(dynstack_array const&) = delete;
-	dynstack_array(dynstack_array&&) noexcept = default;
-	auto operator=(dynstack_array const&) -> dynstack_array& = delete;
+	DynStackArray(DynStackArray const&) = delete;
+	DynStackArray(DynStackArray&&) noexcept = default;
+	auto operator=(DynStackArray const&) -> DynStackArray& = delete;
 
-	auto operator=(dynstack_array&& rhs) noexcept -> dynstack_array& {
-		for (i64 i = this->dynstack_alloc<T>::base::len - 1; i >= 0; --i) {
+	auto operator=(DynStackArray&& rhs) noexcept -> DynStackArray& {
+		for (i64 i = this->DynStackAlloc<T>::base::len - 1; i >= 0; --i) {
 			mem::destroy_at(this->data() + i);
 		}
 		base::destroy(data() + base::len);
@@ -253,15 +251,15 @@ public:
 		return *this;
 	}
 
-	~dynstack_array() {
-		for (i64 i = this->dynstack_alloc<T>::base::len - 1; i >= 0; --i) {
+	~DynStackArray() {
+		for (i64 i = this->DynStackAlloc<T>::base::len - 1; i >= 0; --i) {
 			mem::destroy_at(this->data() + i);
 		}
 	}
 
 private:
-	using dynstack_alloc<T>::dynstack_alloc;
-	friend struct dynamic_stack_view;
+	using DynStackAlloc<T>::DynStackAlloc;
+	friend struct DynStackView;
 };
 } // namespace VEG_ABI
 } // namespace veg

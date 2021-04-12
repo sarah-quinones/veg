@@ -11,7 +11,7 @@
 namespace veg {
 inline namespace VEG_ABI {
 template <typename... Ts>
-struct tuple;
+struct Tuple;
 
 namespace internal {
 namespace tup_ {
@@ -19,7 +19,7 @@ namespace tup_ {
 template <typename T, typename U>
 struct trivially_swappable : meta::false_type {};
 template <typename... Ts>
-struct trivially_swappable<tuple<Ts...>&, tuple<Ts...>&>
+struct trivially_swappable<Tuple<Ts...>&, Tuple<Ts...>&>
 		: meta::bool_constant<(VEG_ALL_OF(
 					(!VEG_CONCEPT(reference<Ts>) &&
            VEG_CONCEPT(trivially_swappable<Ts&>))))> {};
@@ -71,23 +71,23 @@ struct tuple_leaf {
 };
 
 template <typename ISeq, typename... Ts>
-struct tuple_impl;
+struct TupleImpl;
 
 template <usize... Is, typename... Ts>
-struct tuple_impl<meta::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
-	constexpr tuple_impl() = default;
+struct TupleImpl<meta::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
+	constexpr TupleImpl() = default;
 
 	template <typename... Us>
-	HEDLEY_ALWAYS_INLINE constexpr tuple_impl /* NOLINT */
-			(cvt_t /*unused*/, Us&&... args)      //
+	HEDLEY_ALWAYS_INLINE constexpr TupleImpl /* NOLINT */
+			(Cvt /*unused*/, Us&&... args)       //
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Ts&&>))))
 			: tuple_leaf<Is, Ts>{Ts(VEG_FWD(args))}... {}
 
 	template <meta::category_e C, typename... Us>
-	HEDLEY_ALWAYS_INLINE constexpr explicit tuple_impl(
+	HEDLEY_ALWAYS_INLINE constexpr explicit TupleImpl(
 			hidden_tag2 /*unused*/,
 			meta::constant<meta::category_e, C>* /*unused*/,
-			tuple_impl<meta::index_sequence<Is...>, Us...> const& tup)
+			TupleImpl<meta::index_sequence<Is...>, Us...> const& tup)
 
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(
 					nothrow_constructible<Ts, meta::apply_category_t<C, Us>&&>))))
@@ -106,8 +106,8 @@ struct binop_ftor {
 	template <typename Fn, bool NoExcept, typename... Us>
 	static VEG_CPP14(constexpr) void apply(Ts&&... ts, Us&&... us) noexcept(
 			NoExcept) {
-		(void)internal::empty_arr{
-				internal::empty{}, (Fn::apply(ts, us), internal::empty{})...};
+		(void)internal::EmptyArr{
+				internal::Empty{}, (Fn::apply(ts, us), internal::Empty{})...};
 	}
 };
 
@@ -122,8 +122,8 @@ template <
 HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void binop_apply(
 		meta::type_sequence<Actual_Ts...> /*unused*/,
 		meta::type_sequence<Actual_Us...> /*unused*/,
-		tuple_impl<meta::index_sequence<Is...>, Ts...> const& t,
-		tuple_impl<meta::index_sequence<Is...>, Us...> const& u)
+		TupleImpl<meta::index_sequence<Is...>, Ts...> const& t,
+		TupleImpl<meta::index_sequence<Is...>, Us...> const& u)
 
 		noexcept(NoExcept) {
 	binop_ftor<Actual_Ts&&...>::template apply<Fn, NoExcept>(
@@ -242,8 +242,8 @@ struct impl_cmp<> {
 struct cmp_impl {
 	template <usize... Is, typename... Ts, typename... Us>
 	static constexpr auto
-	eq(tuple_impl<meta::index_sequence<Is...>, Ts...> const& lhs,
-	   tuple_impl<meta::index_sequence<Is...>, Us...> const& rhs) noexcept
+	eq(TupleImpl<meta::index_sequence<Is...>, Ts...> const& lhs,
+	   TupleImpl<meta::index_sequence<Is...>, Us...> const& rhs) noexcept
 			-> bool {
 
 		return impl_cmp<Ts const&...>::eq(
@@ -256,8 +256,8 @@ struct cmp_impl {
 
 	template <typename Ret, usize... Is, typename... Ts, typename... Us>
 	static constexpr auto tway(
-			tuple_impl<meta::index_sequence<Is...>, Ts...> const& lhs,
-			tuple_impl<meta::index_sequence<Is...>, Us...> const& rhs) noexcept
+			TupleImpl<meta::index_sequence<Is...>, Ts...> const& lhs,
+			TupleImpl<meta::index_sequence<Is...>, Us...> const& rhs) noexcept
 			-> Ret {
 
 		return impl_cmp<Ts const&...>::template tway<Ret>(
@@ -277,8 +277,8 @@ template <
 		typename... Ts,
 		typename... Us>
 HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void swap_impl(
-		tuple_impl<meta::index_sequence<Is...>, Ts...> const& lhs,
-		tuple_impl<meta::index_sequence<Is...>, Us...> const& rhs)
+		TupleImpl<meta::index_sequence<Is...>, Ts...> const& lhs,
+		TupleImpl<meta::index_sequence<Is...>, Us...> const& rhs)
 
 		noexcept(NoExcept) {
 
@@ -331,7 +331,7 @@ template <
 		typename... Us,
 		meta::category_e CL,
 		meta::category_e CR>
-struct tup_swappable<tuple<Ts...>, tuple<Us...>, CL, CR>
+struct tup_swappable<Tuple<Ts...>, Tuple<Us...>, CL, CR>
 		: meta::bool_constant<(
 					VEG_ALL_OF(VEG_CONCEPT(swappable<                      //
 																 meta::apply_category_t<CL, Ts>, //
@@ -350,7 +350,7 @@ template <
 		typename... Us,
 		meta::category_e CL,
 		meta::category_e CR>
-struct nothrow_tup_swappable<tuple<Ts...>, tuple<Us...>, CL, CR>
+struct nothrow_tup_swappable<Tuple<Ts...>, Tuple<Us...>, CL, CR>
 		: meta::bool_constant<(
 					VEG_ALL_OF(VEG_CONCEPT(nothrow_swappable<              //
 																 meta::apply_category_t<CL, Ts>, //
@@ -361,7 +361,7 @@ template <typename... Actual_Ts, typename Fn, usize... Is, typename... Ts>
 HEDLEY_ALWAYS_INLINE constexpr auto fn_apply_impl(
 		meta::type_sequence<Actual_Ts...> /*tag*/,
 		Fn&& fn,
-		tuple_impl<meta::index_sequence<Is...>, Ts...> const& args)
+		TupleImpl<meta::index_sequence<Is...>, Ts...> const& args)
 
 		noexcept(noexcept(VEG_FWD(fn)(VEG_DECLVAL_NOEXCEPT(Actual_Ts&&)...)))
 				-> decltype(VEG_FWD(fn)(VEG_DECLVAL_NOEXCEPT(Actual_Ts &&)...)) {
@@ -376,12 +376,11 @@ template <typename... Ts>
 struct tuple_base {};
 
 } // namespace adl
-
 } // namespace tup_
 
 template <typename... Ts>
-using simple_tuple =
-		tup_::tuple_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>;
+using SimpleTuple =
+		tup_::TupleImpl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>;
 } // namespace internal
 
 } // namespace VEG_ABI

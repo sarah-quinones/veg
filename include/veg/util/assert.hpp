@@ -41,11 +41,10 @@ void incr_counter() noexcept;
 void decr_counter() noexcept;
 
 [[noreturn]] void
-on_assert_fail(long line, char_string_ref file, char_string_ref func);
-void on_expect_fail(long line, char_string_ref file, char_string_ref func);
-void set_assert_params1(char_string_ref op, string lhs, string rhs);
-void set_assert_params2(
-		char_string_ref expression, char_string_ref msg) noexcept;
+on_assert_fail(long line, ByteStringView file, ByteStringView func);
+void on_expect_fail(long line, ByteStringView file, ByteStringView func);
+void set_assert_params1(ByteStringView op, String lhs, String rhs);
+void set_assert_params2(ByteStringView expression, ByteStringView msg) noexcept;
 
 struct cleanup { // NOLINT(cppcoreguidelines-special-member-functions)
 	~cleanup() noexcept;
@@ -59,14 +58,14 @@ namespace internal {
 namespace assert_ {
 
 template <typename T>
-auto to_string(T const& arg) -> abi::internal::string {
-	abi::internal::string buf{};
+auto to_string(T const& arg) -> abi::internal::String {
+	abi::internal::String buf{};
 
 	{
 		abi::internal::incr_counter();
-		auto&& cleanup = make::defer(abi::internal::decr_counter);
+		auto&& cleanup = defer(abi::internal::decr_counter);
 		(void)cleanup;
-		veg::fmt::debug<meta::decay_t<T>>::to_string(buf, arg);
+		veg::fmt::Debug<meta::decay_t<T>>::to_string(buf, arg);
 	}
 
 	return buf;
@@ -78,7 +77,7 @@ struct lhs_all_of_t {
 
 	template <typename U>
 	HEDLEY_ALWAYS_INLINE void
-	on_assertion_fail(U const& rhs, abi::internal::char_string_ref op_str) const {
+	on_assertion_fail(U const& rhs, abi::internal::ByteStringView op_str) const {
 		abi::internal::set_assert_params1(
 				op_str, assert_::to_string(lhs), assert_::to_string(rhs));
 	}
@@ -200,7 +199,7 @@ struct lhs_all_of_t {
 	}
 	template <typename U>
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
-	process_op(bool res, U const& rhs, abi::internal::char_string_ref op) const
+	process_op(bool res, U const& rhs, abi::internal::ByteStringView op) const
 			-> bool {
 		return (res ? void(0) : on_assertion_fail(rhs, op)), res;
 	}
@@ -220,16 +219,16 @@ struct decomposer {
 					? (void)(0)                                                          \
 					: ((void)(::veg::abi::internal::cleanup{}),                          \
 	           ::veg::abi::internal::set_assert_params2(                         \
-								 ::veg::abi::internal::char_string_ref{                        \
+								 ::veg::abi::internal::ByteStringView{                         \
 										 static_cast<char const*>(#__VA_ARGS__),                   \
 										 sizeof(#__VA_ARGS__) - 1},                                \
 								 If_Fail),                                                     \
 	           ::veg::abi::internal::Callback(                                   \
 								 __LINE__,                                                     \
-								 ::veg::abi::internal::char_string_ref{                        \
+								 ::veg::abi::internal::ByteStringView{                         \
 										 static_cast<char const*>(__FILE__),                       \
 										 sizeof(__FILE__) - 1},                                    \
-								 ::veg::abi::internal::char_string_ref{                        \
+								 ::veg::abi::internal::ByteStringView{                         \
 										 static_cast<char const*>(__VEG_THIS_FUNCTION),            \
 										 sizeof(__VEG_THIS_FUNCTION) - 1})))
 

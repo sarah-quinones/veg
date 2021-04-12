@@ -32,10 +32,10 @@ namespace abi {
 inline namespace VEG_ABI_VERSION {
 
 namespace internal {
-string::~string() {
+String::~String() {
 	std::free(self.ptr);
 }
-void string::reserve(i64 new_cap) {
+void String::reserve(i64 new_cap) {
 	if (new_cap > self.cap) {
 		auto* new_alloc = static_cast<char*>(std::realloc(self.ptr, new_cap));
 		if (new_alloc == nullptr) {
@@ -45,17 +45,17 @@ void string::reserve(i64 new_cap) {
 		self.cap = new_cap;
 	}
 }
-void string::resize(i64 new_len) {
+void String::resize(i64 new_len) {
 	reserve(new_len);
 	self.len = new_len;
 }
-void string::insert(i64 pos, char const* data_, i64 len) {
+void String::insert(i64 pos, char const* data_, i64 len) {
 	i64 old_size = size();
 	i64 pre_new_size = len + old_size;
 	i64 new_size =
 			(pre_new_size > (2 * old_size)) ? pre_new_size : (2 * old_size);
 	reserve(new_size);
-  resize(pre_new_size);
+	resize(pre_new_size);
 	if (len > 0) {
 		std::memmove(data() + pos + len, data() + pos, std::size_t(old_size - pos));
 		std::memmove(data() + pos, data_, std::size_t(len));
@@ -81,20 +81,19 @@ void decr_counter() noexcept {
 	--counter;
 }
 
-auto char_string_ref::starts_with(char_string_ref other) const noexcept
-		-> bool {
+auto ByteStringView::starts_with(ByteStringView other) const noexcept -> bool {
 	return size() >= other.size() &&
 				 std::memcmp(data(), other.data(), other.size()) == 0;
 }
-auto char_string_ref::operator==(char_string_ref other) const noexcept -> bool {
+auto ByteStringView::operator==(ByteStringView other) const noexcept -> bool {
 	return size() == other.size() &&
 				 std::memcmp(data(), other.data(), other.size()) == 0;
 }
-char_string_ref::char_string_ref(char const* str) noexcept
-		: char_string_ref{str, static_cast<i64>(std::strlen(str))} {}
+ByteStringView::ByteStringView(char const* str) noexcept
+		: ByteStringView{str, static_cast<i64>(std::strlen(str))} {}
 
 #define LIT(x)                                                                 \
-	char_string_ref { x, sizeof(x) - 1 }
+	ByteStringView { x, sizeof(x) - 1 }
 
 struct color_t {
 	std::uint8_t r;
@@ -133,9 +132,9 @@ auto with_color(color_t c, std::string s) -> std::string {
 
 struct assertion_data {
 	bool finished_setup;
-	char_string_ref expr;
-	char_string_ref callback;
-	char_string_ref op;
+	ByteStringView expr;
+	ByteStringView callback;
+	ByteStringView op;
 	std::string lhs;
 	std::string rhs;
 };
@@ -148,13 +147,13 @@ cleanup::~cleanup() noexcept {
 	failed_asserts.clear();
 }
 
-auto split_at(char_string_ref& text, i64 n) -> char_string_ref {
-	char_string_ref token = {text.data_, n};
+auto split_at(ByteStringView& text, i64 n) -> ByteStringView {
+	ByteStringView token = {text.data_, n};
 	text = {text.data_ + n, text.len_ - n};
 	return token;
 }
 
-auto starts_tk1(char_string_ref text, bool extended_char_set = false) -> bool {
+auto starts_tk1(ByteStringView text, bool extended_char_set = false) -> bool {
 	return (
 			(!extended_char_set &&          //
 	     (text.starts_with(LIT("<")) || //
@@ -175,7 +174,7 @@ auto starts_tk1(char_string_ref text, bool extended_char_set = false) -> bool {
 	);
 }
 
-auto starts_tk2(char_string_ref text) -> bool {
+auto starts_tk2(ByteStringView text) -> bool {
 	return (
 			text.starts_with(LIT("->")) || //
 			text.starts_with(LIT("&&")) || //
@@ -191,26 +190,26 @@ enum kind_e {
 };
 
 struct token_t {
-	char_string_ref text;
+	ByteStringView text;
 	kind_e kind;
 };
 
-auto split_if_starts_with(char_string_ref& code_str, char_string_ref word)
-		-> char_string_ref {
+auto split_if_starts_with(ByteStringView& code_str, ByteStringView word)
+		-> ByteStringView {
 	if (code_str.starts_with(word)) {
 		return split_at(code_str, word.size());
 	}
 	return empty_str;
 }
 
-auto next_tk(char_string_ref& code_str, bool extended_char_set = false)
+auto next_tk(ByteStringView& code_str, bool extended_char_set = false)
 		-> token_t {
 	// trim initial spaces
 	while (code_str.starts_with(LIT(" "))) {
 		code_str = {code_str.data() + 1, code_str.size() - 1};
 	}
 
-	char_string_ref matching = {" ", 1};
+	ByteStringView matching = {" ", 1};
 	if (extended_char_set) {
 		if (code_str.starts_with(LIT("<"))) {
 			matching = {">", 1};
@@ -240,7 +239,7 @@ auto next_tk(char_string_ref& code_str, bool extended_char_set = false)
 #define STR2(A) #A
 #define STR(A) STR2(A)
 
-	char_string_ref word{nullptr, 0};
+	ByteStringView word{nullptr, 0};
 #define TOKEN_RETURN(Word, Kind)                                               \
 	if ((word =                                                                  \
 	         split_if_starts_with(code_str, {STR(Word), sizeof(STR(Word)) - 1})) \
@@ -298,7 +297,7 @@ auto next_tk(char_string_ref& code_str, bool extended_char_set = false)
 
 #undef TOKEN_RETURN
 
-	char_string_ref new_str = code_str;
+	ByteStringView new_str = code_str;
 	while (
 			!(new_str.size() == 0 || starts_tk1(new_str, extended_char_set) ||
 	      starts_tk2(new_str))) {
@@ -308,24 +307,23 @@ auto next_tk(char_string_ref& code_str, bool extended_char_set = false)
 		new_str = {new_str.data() + 1, new_str.size() - 1};
 	}
 
-	char_string_ref token = {code_str.data(), new_str.data() - code_str.data()};
+	ByteStringView token = {code_str.data(), new_str.data() - code_str.data()};
 	code_str = new_str;
 	return {token, ident};
 }
 
-auto peek_next_tk(char_string_ref code_str, bool extended_char_set = false)
+auto peek_next_tk(ByteStringView code_str, bool extended_char_set = false)
 		-> token_t {
 	return next_tk(code_str, extended_char_set);
 }
 
-auto merge_tk(char_string_ref code_str, token_t prev_tk) -> char_string_ref {
+auto merge_tk(ByteStringView code_str, token_t prev_tk) -> ByteStringView {
 	return {
 			prev_tk.text.data(),
 			code_str.data() + code_str.size() - prev_tk.text.data()};
 }
 
-auto one_of(
-		char_string_ref token, std::initializer_list<char_string_ref> tokens)
+auto one_of(ByteStringView token, std::initializer_list<ByteStringView> tokens)
 		-> bool {
 	for (auto tk : tokens) { // NOLINT(readability-use-anyofallof)
 		if (token == tk) {
@@ -345,7 +343,7 @@ struct parse_type_result_t {
 	bool multiline = false;
 };
 
-auto parse_type(char_string_ref& code_str) -> parse_type_result_t {
+auto parse_type(ByteStringView& code_str) -> parse_type_result_t {
 
 	constexpr token_t newline = {{"\n", 1}, whitespace};
 	constexpr token_t indent = {{"| ", 2}, whitespace};
@@ -386,7 +384,7 @@ auto parse_type(char_string_ref& code_str) -> parse_type_result_t {
 		for (; !entering || token.text.size() > 0;
 		     (previous_token = token, token = next_tk(code_str))) {
 
-			if (!entering || token.text == char_string_ref{"<", 1}) {
+			if (!entering || token.text == ByteStringView{"<", 1}) {
 				// if token comes after space, assume it's an identifier instead of
 				// template syntax
 
@@ -408,7 +406,7 @@ auto parse_type(char_string_ref& code_str) -> parse_type_result_t {
 					++state->indent_level;
 				}
 				while (!entering || (token.text.size() > 0 &&
-				                     !(token.text == char_string_ref{">", 1}))) {
+				                     !(token.text == ByteStringView{">", 1}))) {
 
 					if (entering) {
 						stack.push_back({state->indent_level, 0, token, false, {}, true});
@@ -522,7 +520,7 @@ auto parse_type(char_string_ref& code_str) -> parse_type_result_t {
 	terminate();
 }
 
-auto to_owned(char_string_ref ref) -> std::string {
+auto to_owned(ByteStringView ref) -> std::string {
 	return {ref.data(), static_cast<std::size_t>(ref.size())};
 }
 
@@ -548,11 +546,11 @@ void print_type(
 	}
 }
 
-auto parse_func_signature(char_string_ref func) -> std::string {
+auto parse_func_signature(ByteStringView func) -> std::string {
 	std::string output;
 	auto color = azure;
 
-	char_string_ref code_str = func;
+	ByteStringView code_str = func;
 
 	token_t token{empty_str, {}};
 	while (peek_next_tk(code_str).kind == keyword) {
@@ -634,7 +632,7 @@ auto parse_func_signature(char_string_ref func) -> std::string {
 		while (!(token.text.size() == 0 || token.text.starts_with(LIT("]")))) {
 			bool id_and_eq = false;
 			{
-				char_string_ref copy = code_str;
+				ByteStringView copy = code_str;
 				next_tk(copy, true);
 				auto eq = next_tk(copy);
 
@@ -731,7 +729,7 @@ auto parse_func_signature(char_string_ref func) -> std::string {
 	return output;
 }
 
-auto find(char_string_ref sv, char c) -> char const* {
+auto find(ByteStringView sv, char c) -> char const* {
 	char const* it = sv.data();
 	for (; it < sv.data() + sv.size(); ++it) {
 		if (*it == c) {
@@ -741,11 +739,10 @@ auto find(char_string_ref sv, char c) -> char const* {
 	return it;
 }
 
-auto on_fail(
-		long line, char_string_ref file, char_string_ref func, bool is_fatal)
+auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 		-> std::string {
 	auto _clear = [&] { failed_asserts.clear(); };
-	auto&& clear = make::defer(_clear);
+	auto&& clear = defer(_clear);
 
 	std::string output;
 
@@ -776,7 +773,7 @@ auto on_fail(
 	char const* separator = "";
 
 	for (auto const& a : failed_asserts) {
-		char_string_ref msg{a.callback};
+		ByteStringView msg{a.callback};
 		char const* newline = find(msg, '\n');
 		bool multiline = newline != nullptr;
 
@@ -829,20 +826,20 @@ auto on_fail(
 	return output;
 }
 
-void on_expect_fail(long line, char_string_ref file, char_string_ref func) {
-  std::cerr << on_fail(line, file, func, false);
+void on_expect_fail(long line, ByteStringView file, ByteStringView func) {
+	std::cerr << on_fail(line, file, func, false);
 }
 
 [[noreturn]] void
-on_assert_fail(long line, char_string_ref file, char_string_ref func) {
-  std::cerr << on_fail(line, file, func, false);
+on_assert_fail(long line, ByteStringView file, ByteStringView func) {
+	std::cerr << on_fail(line, file, func, false);
 	std::terminate();
 }
 
 void set_assert_params1( //
-		char_string_ref op,  //
-		string lhs,          //
-		string rhs           //
+		ByteStringView op,   //
+		String lhs,          //
+		String rhs           //
 ) {
 	bool success = false;
 
@@ -852,7 +849,7 @@ void set_assert_params1( //
 		}
 	};
 
-	auto&& clear = make::defer(_clear);
+	auto&& clear = defer(_clear);
 
 	failed_asserts.push_back({
 			false,
@@ -865,9 +862,9 @@ void set_assert_params1( //
 
 	success = true;
 }
-void set_assert_params2(        //
-		char_string_ref expression, //
-		char_string_ref msg         //
+void set_assert_params2(       //
+		ByteStringView expression, //
+		ByteStringView msg         //
 		) noexcept {
 	failed_asserts.back().finished_setup = true;
 	failed_asserts.back().expr = expression;

@@ -7,40 +7,40 @@
 namespace veg {
 inline namespace VEG_ABI {
 namespace internal {
-struct nodefault_ctor {
-	nodefault_ctor() = delete;
+struct NoDefaultCtor {
+	NoDefaultCtor() = delete;
 };
-struct nomove_assign {
-	nomove_assign() = default;
-	~nomove_assign() = default;
-	nomove_assign(nomove_assign const&) = default;
-	nomove_assign(nomove_assign&&) noexcept = default;
-	auto operator=(nomove_assign const&) -> nomove_assign& = default;
-	auto operator=(nomove_assign&&) noexcept -> nomove_assign& = delete;
+struct NoMoveAssign {
+	NoMoveAssign() = default;
+	~NoMoveAssign() = default;
+	NoMoveAssign(NoMoveAssign const&) = default;
+	NoMoveAssign(NoMoveAssign&&) noexcept = default;
+	auto operator=(NoMoveAssign const&) -> NoMoveAssign& = default;
+	auto operator=(NoMoveAssign&&) noexcept -> NoMoveAssign& = delete;
 };
-struct nocopy_assign {
-	nocopy_assign() = default;
-	~nocopy_assign() = default;
-	nocopy_assign(nocopy_assign const&) = default;
-	nocopy_assign(nocopy_assign&&) noexcept = default;
-	auto operator=(nocopy_assign const&) -> nocopy_assign& = delete;
-	auto operator=(nocopy_assign&&) noexcept -> nocopy_assign& = default;
+struct NoCopyAssign {
+	NoCopyAssign() = default;
+	~NoCopyAssign() = default;
+	NoCopyAssign(NoCopyAssign const&) = default;
+	NoCopyAssign(NoCopyAssign&&) noexcept = default;
+	auto operator=(NoCopyAssign const&) -> NoCopyAssign& = delete;
+	auto operator=(NoCopyAssign&&) noexcept -> NoCopyAssign& = default;
 };
-struct nomove_ctor {
-	nomove_ctor() = default;
-	~nomove_ctor() = default;
-	nomove_ctor(nomove_ctor const&) = default;
-	nomove_ctor(nomove_ctor&&) noexcept = delete;
-	auto operator=(nomove_ctor const&) -> nomove_ctor& = default;
-	auto operator=(nomove_ctor&&) noexcept -> nomove_ctor& = default;
+struct NoMoveCtor {
+	NoMoveCtor() = default;
+	~NoMoveCtor() = default;
+	NoMoveCtor(NoMoveCtor const&) = default;
+	NoMoveCtor(NoMoveCtor&&) noexcept = delete;
+	auto operator=(NoMoveCtor const&) -> NoMoveCtor& = default;
+	auto operator=(NoMoveCtor&&) noexcept -> NoMoveCtor& = default;
 };
-struct nocopy_ctor {
-	nocopy_ctor() = default;
-	~nocopy_ctor() = default;
-	nocopy_ctor(nocopy_ctor const&) = delete;
-	nocopy_ctor(nocopy_ctor&&) noexcept = default;
-	auto operator=(nocopy_ctor const&) -> nocopy_ctor& = default;
-	auto operator=(nocopy_ctor&&) noexcept -> nocopy_ctor& = default;
+struct NoCopyCtor {
+	NoCopyCtor() = default;
+	~NoCopyCtor() = default;
+	NoCopyCtor(NoCopyCtor const&) = delete;
+	NoCopyCtor(NoCopyCtor&&) noexcept = default;
+	auto operator=(NoCopyCtor const&) -> NoCopyCtor& = default;
+	auto operator=(NoCopyCtor&&) noexcept -> NoCopyCtor& = default;
 };
 
 } // namespace internal

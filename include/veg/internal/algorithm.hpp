@@ -46,7 +46,7 @@ void uninit_emplace_n(T* dest, T const* src, i64 n) noexcept(
 		VEG_CONCEPT(nothrow_constructible<T, Cast>)) {
 
 	i64 i = 0;
-	auto&& cleanup = make::defer(internal::algo_::destroy_range_fn<T>{dest, i});
+	auto&& cleanup = defer(internal::algo_::destroy_range_fn<T>{dest, i});
 	for (; i < n; ++i) {
 		mem::construct_at(dest + i, const_cast<Cast>(src[i]));
 	}
@@ -59,7 +59,7 @@ void reloc_fallible(T* dest, T* src, i64 n) noexcept(
 		VEG_CONCEPT(nothrow_constructible<T, Cast>)) {
 
 	i64 i = 0;
-	auto&& cleanup = make::defer(destroy_range_fn<T>{dest, i});
+	auto&& cleanup = defer(destroy_range_fn<T>{dest, i});
 	for (; i < n; ++i) {
 		mem::construct_at(dest + i, static_cast<Cast>(src[i]));
 	}
@@ -138,7 +138,7 @@ namespace fn {
 struct backward_destroy_n {
 	VEG_TEMPLATE(
 			(typename T, typename... Args),
-			requires !VEG_CONCEPT(void_type<T>),
+			requires(!VEG_CONCEPT(void_type<T>)),
 			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(ptr, T*),
@@ -188,7 +188,7 @@ struct relocate_n {
 struct uninitialized_move_n {
 	VEG_TEMPLATE(
 			(typename T),
-			requires VEG_CONCEPT(move_constructible<T>),
+			requires(VEG_CONCEPT(move_constructible<T>)),
 			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
@@ -202,8 +202,9 @@ struct uninitialized_move_n {
 struct uninitialized_copy_n {
 	VEG_TEMPLATE(
 			(typename T, int = 0),
-			requires VEG_CONCEPT(trivially_copyable<T>) &&
-					VEG_CONCEPT(copy_constructible<T>),
+			requires(
+					VEG_CONCEPT(trivially_copyable<T>) &&
+					VEG_CONCEPT(copy_constructible<T>)),
 			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
@@ -214,8 +215,9 @@ struct uninitialized_copy_n {
 	}
 	VEG_TEMPLATE(
 			(typename T),
-			requires !VEG_CONCEPT(trivially_copyable<T>) &&
-					VEG_CONCEPT(copy_constructible<T>),
+			requires(
+					!VEG_CONCEPT(trivially_copyable<T>) &&
+					VEG_CONCEPT(copy_constructible<T>)),
 			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
@@ -229,7 +231,7 @@ struct uninitialized_copy_n {
 struct copy_n {
 	VEG_TEMPLATE(
 			(typename T),
-			requires VEG_CONCEPT(copy_assignable<T>),
+			requires(VEG_CONCEPT(copy_assignable<T>)),
 			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
@@ -245,8 +247,10 @@ struct copy_n {
 struct mixed_init_copy_n {
 	VEG_TEMPLATE(
 			(typename T, int = 0),
-			requires VEG_CONCEPT(trivially_copyable<T>) &&
-					VEG_CONCEPT(copy_assignable<T>) && VEG_CONCEPT(copy_constructible<T>),
+			requires(
+					VEG_CONCEPT(trivially_copyable<T>) &&
+					VEG_CONCEPT(copy_assignable<T>) &&
+					VEG_CONCEPT(copy_constructible<T>)),
 			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
@@ -260,8 +264,10 @@ struct mixed_init_copy_n {
 
 	VEG_TEMPLATE(
 			(typename T),
-			requires !VEG_CONCEPT(trivially_copyable<T>) &&
-					VEG_CONCEPT(copy_assignable<T>) && VEG_CONCEPT(copy_constructible<T>),
+			requires(
+					!VEG_CONCEPT(trivially_copyable<T>) &&
+					VEG_CONCEPT(copy_assignable<T>) &&
+					VEG_CONCEPT(copy_constructible<T>)),
 			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
@@ -300,7 +306,7 @@ HEDLEY_ALWAYS_INLINE auto reallocate_memory(
 
 	constexpr i64 s = static_cast<i64>(sizeof(T));
 	T* p = static_cast<T*>(mem::aligned_alloc(align, new_cap * s));
-	auto&& cleanup = make::defer(free_cleanup{p, new_cap * s});
+	auto&& cleanup = defer(free_cleanup{p, new_cap * s});
 
 	relocate_n(p, src, size);
 

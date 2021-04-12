@@ -86,10 +86,10 @@ struct NotEq {};
 STATIC_ASSERT(VEG_CONCEPT(swappable<MoveOnly<0>&, MoveOnly<0>&>));
 STATIC_ASSERT(VEG_CONCEPT(equality_comparable_with<MoveOnly<0>, MoveOnly<0>>));
 STATIC_ASSERT(VEG_CONCEPT(
-		equality_comparable_with<option<MoveOnly<0>>, option<MoveOnly<0>>>));
+		equality_comparable_with<Option<MoveOnly<0>>, Option<MoveOnly<0>>>));
 STATIC_ASSERT(!VEG_CONCEPT(equality_comparable_with<NotEq, NotEq>));
 STATIC_ASSERT(
-		!VEG_CONCEPT(equality_comparable_with<option<NotEq>, option<NotEq>>));
+		!VEG_CONCEPT(equality_comparable_with<Option<NotEq>, Option<NotEq>>));
 
 struct FnMut {
 	int call_times{};
@@ -106,21 +106,21 @@ struct FnConst {
 };
 
 TEST_CASE("OptionTest: Misc") {
-	CHECK(option<option<int>>({some, some(899)}).unwrap().unwrap() == 899);
+	CHECK(Option<Option<int>>({some, some(899)}).unwrap().unwrap() == 899);
 }
 
 TEST_CASE("OptionTest: ObjectConstructionTest") {
-	option<int> a = none;
+	Option<int> a = none;
 	auto b = some(89);
 	CHECK_DEATH({ void(VEG_MOV(a).unwrap()); });
 	CHECK_NO_DEATH({ void(VEG_MOV(b).unwrap()); });
 	CHECK(some(89).unwrap() == 89);
 
-	auto fn_a = []() -> option<MoveOnly<0>> {
+	auto fn_a = []() -> Option<MoveOnly<0>> {
 		return {some, make_mv<0>()}; // NOLINT
 	};
 	(void)fn_a();
-	auto fn_b = []() -> option<MoveOnly<1>> { return none; };
+	auto fn_b = []() -> Option<MoveOnly<1>> { return none; };
 	(void)fn_b();
 
 	auto d = fn_a();
@@ -130,18 +130,18 @@ TEST_CASE("OptionTest: ObjectConstructionTest") {
 }
 
 TEST_CASE("OptionTest: CopyConstructionTest") {
-	option<int> a = none;
-	option<int> b = a;
+	Option<int> a = none;
+	Option<int> b = a;
 	CHECK(a == b);
 
-	option<int> c = {some, 98};
+	Option<int> c = {some, 98};
 	b = c;
 	CHECK(b == c);
 	CHECK(a != c);
 	CHECK(a != b);
 
-	option<vector<int>> d = none;
-	option<vector<int>> e = d;
+	Option<vector<int>> d = none;
+	Option<vector<int>> e = d;
 
 	CHECK(d == e);
 
@@ -153,11 +153,11 @@ TEST_CASE("OptionTest: CopyConstructionTest") {
 }
 
 TEST_CASE("OptionTest: ObjectForwardingTest") {
-	auto fn_a = []() -> option<MoveOnly<0>> {
+	auto fn_a = []() -> Option<MoveOnly<0>> {
 		return {some, make_mv<0>()}; // NOLINT
 	};
 	(void)(fn_a().unwrap());
-	auto fn_b = []() -> option<std::unique_ptr<int[]>> {
+	auto fn_b = []() -> Option<std::unique_ptr<int[]>> {
 		return {some, std::unique_ptr<int[]>(new int[1024])};
 	};
 	(void)(fn_b().unwrap());
@@ -185,22 +185,22 @@ TEST_CASE("OptionTest: Equality") {
 	CHECK(some(0));
 	CHECK(some(90) == some(90));
 	CHECK(some(90) != some(70));
-	CHECK((option<option<int>>{some, none}));
+	CHECK((Option<Option<int>>{some, none}));
 	CHECK(none == none);
 	CHECK(some(90) == some(90));
 	CHECK(some(90) != some(70));
 	CHECK(some(90) == some(90));
 	CHECK(some(90) != some(20));
 	CHECK(some(90));
-	CHECK(!option<int>{none});
-	CHECK((option<option<int>>{some, option<int>(none)}));
+	CHECK(!Option<int>{none});
+	CHECK((Option<Option<int>>{some, Option<int>(none)}));
 
-	CHECK((option<option<int>>{some, option<int>{none}}));
+	CHECK((Option<Option<int>>{some, Option<int>{none}}));
 	CHECK(some(90) == some(90));
 	CHECK(some(70) != some(90));
 	CHECK(some(90));
-	CHECK(!option<int>(none));
-	CHECK(option<option<int>>({some, option<int>(none)}));
+	CHECK(!Option<int>(none));
+	CHECK(Option<Option<int>>({some, Option<int>(none)}));
 
 	int const x = 909909;
 	int y = 909909;
@@ -232,7 +232,7 @@ TEST_CASE("OptionTest: Contains") {
 
 TEST_CASE("OptionLifetimeTest: Contains") {
 	CHECK_NO_DEATH({ (void)some(make_mv<0>()); });
-	CHECK_NO_DEATH({ (void)option<MoveOnly<1>>{none}.contains(make_mv<1>()); });
+	CHECK_NO_DEATH({ (void)Option<MoveOnly<1>>{none}.contains(make_mv<1>()); });
 }
 
 TEST_CASE("OptionTest: Exists") {
@@ -253,13 +253,13 @@ TEST_CASE("OptionTest: AsConstRef") {
 	auto const a = some(68);
 	CHECK(a.as_cref().unwrap() == 68);
 
-	option<int> const b = none;
+	Option<int> const b = none;
 	CHECK(!b.as_cref());
 
 	auto const c = some(vector<int>{1, 2, 3, 4});
 	CHECK(c.as_cref().unwrap() == vector<int>{1, 2, 3, 4});
 
-	option<vector<int>> const d = none;
+	Option<vector<int>> const d = none;
 	CHECK(!d.as_cref());
 }
 
@@ -268,14 +268,14 @@ TEST_CASE("OptionTest: AsRef") {
 	a.as_ref().unwrap() = 99;
 	CHECK(a == some(99));
 
-	option<int> b = none;
+	Option<int> b = none;
 	CHECK(!b.as_ref());
 
 	auto c = some(vector<int>{1, 2, 3, 4});
 	c.as_ref().unwrap() = vector<int>{5, 6, 7, 8, 9, 10};
 	CHECK(c == some(vector<int>{5, 6, 7, 8, 9, 10}));
 
-	auto d = option<vector<int>>(none);
+	auto d = Option<vector<int>>(none);
 	CHECK(!d.as_ref());
 }
 
@@ -283,7 +283,7 @@ TEST_CASE("OptionLifeTimeTest: AsRef") {
 	auto a = some(make_mv<0>());
 	CHECK_NO_DEATH({ (void)a.as_ref().unwrap().done(); });
 
-	auto b = option<MoveOnly<1>>(none);
+	auto b = Option<MoveOnly<1>>(none);
 	CHECK_NO_DEATH({ (void)a.as_ref().unwrap().done(); });
 	CHECK_NO_DEATH({
 		auto b_ = b.as_ref();
@@ -293,11 +293,11 @@ TEST_CASE("OptionLifeTimeTest: AsRef") {
 
 TEST_CASE("OptionTest: Unwrap") {
 	CHECK(some(0).unwrap() == 0);
-	CHECK_DEATH({ (void)option<int>(none).unwrap(); });
+	CHECK_DEATH({ (void)Option<int>(none).unwrap(); });
 
 	CHECK(
 			some(vector<int>{1, 2, 3, 4, 5}).unwrap() == vector<int>{1, 2, 3, 4, 5});
-	CHECK_DEATH({ (void)option<vector<int>>(none).unwrap(); });
+	CHECK_DEATH({ (void)Option<vector<int>>(none).unwrap(); });
 }
 
 TEST_CASE("OptionLifetimeTest: Unwrap") {
@@ -402,7 +402,7 @@ TEST_CASE("OptionTest: MapOrElse") {
 			[](int&& x) -> int { return x + 90; }, []() -> int { return 90; });
 	CHECK(a == 180);
 
-	auto&& b = option<int>(none).map_or_else(
+	auto&& b = Option<int>(none).map_or_else(
 			[](int&& x) -> int { return x + 90; }, []() -> int { return 90; });
 	CHECK(b == 90);
 }
@@ -465,8 +465,8 @@ TEST_CASE("OptionTest: Filter") {
 	CHECK(some(90).filter(is_even).unwrap() == 90);
 	CHECK(some(99).filter(is_odd).unwrap() == 99);
 
-	CHECK(!option<int>(none).filter(is_even));
-	CHECK(!option<int>(none).filter(is_even));
+	CHECK(!Option<int>(none).filter(is_even));
+	CHECK(!Option<int>(none).filter(is_even));
 
 	auto all_odd = [&](vector<int> const& vec) {
 		return all_of(vec.begin(), vec.end(), is_odd);
@@ -477,8 +477,8 @@ TEST_CASE("OptionTest: Filter") {
 			some(vector<int>{1, 3, 5, 7}).filter(all_odd).unwrap() ==
 			vector<int>{1, 3, 5, 7});
 
-	CHECK(!option<vector<int>>(none).filter(all_odd));
-	CHECK(!option<vector<int>>(none).filter(all_odd));
+	CHECK(!Option<vector<int>>(none).filter(all_odd));
+	CHECK(!Option<vector<int>>(none).filter(all_odd));
 }
 
 // TEST_CASE("OptionTest: FilterNot") {
@@ -557,7 +557,7 @@ TEST_CASE("OptionTest: Take") {
 	CHECK(a.take().unwrap() == 9);
 	CHECK(!a);
 
-	auto b = option<int>(none);
+	auto b = Option<int>(none);
 	CHECK(!b.take());
 	CHECK(!b);
 
@@ -566,7 +566,7 @@ TEST_CASE("OptionTest: Take") {
 	CHECK(ca == some(vector<int>{-1, -2, -4, -8, -16}));
 	CHECK(!c);
 
-	auto d = option<vector<int>>(none);
+	auto d = Option<vector<int>>(none);
 	CHECK(!d.take());
 	CHECK(!d);
 }
@@ -607,10 +607,10 @@ TEST_CASE("OptionTest: OrElse") {
 	auto&& a = some(90.0F).or_else([]() { return some(0.5f); });
 	CHECK(VEG_FWD(a).unwrap() == 90.0F);
 
-	auto&& b = option<float>(none).or_else([]() { return some(0.5f); });
+	auto&& b = Option<float>(none).or_else([]() { return some(0.5f); });
 	CHECK(VEG_FWD(b).unwrap() == 0.5F);
 
-	auto&& c = option<float>(none).or_else([]() { return option<float>(none); });
+	auto&& c = Option<float>(none).or_else([]() { return Option<float>(none); });
 	CHECK(!c);
 	//
 	//
@@ -619,13 +619,13 @@ TEST_CASE("OptionTest: OrElse") {
 	});
 	CHECK(VEG_FWD(d).unwrap() == vector<int>{1, 2, 3, 4, 5});
 
-	auto&& e = option<vector<int>>(none).or_else([]() {
+	auto&& e = Option<vector<int>>(none).or_else([]() {
 		return some(vector<int>{6, 7, 8, 9, 10});
 	});
 	CHECK(VEG_FWD(e).unwrap() == vector<int>{6, 7, 8, 9, 10});
 
-	auto&& f = option<vector<int>>(none).or_else(
-			[]() { return option<vector<int>>(none); });
+	auto&& f = Option<vector<int>>(none).or_else(
+			[]() { return Option<vector<int>>(none); });
 	CHECK(!f);
 }
 #include "veg/internal/epilogue.hpp"

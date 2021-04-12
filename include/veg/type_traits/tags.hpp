@@ -16,38 +16,37 @@ inline namespace tags {
 enum struct safety_e { safe, unsafe };
 
 template <safety_e S>
-struct safety_tag_t;
+struct SafetyTag;
 
-using safe_t = safety_tag_t<safety_e::safe>;
-using unsafe_t = safety_tag_t<safety_e::unsafe>;
-
-template <>
-struct safety_tag_t<safety_e::safe> : meta::constant<safety_e, safety_e::safe> {
-};
+using Safe = SafetyTag<safety_e::safe>;
+using Unsafe = SafetyTag<safety_e::unsafe>;
 
 template <>
-struct safety_tag_t<safety_e::unsafe>
+struct SafetyTag<safety_e::safe> : meta::constant<safety_e, safety_e::safe> {};
+
+template <>
+struct SafetyTag<safety_e::unsafe>
 		: meta::constant<safety_e, safety_e::unsafe> {
 private:
-	safety_tag_t() = default;
-	constexpr operator safe_t() const noexcept { return {}; }
-	friend struct meta::static_const<safety_tag_t>;
+	SafetyTag() = default;
+	constexpr operator Safe() const noexcept { return {}; }
+	friend struct meta::static_const<SafetyTag>;
 };
 
 template <typename T>
-struct tag_t {};
-struct cvt_t {};
-struct init_list_t {};
-struct from_raw_parts_t {};
-struct inplace_t {};
+struct Tag {};
+struct Cvt {};
+struct InitList {};
+struct FromRawParts {};
+struct InPlace {};
 
-VEG_INLINE_VAR_TEMPLATE(typename T, tag, tag_t<T>);
-VEG_INLINE_VAR(init_list, init_list_t);
-VEG_INLINE_VAR(inplace, inplace_t);
-VEG_INLINE_VAR(cvt, cvt_t);
-VEG_INLINE_VAR(from_raw_parts, from_raw_parts_t);
-VEG_INLINE_VAR(safe, safe_t);
-VEG_INLINE_VAR(unsafe, unsafe_t);
+VEG_INLINE_VAR_TEMPLATE(typename T, tag, Tag<T>);
+VEG_INLINE_VAR(init_list, InitList);
+VEG_INLINE_VAR(inplace, InPlace);
+VEG_INLINE_VAR(cvt, Cvt);
+VEG_INLINE_VAR(from_raw_parts, FromRawParts);
+VEG_INLINE_VAR(safe, Safe);
+VEG_INLINE_VAR(unsafe, Unsafe);
 } // namespace tags
 
 } // namespace VEG_ABI

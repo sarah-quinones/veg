@@ -25,7 +25,7 @@ namespace veg {
 extern int argc;
 extern char** argv;
 
-inline auto is_terminating_impl(fn::fn_once_view<void()> fn, char const* id)
+inline auto is_terminating_impl(fn::FnOnceView<void()> fn, char const* id)
 		-> int {
 	char argname[] = "--veg-death-assertion-id";
 
@@ -66,11 +66,10 @@ inline auto is_terminating_impl(fn::fn_once_view<void()> fn, char const* id)
 	}
 }
 
-inline auto is_terminating(fn::fn_once_view<void()> fn, char const* id)
-		-> bool {
+inline auto is_terminating(fn::FnOnceView<void()> fn, char const* id) -> bool {
 	return is_terminating_impl(VEG_FWD(fn), id) != 1;
 }
-inline auto is_non_terminating(fn::fn_once_view<void()> fn, char const* id)
+inline auto is_non_terminating(fn::FnOnceView<void()> fn, char const* id)
 		-> bool {
 	return is_terminating_impl(VEG_FWD(fn), id) != -1;
 }

@@ -61,13 +61,12 @@ struct log_elapsed_time {
 };
 
 template <typename Fn>
-struct raii_timer : defer<internal::time_::raii_timer_wrapper<Fn>> {
+struct RaiiTimer : Defer<internal::time_::raii_timer_wrapper<Fn>> {
 	VEG_CHECK_CONCEPT(invocable<Fn, i64>);
-	using defer<internal::time_::raii_timer_wrapper<Fn>>::defer;
-	using defer<internal::time_::raii_timer_wrapper<Fn>>::fn;
+	using Defer<internal::time_::raii_timer_wrapper<Fn>>::Defer;
+	using Defer<internal::time_::raii_timer_wrapper<Fn>>::fn;
 };
 
-namespace make {
 namespace nb {
 struct raii_timer {
 	VEG_TEMPLATE(
@@ -79,13 +78,12 @@ struct raii_timer {
 			operator(),
 			(fn, Fn&&))
 	const noexcept(VEG_CONCEPT(nothrow_move_constructible<Fn>))
-			->time::raii_timer<Fn> {
+			->time::RaiiTimer<Fn> {
 		return {VEG_FWD(fn)};
 	}
 };
 } // namespace nb
 VEG_NIEBLOID(raii_timer);
-} // namespace make
 } // namespace VEG_ABI
 } // namespace time
 } // namespace veg

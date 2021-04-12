@@ -8,12 +8,12 @@ namespace veg {
 namespace abi {
 inline namespace VEG_ABI_VERSION {
 namespace internal {
-struct char_string_ref {
-	HEDLEY_ALWAYS_INLINE constexpr char_string_ref(
+struct ByteStringView {
+	HEDLEY_ALWAYS_INLINE constexpr ByteStringView(
 			char const* data, i64 len) noexcept
 			: data_{data}, len_{len} {}
 
-	char_string_ref(char const* str) noexcept;
+	ByteStringView(char const* str) noexcept;
 
 	VEG_TEMPLATE(
 			typename T,
@@ -24,10 +24,10 @@ struct char_string_ref {
 					VEG_CONCEPT(
 							constructible<i64, decltype(VEG_DECLVAL(T const&).size())>)),
 
-			HEDLEY_ALWAYS_INLINE constexpr char_string_ref,
+			HEDLEY_ALWAYS_INLINE constexpr ByteStringView,
 			(arg, T const&))
 	noexcept
-			: char_string_ref{
+			: ByteStringView{
 						static_cast<char const*>(arg.data()),
 						static_cast<i64>(arg.size())} {}
 
@@ -43,9 +43,9 @@ struct char_string_ref {
 		return len_;
 	}
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto
-	starts_with(char_string_ref other) const noexcept -> bool;
+	starts_with(ByteStringView other) const noexcept -> bool;
 	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto
-	operator==(char_string_ref other) const noexcept -> bool;
+	operator==(ByteStringView other) const noexcept -> bool;
 };
 template <typename T>
 struct byte_str_static_const {
@@ -55,7 +55,7 @@ template <typename T>
 constexpr T byte_str_static_const<T>::value;
 namespace /* NOLINT */ {
 constexpr auto const& empty_str /* NOLINT */ =
-		byte_str_static_const<char_string_ref>::value;
+		byte_str_static_const<ByteStringView>::value;
 } // namespace
 } // namespace internal
 } // namespace VEG_ABI_VERSION

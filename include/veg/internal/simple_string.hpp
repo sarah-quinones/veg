@@ -8,21 +8,21 @@ namespace veg {
 namespace abi {
 inline namespace VEG_ABI_VERSION {
 namespace internal {
-struct string : fmt::buffer {
+struct String : fmt::Buffer {
 	struct layout {
 		char* ptr;
 		i64 len;
 		i64 cap;
 	} self = {};
 
-	~string();
-	string() = default;
-	HEDLEY_ALWAYS_INLINE string(string&& other) noexcept : self{other.self} {
+	~String();
+	String() = default;
+	HEDLEY_ALWAYS_INLINE String(String&& other) noexcept : self{other.self} {
 		other.self = layout{nullptr, 0, 0};
 	}
-	string(string const&) = delete;
-	auto operator=(string const&) -> string& = delete;
-	auto operator=(string&&) -> string& = delete;
+	String(String const&) = delete;
+	auto operator=(String const&) -> String& = delete;
+	auto operator=(String&&) -> String& = delete;
 
 	void resize(i64 new_len) override;
 	void reserve(i64 new_cap) override;

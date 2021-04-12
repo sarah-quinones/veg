@@ -49,41 +49,41 @@ inline namespace VEG_ABI {
 
 VEG_DOC_CLASS
 template <typename... Ts>
-struct tuple : internal::tup_::adl::tuple_base<Ts...> {
+struct Tuple : internal::tup_::adl::tuple_base<Ts...> {
 
 	VEG_DOC_CTOR
 	/// default constructor
 	/// default or value initializes all the elements
-	constexpr tuple() VEG_DOC(noexcept(nothrow_constructible<Ts>&&...) requires(
+	constexpr Tuple() VEG_DOC(noexcept(nothrow_constructible<Ts>&&...) requires(
 			constructible<Ts>&&...)) = default;
 
 	VEG_DOC_CTOR
 	/// move constructor
 	/// move (or copy if the member can't be moved) constructs the elements
 	/// memberwise
-	tuple(tuple&&) VEG_DOC(noexcept(nothrow_move_constructible<Ts>&&...) requires(
+	Tuple(Tuple&&) VEG_DOC(noexcept(nothrow_move_constructible<Ts>&&...) requires(
 			(move_constructible<Ts> || copy_constructible<Ts>)&&...)) = default;
 
 	VEG_DOC_CTOR
 	/// copy constructor
 	/// copy constructs the elements memberwise
-	tuple(tuple const&)
+	Tuple(Tuple const&)
 			VEG_DOC(noexcept(nothrow_copy_constructible<Ts>&&...) requires(
 					(copy_constructible<Ts>)&&...)) = default;
 
 	VEG_DOC_CTOR
 	/// move assignment operator
 	/// move assigns the elements memberwise
-	auto operator=(tuple&&) &
+	auto operator=(Tuple&&) &
 			VEG_DOC(noexcept(nothrow_move_assignable<Ts>&&...))
-					-> tuple& VEG_DOC(requires((move_assignable<Ts>)&&...)) = default;
+					-> Tuple& VEG_DOC(requires((move_assignable<Ts>)&&...)) = default;
 
 	VEG_DOC_CTOR
 	/// copy assignment operator
 	/// copy assigns the elements memberwise
-	auto operator=(tuple const&) &
+	auto operator=(Tuple const&) &
 			VEG_DOC(noexcept(nothrow_copy_assignable<Ts>&&...))
-					-> tuple& VEG_DOC(requires((copy_assignable<Ts>)&&...)) = default;
+					-> Tuple& VEG_DOC(requires((copy_assignable<Ts>)&&...)) = default;
 
 	VEG_DOC_CTOR
 	/// converting constructor
@@ -91,11 +91,11 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 	VEG_TEMPLATE(
 			typename... Us,
 			requires(VEG_ALL_OF(VEG_CONCEPT(constructible<Ts, Us&&>))),
-			HEDLEY_ALWAYS_INLINE constexpr tuple,
-			(/*tag*/, cvt_t),
+			HEDLEY_ALWAYS_INLINE constexpr Tuple,
+			(/*tag*/, Cvt),
 			(... args, Us&&))
 	noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us&&>))))
-			: m_impl(cvt_t{}, VEG_FWD(args)...) {}
+			: m_impl(Cvt{}, VEG_FWD(args)...) {}
 
 	VEG_DOC_CTOR
 	/// tuple converting move constructor
@@ -104,8 +104,8 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 			(typename... Us),
 			requires(VEG_ALL_OF(VEG_CONCEPT(constructible<Ts, Us&&>))),
 			explicit(VEG_ANY_OF(!VEG_CONCEPT(convertible<Us&&, Ts>))),
-			HEDLEY_ALWAYS_INLINE constexpr tuple,
-			((tup, tuple<Us...>&&)),
+			HEDLEY_ALWAYS_INLINE constexpr Tuple,
+			((tup, Tuple<Us...>&&)),
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us&&>))))
 			: m_impl(
 					internal::tup_::hidden_tag2{},
@@ -121,8 +121,8 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 			(typename... Us),
 			requires(VEG_ALL_OF((VEG_CONCEPT(constructible<Ts, Us&>)))),
 			explicit(VEG_ANY_OF(!VEG_CONCEPT(convertible<Us&, Ts>))),
-			HEDLEY_ALWAYS_INLINE constexpr tuple,
-			((tup, tuple<Us...>&)),
+			HEDLEY_ALWAYS_INLINE constexpr Tuple,
+			((tup, Tuple<Us...>&)),
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us&>))))
 			: m_impl(
 					internal::tup_::hidden_tag2{},
@@ -138,8 +138,8 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 			(typename... Us),
 			requires(VEG_ALL_OF(VEG_CONCEPT(constructible<Ts, Us const&>))),
 			explicit(VEG_ANY_OF(!VEG_CONCEPT(convertible<Us const&, Ts>))),
-			HEDLEY_ALWAYS_INLINE constexpr tuple,
-			((tup, tuple<Us...> const&)),
+			HEDLEY_ALWAYS_INLINE constexpr Tuple,
+			((tup, Tuple<Us...> const&)),
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us const&>))))
 			: m_impl(
 					internal::tup_::hidden_tag2{},
@@ -149,11 +149,11 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 
 	VEG_DOC_CTOR
 	template <typename... Us>
-	tuple(tuple<Us...> const&& tup) = delete;
+	Tuple(Tuple<Us...> const&& tup) = delete;
 
 	VEG_DOC_FN
 	template <i64 I>
-	void operator[](fix<I> /*arg*/) const&& = delete;
+	void operator[](Fix<I> /*arg*/) const&& = delete;
 
 	VEG_DOC_FN
 	/// moves the ith element out of the tuple
@@ -165,7 +165,7 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto
 			operator[],
 			(/*arg*/,
-	     fix<I>)) && noexcept(VEG_CONCEPT(nothrow_move_constructible<ith<usize{I}, Ts...>>))
+	     Fix<I>)) && noexcept(VEG_CONCEPT(nothrow_move_constructible<ith<usize{I}, Ts...>>))
 			-> ith<usize{I}, Ts...> {
 		return static_cast<ith<usize{I}, Ts...>&&>(
 				internal::tup_::get_impl<I>(internal::tup_::get_inner(*this)));
@@ -178,7 +178,7 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 			requires(I < sizeof...(Ts) && (I >= 0)),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto
 			operator[],
-			(/*arg*/, fix<I>)) & noexcept -> ith<usize{I}, Ts...>& {
+			(/*arg*/, Fix<I>)) & noexcept -> ith<usize{I}, Ts...>& {
 		return internal::tup_::get_impl<I>(internal::tup_::get_inner(*this));
 	}
 
@@ -189,7 +189,7 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 			requires(I < sizeof...(Ts) && (I >= 0)),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto
 			operator[],
-			(/*arg*/, fix<I>))
+			(/*arg*/, Fix<I>))
 	const& noexcept->ith<usize{I}, Ts...> const& {
 		return internal::tup_::get_impl<I>(internal::tup_::get_inner(*this));
 	}
@@ -204,10 +204,10 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 					(VEG_ALL_OF(VEG_CONCEPT(assignable<Ts&, Us const&>)))),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto
 			operator=,
-			(rhs, tuple<Us...> const&)) &
+			(rhs, Tuple<Us...> const&)) &
 
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_assignable<Ts&, Us const&>))))
-					-> tuple& {
+					-> Tuple& {
 
 		internal::tup_::binop_apply<
 				internal::tup_::assign_ftor,
@@ -233,10 +233,10 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 					(VEG_ALL_OF(VEG_CONCEPT(assignable<Ts&, Us&&>)))),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto
 			operator=,
-			(rhs, tuple<Us...>&&)) &
+			(rhs, Tuple<Us...>&&)) &
 
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_assignable<Ts&, Us&&>))))
-					-> tuple& {
+					-> Tuple& {
 
 		internal::tup_::binop_apply<
 				internal::tup_::assign_ftor,
@@ -260,12 +260,12 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 			requires(VEG_ALL_OF(VEG_CONCEPT(assignable<Ts const&&, Us const&>))),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto
 			operator=,
-			(rhs, tuple<Us...> const&))
+			(rhs, Tuple<Us...> const&))
 	const&&
 
 			noexcept(
 					(VEG_ALL_OF(VEG_CONCEPT(nothrow_assignable<Ts const&&, Us const&>))))
-					->tuple const&& {
+					->Tuple const&& {
 
 		internal::tup_::binop_apply<
 				internal::tup_::assign_ftor,
@@ -278,7 +278,7 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 
 		);
 
-		return static_cast<tuple const&&>(*this);
+		return static_cast<Tuple const&&>(*this);
 	}
 
 	VEG_DOC_FN
@@ -289,11 +289,11 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 			requires(VEG_ALL_OF(VEG_CONCEPT(assignable<Ts const&&, Us&&>))),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto
 			operator=,
-			(rhs, tuple<Us...>&&))
+			(rhs, Tuple<Us...>&&))
 	const&&
 
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_assignable<Ts const&&, Us&&>))))
-					->tuple const&& {
+					->Tuple const&& {
 
 		internal::tup_::binop_apply<
 				internal::tup_::assign_ftor,
@@ -306,39 +306,39 @@ struct tuple : internal::tup_::adl::tuple_base<Ts...> {
 
 		);
 
-		return static_cast<tuple const&&>(*this);
+		return static_cast<Tuple const&&>(*this);
 	}
 
 	VEG_DOC_FN
 	/// returns a tuple of references `Ts&...`
 	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto as_ref() & noexcept
-			-> tuple<Ts&...> {
-		return tuple::as_ref_impl<Ts&...>(
+			-> Tuple<Ts&...> {
+		return Tuple::as_ref_impl<Ts&...>(
 				*this, meta::make_index_sequence<sizeof...(Ts)>{});
 	}
 	VEG_DOC_FN
 	/// returns a tuple of references `Ts const&...`
 	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto as_ref() const& noexcept
-			-> tuple<Ts const&...> {
-		return tuple::as_ref_impl<Ts const&...>(
+			-> Tuple<Ts const&...> {
+		return Tuple::as_ref_impl<Ts const&...>(
 				*this, meta::make_index_sequence<sizeof...(Ts)>{});
 	}
 	VEG_DOC_FN
 	/// returns a tuple of references `Ts&&...`
 	HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto as_ref() && noexcept
-			-> tuple<Ts&&...> {
-		return tuple::as_ref_impl<Ts&&...>(
-				static_cast<tuple&&>(*this),
+			-> Tuple<Ts&&...> {
+		return Tuple::as_ref_impl<Ts&&...>(
+				static_cast<Tuple&&>(*this),
 				meta::make_index_sequence<sizeof...(Ts)>{});
 	}
 
 private:
 	template <typename... Us, usize... Is>
 	static constexpr auto HEDLEY_ALWAYS_INLINE as_ref_impl(
-			tuple<Ts...> const& self, meta::index_sequence<Is...> /*seq*/) noexcept
-			-> tuple<Us...> {
+			Tuple<Ts...> const& self, meta::index_sequence<Is...> /*seq*/) noexcept
+			-> Tuple<Us...> {
 		return {
-				cvt_t{},
+				Cvt{},
 
 				const_cast<Us> /* NOLINT */ (
 						static_cast<internal::tup_::tuple_leaf<Is, Ts> const&>(
@@ -348,7 +348,7 @@ private:
 						...};
 	}
 
-	internal::tup_::tuple_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>
+	internal::tup_::TupleImpl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>
 			m_impl;
 
 	template <typename T>
@@ -356,13 +356,10 @@ private:
 			-> decltype((VEG_FWD(tup).m_impl))&&;
 };
 
-VEG_CPP17(template <typename... Ts> tuple(cvt_t, Ts...) -> tuple<Ts...>;)
+VEG_CPP17(template <typename... Ts> Tuple(Cvt, Ts...) -> Tuple<Ts...>;)
 
 namespace internal {
 namespace tup_ {
-
-/// veg::@namespace::/* implementation defined, accessible by `tuple` through
-/// adl */
 namespace adl {
 VEG_DOC_FN
 /// returns a reference `Ti const&` to the ith member
@@ -371,7 +368,7 @@ VEG_TEMPLATE(
 		(usize I, typename... Ts),
 		requires(I < sizeof...(Ts)),
 		HEDLEY_ALWAYS_INLINE constexpr auto get,
-		(tup, tuple<Ts...>&))
+		(tup, Tuple<Ts...>&))
 noexcept -> ith<I, Ts...>& {
 	return tup_::get_impl<I>(tup_::get_inner(tup));
 }
@@ -382,7 +379,7 @@ VEG_TEMPLATE(
 		(usize I, typename... Ts),
 		requires(I < sizeof...(Ts)),
 		HEDLEY_ALWAYS_INLINE constexpr auto get,
-		(tup, tuple<Ts...> const&))
+		(tup, Tuple<Ts...> const&))
 noexcept -> ith<I, Ts...> const& {
 	return tup_::get_impl<I>(tup_::get_inner(tup));
 }
@@ -393,7 +390,7 @@ VEG_TEMPLATE(
 		(usize I, typename... Ts),
 		requires(I < sizeof...(Ts)),
 		HEDLEY_ALWAYS_INLINE constexpr auto get,
-		(tup, tuple<Ts...>&&))
+		(tup, Tuple<Ts...>&&))
 noexcept -> ith<I, Ts...>&& {
 	return static_cast<ith<I, Ts...>&&>(tup_::get_impl<I>(tup_::get_inner(tup)));
 }
@@ -403,7 +400,7 @@ VEG_TEMPLATE(
 		(usize I, typename... Ts),
 		requires(I < sizeof...(Ts)),
 		HEDLEY_ALWAYS_INLINE constexpr void get,
-		(tup, tuple<Ts...> const&&))
+		(tup, Tuple<Ts...> const&&))
 noexcept = delete;
 
 VEG_DOC_FN
@@ -415,8 +412,8 @@ VEG_TEMPLATE(
 				(!VEG_CONCEPT(reference<Ts>) && !VEG_CONCEPT(reference<Us>) &&
          VEG_CONCEPT(swappable<Ts&, Us&>)))),
 		HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void swap,
-		(lhs, tuple<Ts...>&),
-		(rhs, tuple<Us...>&))
+		(lhs, Tuple<Ts...>&),
+		(rhs, Tuple<Us...>&))
 noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_swappable<Ts&, Us&>)))) {
 	internal::tup_::impl<(VEG_ALL_OF(
 			(VEG_CONCEPT(same<Ts, Us>) && VEG_CONCEPT(trivially_swappable<Ts&>))))>::
@@ -431,8 +428,8 @@ VEG_TEMPLATE(
 		(typename... Ts, typename... Us),
 		requires(VEG_ALL_OF(VEG_CONCEPT(swappable<Ts const&&, Us const&&>))),
 		HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void swap,
-		(lhs, tuple<Ts...> const&&),
-		(rhs, tuple<Us...> const&&))
+		(lhs, Tuple<Ts...> const&&),
+		(rhs, Tuple<Us...> const&&))
 
 noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_swappable<Ts const&&, Us const&&>)))) {
 	internal::tup_::impl<false>::template apply<(VEG_ALL_OF(VEG_CONCEPT(
@@ -447,8 +444,8 @@ VEG_TEMPLATE(
 				(VEG_ALL_OF(!VEG_CONCEPT(reference<Ts>))) &&
 				(VEG_ALL_OF(VEG_CONCEPT(swappable<Ts&, Us const&&>)))),
 		HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void swap,
-		(lhs, tuple<Ts...>&),
-		(rhs, tuple<Us...> const&&))
+		(lhs, Tuple<Ts...>&),
+		(rhs, Tuple<Us...> const&&))
 
 noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_swappable<Ts&, Us const&&>)))) {
 	internal::tup_::impl<false>::template apply<((VEG_ALL_OF(VEG_CONCEPT(
@@ -463,8 +460,8 @@ VEG_TEMPLATE(
 				(VEG_ALL_OF(!VEG_CONCEPT(reference<Us>))) &&
 				(VEG_ALL_OF(VEG_CONCEPT(swappable<Ts const&&, Us&>)))),
 		HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void swap,
-		(lhs, tuple<Ts...> const&&),
-		(rhs, tuple<Us...>&))
+		(lhs, Tuple<Ts...> const&&),
+		(rhs, Tuple<Us...>&))
 noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_swappable<Ts const&&, Us&>)))) {
 	internal::tup_::impl<false>::template apply<(VEG_ALL_OF(VEG_CONCEPT(
 			nothrow_swappable<Ts const&&, Us&>)))>(VEG_FWD(lhs), VEG_FWD(rhs));
@@ -479,8 +476,8 @@ VEG_TEMPLATE(
 				VEG_CONCEPT(equality_comparable_with<Ts const&, Us const&>))),
 		HEDLEY_ALWAYS_INLINE constexpr auto
 		operator==,
-		(lhs, tuple<Ts...> const&),
-		(rhs, tuple<Us...> const&))
+		(lhs, Tuple<Ts...> const&),
+		(rhs, Tuple<Us...> const&))
 noexcept -> bool {
 	return cmp_impl::eq(tup_::get_inner(lhs), tup_::get_inner(rhs));
 }
@@ -493,8 +490,8 @@ VEG_TEMPLATE(
 				VEG_CONCEPT(equality_comparable_with<Ts const&, Us const&>))),
 		HEDLEY_ALWAYS_INLINE constexpr auto
 		operator!=,
-		(lhs, tuple<Ts...> const&),
-		(rhs, tuple<Us...> const&))
+		(lhs, Tuple<Ts...> const&),
+		(rhs, Tuple<Us...> const&))
 noexcept -> bool {
 	return !adl::operator==(lhs, rhs);
 }
@@ -506,8 +503,8 @@ VEG_TEMPLATE(
 		requires(VEG_ALL_OF(
 				VEG_CONCEPT(synth_three_way_comparable_with<Ts const&, Us const&>))),
 		HEDLEY_ALWAYS_INLINE constexpr auto cmp_3way,
-		(lhs, tuple<Ts...> const&),
-		(rhs, tuple<Us...> const&))
+		(lhs, Tuple<Ts...> const&),
+		(rhs, Tuple<Us...> const&))
 noexcept -> meta::common_comparison_category_t<
 		meta::three_way_comparison_result_t<Ts const&, Us const&>...> {
 	return cmp_impl::tway<decltype(adl::cmp_3way(lhs, rhs))>(
@@ -526,7 +523,7 @@ struct unpack_args {
 			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(fn, Fn&&),
-			(args, tuple<Args...>&&))
+			(args, Tuple<Args...>&&))
 	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>))
 			->meta::invoke_result_t<Fn, Args&&...> {
 		return internal::tup_::fn_apply_impl(
@@ -541,7 +538,7 @@ struct unpack_args {
 			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(fn, Fn&&),
-			(args, tuple<Args...> const&))
+			(args, Tuple<Args...> const&))
 	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args const&...>))
 			->meta::invoke_result_t<Fn, Args const&...> {
 		return internal::tup_::fn_apply_impl(
@@ -556,7 +553,7 @@ struct unpack_args {
 			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(fn, Fn&&),
-			(args, tuple<Args...>&))
+			(args, Tuple<Args...>&))
 	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args&...>))
 			->meta::invoke_result_t<Fn, Args&...> {
 		return internal::tup_::fn_apply_impl(
@@ -566,12 +563,11 @@ struct unpack_args {
 	}
 
 	template <typename Fn, typename... Args>
-	void operator()(Fn&&, tuple<Args...> const&&) const noexcept = delete;
+	void operator()(Fn&&, Tuple<Args...> const&&) const noexcept = delete;
 };
 } // namespace nb
 VEG_NIEBLOID(unpack_args);
 
-namespace make {
 namespace nb {
 struct tuple {
 	VEG_TEMPLATE(
@@ -582,16 +578,16 @@ struct tuple {
 			(... args, Ts&&))
 	const noexcept(
 			VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<meta::decay_t<Ts>, Ts&&>)))
-			->veg::tuple<meta::decay_t<Ts>...> {
-		return {cvt_t{}, VEG_FWD(args)...};
+			->veg::Tuple<meta::decay_t<Ts>...> {
+		return {Cvt{}, VEG_FWD(args)...};
 	}
 };
 
 struct tuple_ref {
 	template <typename... Ts>
 	HEDLEY_ALWAYS_INLINE constexpr auto operator()(Ts&&... args) const noexcept
-			-> veg::tuple<Ts&&...> {
-		return {cvt_t{}, VEG_FWD(args)...};
+			-> veg::Tuple<Ts&&...> {
+		return {Cvt{}, VEG_FWD(args)...};
 	}
 };
 
@@ -603,53 +599,52 @@ struct tuple_fwd {
 			operator(),
 			(... args, Ts&&))
 	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Ts&&>)))
-			->veg::tuple<Ts...> {
-		return {cvt_t{}, VEG_FWD(args)...};
+			->veg::Tuple<Ts...> {
+		return {Cvt{}, VEG_FWD(args)...};
 	}
 };
 } // namespace nb
 VEG_NIEBLOID(tuple);
 VEG_NIEBLOID(tuple_ref);
 VEG_NIEBLOID(tuple_fwd);
-} // namespace make
 
 namespace meta {
 
 template <typename... Ts>
-struct is_trivially_relocatable<tuple<Ts...>>
+struct is_trivially_relocatable<Tuple<Ts...>>
 		: bool_constant<(VEG_ALL_OF(is_trivially_relocatable<Ts>::value))> {};
 
 template <typename... Ts>
-struct is_mostly_trivial<tuple<Ts...>>
+struct is_mostly_trivial<Tuple<Ts...>>
 		: bool_constant<(VEG_ALL_OF(is_mostly_trivial<Ts>::value))> {};
 
 template <typename... Ts>
-struct is_trivially_swappable<tuple<Ts...>&>
-		: veg::internal::tup_::trivially_swappable<tuple<Ts...>&, tuple<Ts...>&> {};
+struct is_trivially_swappable<Tuple<Ts...>&>
+		: veg::internal::tup_::trivially_swappable<Tuple<Ts...>&, Tuple<Ts...>&> {};
 } // namespace meta
 
 template <typename... Ts>
-struct fmt::debug<tuple<Ts...>> {
+struct fmt::Debug<Tuple<Ts...>> {
 
 	template <usize... Is>
 	static void to_string_impl(
-			fmt::buffer& out,
-			internal::tup_::tuple_impl<meta::index_sequence<Is...>, Ts...> const&
+			fmt::Buffer& out,
+			internal::tup_::TupleImpl<meta::index_sequence<Is...>, Ts...> const&
 					tup) {
 
 		out.insert(out.size(), "{", 1);
-		(void)internal::empty_arr{
-				internal::empty{},
+		(void)internal::EmptyArr{
+				internal::Empty{},
 				((Is > 0) ? (out.insert(out.size(), ", ", 2)) : void(0),
-		     debug<Ts>::to_string(
+		     Debug<Ts>::to_string(
 						 out,
 						 static_cast<internal::tup_::tuple_leaf<Is, Ts> const&>(tup).inner),
-		     internal::empty{})...};
+		     internal::Empty{})...};
 		out.insert(out.size(), "}", 1);
 	}
 
-	static void to_string(fmt::buffer& out, tuple<Ts...> const& tup) {
-		debug::to_string_impl(out, internal::tup_::get_inner(tup));
+	static void to_string(fmt::Buffer& out, Tuple<Ts...> const& tup) {
+		Debug::to_string_impl(out, internal::tup_::get_inner(tup));
 	}
 };
 
@@ -658,11 +653,11 @@ struct fmt::debug<tuple<Ts...>> {
 
 namespace std {
 template <typename... Ts>
-struct tuple_size<veg::tuple<Ts...>>
+struct tuple_size<veg::Tuple<Ts...>>
 		: integral_constant<veg::usize, sizeof...(Ts)> {};
 
 template <veg::usize I, typename... Ts>
-struct tuple_element<I, veg::tuple<Ts...>> {
+struct tuple_element<I, veg::Tuple<Ts...>> {
 	using type =
 			typename veg::internal::tup_::pack_ith_elem<I>::template type<Ts...>;
 };

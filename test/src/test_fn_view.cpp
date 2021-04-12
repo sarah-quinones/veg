@@ -31,30 +31,30 @@ TEST_CASE("function_view: no_args") {
 	};
 
 #if __cplusplus >= 201703L
-	fn_view<void() noexcept> f{inc_lambda};
+	FnView<void() noexcept> f{inc_lambda};
 #else
-	fn_view<void()> f{inc_lambda};
+	FnView<void()> f{inc_lambda};
 #endif
 	CHECK(i == 0);
 	f();
 	CHECK(i == 1);
 	f();
 	CHECK(i == 2);
-	fn_view<void()>{f}();
+	FnView<void()>{f}();
 	CHECK(i == 3);
-	fn_once_view<void()>{f}();
+	FnOnceView<void()>{f}();
 	CHECK(i == 4);
 
 	STATIC_ASSERT(
-			!std::is_constructible<fn_view<void()>, fn_once_view<void()>>::value);
+			!std::is_constructible<FnView<void()>, FnOnceView<void()>>::value);
 	STATIC_ASSERT(
-			std::is_constructible<fn_once_view<void()>, fn_once_view<void()>>::value);
+			std::is_constructible<FnOnceView<void()>, FnOnceView<void()>>::value);
 	STATIC_ASSERT(
-			std::is_constructible<fn_once_view<void()>, fn_view<void() noexcept>>::
+			std::is_constructible<FnOnceView<void()>, FnView<void() noexcept>>::
 					value);
 	VEG_CPP17(STATIC_ASSERT(!std::is_constructible<
-													fn_once_view<void() noexcept>,
-													fn_view<void()>>::value);)
+													FnOnceView<void() noexcept>,
+													FnView<void()>>::value);)
 
 	f = inc2_lambda;
 	f();
@@ -101,7 +101,7 @@ auto baz(foo const& /*unused*/, foo /*unused*/, int /*unused*/) -> foo {
 
 TEST_CASE("function_view: null") {
 	{
-		veg::option<fn_view<void()>> f;
+		veg::Option<FnView<void()>> f;
 		STATIC_ASSERT(sizeof(f) == sizeof(VEG_FWD(f).unwrap()));
 
 		CHECK(!f);
@@ -113,7 +113,7 @@ TEST_CASE("function_view: null") {
 	}
 	{
 		void (*null)() = nullptr;
-		CHECK_DEATH({ fn_view<void()>{null}; });
+		CHECK_DEATH({ FnView<void()>{null}; });
 	}
 }
 #include "veg/internal/epilogue.hpp"

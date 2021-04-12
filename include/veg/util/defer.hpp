@@ -8,27 +8,26 @@
 namespace veg {
 inline namespace VEG_ABI {
 template <typename Fn>
-struct VEG_NODISCARD defer {
+struct VEG_NODISCARD Defer {
 	Fn fn;
-	constexpr defer(Fn _fn) noexcept(VEG_CONCEPT(nothrow_move_constructible<Fn>))
+	constexpr Defer(Fn _fn) noexcept(VEG_CONCEPT(nothrow_move_constructible<Fn>))
 			: fn(VEG_FWD(_fn)) {}
-	defer(defer const&) = delete;
-	defer(defer&&) noexcept = delete;
-	auto operator=(defer const&) -> defer& = delete;
-	auto operator=(defer&&) noexcept -> defer& = delete;
+	Defer(Defer const&) = delete;
+	Defer(Defer&&) noexcept = delete;
+	auto operator=(Defer const&) -> Defer& = delete;
+	auto operator=(Defer&&) noexcept -> Defer& = delete;
 	VEG_CPP20(constexpr)
-	HEDLEY_ALWAYS_INLINE ~defer() noexcept(
+	HEDLEY_ALWAYS_INLINE ~Defer() noexcept(
 			noexcept(VEG_CONCEPT(nothrow_invocable<Fn>))) {
 		VEG_FWD(fn)();
 	}
 };
 VEG_CPP17(
 
-		template <typename Fn> defer(Fn) -> defer<Fn>;
+		template <typename Fn> Defer(Fn) -> Defer<Fn>;
 
 )
 
-namespace make {
 namespace nb {
 struct defer {
 	VEG_TEMPLATE(
@@ -38,13 +37,12 @@ struct defer {
 			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) auto
 			operator(),
 			(fn, Fn&&))
-	const noexcept(VEG_CONCEPT(nothrow_move_constructible<Fn>))->veg::defer<Fn> {
+	const noexcept(VEG_CONCEPT(nothrow_move_constructible<Fn>))->veg::Defer<Fn> {
 		return {VEG_FWD(fn)};
 	}
 };
 } // namespace nb
 VEG_NIEBLOID(defer);
-} // namespace make
 } // namespace VEG_ABI
 } // namespace veg
 

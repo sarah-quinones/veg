@@ -40,9 +40,9 @@ namespace internal {
 namespace mem_ {
 
 template <typename Fn, typename... Args>
-struct from_callable {
+struct FromCallable {
 	Fn&& _fn;
-	internal::simple_tuple<Args&&...> _args;
+	internal::SimpleTuple<Args&&...> _args;
 
 	HEDLEY_ALWAYS_INLINE constexpr operator meta::invoke_result_t<Fn, Args&&...>()
 			const&& noexcept(VEG_CONCEPT(nothrow_invocable<Fn>)) {
@@ -53,7 +53,6 @@ struct from_callable {
 } // namespace mem_
 } // namespace internal
 
-namespace make {
 namespace nb {
 struct from_callable {
 	VEG_TEMPLATE(
@@ -63,13 +62,12 @@ struct from_callable {
 			operator(),
 			(fn, Fn&&),
 			(... args, Args&&))
-	const noexcept->internal::mem_::from_callable<Fn&&, Args&&...> {
-		return {VEG_FWD(fn), {cvt_t{}, VEG_FWD(args)...}};
+	const noexcept->internal::mem_::FromCallable<Fn&&, Args&&...> {
+		return {VEG_FWD(fn), {Cvt{}, VEG_FWD(args)...}};
 	}
 };
 } // namespace nb
 VEG_NIEBLOID(from_callable);
-} // namespace make
 
 namespace mem {
 namespace nb {
@@ -119,7 +117,7 @@ struct construct_with {
 
 		return ::std::construct_at(
 				mem,
-				internal::mem_::from_callable<Fn&&>{
+				internal::mem_::FromCallable<Fn&&>{
 						[&]() noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args...>)) -> T {
 							return VEG_FWD(fn)(VEG_FWD(args)...);
 						}}

@@ -10,10 +10,10 @@ using usize = decltype(sizeof(0));
 namespace internal {
 
 template <i64 I>
-struct empty_i {};
+struct EmptyI {};
 
-using empty = empty_i<0>;
-using empty_arr = empty[];
+using Empty = EmptyI<0>;
+using EmptyArr = Empty[];
 namespace meta_ {
 
 template <typename T, T... Nums>

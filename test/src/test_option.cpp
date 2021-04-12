@@ -8,7 +8,7 @@
 using namespace veg;
 template <typename T, i64 N>
 struct nested_option {
-	using type = option<typename nested_option<T, N - 1>::type>;
+	using type = Option<typename nested_option<T, N - 1>::type>;
 };
 template <typename T>
 struct nested_option<T, 0> {
@@ -17,12 +17,11 @@ struct nested_option<T, 0> {
 
 TEST_CASE("option: all") {
 
-	using make::from_callable;
 	struct A {
-		VEG_CPP14(constexpr) auto operator()() const -> option<int> {
+		VEG_CPP14(constexpr) auto operator()() const -> Option<int> {
 			return {some, 13};
 		}
-		VEG_CPP14(constexpr) auto operator()(int i) const -> option<double> {
+		VEG_CPP14(constexpr) auto operator()(int i) const -> Option<double> {
 			if (i == 0) {
 				return none;
 			}
@@ -42,22 +41,22 @@ TEST_CASE("option: all") {
 		VEG_CPP14(constexpr) auto operator()() const -> double { return 2000.; }
 	};
 
-	STATIC_ASSERT(sizeof(option<bool>) == sizeof(bool) * 2);
-	STATIC_ASSERT(sizeof(option<option<bool>>) == sizeof(bool) * 2);
-	STATIC_ASSERT(sizeof(option<option<option<bool>>>) == sizeof(bool) * 2);
+	STATIC_ASSERT(sizeof(Option<bool>) == sizeof(bool) * 2);
+	STATIC_ASSERT(sizeof(Option<Option<bool>>) == sizeof(bool) * 2);
+	STATIC_ASSERT(sizeof(Option<Option<Option<bool>>>) == sizeof(bool) * 2);
 
-	STATIC_ASSERT(sizeof(option<int>) == sizeof(int) * 2);
-	STATIC_ASSERT(sizeof(option<option<int>>) == sizeof(int) * 2);
-	STATIC_ASSERT(sizeof(option<option<option<option<int>>>>) == sizeof(int) * 2);
+	STATIC_ASSERT(sizeof(Option<int>) == sizeof(int) * 2);
+	STATIC_ASSERT(sizeof(Option<Option<int>>) == sizeof(int) * 2);
+	STATIC_ASSERT(sizeof(Option<Option<Option<Option<int>>>>) == sizeof(int) * 2);
 	STATIC_ASSERT(
-			sizeof(option<fn::fn_view<void()>>) == sizeof(fn::fn_view<void()>));
+			sizeof(Option<fn::FnView<void()>>) == sizeof(fn::FnView<void()>));
 	STATIC_ASSERT(
-			sizeof(option<fn::fn_view<void()>>) == sizeof(fn::fn_view<void()>));
+			sizeof(Option<fn::FnView<void()>>) == sizeof(fn::FnView<void()>));
 
-	VEG_CPP14(constexpr) option<int> i = {some, 3};
-	VEG_CPP14(constexpr) option<int> j = none;
+	VEG_CPP14(constexpr) Option<int> i = {some, 3};
+	VEG_CPP14(constexpr) Option<int> j = none;
 	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).unwrap() == 1000. / 3);
-	STATIC_ASSERT_IF_17(option<int>{some, from_callable([&] { return 0; })});
+	STATIC_ASSERT_IF_17(Option<int>{some, from_callable([&] { return 0; })});
 	STATIC_ASSERT_IF_14(i.as_ref().map(B{}).unwrap() == 2000. / 3);
 
 	STATIC_ASSERT_IF_14(i.as_ref().map_or_else(B{}, C{}) == 2000. / 3);
@@ -67,24 +66,24 @@ TEST_CASE("option: all") {
 	STATIC_ASSERT_IF_17(
 			i.as_ref().map([](int k) { return 2.0 * k; }) == some(6.0));
 
-	STATIC_ASSERT_IF_14(!option<int>{some, 0}.and_then(A{}));
-	STATIC_ASSERT_IF_14(option<int>{some, 3}.and_then(A{}).unwrap() == 1000. / 3);
-	STATIC_ASSERT_IF_14(option<int>{some, 42}.take().unwrap() == 42);
-	STATIC_ASSERT_IF_14(!option<int>{none}.take());
+	STATIC_ASSERT_IF_14(!Option<int>{some, 0}.and_then(A{}));
+	STATIC_ASSERT_IF_14(Option<int>{some, 3}.and_then(A{}).unwrap() == 1000. / 3);
+	STATIC_ASSERT_IF_14(Option<int>{some, 42}.take().unwrap() == 42);
+	STATIC_ASSERT_IF_14(!Option<int>{none}.take());
 	STATIC_ASSERT_IF_14(!j.as_ref().and_then(A{}));
 
-	STATIC_ASSERT_IF_14(option<int>{i}.or_else(A{}).unwrap() == 3);
-	STATIC_ASSERT_IF_14(option<int>{j}.or_else(A{}).unwrap() == 13);
+	STATIC_ASSERT_IF_14(Option<int>{i}.or_else(A{}).unwrap() == 3);
+	STATIC_ASSERT_IF_14(Option<int>{j}.or_else(A{}).unwrap() == 13);
 
-	STATIC_ASSERT(sizeof(option<int&>) == sizeof(int*));
+	STATIC_ASSERT(sizeof(Option<int&>) == sizeof(int*));
 
 	{
 		VEG_CPP14(constexpr)
-		option<option<option<int>>> opt = some(some(some(3)));
+		Option<Option<Option<int>>> opt = some(some(some(3)));
 		VEG_CPP14(constexpr)
-		option<option<option<int>>> opt_also = some(some(some(3)));
+		Option<Option<Option<int>>> opt_also = some(some(some(3)));
 		VEG_CPP14(constexpr)
-		option<option<option<int>>> opt2 = some(some(option<int>(none)));
+		Option<Option<Option<int>>> opt2 = some(some(Option<int>(none)));
 		STATIC_ASSERT_IF_14(opt == opt_also);
 		STATIC_ASSERT_IF_14(
 				opt //
@@ -103,8 +102,8 @@ TEST_CASE("option: all") {
 	}
 
 	{
-		option<bool> flag;
-		option<int> opt;
+		Option<bool> flag;
+		Option<int> opt;
 		opt.as_ref().map_or_else(
 				[&](int /*unused*/) {
 					flag = {some, true};
@@ -130,7 +129,7 @@ TEST_CASE("option: all") {
 	{
 		VEG_CPP17(constexpr)
 		auto opt = [&] {
-			option<int> x;
+			Option<int> x;
 			x.emplace(from_callable([&] { return 1; }));
 			return x;
 		}();
@@ -139,10 +138,10 @@ TEST_CASE("option: all") {
 	}
 	{
 		STATIC_ASSERT(VEG_CONCEPT(mostly_trivial<int>));
-		STATIC_ASSERT(VEG_CONCEPT(mostly_trivial<option<int>>));
+		STATIC_ASSERT(VEG_CONCEPT(mostly_trivial<Option<int>>));
 		VEG_CPP17(constexpr)
 		auto opt = [&] {
-			option<option<int>> x;
+			Option<Option<int>> x;
 			x.emplace(from_callable([&] { return some(1); }));
 			return x;
 		}();
@@ -153,7 +152,7 @@ TEST_CASE("option: all") {
 		using std::vector;
 
 		auto opt = [&] {
-			option<vector<int>> x;
+			Option<vector<int>> x;
 			x.emplace(from_callable(
 					[&](int i_) {
 						return vector<int>{1, 2, 3, i_};
@@ -168,11 +167,11 @@ TEST_CASE("option: all") {
 		using std::vector;
 
 		STATIC_ASSERT_IF_14(
-				+meta::tombstone_traits<option<vector<int>>>::spare_representations ==
+				+meta::tombstone_traits<Option<vector<int>>>::spare_representations ==
 				253);
 
 		auto opt = [&] {
-			option<option<vector<int>>> x;
+			Option<Option<vector<int>>> x;
 			x.emplace(from_callable([&] { return some(vector<int>{1, 2, 3}); }));
 			return x;
 		}();
@@ -184,10 +183,10 @@ TEST_CASE("option: all") {
 
 		STATIC_ASSERT_IF_14(
 				+meta::tombstone_traits<
-						option<option<vector<int>>>>::spare_representations == 252);
+						Option<Option<vector<int>>>>::spare_representations == 252);
 
 		auto opt = [&] {
-			option<option<option<vector<int>>>> x;
+			Option<Option<Option<vector<int>>>> x;
 			x.emplace(from_callable([&] {
 				return some(some(vector<int>{1, 2, 3}));
 			}));
@@ -201,10 +200,10 @@ TEST_CASE("option: all") {
 
 		STATIC_ASSERT_IF_14(
 				+meta::tombstone_traits<
-						option<option<option<vector<int>>>>>::spare_representations == 251);
+						Option<Option<Option<vector<int>>>>>::spare_representations == 251);
 
 		auto opt = [&] {
-			option<option<option<option<vector<int>>>>> x;
+			Option<Option<Option<Option<vector<int>>>>> x;
 			x.emplace(from_callable([&] {
 				return some(some(some(vector<int>{1, 2, 3})));
 			}));
@@ -218,11 +217,11 @@ TEST_CASE("option: all") {
 		using std::vector;
 
 		STATIC_ASSERT_IF_14(
-				+meta::tombstone_traits<option<vector<int>>>::spare_representations ==
+				+meta::tombstone_traits<Option<vector<int>>>::spare_representations ==
 				253);
 
 		auto opt = [&] {
-			option<option<vector<int>>> x;
+			Option<Option<vector<int>>> x;
 			x.emplace(some(vector<int>{1, 2, 3}));
 			return x;
 		}();
@@ -234,10 +233,10 @@ TEST_CASE("option: all") {
 
 		STATIC_ASSERT_IF_14(
 				+meta::tombstone_traits<
-						option<option<vector<int>>>>::spare_representations == 252);
+						Option<Option<vector<int>>>>::spare_representations == 252);
 
 		auto opt = [&] {
-			option<option<option<vector<int>>>> x;
+			Option<Option<Option<vector<int>>>> x;
 			x.emplace(some(some(vector<int>{1, 2, 3})));
 			return x;
 		}();
@@ -249,10 +248,10 @@ TEST_CASE("option: all") {
 
 		STATIC_ASSERT_IF_14(
 				+meta::tombstone_traits<
-						option<option<option<vector<int>>>>>::spare_representations == 251);
+						Option<Option<Option<vector<int>>>>>::spare_representations == 251);
 
 		auto opt = [&] {
-			option<option<option<option<vector<int>>>>> x;
+			Option<Option<Option<Option<vector<int>>>>> x;
 			x.emplace(some(some(some(vector<int>{1, 2, 3}))));
 			return x;
 		}();

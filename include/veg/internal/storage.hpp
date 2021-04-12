@@ -36,7 +36,7 @@ struct storage<T&> {
 };
 
 template <typename T>
-struct storage<T&&> : internal::nocopy_ctor, internal::nocopy_assign {
+struct storage<T&&> : internal::NoCopyCtor, internal::NoCopyAssign {
 	T* inner_ptr;
 
 	storage() = default;
