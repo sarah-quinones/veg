@@ -52,9 +52,19 @@ struct compose_fwd {
 			(... fns, Fns&&))
 	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Fns>)))
 			->Compose<Fns...> {
-		return {VEG_FWD(fns)..., {}};
+#ifdef __clang__
+		HEDLEY_DIAGNOSTIC_PUSH
+#pragma clang diagnostic ignored "-Wmissing-braces"
+#endif
+
+		// https://eel.is/c++draft/dcl.init.aggr#15
+		return {Fns(VEG_FWD(fns))..., {}};
+
+#ifdef __clang__
+		HEDLEY_DIAGNOSTIC_POP
+#endif
 	}
-};
+}; // namespace nb
 } // namespace nb
 VEG_NIEBLOID(compose_fwd);
 } // namespace fn
