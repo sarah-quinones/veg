@@ -52,7 +52,7 @@ struct compose_fwd {
 			(... fns, Fns&&))
 	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Fns>)))
 			->Compose<Fns...> {
-		return {{VEG_FWD(fns)}..., {}};
+		return {VEG_FWD(fns)..., {}};
 	}
 };
 } // namespace nb
