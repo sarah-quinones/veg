@@ -34,11 +34,11 @@ struct Compose<First, Rest...> {
 			constexpr auto
 			operator(),
 			(... args,
-	     Args&&)) && noexcept(noexcept(VEG_FWD(first)(rest(VEG_FWD(args)...))))
+	     Args&&)) && noexcept(noexcept(VEG_FWD(first)(VEG_FWD(rest)(VEG_FWD(args)...))))
 			-> meta::invoke_result_t<
 					First,
 					meta::invoke_result_t<Compose<Rest...>, Args&&...>> {
-		return VEG_FWD(first)(rest(VEG_FWD(args)...));
+		return VEG_FWD(first)(VEG_FWD(rest)(VEG_FWD(args)...));
 	}
 };
 
@@ -52,7 +52,7 @@ struct compose_fwd {
 			(... fns, Fns&&))
 	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Fns>)))
 			->Compose<Fns...> {
-		return {{VEG_FWD(fns)}...};
+		return {{VEG_FWD(fns)}..., {}};
 	}
 };
 } // namespace nb
