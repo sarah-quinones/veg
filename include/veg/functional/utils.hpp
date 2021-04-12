@@ -24,6 +24,8 @@ struct ref {
 	}
 };
 } // namespace nb
+VEG_NIEBLOID(clone);
+VEG_NIEBLOID(ref);
 } // namespace VEG_ABI
 } // namespace veg
 
