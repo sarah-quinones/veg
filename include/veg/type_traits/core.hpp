@@ -252,7 +252,7 @@ template <template <typename...> class Op, typename... Args>
 using detected_t = detected_or_t<internal::meta_::none, Op, Args...>;
 
 template <typename T>
-using decay_t = typename internal::meta_::decay_helper<unref_t<T>>::type;
+using decay_t = typename internal::meta_::decay_helper<uncvref_t<T>>::type;
 } // namespace meta
 } // namespace VEG_ABI
 } // namespace veg
