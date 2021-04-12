@@ -697,7 +697,7 @@ struct tuple_for_each_i {
 struct tuple_for_each {
 
 	VEG_TEMPLATE(
-			(typename Fn, typename... Args, usize... Is),
+			(typename Fn, typename... Args),
 			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Args&&>))),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
 			operator(),
@@ -709,7 +709,7 @@ struct tuple_for_each {
 	}
 
 	VEG_TEMPLATE(
-			(typename Fn, typename... Args, usize... Is),
+			(typename Fn, typename... Args),
 			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Args&>))),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
 			operator(),
@@ -721,7 +721,7 @@ struct tuple_for_each {
 	}
 
 	VEG_TEMPLATE(
-			(typename Fn, typename... Args, usize... Is),
+			(typename Fn, typename... Args),
 			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Args const&>))),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
 			operator(),
