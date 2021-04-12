@@ -7,101 +7,39 @@
 
 namespace veg {
 inline namespace VEG_ABI {
-namespace internal {
-namespace compose_ {
-template <typename... Ts>
-struct ComposeImpl;
+namespace fn {
+template <typename... Fns>
+struct Compose;
 
 template <>
-struct ComposeImpl<> {
+struct Compose<> {
 	template <typename T>
-	static constexpr auto call(ComposeImpl<> /*self*/, T&& arg) noexcept -> T&& {
+	constexpr auto operator()(T&& arg) noexcept -> T&& {
 		return VEG_FWD(arg);
 	}
 };
 
 template <typename First, typename... Rest>
-struct ComposeImpl<First, Rest...> {
+struct Compose<First, Rest...> {
 	First first;
-	ComposeImpl<Rest...> rest;
-
-	template <typename Self, typename... Args>
-	using return_type_t =
-			decltype((VEG_DECLVAL(Self &&).first)((ComposeImpl<Rest...>::call)(
-					VEG_DECLVAL(Self &&).rest, VEG_DECLVAL(Args&&)...)));
+	Compose<Rest...> rest;
 
 	VEG_TEMPLATE(
 			(typename Self, typename... Args),
 			requires(
-					VEG_CONCEPT(detected<
-											ComposeImpl<Rest...>::template return_type_t,
-											Args&&...>) &&
+					VEG_CONCEPT(invocable<Compose<Rest...>, Args&&...>) &&
 					VEG_CONCEPT(invocable<
 											First,
-											meta::detected_t<
-													ComposeImpl<Rest...>::template return_type_t,
-													Args&&...>>)),
-			static constexpr auto call,
-			(self, Self&&),
-			(... args, Args&&))
-	noexcept(noexcept((VEG_FWD(self).first)(
-			(ComposeImpl<Rest...>::call)(VEG_FWD(self).rest, VEG_FWD(args)...))))
-
-			-> meta::detected_t<return_type_t, Self, Args&&...> {
-		return (VEG_FWD(self).first)(
-				(ComposeImpl<Rest...>::call)(VEG_FWD(self).rest, VEG_FWD(args)...));
-	}
-};
-
-} // namespace compose_
-} // namespace internal
-
-namespace fn {
-
-template <typename... Fns>
-struct Compose {
-	using Impl = internal::compose_::ComposeImpl<Fns...>;
-
-	Impl impl;
-
-	VEG_TEMPLATE(
-			typename... Args,
-			requires(VEG_CONCEPT(
-					detected<Impl::template return_type_t, Impl const&, Args&&...>)),
-			auto constexpr
+											meta::invoke_result_t<Compose<Rest...>, Args&&...>>)),
+			constexpr auto
 			operator(),
-			(... args, Args&&))
-	const& noexcept(noexcept(Impl::call(impl, VEG_FWD(args)...)))
-			->meta::detected_t<Impl::template return_type_t, Impl const&, Args&&...> {
-		return Impl::call(impl, VEG_FWD(args)...);
+			(... args,
+	     Args&&)) && noexcept(noexcept(VEG_FWD(first)(rest(VEG_FWD(args)...))))
+			-> meta::invoke_result_t<
+					First,
+					meta::invoke_result_t<Compose<Rest...>, Args&&...>> {
+		return VEG_FWD(first)(rest(VEG_FWD(args)...));
 	}
-
-	VEG_TEMPLATE(
-			typename... Args,
-			requires(VEG_CONCEPT(
-					detected<Impl::template return_type_t, Impl&&, Args&&...>)),
-			auto VEG_CPP14(constexpr)
-			operator(),
-			(... args, Args&&))
-	&&noexcept(noexcept(Impl::call(VEG_FWD(impl), VEG_FWD(args)...)))
-				->meta::detected_t<Impl::template return_type_t, Impl&&, Args&&...> {
-		return Impl::call(VEG_FWD(impl), VEG_FWD(args)...);
-	}
-
-	VEG_TEMPLATE(
-			typename... Args,
-			requires(VEG_CONCEPT(
-					detected<Impl::template return_type_t, Impl&, Args&&...>)),
-			auto VEG_CPP14(constexpr)
-			operator(),
-			(... args, Args&&))
-	&noexcept(noexcept(Impl::call(impl, VEG_FWD(args)...)))
-			 ->meta::detected_t<Impl::template return_type_t, Impl&, Args&&...> {
-		return Impl::call(impl, VEG_FWD(args)...);
-	}
-
-	template <typename... Args>
-	void operator()(Args&&...) const&& = delete;
 };
 
 namespace nb {

@@ -20,7 +20,7 @@ struct Curried {
 			requires(
 					VEG_CONCEPT(move_constructible<Fn>) &&
 					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
-			constexpr auto push_fwd,
+			HEDLEY_ALWAYS_INLINE constexpr auto push_fwd,
 			(... args, Args&&))
 	&&noexcept(
 				VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
@@ -32,7 +32,7 @@ struct Curried {
 	VEG_TEMPLATE(
 			typename... Args,
 			requires(VEG_CONCEPT(invocable<Fn, Args&&..., StoredArgs&&...>)),
-			constexpr auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(... args,
 	     Args&&)) && noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args&&..., StoredArgs&&...>))
@@ -52,7 +52,7 @@ private:
 			typename Self,
 			typename... Args,
 			usize... Is>
-	static constexpr auto call(
+	HEDLEY_ALWAYS_INLINE static constexpr auto call(
 			meta::index_sequence<Is...> /*iseq*/,
 			Self&& self,
 			Args&&... args) noexcept(NoExcept) -> Ret {
@@ -63,7 +63,7 @@ private:
 	}
 
 	template <typename... Args, usize... Is, typename... Ts>
-	constexpr auto push_fwd_impl(
+	HEDLEY_ALWAYS_INLINE constexpr auto push_fwd_impl(
 			Args&&... args,
 			internal::tup_::IndexedTuple<meta::index_sequence<Is...>, Ts...>&&
 					stored) //
@@ -89,7 +89,7 @@ struct RCurried {
 			requires(
 					VEG_CONCEPT(move_constructible<Fn>) &&
 					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
-			constexpr auto push_fwd,
+			HEDLEY_ALWAYS_INLINE constexpr auto push_fwd,
 			(... args, Args&&))
 	&&noexcept(
 				VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
@@ -101,7 +101,7 @@ struct RCurried {
 	VEG_TEMPLATE(
 			typename... Args,
 			requires(VEG_CONCEPT(invocable<Fn, StoredArgs&&..., Args&&...>)),
-			constexpr auto
+			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(... args,
 	     Args&&)) && noexcept(VEG_CONCEPT(nothrow_invocable<Fn, StoredArgs&&..., Args&&...>))
@@ -121,7 +121,7 @@ private:
 			typename Self,
 			typename... Args,
 			usize... Is>
-	static constexpr auto call(
+	HEDLEY_ALWAYS_INLINE static constexpr auto call(
 			meta::index_sequence<Is...> /*iseq*/,
 			Self&& self,
 			Args&&... args) noexcept(NoExcept) -> Ret {
@@ -132,7 +132,7 @@ private:
 	}
 
 	template <typename... Args, usize... Is, typename... Ts>
-	constexpr auto push_fwd_impl(
+	HEDLEY_ALWAYS_INLINE constexpr auto push_fwd_impl(
 			Args&&... args,
 			internal::tup_::IndexedTuple<meta::index_sequence<Is...>, Ts...>&&
 					stored) //
@@ -148,6 +148,45 @@ private:
 	}
 };
 
+namespace nb {
+struct curry_fwd {
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args),
+			requires(
+					VEG_CONCEPT(move_constructible<Fn>) &&
+					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
+			HEDLEY_ALWAYS_INLINE constexpr auto
+			operator(),
+			(fn, Fn&&),
+			(... args, Args&&))
+	const noexcept(
+			VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
+			->Curried<Fn, Args...> {
+		return {VEG_FWD(fn), {Cvt{}, VEG_FWD(args)...}};
+	}
+};
+
+struct rcurry_fwd {
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args),
+			requires(
+					VEG_CONCEPT(move_constructible<Fn>) &&
+					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
+			HEDLEY_ALWAYS_INLINE constexpr auto
+			operator(),
+			(fn, Fn&&),
+			(... args, Args&&))
+	const noexcept(
+			VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
+			->RCurried<Fn, Args...> {
+		return {VEG_FWD(fn), {Cvt{}, VEG_FWD(args)...}};
+	}
+};
+} // namespace nb
+VEG_NIEBLOID(curry_fwd);
+VEG_NIEBLOID(rcurry_fwd);
 } // namespace fn
 } // namespace VEG_ABI
 } // namespace veg
