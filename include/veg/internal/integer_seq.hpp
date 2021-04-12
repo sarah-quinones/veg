@@ -93,6 +93,8 @@ struct type_sequence;
 } // namespace internal
 namespace meta {
 
+template <typename T, T N>
+using make_integer_sequence = internal::meta_::make_integer_sequence<T, N>*;
 template <usize N>
 using make_index_sequence = internal::meta_::make_integer_sequence<usize, N>*;
 
