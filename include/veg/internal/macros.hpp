@@ -65,11 +65,13 @@
 	(::veg::internal::meta_::declval<__VA_ARGS__>())
 #endif
 
-#define VEG_DEDUCE_RET(...)                                                    \
-	noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) {                     \
-		return __VA_ARGS__;                                                        \
-	}                                                                            \
-	VEG_NOM_SEMICOLON
+#define VEG_ARROW(...)                                                         \
+	noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) { return __VA_ARGS__; }
+
+#define VEG_LIFT(...)                                                          \
+	[&](auto&&... args) VEG_ARROW((__VA_ARGS__)(VEG_FWD(args)...))
+
+#define VEG_DEDUCE_RET(...) VEG_ARROW(__VA_ARGS__) VEG_NOM_SEMICOLON
 
 #if __cplusplus >= 201703L
 #define VEG_ALL_OF(...) (__VA_ARGS__ && ... && true)
