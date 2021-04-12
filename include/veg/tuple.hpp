@@ -739,7 +739,7 @@ struct tuple_map {
 			(fn, Fn&&),
 			(args, IndexedTuple<meta::index_sequence<Is...>, Args...>))
 	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Args&&>)))
-			->Tuple<meta::invoke_result_t<Fn&, Fix<i64{Is}>, Args&&>...> {
+			->Tuple<meta::invoke_result_t<Fn&, Args&&>...> {
 		return {
 				Cvt{},
 				fn(static_cast<Args&&>(internal::tup_::get_impl<Is>(args)))...,
