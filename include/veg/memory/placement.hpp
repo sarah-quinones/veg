@@ -46,7 +46,7 @@ struct FromCallable {
 
 	HEDLEY_ALWAYS_INLINE constexpr operator meta::invoke_result_t<Fn, Args&&...>()
 			const&& noexcept(VEG_CONCEPT(nothrow_invocable<Fn>)) {
-		return internal::tup_::fn_apply_impl(
+		return internal::tup_::unpack_args_impl(
 				meta::type_sequence<Args&&...>{}, VEG_FWD(_fn), _args);
 	}
 };

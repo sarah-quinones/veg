@@ -35,6 +35,11 @@ namespace internal {
 String::~String() {
 	std::free(self.ptr);
 }
+
+void String::eprint() const noexcept {
+	std::cerr.write(self.ptr, self.len);
+	std::cerr.put('\n');
+}
 void String::reserve(i64 new_cap) {
 	if (new_cap > self.cap) {
 		auto* new_alloc = static_cast<char*>(std::realloc(self.ptr, new_cap));

@@ -71,23 +71,24 @@ struct tuple_leaf {
 };
 
 template <typename ISeq, typename... Ts>
-struct TupleImpl;
+struct IndexedTuple;
 
 template <usize... Is, typename... Ts>
-struct TupleImpl<meta::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
-	constexpr TupleImpl() = default;
+struct IndexedTuple<meta::index_sequence<Is...>, Ts...>
+		: tuple_leaf<Is, Ts>... {
+	constexpr IndexedTuple() = default;
 
 	template <typename... Us>
-	HEDLEY_ALWAYS_INLINE constexpr TupleImpl /* NOLINT */
-			(Cvt /*unused*/, Us&&... args)       //
+	HEDLEY_ALWAYS_INLINE constexpr IndexedTuple /* NOLINT */
+			(Cvt /*unused*/, Us&&... args)          //
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Ts&&>))))
 			: tuple_leaf<Is, Ts>{Ts(VEG_FWD(args))}... {}
 
 	template <meta::category_e C, typename... Us>
-	HEDLEY_ALWAYS_INLINE constexpr explicit TupleImpl(
+	HEDLEY_ALWAYS_INLINE constexpr explicit IndexedTuple(
 			hidden_tag2 /*unused*/,
 			meta::constant<meta::category_e, C>* /*unused*/,
-			TupleImpl<meta::index_sequence<Is...>, Us...> const& tup)
+			IndexedTuple<meta::index_sequence<Is...>, Us...> const& tup)
 
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(
 					nothrow_constructible<Ts, meta::apply_category_t<C, Us>&&>))))
@@ -122,8 +123,8 @@ template <
 HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void binop_apply(
 		meta::type_sequence<Actual_Ts...> /*unused*/,
 		meta::type_sequence<Actual_Us...> /*unused*/,
-		TupleImpl<meta::index_sequence<Is...>, Ts...> const& t,
-		TupleImpl<meta::index_sequence<Is...>, Us...> const& u)
+		IndexedTuple<meta::index_sequence<Is...>, Ts...> const& t,
+		IndexedTuple<meta::index_sequence<Is...>, Us...> const& u)
 
 		noexcept(NoExcept) {
 	binop_ftor<Actual_Ts&&...>::template apply<Fn, NoExcept>(
@@ -242,8 +243,8 @@ struct impl_cmp<> {
 struct cmp_impl {
 	template <usize... Is, typename... Ts, typename... Us>
 	static constexpr auto
-	eq(TupleImpl<meta::index_sequence<Is...>, Ts...> const& lhs,
-	   TupleImpl<meta::index_sequence<Is...>, Us...> const& rhs) noexcept
+	eq(IndexedTuple<meta::index_sequence<Is...>, Ts...> const& lhs,
+	   IndexedTuple<meta::index_sequence<Is...>, Us...> const& rhs) noexcept
 			-> bool {
 
 		return impl_cmp<Ts const&...>::eq(
@@ -256,8 +257,8 @@ struct cmp_impl {
 
 	template <typename Ret, usize... Is, typename... Ts, typename... Us>
 	static constexpr auto tway(
-			TupleImpl<meta::index_sequence<Is...>, Ts...> const& lhs,
-			TupleImpl<meta::index_sequence<Is...>, Us...> const& rhs) noexcept
+			IndexedTuple<meta::index_sequence<Is...>, Ts...> const& lhs,
+			IndexedTuple<meta::index_sequence<Is...>, Us...> const& rhs) noexcept
 			-> Ret {
 
 		return impl_cmp<Ts const&...>::template tway<Ret>(
@@ -277,8 +278,8 @@ template <
 		typename... Ts,
 		typename... Us>
 HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void swap_impl(
-		TupleImpl<meta::index_sequence<Is...>, Ts...> const& lhs,
-		TupleImpl<meta::index_sequence<Is...>, Us...> const& rhs)
+		IndexedTuple<meta::index_sequence<Is...>, Ts...> const& lhs,
+		IndexedTuple<meta::index_sequence<Is...>, Us...> const& rhs)
 
 		noexcept(NoExcept) {
 
@@ -287,12 +288,6 @@ HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void swap_impl(
 			meta::type_sequence<meta::apply_category_t<CR, Us>&&...>{},
 			lhs,
 			rhs);
-}
-
-template <typename T>
-HEDLEY_ALWAYS_INLINE constexpr auto get_inner(T&& tup) noexcept
-		-> decltype((VEG_FWD(tup).m_impl))&& {
-	return VEG_FWD(tup).m_impl;
 }
 
 template <bool Trivial>
@@ -314,8 +309,7 @@ struct impl<false> {
 		return internal::tup_::swap_impl<
 				NoExcept,
 				meta::value_category<Tup_Lhs&&>::value,
-				meta::value_category<Tup_Rhs&&>::value>(
-				tup_::get_inner(lhs), tup_::get_inner(rhs));
+				meta::value_category<Tup_Rhs&&>::value>(lhs, rhs);
 	}
 };
 
@@ -358,10 +352,10 @@ struct nothrow_tup_swappable<Tuple<Ts...>, Tuple<Us...>, CL, CR>
 																 >)))> {};
 
 template <typename... Actual_Ts, typename Fn, usize... Is, typename... Ts>
-HEDLEY_ALWAYS_INLINE constexpr auto fn_apply_impl(
+HEDLEY_ALWAYS_INLINE constexpr auto unpack_args_impl(
 		meta::type_sequence<Actual_Ts...> /*tag*/,
 		Fn&& fn,
-		TupleImpl<meta::index_sequence<Is...>, Ts...> const& args)
+		IndexedTuple<meta::index_sequence<Is...>, Ts...> const& args)
 
 		noexcept(noexcept(VEG_FWD(fn)(VEG_DECLVAL_NOEXCEPT(Actual_Ts&&)...)))
 				-> decltype(VEG_FWD(fn)(VEG_DECLVAL_NOEXCEPT(Actual_Ts &&)...)) {
@@ -369,6 +363,38 @@ HEDLEY_ALWAYS_INLINE constexpr auto fn_apply_impl(
 			((void)Is,
 	     const_cast<Actual_Ts&&>(
 					 static_cast<tuple_leaf<Is, Ts> const&>(args).inner))...);
+}
+
+template <typename... Actual_Ts, typename Fn, usize... Is, typename... Ts>
+HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void for_each_i_impl(
+		meta::type_sequence<Actual_Ts...> /*tag*/,
+		Fn& fn,
+		IndexedTuple<meta::index_sequence<Is...>, Ts...> const& args)
+
+		noexcept(noexcept(EmptyArr{
+				(static_cast<void>((fn)(Fix<i64{Is}>{}, VEG_DECLVAL_NOEXCEPT(Actual_Ts&&))),
+         Empty{})...})) {
+	EmptyArr{
+			(static_cast<void>((fn)(
+					 Fix<i64{Is}>{},
+					 const_cast<Actual_Ts&&>(
+							 static_cast<tuple_leaf<Is, Ts> const&>(args).inner))),
+	     Empty{})...};
+}
+
+template <typename... Actual_Ts, typename Fn, usize... Is, typename... Ts>
+HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void for_each_impl(
+		meta::type_sequence<Actual_Ts...> /*tag*/,
+		Fn& fn,
+		IndexedTuple<meta::index_sequence<Is...>, Ts...> const& args)
+
+		noexcept(noexcept(EmptyArr{
+				(static_cast<void>((fn)(VEG_DECLVAL_NOEXCEPT(Actual_Ts &&))),
+         Empty{})...})) {
+	EmptyArr{
+			(static_cast<void>((fn)(const_cast<Actual_Ts&&>(
+					 static_cast<tuple_leaf<Is, Ts> const&>(args).inner))),
+	     Empty{})...};
 }
 
 namespace adl {
@@ -380,7 +406,7 @@ struct tuple_base {};
 
 template <typename... Ts>
 using SimpleTuple =
-		tup_::TupleImpl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>;
+		tup_::IndexedTuple<meta::make_index_sequence<sizeof...(Ts)>, Ts...>;
 } // namespace internal
 
 } // namespace VEG_ABI

@@ -122,6 +122,59 @@ struct Debug<Ret (*)(Args...)> : internal::fmt::dbg_pf {};
 
 } // namespace fmt
 } // namespace VEG_ABI
+
+namespace abi {
+inline namespace VEG_ABI_VERSION {
+namespace internal {
+struct String : fmt::Buffer {
+	struct layout {
+		char* ptr;
+		i64 len;
+		i64 cap;
+	} self = {};
+
+	~String();
+	String() = default;
+	HEDLEY_ALWAYS_INLINE String(String&& other) noexcept : self{other.self} {
+		other.self = layout{nullptr, 0, 0};
+	}
+	String(String const&) = delete;
+	auto operator=(String const&) -> String& = delete;
+	auto operator=(String&&) -> String& = delete;
+
+	void resize(i64 new_len) override;
+	void reserve(i64 new_cap) override;
+	void insert(i64 pos, char const* data, i64 len) override;
+	void eprint() const noexcept;
+
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto data() const noexcept
+			-> char* override {
+		return self.ptr;
+	}
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto size() const noexcept
+			-> i64 override {
+		return self.len;
+	}
+};
+} // namespace internal
+} // namespace VEG_ABI_VERSION
+} // namespace abi
+
+inline namespace VEG_ABI {
+namespace nb {
+struct dbg {
+	template <typename T>
+	auto operator()(T&& arg) const -> T&& {
+		abi::internal::String out;
+		auto const& arg_c = arg;
+		fmt::Debug<meta::uncvref_t<T>>::to_string(out, arg_c);
+    out.eprint();
+		return VEG_FWD(arg);
+	}
+};
+} // namespace nb
+VEG_NIEBLOID(dbg);
+} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

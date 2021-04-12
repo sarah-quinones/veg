@@ -47,9 +47,52 @@
 namespace veg {
 inline namespace VEG_ABI {
 
+namespace internal {
+namespace meta_ {
+struct is_tuple_helper {
+	static auto test(void*) noexcept -> false_type;
+	template <typename... Ts>
+	static auto test(Tuple<Ts...>*) noexcept -> true_type;
+
+	static auto size(void*) noexcept -> constant<usize, 0>;
+	template <typename... Ts>
+	static auto size(Tuple<Ts...>*) noexcept -> constant<usize, sizeof...(Ts)>;
+
+	template <usize I>
+	static auto element(void*) noexcept -> void;
+	template <usize I, typename... Ts>
+	static auto element(Tuple<Ts...>*) noexcept -> ith<I, Ts...>;
+};
+} // namespace meta_
+} // namespace internal
+namespace meta {
+template <typename T>
+struct is_tuple
+		: decltype(internal::meta_::is_tuple_helper::test(VEG_DECLVAL(T*))) {};
+template <typename T>
+using tuple_size =
+		decltype(internal::meta_::is_tuple_helper::size(VEG_DECLVAL(T*)));
+
+template <usize I, typename T>
+using tuple_element_t = decltype(
+		internal::meta_::is_tuple_helper::template element<I>(VEG_DECLVAL(T*)));
+} // namespace meta
+
+namespace concepts {
+VEG_DEF_CONCEPT(typename T, tuple, meta::is_tuple<T>::value);
+} // namespace concepts
+
 VEG_DOC_CLASS
 template <typename... Ts>
-struct Tuple : internal::tup_::adl::tuple_base<Ts...> {
+struct Tuple
+		: internal::tup_::
+					IndexedTuple<meta::make_index_sequence<sizeof...(Ts)>, Ts...>,
+			internal::tup_::adl::tuple_base<Ts...> {
+
+	using Indexed = internal::tup_::
+			IndexedTuple<meta::make_index_sequence<sizeof...(Ts)>, Ts...>;
+
+	~Tuple() = default;
 
 	VEG_DOC_CTOR
 	/// default constructor
@@ -95,7 +138,7 @@ struct Tuple : internal::tup_::adl::tuple_base<Ts...> {
 			(/*tag*/, Cvt),
 			(... args, Us&&))
 	noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us&&>))))
-			: m_impl(Cvt{}, VEG_FWD(args)...) {}
+			: Indexed(Cvt{}, VEG_FWD(args)...) {}
 
 	VEG_DOC_CTOR
 	/// tuple converting move constructor
@@ -107,12 +150,12 @@ struct Tuple : internal::tup_::adl::tuple_base<Ts...> {
 			HEDLEY_ALWAYS_INLINE constexpr Tuple,
 			((tup, Tuple<Us...>&&)),
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us&&>))))
-			: m_impl(
+			: Indexed(
 					internal::tup_::hidden_tag2{},
 					static_cast<
 							meta::constant<meta::category_e, meta::category_e::ref_mov>*>(
 							nullptr),
-					internal::tup_::get_inner(VEG_FWD(tup))){})
+					tup){})
 
 	VEG_DOC_CTOR
 	/// tuple converting constructor
@@ -124,12 +167,12 @@ struct Tuple : internal::tup_::adl::tuple_base<Ts...> {
 			HEDLEY_ALWAYS_INLINE constexpr Tuple,
 			((tup, Tuple<Us...>&)),
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us&>))))
-			: m_impl(
+			: Indexed(
 					internal::tup_::hidden_tag2{},
 					static_cast<
 							meta::constant<meta::category_e, meta::category_e::ref_mut>*>(
 							nullptr),
-					internal::tup_::get_inner(VEG_FWD(tup))){})
+					tup){})
 
 	VEG_DOC_CTOR
 	/// tuple converting copy constructor
@@ -141,11 +184,11 @@ struct Tuple : internal::tup_::adl::tuple_base<Ts...> {
 			HEDLEY_ALWAYS_INLINE constexpr Tuple,
 			((tup, Tuple<Us...> const&)),
 			noexcept((VEG_ALL_OF(VEG_CONCEPT(nothrow_constructible<Ts, Us const&>))))
-			: m_impl(
+			: Indexed(
 					internal::tup_::hidden_tag2{},
 					static_cast<meta::constant<meta::category_e, meta::category_e::ref>*>(
 							nullptr),
-					internal::tup_::get_inner(VEG_FWD(tup))){})
+					tup){})
 
 	VEG_DOC_CTOR
 	template <typename... Us>
@@ -168,7 +211,7 @@ struct Tuple : internal::tup_::adl::tuple_base<Ts...> {
 	     Fix<I>)) && noexcept(VEG_CONCEPT(nothrow_move_constructible<ith<usize{I}, Ts...>>))
 			-> ith<usize{I}, Ts...> {
 		return static_cast<ith<usize{I}, Ts...>&&>(
-				internal::tup_::get_impl<I>(internal::tup_::get_inner(*this)));
+				internal::tup_::get_impl<I>(*this));
 	}
 
 	VEG_DOC_FN
@@ -179,7 +222,7 @@ struct Tuple : internal::tup_::adl::tuple_base<Ts...> {
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto
 			operator[],
 			(/*arg*/, Fix<I>)) & noexcept -> ith<usize{I}, Ts...>& {
-		return internal::tup_::get_impl<I>(internal::tup_::get_inner(*this));
+		return internal::tup_::get_impl<I>(*this);
 	}
 
 	VEG_DOC_FN
@@ -191,7 +234,7 @@ struct Tuple : internal::tup_::adl::tuple_base<Ts...> {
 			operator[],
 			(/*arg*/, Fix<I>))
 	const& noexcept->ith<usize{I}, Ts...> const& {
-		return internal::tup_::get_impl<I>(internal::tup_::get_inner(*this));
+		return internal::tup_::get_impl<I>(*this);
 	}
 
 	VEG_DOC_FN
@@ -215,8 +258,8 @@ struct Tuple : internal::tup_::adl::tuple_base<Ts...> {
 
 				meta::type_sequence<Ts&...>{},
 				meta::type_sequence<Us const&...>{},
-				internal::tup_::get_inner(*this),
-				internal::tup_::get_inner(rhs)
+				*this,
+				rhs
 
 		);
 
@@ -244,8 +287,8 @@ struct Tuple : internal::tup_::adl::tuple_base<Ts...> {
 
 				meta::type_sequence<Ts&...>{},
 				meta::type_sequence<Us&&...>{},
-				internal::tup_::get_inner(*this),
-				internal::tup_::get_inner(rhs)
+				*this,
+				rhs
 
 		);
 
@@ -273,8 +316,8 @@ struct Tuple : internal::tup_::adl::tuple_base<Ts...> {
 
 				meta::type_sequence<Ts const&&...>{},
 				meta::type_sequence<Us const&...>{},
-				internal::tup_::get_inner(*this),
-				internal::tup_::get_inner(rhs)
+				*this,
+				rhs
 
 		);
 
@@ -301,8 +344,8 @@ struct Tuple : internal::tup_::adl::tuple_base<Ts...> {
 
 				meta::type_sequence<Ts const&&...>{},
 				meta::type_sequence<Us&&...>{},
-				internal::tup_::get_inner(*this),
-				internal::tup_::get_inner(rhs)
+				*this,
+				rhs
 
 		);
 
@@ -341,19 +384,10 @@ private:
 				Cvt{},
 
 				const_cast<Us> /* NOLINT */ (
-						static_cast<internal::tup_::tuple_leaf<Is, Ts> const&>(
-								internal::tup_::get_inner(self))
-								.inner)
+						static_cast<internal::tup_::tuple_leaf<Is, Ts> const&>(self).inner)
 
 						...};
 	}
-
-	internal::tup_::TupleImpl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>
-			m_impl;
-
-	template <typename T>
-	friend auto constexpr internal::tup_::get_inner(T&& tup) noexcept
-			-> decltype((VEG_FWD(tup).m_impl))&&;
 };
 
 VEG_CPP17(template <typename... Ts> Tuple(Cvt, Ts...) -> Tuple<Ts...>;)
@@ -370,7 +404,7 @@ VEG_TEMPLATE(
 		HEDLEY_ALWAYS_INLINE constexpr auto get,
 		(tup, Tuple<Ts...>&))
 noexcept -> ith<I, Ts...>& {
-	return tup_::get_impl<I>(tup_::get_inner(tup));
+	return tup_::get_impl<I>(tup);
 }
 VEG_DOC_FN
 /// returns a reference `Ti&` to the ith member
@@ -381,7 +415,7 @@ VEG_TEMPLATE(
 		HEDLEY_ALWAYS_INLINE constexpr auto get,
 		(tup, Tuple<Ts...> const&))
 noexcept -> ith<I, Ts...> const& {
-	return tup_::get_impl<I>(tup_::get_inner(tup));
+	return tup_::get_impl<I>(tup);
 }
 VEG_DOC_FN
 /// returns a forwarded reference `Ti&&` to the ith member
@@ -392,7 +426,7 @@ VEG_TEMPLATE(
 		HEDLEY_ALWAYS_INLINE constexpr auto get,
 		(tup, Tuple<Ts...>&&))
 noexcept -> ith<I, Ts...>&& {
-	return static_cast<ith<I, Ts...>&&>(tup_::get_impl<I>(tup_::get_inner(tup)));
+	return static_cast<ith<I, Ts...>&&>(tup_::get_impl<I>(tup));
 }
 VEG_DOC_FN
 
@@ -479,7 +513,7 @@ VEG_TEMPLATE(
 		(lhs, Tuple<Ts...> const&),
 		(rhs, Tuple<Us...> const&))
 noexcept -> bool {
-	return cmp_impl::eq(tup_::get_inner(lhs), tup_::get_inner(rhs));
+	return cmp_impl::eq(lhs, rhs);
 }
 
 VEG_DOC_FN
@@ -507,8 +541,7 @@ VEG_TEMPLATE(
 		(rhs, Tuple<Us...> const&))
 noexcept -> meta::common_comparison_category_t<
 		meta::three_way_comparison_result_t<Ts const&, Us const&>...> {
-	return cmp_impl::tway<decltype(adl::cmp_3way(lhs, rhs))>(
-			tup_::get_inner(lhs), tup_::get_inner(rhs));
+	return cmp_impl::tway<decltype(adl::cmp_3way(lhs, rhs))>(lhs, rhs);
 }
 
 } // namespace adl
@@ -516,7 +549,58 @@ noexcept -> meta::common_comparison_category_t<
 } // namespace internal
 
 namespace nb {
-struct unpack_args {
+struct tuple_zip {
+	constexpr auto operator()() const noexcept -> Tuple<> { return {}; }
+
+	template <typename ISeq, typename... Ts>
+	using IndexedTuple = internal::tup_::IndexedTuple<ISeq, Ts...>;
+
+	template <usize I, typename T>
+	struct tuple_zip_helper {
+		template <typename... Ts>
+		using type = Tuple<T, meta::tuple_element_t<I, Ts>...>;
+
+		template <typename... Ts>
+		constexpr auto apply(Ts&&... tups) const noexcept(
+				VEG_CONCEPT(nothrow_move_constructible<T>) &&
+				VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>)))
+				-> type<Ts...> {
+			return {
+					Cvt{},
+					VEG_FWD(first),
+					static_cast<meta::tuple_element_t<I, Ts>&&>(
+							internal::tup_::get_impl<I>(tups))...};
+		}
+		T&& first;
+	};
+
+	VEG_TEMPLATE(
+			(usize... Is, typename... Ts, typename... Tuples),
+			requires(
+					VEG_ALL_OF(VEG_CONCEPT(tuple<Tuples>)) &&
+					VEG_ALL_OF(VEG_CONCEPT(same<
+																 meta::constant<usize, sizeof...(Ts)>,
+																 meta::tuple_size<Tuples>>)) &&
+
+					VEG_CONCEPT(move_constructible<Tuple<Ts...>>) &&
+					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Tuples>))),
+			constexpr auto
+			operator(),
+			(tup, IndexedTuple<meta::index_sequence<Is...>, Ts...>),
+			(... tups, Tuples))
+	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Tuples>)))
+			->Tuple<                                //
+					typename tuple_zip_helper<Is, Ts>:: //
+					template type<Tuples...>...> {
+		return {
+				Cvt{},
+				tuple_zip_helper<Is, Ts>{
+						static_cast<Ts&&>(internal::tup_::get_impl<Is>(tup))}
+						.template apply<Tuples...>(VEG_FWD(tups)...)...};
+	}
+};
+
+struct tuple_unpack {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Args),
 			requires(VEG_CONCEPT(invocable<Fn, Args&&...>)),
@@ -526,10 +610,8 @@ struct unpack_args {
 			(args, Tuple<Args...>&&))
 	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>))
 			->meta::invoke_result_t<Fn, Args&&...> {
-		return internal::tup_::fn_apply_impl(
-				meta::type_sequence<Args&&...>{},
-				VEG_FWD(fn),
-				internal::tup_::get_inner(args));
+		return internal::tup_::unpack_args_impl(
+				meta::type_sequence<Args&&...>{}, VEG_FWD(fn), VEG_FWD(args));
 	}
 
 	VEG_TEMPLATE(
@@ -541,10 +623,8 @@ struct unpack_args {
 			(args, Tuple<Args...> const&))
 	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args const&...>))
 			->meta::invoke_result_t<Fn, Args const&...> {
-		return internal::tup_::fn_apply_impl(
-				meta::type_sequence<Args const&...>{},
-				VEG_FWD(fn),
-				internal::tup_::get_inner(args));
+		return internal::tup_::unpack_args_impl(
+				meta::type_sequence<Args const&...>{}, VEG_FWD(fn), VEG_FWD(args));
 	}
 
 	VEG_TEMPLATE(
@@ -556,17 +636,110 @@ struct unpack_args {
 			(args, Tuple<Args...>&))
 	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args&...>))
 			->meta::invoke_result_t<Fn, Args&...> {
-		return internal::tup_::fn_apply_impl(
-				meta::type_sequence<Args&...>{},
-				VEG_FWD(fn),
-				internal::tup_::get_inner(args));
+		return internal::tup_::unpack_args_impl(
+				meta::type_sequence<Args&...>{}, VEG_FWD(fn), VEG_FWD(args));
+	}
+
+	template <typename Fn, typename... Args>
+	void operator()(Fn&&, Tuple<Args...> const&&) const noexcept = delete;
+};
+
+struct tuple_for_each_i {
+	template <typename ISeq, typename... Ts>
+	using IndexedTuple = internal::tup_::IndexedTuple<ISeq, Ts...>;
+
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args, usize... Is),
+			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Fix<i64{Is}>, Args&&>))),
+			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
+			operator(),
+			(fn, Fn&&),
+			(args, IndexedTuple<meta::index_sequence<Is...>, Args...>&&))
+	const noexcept(
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Fix<i64{Is}>, Args&&>))) {
+		internal::tup_::for_each_i_impl(
+				meta::type_sequence<Args&&...>{}, fn, VEG_FWD(args));
+	}
+
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args, usize... Is),
+			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Fix<i64{Is}>, Args&>))),
+			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
+			operator(),
+			(fn, Fn&&),
+			(args, IndexedTuple<meta::index_sequence<Is...>, Args...>&))
+	const noexcept(
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Fix<i64{Is}>, Args&>))) {
+		internal::tup_::for_each_i_impl(
+				meta::type_sequence<Args&...>{}, fn, VEG_FWD(args));
+	}
+
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args, usize... Is),
+			requires(
+					VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Fix<i64{Is}>, Args const&>))),
+			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
+			operator(),
+			(fn, Fn&&),
+			(args, IndexedTuple<meta::index_sequence<Is...>, Args...> const&))
+	const noexcept(VEG_ALL_OF(
+			VEG_CONCEPT(nothrow_invocable<Fn&, Fix<i64{Is}>, Args const&>))) {
+		internal::tup_::for_each_i_impl(
+				meta::type_sequence<Args const&...>{}, fn, VEG_FWD(args));
+	}
+
+	template <typename Fn, typename... Args, usize... Is>
+	void
+	operator()(Fn&&, IndexedTuple<meta::index_sequence<Is...>, Args...> const&&)
+			const noexcept = delete;
+};
+
+struct tuple_for_each {
+
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args, usize... Is),
+			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Args&&>))),
+			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
+			operator(),
+			(fn, Fn&&),
+			(args, Tuple<Args...>&&))
+	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Args&&>))) {
+		internal::tup_::for_each_impl(
+				meta::type_sequence<Args&&...>{}, fn, VEG_FWD(args));
+	}
+
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args, usize... Is),
+			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Args&>))),
+			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
+			operator(),
+			(fn, Fn&&),
+			(args, Tuple<Args...>&))
+	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Args&>))) {
+		internal::tup_::for_each_impl(
+				meta::type_sequence<Args&&...>{}, fn, VEG_FWD(args));
+	}
+
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args, usize... Is),
+			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Args const&>))),
+			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
+			operator(),
+			(fn, Fn&&),
+			(args, Tuple<Args...> const&))
+	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Args const&>))) {
+		internal::tup_::for_each_impl(
+				meta::type_sequence<Args&&...>{}, fn, VEG_FWD(args));
 	}
 
 	template <typename Fn, typename... Args>
 	void operator()(Fn&&, Tuple<Args...> const&&) const noexcept = delete;
 };
 } // namespace nb
-VEG_NIEBLOID(unpack_args);
+VEG_NIEBLOID(tuple_unpack);
+VEG_NIEBLOID(tuple_for_each_i);
+VEG_NIEBLOID(tuple_for_each);
+VEG_NIEBLOID(tuple_zip);
 
 namespace nb {
 struct tuple {
@@ -629,14 +802,14 @@ struct fmt::Debug<Tuple<Ts...>> {
 	template <usize... Is>
 	static void to_string_impl(
 			fmt::Buffer& out,
-			internal::tup_::TupleImpl<meta::index_sequence<Is...>, Ts...> const&
+			internal::tup_::IndexedTuple<meta::index_sequence<Is...>, Ts...> const&
 					tup) {
 
 		out.insert(out.size(), "{", 1);
 		(void)internal::EmptyArr{
 				internal::Empty{},
 				((Is > 0) ? (out.insert(out.size(), ", ", 2)) : void(0),
-		     Debug<Ts>::to_string(
+		     Debug<meta::uncvref_t<Ts>>::to_string(
 						 out,
 						 static_cast<internal::tup_::tuple_leaf<Is, Ts> const&>(tup).inner),
 		     internal::Empty{})...};
@@ -644,7 +817,7 @@ struct fmt::Debug<Tuple<Ts...>> {
 	}
 
 	static void to_string(fmt::Buffer& out, Tuple<Ts...> const& tup) {
-		Debug::to_string_impl(out, internal::tup_::get_inner(tup));
+		Debug::to_string_impl(out, tup);
 	}
 };
 
