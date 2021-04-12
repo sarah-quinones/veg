@@ -38,7 +38,7 @@ struct copy_fn_fwd {
 			operator(),
 			(fn, Fn&&))
 	const noexcept(VEG_CONCEPT(nothrow_move_constructible<Fn>))->CopyFn<Fn> {
-		return VEG_FWD(fn);
+		return {VEG_FWD(fn)};
 	}
 };
 } // namespace nb
