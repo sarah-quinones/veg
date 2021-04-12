@@ -57,12 +57,7 @@ struct Curried {
 	const& noexcept(
 			VEG_CONCEPT(nothrow_invocable<Fn, Args&&..., StoredArgs&&...>))
 			->meta::invoke_result_t<Fn, Args&&..., StoredArgs&&...> {
-		return Curried::template call<
-				(VEG_CONCEPT(nothrow_invocable<Fn, Args&&..., StoredArgs&&...>)),
-				meta::invoke_result_t<Fn, Args&&..., StoredArgs&&...>>(
-				meta::make_index_sequence<sizeof...(StoredArgs)>{},
-				static_cast<Curried&&>(*this),
-				VEG_FWD(args)...);
+		return static_cast<Curried>(*this)(VEG_FWD(args)...);
 	}
 
 private:
@@ -132,6 +127,21 @@ struct RCurried {
 				meta::make_index_sequence<sizeof...(StoredArgs)>{},
 				static_cast<RCurried&&>(*this),
 				VEG_FWD(args)...);
+	}
+
+	VEG_TEMPLATE(
+			typename... Args,
+			requires(
+					VEG_CONCEPT(trivially_copy_constructible<Fn>) &&
+					VEG_ALL_OF(VEG_CONCEPT(trivially_copy_constructible<StoredArgs>)) &&
+					VEG_CONCEPT(invocable<Fn, StoredArgs&&..., Args&&...>)),
+			HEDLEY_ALWAYS_INLINE constexpr auto
+			operator(),
+			(... args, Args&&))
+	const& noexcept(
+			VEG_CONCEPT(nothrow_invocable<Fn, StoredArgs&&..., Args&&...>))
+			-> meta::invoke_result_t<Fn, StoredArgs&&..., Args&&...> {
+		return static_cast<RCurried>(*this)(VEG_FWD(args)...);
 	}
 
 private:
