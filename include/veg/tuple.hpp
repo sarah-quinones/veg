@@ -717,7 +717,7 @@ struct tuple_for_each {
 			(args, Tuple<Args...>&))
 	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Args&>))) {
 		internal::tup_::for_each_impl(
-				meta::type_sequence<Args&&...>{}, fn, VEG_FWD(args));
+				meta::type_sequence<Args&...>{}, fn, VEG_FWD(args));
 	}
 
 	VEG_TEMPLATE(
@@ -729,7 +729,7 @@ struct tuple_for_each {
 			(args, Tuple<Args...> const&))
 	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Args const&>))) {
 		internal::tup_::for_each_impl(
-				meta::type_sequence<Args&&...>{}, fn, VEG_FWD(args));
+				meta::type_sequence<Args const&...>{}, fn, VEG_FWD(args));
 	}
 
 	template <typename Fn, typename... Args>
