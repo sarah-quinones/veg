@@ -365,39 +365,6 @@ HEDLEY_ALWAYS_INLINE constexpr auto unpack_args_impl(
 					 static_cast<tuple_leaf<Is, Ts> const&>(args).inner))...);
 }
 
-template <typename... Actual_Ts, typename Fn, usize... Is, typename... Ts>
-HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void for_each_i_impl(
-		meta::type_sequence<Actual_Ts...> /*tag*/,
-		Fn& fn,
-		IndexedTuple<meta::index_sequence<Is...>, Ts...> const& args)
-
-		noexcept(noexcept(EmptyArr{
-				(static_cast<void>(
-						 (fn)(Fix<i64{Is}>{}, VEG_DECLVAL_NOEXCEPT(Actual_Ts&&))),
-         Empty{})...})) {
-	static_cast<void>(EmptyArr{
-			(static_cast<void>((fn)(
-					 Fix<i64{Is}>{},
-					 const_cast<Actual_Ts&&>(
-							 static_cast<tuple_leaf<Is, Ts> const&>(args).inner))),
-	     Empty{})...});
-}
-
-template <typename... Actual_Ts, typename Fn, usize... Is, typename... Ts>
-HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void for_each_impl(
-		meta::type_sequence<Actual_Ts...> /*tag*/,
-		Fn& fn,
-		IndexedTuple<meta::index_sequence<Is...>, Ts...> const& args)
-
-		noexcept(noexcept(EmptyArr{
-				(static_cast<void>((fn)(VEG_DECLVAL_NOEXCEPT(Actual_Ts &&))),
-         Empty{})...})) {
-	static_cast<void>(EmptyArr{
-			(static_cast<void>((fn)(const_cast<Actual_Ts&&>(
-					 static_cast<tuple_leaf<Is, Ts> const&>(args).inner))),
-	     Empty{})...});
-}
-
 namespace adl {
 template <typename... Ts>
 struct tuple_base {};

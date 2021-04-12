@@ -680,28 +680,78 @@ struct tuple_for_each_i {
 			(args, IndexedTuple<meta::index_sequence<Is...>, Args...>))
 	const noexcept(
 			VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Fix<i64{Is}>, Args&&>))) {
-		internal::tup_::for_each_i_impl(
-				meta::type_sequence<Args&&...>{}, fn, VEG_FWD(args));
+		static_cast<void>(internal::EmptyArr{
+				(static_cast<void>(
+						 fn(Fix<i64{Is}>{},
+		            static_cast<Args&&>(internal::tup_::get_impl(args)))),
+		     internal::Empty{})...});
 	}
 };
 
 struct tuple_for_each {
 	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
+			(typename Fn, typename... Args, usize... Is),
 			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Args&&>))),
 			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
 			operator(),
 			(fn, Fn&&),
-			(args, Tuple<Args...>))
+			(args, IndexedTuple<meta::index_sequence<Is...>, Args...>))
 	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Args&&>))) {
-		internal::tup_::for_each_impl(
-				meta::type_sequence<Args&&...>{}, fn, VEG_FWD(args));
+		static_cast<void>(internal::EmptyArr{
+				(static_cast<void>(
+						 fn(static_cast<Args&&>(internal::tup_::get_impl(args)))),
+		     internal::Empty{})...});
+	}
+};
+
+struct tuple_map_i {
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args, usize... Is),
+			requires(
+					VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Fix<i64{Is}>, Args&&>)) &&
+					VEG_ALL_OF(
+							VEG_CONCEPT(move_constructible<
+													meta::invoke_result_t<Fn&, Fix<i64{Is}>, Args&&>>))),
+			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto
+			operator(),
+			(fn, Fn&&),
+			(args, IndexedTuple<meta::index_sequence<Is...>, Args...>))
+	const noexcept(
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Fix<i64{Is}>, Args&&>)) &&
+			VEG_ALL_OF(
+					VEG_CONCEPT(nothrow_move_constructible<
+											meta::invoke_result_t<Fn&, Fix<i64{Is}>, Args&&>>)))
+			->Tuple<meta::invoke_result_t<Fn&, Fix<i64{Is}>, Args&&>...> {
+		return {
+				Cvt{},
+				fn(Fix<i64{Is}>{},
+		       static_cast<Args&&>(internal::tup_::get_impl<Is>(args)))...,
+		};
+	}
+};
+
+struct tuple_map {
+	VEG_TEMPLATE(
+			(typename Fn, typename... Args, usize... Is),
+			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Args&&>))),
+			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) auto
+			operator(),
+			(fn, Fn&&),
+			(args, IndexedTuple<meta::index_sequence<Is...>, Args...>))
+	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Args&&>)))
+			->Tuple<meta::invoke_result_t<Fn&, Fix<i64{Is}>, Args&&>...> {
+		return {
+				Cvt{},
+				fn(static_cast<Args&&>(internal::tup_::get_impl<Is>(args)))...,
+		};
 	}
 };
 } // namespace nb
 VEG_NIEBLOID(tuple_unpack);
 VEG_NIEBLOID(tuple_for_each_i);
 VEG_NIEBLOID(tuple_for_each);
+VEG_NIEBLOID(tuple_map_i);
+VEG_NIEBLOID(tuple_map);
 VEG_NIEBLOID(tuple_zip);
 VEG_NIEBLOID(tuple_cat);
 
