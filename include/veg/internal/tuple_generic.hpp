@@ -372,14 +372,15 @@ HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void for_each_i_impl(
 		IndexedTuple<meta::index_sequence<Is...>, Ts...> const& args)
 
 		noexcept(noexcept(EmptyArr{
-				(static_cast<void>((fn)(Fix<i64{Is}>{}, VEG_DECLVAL_NOEXCEPT(Actual_Ts&&))),
+				(static_cast<void>(
+						 (fn)(Fix<i64{Is}>{}, VEG_DECLVAL_NOEXCEPT(Actual_Ts&&))),
          Empty{})...})) {
-	EmptyArr{
+	static_cast<void>(EmptyArr{
 			(static_cast<void>((fn)(
 					 Fix<i64{Is}>{},
 					 const_cast<Actual_Ts&&>(
 							 static_cast<tuple_leaf<Is, Ts> const&>(args).inner))),
-	     Empty{})...};
+	     Empty{})...});
 }
 
 template <typename... Actual_Ts, typename Fn, usize... Is, typename... Ts>
@@ -391,10 +392,10 @@ HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void for_each_impl(
 		noexcept(noexcept(EmptyArr{
 				(static_cast<void>((fn)(VEG_DECLVAL_NOEXCEPT(Actual_Ts &&))),
          Empty{})...})) {
-	EmptyArr{
+	static_cast<void>(EmptyArr{
 			(static_cast<void>((fn)(const_cast<Actual_Ts&&>(
 					 static_cast<tuple_leaf<Is, Ts> const&>(args).inner))),
-	     Empty{})...};
+	     Empty{})...});
 }
 
 namespace adl {
