@@ -20,11 +20,29 @@ struct CopyFn {
 			HEDLEY_ALWAYS_INLINE constexpr auto
 			operator(),
 			(... args, Args&&))
-	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>))
+	const noexcept(
+			VEG_CONCEPT(nothrow_copy_constructible<Fn>) &&
+			VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>))
 			->meta::invoke_result_t<Fn, Args&&...> {
 		return (clone)(fn)(VEG_FWD(args)...);
 	}
 };
+namespace nb {
+struct copy_fn_fwd {
+	VEG_TEMPLATE(
+			typename Fn,
+			requires(
+					VEG_CONCEPT(move_constructible<Fn>) &&
+					VEG_CONCEPT(copy_constructible<Fn>)),
+			HEDLEY_ALWAYS_INLINE constexpr auto
+			operator(),
+			(fn, Fn&&))
+	const noexcept(VEG_CONCEPT(nothrow_move_constructible<Fn>))->CopyFn<Fn> {
+		return VEG_FWD(fn);
+	}
+};
+} // namespace nb
+VEG_NIEBLOID(copy_fn_fwd);
 } // namespace fn
 } // namespace VEG_ABI
 } // namespace veg
