@@ -5,6 +5,7 @@
 #include "veg/internal/fmt.hpp"
 #include "veg/type_traits/invocable.hpp"
 #include "veg/util/get.hpp"
+#include "veg/functional/into.hpp"
 #include "veg/internal/prologue.hpp"
 
 // STD INCLUDE: std::tuple_{size,element}
@@ -603,9 +604,9 @@ struct tuple_zip {
 					template type<Tuples...>...> {
 		return {
 				Cvt{},
-				tuple_zip_helper<Is, Ts>{
+				fn::into_ref(tuple_zip_helper<Is, Ts>{
 						static_cast<Ts&&>(internal::tup_::get_impl<Is>(tup))}
-						.template apply<Tuples...>(VEG_FWD(tups)...)...};
+		                     .template apply<Tuples...>(VEG_FWD(tups)...))...};
 	}
 };
 

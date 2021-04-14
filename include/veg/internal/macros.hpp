@@ -240,6 +240,10 @@
 #define VEG_CONSTRAINED_MEMBER_FN(Constraint, Attr_Name, Params, ...)          \
 	Attr_Name __VEG_PP_TUPLE_TRANSFORM_I(__VEG_IMPL_PARAM_EXPAND, _, Params)     \
 			__VA_ARGS__ requires __VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint)
+
+#define VEG_TEMPLATE_CVT(TParams, Constraint, Attr, ...)                       \
+	template <__VEG_PP_REMOVE_PAREN(TParams)>                                    \
+	Constraint Attr operator __VA_ARGS__()
 #else
 #define VEG_TEMPLATE_EXPLICIT(                                                 \
 		TParams, Constraint, Explicit_Cond, Attr_Name, Params, ...)                \
@@ -271,6 +275,11 @@
 			Attr_Name,                                                               \
 			__VEG_PP_REMOVE_PAREN(Params))                                           \
 	__VA_ARGS__
+
+#define VEG_TEMPLATE_CVT(TParams, Constraint, Attr, ...)                       \
+	template <__VEG_PP_REMOVE_PAREN(TParams)>                                    \
+	Attr operator ::veg::internal::meta_::discard_1st<::veg::meta::enable_if_t<( \
+			__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint))>, __VA_ARGS__>()
 #endif
 
 #define __VEG_IMPL_PREFIX_requires
