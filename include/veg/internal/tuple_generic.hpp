@@ -98,7 +98,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...>
 };
 
 template <usize I, typename T>
-auto get_impl(tuple_leaf<I, T> const& leaf) noexcept -> T& {
+constexpr auto get_impl(tuple_leaf<I, T> const& leaf) noexcept -> T& {
 	return const_cast<T&> /* NOLINT */ (leaf.inner);
 }
 
