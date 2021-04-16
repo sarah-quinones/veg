@@ -81,8 +81,8 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...>
 	explicit constexpr IndexedTuple(IndexedTuple const&) = default;
 	constexpr IndexedTuple(IndexedTuple&&) = default;
 
-	constexpr auto operator=(IndexedTuple const&) -> IndexedTuple& = default;
-	constexpr auto operator=(IndexedTuple&&) -> IndexedTuple& = default;
+	VEG_CPP14(constexpr) auto operator=(IndexedTuple const&) -> IndexedTuple& = default;
+	VEG_CPP14(constexpr) auto operator=(IndexedTuple&&) -> IndexedTuple& = default;
 
 	template <typename... Us>
 	HEDLEY_ALWAYS_INLINE constexpr IndexedTuple /* NOLINT */

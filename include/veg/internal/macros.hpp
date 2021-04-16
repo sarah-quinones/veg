@@ -56,6 +56,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define VEG_DECLVAL(...) (static_cast<__VA_ARGS__ (*)()>(nullptr)())
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L
+#define VEG_HAS_CONCEPTS 1
+#else
+#endif
 
 #if __cplusplus >= 201703L
 #define VEG_DECLVAL_NOEXCEPT(...)                                              \
@@ -91,7 +95,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#if __cplusplus >= 202002L
+#ifdef VEG_HAS_CONCEPTS
 
 #define __VEG_IMPL_AND(_, Param) &&__VEG_PP_UNWRAP(Param)
 #define __VEG_IMPL_OR(_, Param) || __VEG_PP_UNWRAP(Param)
@@ -227,7 +231,7 @@
 			__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint),                           \
 			__VA_ARGS__)
 
-#if __cplusplus >= 202002L
+#ifdef VEG_HAS_CONCEPTS
 #define VEG_TEMPLATE_EXPLICIT(                                                 \
 		TParams, Constraint, Explicit_Cond, Attr_Name, Params, ...)                \
 	VEG_TEMPLATE(                                                                \
@@ -278,8 +282,10 @@
 
 #define VEG_TEMPLATE_CVT(TParams, Constraint, Attr, ...)                       \
 	template <__VEG_PP_REMOVE_PAREN(TParams)>                                    \
-	Attr operator ::veg::internal::meta_::discard_1st<::veg::meta::enable_if_t<( \
-			__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint))>, __VA_ARGS__>()
+	Attr operator ::veg::internal::meta_::discard_1st<                           \
+			::veg::meta::enable_if_t<(                                               \
+					__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint))>,                     \
+			__VA_ARGS__>()
 #endif
 
 #define __VEG_IMPL_PREFIX_requires
@@ -287,7 +293,7 @@
 
 #define __VEG_IMPL_PARAM_EXPAND(I, _, Param)                                   \
 	__VEG_PP_TAIL Param __VEG_PP_HEAD Param
-#if __cplusplus >= 202002L
+#ifdef VEG_HAS_CONCEPTS
 #define __VEG_IMPL_TEMPLATE(Attr_Name, TParams, Constraint, ...)               \
 	template <__VEG_PP_REMOVE_PAREN(TParams)>                                    \
 	requires Constraint Attr_Name __VEG_PP_TUPLE_TRANSFORM_I(                    \
