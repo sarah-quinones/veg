@@ -341,10 +341,10 @@
 #define VEG_INLINE_VAR_TEMPLATE(Tpl, Name, ...) VEG_NOM_SEMICOLON
 #endif
 
-#define VEG_NIEBLOID(Name) VEG_INLINE_VAR(Name, nb::Name)
+#define VEG_NIEBLOID(Name) VEG_INLINE_VAR(Name, nb::Name) // NOLINT
 
 #define VEG_NIEBLOID_TEMPLATE(Tpl, Name, ...)                                  \
-	VEG_INLINE_VAR_TEMPLATE(Tpl, Name, nb::Name<__VA_ARGS__>)
+	VEG_INLINE_VAR_TEMPLATE(Tpl, Name, nb::Name<__VA_ARGS__>) // NOLINT
 
 #define VEG_FWD(X) static_cast<decltype(X)&&>(X)
 
@@ -451,7 +451,7 @@ VEG_NIEBLOID(unused);
 namespace internal {
 constexpr auto all_of_slice(bool const* arr, i64 size) noexcept -> bool {
 	return size == 0 ? true
-									 : (arr[0] && internal::all_of_slice(arr + 1, size - 1));
+	                 : (arr[0] && internal::all_of_slice(arr + 1, size - 1));
 }
 constexpr auto all_of(std::initializer_list<bool> lst) noexcept -> bool {
 	return internal::all_of_slice(lst.begin(), static_cast<i64>(lst.size()));
