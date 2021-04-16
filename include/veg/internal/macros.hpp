@@ -231,7 +231,8 @@
 			__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint),                           \
 			__VA_ARGS__)
 
-#ifdef VEG_HAS_CONCEPTS
+#if defined(VEG_HAS_CONCEPTS) && defined(__cpp_conditional_explicit) &&        \
+		(__cpp_conditional_explicit >= 201806L)
 #define VEG_TEMPLATE_EXPLICIT(                                                 \
 		TParams, Constraint, Explicit_Cond, Attr_Name, Params, ...)                \
 	VEG_TEMPLATE(                                                                \
