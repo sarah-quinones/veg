@@ -76,7 +76,13 @@ struct IndexedTuple;
 template <usize... Is, typename... Ts>
 struct IndexedTuple<meta::index_sequence<Is...>, Ts...>
 		: tuple_leaf<Is, Ts>... {
+  ~IndexedTuple() = default;
 	constexpr IndexedTuple() = default;
+	explicit constexpr IndexedTuple(IndexedTuple const&) = default;
+	constexpr IndexedTuple(IndexedTuple&&) = default;
+
+	constexpr auto operator=(IndexedTuple const&) -> IndexedTuple& = default;
+	constexpr auto operator=(IndexedTuple&&) -> IndexedTuple& = default;
 
 	template <typename... Us>
 	HEDLEY_ALWAYS_INLINE constexpr IndexedTuple /* NOLINT */
