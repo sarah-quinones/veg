@@ -110,7 +110,7 @@
 
 #define VEG_DEF_CONCEPT(Tpl, Name, ...)                                        \
 	template <__VEG_PP_REMOVE_PAREN1(Tpl)>                                       \
-	concept Name = __VA_ARGS__;
+	concept Name = __VA_ARGS__
 
 #define VEG_CHECK_CONCEPT_MACRO(Namespace, ...)                                \
 	static_assert(                                                               \
