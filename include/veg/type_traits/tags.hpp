@@ -2,6 +2,7 @@
 #define VEG_TAGS_HPP_FYDE7Q6ZS
 
 #include "veg/type_traits/core.hpp"
+#include "veg/functional/into.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
@@ -36,7 +37,6 @@ private:
 template <typename T>
 struct Tag {};
 struct Cvt {};
-struct Into {};
 struct InitList {};
 struct FromRawParts {};
 struct InPlace {};
