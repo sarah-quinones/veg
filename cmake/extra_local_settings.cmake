@@ -3,50 +3,21 @@ option(ENABLE_IPO
        OFF
 )
 option(ARCH_NATIVE "Build with -march=native" OFF)
-option(USE_LIBCXX "Use the libc++ STL" OFF)
 
-option(ENABLE_BUILD_WITH_TIME_TRACE "Enable -ftime-trace to generate time tracing .json files on clang" OFF)
+option(ENABLE_BUILD_WITH_TIME_TRACE
+       "Enable -ftime-trace to generate time tracing .json files on clang" OFF
+)
 if(ENABLE_BUILD_WITH_TIME_TRACE AND CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
   add_compile_options("-ftime-trace")
 endif()
 
 if(USE_LLD)
   add_link_options("-fuse-ld=lld")
-elseif(USE_GOLD)
-  add_link_options("-fuse-ld=gold")
-endif()
-
-if(USE_LIBCXX)
-  if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
-    add_compile_options("-stdlib=libc++")
-    add_link_options("-stdlib=libc++ -lc++abi")
-  endif()
-endif()
-
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  message(STATUS "Setting build type to 'Debug' as none was specified.")
-  set(CMAKE_BUILD_TYPE
-      Debug
-      CACHE STRING "Choose the type of build." FORCE
-  )
-  set_property(
-    CACHE CMAKE_BUILD_TYPE
-    PROPERTY STRINGS
-             "Debug"
-             "Release"
-             "MinSizeRel"
-             "RelWithDebInfo"
-  )
 endif()
 
 if(ENABLE_IPO)
   include(CheckIPOSupported)
-  check_ipo_supported(
-    RESULT
-    result
-    OUTPUT
-    output
-  )
+  check_ipo_supported(RESULT result OUTPUT output)
   if(result)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
   else()

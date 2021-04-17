@@ -1,5 +1,28 @@
 include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/doctest.cmake)
 
+add_library(project_warnings INTERFACE)
+add_library(project_options INTERFACE)
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/compiler_warnings.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/static_analyzers.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/sanitizers.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/conan.cmake)
+
+target_link_libraries(veg INTERFACE project_options project_warnings)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/extra_local_settings.cmake)
+
+# Conan dependencies
+set(CONAN_REQUIRES # MIT License
+    fmt/7.1.2 backward-cpp/1.5
+)
+set(CONAN_OPTIONS)
+run_conan()
+message(STATUS ${CONAN_LIBS})
+target_link_libraries(veg PUBLIC CONAN_PKG::fmt)
+
+enable_sanitizers(project_options)
+set_project_warnings(project_warnings)
+
 add_library(doctest_cpp_main src/doctest_main.cpp)
 target_include_directories(
   doctest_cpp_main PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
