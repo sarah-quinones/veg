@@ -24,6 +24,9 @@ struct Buffer {
 
 	VEG_NODISCARD virtual auto data() const noexcept -> char* = 0;
 	VEG_NODISCARD virtual auto size() const noexcept -> i64 = 0;
+
+protected:
+	~Buffer() = default;
 };
 
 } // namespace fmt
@@ -126,7 +129,7 @@ struct Debug<Ret (*)(Args...)> : internal::fmt::dbg_pf {};
 namespace abi {
 inline namespace VEG_ABI_VERSION {
 namespace internal {
-struct String : fmt::Buffer {
+struct String final : fmt::Buffer {
 	struct layout {
 		char* ptr;
 		i64 len;
@@ -168,7 +171,7 @@ struct dbg {
 		abi::internal::String out;
 		auto const& arg_c = arg;
 		fmt::Debug<meta::uncvref_t<T>>::to_string(out, arg_c);
-    out.eprint();
+		out.eprint();
 		return VEG_FWD(arg);
 	}
 };
