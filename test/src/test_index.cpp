@@ -1,9 +1,9 @@
 #include "assert_death.hpp"
-#include <veg/internal/meta_int.hpp>
+#include <veg/util/index.hpp>
 #include <ostream>
 #include <doctest.h>
 
-TEST_CASE("meta_int: all") {
+TEST_CASE("index: all") {
 	using namespace veg;
 	using namespace veg::literals;
 

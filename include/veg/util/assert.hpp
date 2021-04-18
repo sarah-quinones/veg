@@ -1,7 +1,7 @@
 #ifndef VEG_ASSERT_HPP_VQDAJ2IBS
 #define VEG_ASSERT_HPP_VQDAJ2IBS
 
-#include "veg/internal/meta_int_fix.hpp"
+#include "veg/internal/fix_index.hpp"
 #include "veg/internal/typedefs.hpp"
 #include "veg/util/compare.hpp"
 #include "veg/util/defer.hpp"

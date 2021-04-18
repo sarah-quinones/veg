@@ -2,13 +2,12 @@
 #define VEG_META_INT_DYN_HPP_GC385NKBS
 
 #include "veg/util/assert.hpp"
-#include "veg/internal/meta_int_fix.hpp"
+#include "veg/internal/fix_index.hpp"
 #include "veg/internal/narrow.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
 inline namespace VEG_ABI {
-namespace int_c {
 
 template <ternary_e T>
 struct Boolean;
@@ -161,7 +160,6 @@ struct binary_traits<Dyn, Fix<N>> : binary_traits<Dyn, Dyn> {
 };
 
 } // namespace internal
-} // namespace int_c
 
 inline namespace literals {
 HEDLEY_ALWAYS_INLINE constexpr auto operator"" _v(unsigned long long n) noexcept

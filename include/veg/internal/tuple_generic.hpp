@@ -3,7 +3,7 @@
 
 #include "veg/internal/integer_seq.hpp"
 #include "veg/type_traits/value_category.hpp"
-#include "veg/internal/meta_int_fix.hpp"
+#include "veg/internal/fix_index.hpp"
 #include "veg/util/swap.hpp"
 #include "veg/util/compare.hpp"
 #include "veg/internal/prologue.hpp"

@@ -70,7 +70,7 @@ macro(add_all_tests_std_version std_version)
     veg.${std_version} PUBLIC -DVEG_INTERNAL_ASSERTIONS
   )
 
-  add_test_std_version(${std_version} int src/test_int_c.cpp)
+  add_test_std_version(${std_version} idx src/test_index.cpp)
   add_test_std_version(${std_version} fn src/test_fn_view.cpp)
   add_test_std_version(${std_version} dynstack src/test_dynamic_stack.cpp)
   add_test_std_version(${std_version} tuple src/test_tuple.cpp)

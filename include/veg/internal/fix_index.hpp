@@ -8,27 +8,30 @@
 
 namespace veg {
 inline namespace VEG_ABI {
-
-namespace int_c {
 struct Dyn;
 template <i64 N>
 struct Fix;
-} // namespace int_c
 
 namespace internal {
+namespace idx {
+namespace adl {
+template <typename T>
+struct IdxBase {};
+} // namespace adl
+} // namespace idx
 namespace meta_ {
 template <typename T>
 struct is_fix : false_type {};
 template <i64 N>
-struct is_fix<int_c::Fix<N>> : true_type {};
+struct is_fix<Fix<N>> : true_type {};
 } // namespace meta_
 } // namespace internal
 
 namespace concepts {
 VEG_DEF_CONCEPT(
 		typename T,
-		meta_int,
-		VEG_CONCEPT(same<T, int_c::Dyn>) || internal::meta_::is_fix<T>::value);
+		index,
+		VEG_CONCEPT(same<T, Dyn>) || internal::meta_::is_fix<T>::value);
 } // namespace concepts
 
 enum struct ternary_e : unsigned char {
@@ -43,8 +46,6 @@ constexpr auto yes = ternary_e::yes;
 using no_c = meta::constant<ternary_e, ternary_e::no>;
 using maybe_c = meta::constant<ternary_e, ternary_e::maybe>;
 using yes_c = meta::constant<ternary_e, ternary_e::yes>;
-
-namespace int_c {
 
 template <ternary_e T>
 struct Boolean;
@@ -78,12 +79,8 @@ private:
 	}
 };
 
-} // namespace int_c
-
-namespace int_c {
-
 template <i64 N>
-struct Fix {
+struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 	constexpr Fix() noexcept = default;
 	HEDLEY_ALWAYS_INLINE constexpr Fix(Dyn /*arg*/, Unsafe /*tag*/) noexcept;
 	HEDLEY_ALWAYS_INLINE constexpr Fix // NOLINT(hicpp-explicit-conversions)
@@ -106,53 +103,52 @@ struct Fix {
 };
 
 namespace internal {
-
-struct error {
+struct Error {
 	constexpr auto operator()(u64 const* fail = nullptr) const noexcept -> u64 {
 		return *fail;
 	}
 };
 
-using parser = auto (*)(char, error) -> u64;
-constexpr auto parse_digit_2(char c, error e) noexcept -> u64 {
+using parser = auto (*)(char, Error) -> u64;
+constexpr auto parse_digit_2(char c, Error e) noexcept -> u64 {
 	return (c == '0') ? 0 : (c == '1' ? 1 : e());
 }
-constexpr auto parse_digit_8(char c, error e) noexcept -> u64 {
+constexpr auto parse_digit_8(char c, Error e) noexcept -> u64 {
 	return (c >= '0' && c <= '7') ? u64(c - '0') : e();
 }
-constexpr auto parse_digit_10(char c, error e) noexcept -> u64 {
+constexpr auto parse_digit_10(char c, Error e) noexcept -> u64 {
 	return (c >= '0' && c <= '9') ? u64(c - '0') : e();
 }
-constexpr auto parse_digit_16(char c, error e) noexcept -> u64 {
+constexpr auto parse_digit_16(char c, Error e) noexcept -> u64 {
 	return (c >= '0' && c <= '9') //
-						 ? u64(c - '0')
-						 : (c >= 'a' && c <= 'f') //
-									 ? u64(c - 'a')
-									 : (c >= 'A' && c <= 'F') //
-												 ? u64(c - 'A')
-												 : e();
+	           ? u64(c - '0')
+	           : (c >= 'a' && c <= 'f') //
+	                 ? u64(c - 'a')
+	                 : (c >= 'A' && c <= 'F') //
+	                       ? u64(c - 'A')
+	                       : e();
 }
 
 constexpr auto parse_digit(u64 radix) noexcept -> parser {
 	return radix == 2
-						 ? parse_digit_2
-						 : (radix == 8
+	           ? parse_digit_2
+	           : (radix == 8
 	                  ? parse_digit_8
 	                  : (radix == 10 ? parse_digit_10
 	                                 : (radix == 16 ? parse_digit_16 : nullptr)));
 }
 
-constexpr auto parse_num(char const* str, u64 len, u64 radix, error e) noexcept
+constexpr auto parse_num(char const* str, u64 len, u64 radix, Error e) noexcept
 		-> u64 {
 	return (len == 0) ? 0
-										: radix * parse_num(str, len - 1, radix, e) +
-													(parse_digit(radix)(str[len - 1], e));
+	                  : radix * parse_num(str, len - 1, radix, e) +
+	                        (parse_digit(radix)(str[len - 1], e));
 }
 
-constexpr auto parse_int(char const* str, u64 len, error e) noexcept -> u64 {
+constexpr auto parse_int(char const* str, u64 len, Error e) noexcept -> u64 {
 	return (len == 0) //
-						 ? e()
-						 : ((str[0] == '0')   //
+	           ? e()
+	           : ((str[0] == '0')   //
 	                  ? ((len == 1) //
 	                         ? 0
 	                         : (str[1] == 'b' || str[1] == 'B') //
@@ -228,12 +224,11 @@ struct binary_traits<Fix<N>, Fix<M>> {
 #undef VEG_OP
 #undef VEG_CMP
 };
-
-} // namespace internal
-
+namespace idx {
+namespace adl {
 VEG_TEMPLATE(
 		(typename L, typename R),
-		requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),
+		requires(VEG_CONCEPT(index<L>) && VEG_CONCEPT(index<R>)),
 		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator+,
 		(a, L),
@@ -242,7 +237,7 @@ VEG_DEDUCE_RET(internal::binary_traits<L, R>::add_fn(a, b));
 
 VEG_TEMPLATE(
 		(typename L, typename R),
-		requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),
+		requires(VEG_CONCEPT(index<L>) && VEG_CONCEPT(index<R>)),
 		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator-,
 		(a, L),
@@ -251,7 +246,7 @@ VEG_DEDUCE_RET(internal::binary_traits<L, R>::sub_fn(a, b));
 
 VEG_TEMPLATE(
 		(typename L, typename R),
-		requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),
+		requires(VEG_CONCEPT(index<L>) && VEG_CONCEPT(index<R>)),
 		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator*,
 		(a, L),
@@ -261,9 +256,9 @@ VEG_DEDUCE_RET(internal::binary_traits<L, R>::mul_fn(a, b));
 VEG_TEMPLATE(
 		(typename L, typename R),
 		requires(
-				VEG_CONCEPT(meta_int<L>) && //
-				VEG_CONCEPT(meta_int<R>) &&
-				VEG_CONCEPT(meta_int<typename internal::binary_traits<L, R>::div>)),
+				VEG_CONCEPT(index<L>) && //
+				VEG_CONCEPT(index<R>) &&
+				VEG_CONCEPT(index<typename internal::binary_traits<L, R>::div>)),
 		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator/,
 		(a, L),
@@ -273,9 +268,9 @@ VEG_DEDUCE_RET(internal::binary_traits<L, R>::div_fn(a, b));
 VEG_TEMPLATE(
 		(typename L, typename R),
 		requires(
-				VEG_CONCEPT(meta_int<L>) && //
-				VEG_CONCEPT(meta_int<R>) &&
-				VEG_CONCEPT(meta_int<typename internal::binary_traits<L, R>::mod>)),
+				VEG_CONCEPT(index<L>) && //
+				VEG_CONCEPT(index<R>) &&
+				VEG_CONCEPT(index<typename internal::binary_traits<L, R>::mod>)),
 		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
 		operator%,
 		(a, L),
@@ -285,7 +280,7 @@ VEG_DEDUCE_RET(internal::binary_traits<L, R>::mod_fn(a, b));
 #define VEG_CMP(Name, Op)                                                      \
 	VEG_TEMPLATE(                                                                \
 			(typename L, typename R),                                                \
-			requires(VEG_CONCEPT(meta_int<L>) && VEG_CONCEPT(meta_int<R>)),          \
+			requires(VEG_CONCEPT(index<L>) && VEG_CONCEPT(index<R>)),                \
 			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto                        \
 			operator Op,                                                             \
 			(a, L),                                                                  \
@@ -301,18 +296,15 @@ VEG_CMP(ge, >=);
 
 #undef VEG_CMP
 
-} // namespace int_c
-using int_c::Boolean;
-using int_c::Dyn;
-using int_c::Fix;
+} // namespace adl
+} // namespace idx
+} // namespace internal
 
 inline namespace literals {
 template <char... Chars>
-HEDLEY_ALWAYS_INLINE constexpr auto operator"" _c() noexcept
-		-> Fix<int_c::internal::parse_int(
-				int_c::internal::char_seq<Chars...>::value,
-				sizeof...(Chars),
-				int_c::internal::error{})> {
+HEDLEY_ALWAYS_INLINE constexpr auto
+operator"" _c() noexcept -> Fix<internal::parse_int(
+		internal::char_seq<Chars...>::value, sizeof...(Chars), internal::Error{})> {
 	return {};
 }
 } // namespace literals
