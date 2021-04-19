@@ -14,8 +14,8 @@ auto opaque_memmove(void* dest, void const* src, usize nbytes) noexcept
 } // namespace internal
 
 namespace mem {
-auto aligned_alloc(i64 align, i64 nbytes) noexcept(false) -> void*;
-void aligned_free(void* ptr, i64 nbytes) noexcept;
+auto aligned_alloc(usize align, i64 nbytes) noexcept(false) -> void*;
+void aligned_free(void* ptr, usize align, i64 nbytes) noexcept;
 } // namespace mem
 } // namespace VEG_ABI_VERSION
 } // namespace abi
@@ -23,14 +23,14 @@ inline namespace VEG_ABI {
 namespace mem {
 namespace nb {
 struct aligned_alloc {
-	auto operator()(i64 align, i64 nbytes) const noexcept(false) -> void* {
+	auto operator()(usize align, i64 nbytes) const noexcept(false) -> void* {
 		return abi::mem::aligned_alloc(align, nbytes);
 	}
 };
 struct aligned_free {
-	void operator()(void* ptr, i64 nbytes) const noexcept {
+	void operator()(void* ptr, usize align, i64 nbytes) const noexcept {
 		if (ptr != nullptr) {
-			abi::mem::aligned_free(ptr, nbytes);
+			abi::mem::aligned_free(ptr, align, nbytes);
 		}
 	}
 };
