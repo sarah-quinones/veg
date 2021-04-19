@@ -50,41 +50,10 @@ struct FromCallable {
 				meta::type_sequence<Args&&...>{}, VEG_FWD(_fn), _args);
 	}
 };
-
-auto align_next(usize alignment, void* ptr) noexcept -> void* {
-	static_assert(
-			sizeof(std::uintptr_t) >= sizeof(void*),
-			"std::uintptr_t can't hold a pointer value");
-
-	using byte_ptr = unsigned char*;
-	std::uintptr_t lo_mask = alignment - 1U;
-	std::uintptr_t hi_mask = ~lo_mask;
-	auto const intptr = reinterpret_cast<std::uintptr_t>(ptr);
-	auto* const byteptr = static_cast<byte_ptr>(ptr);
-	auto offset = ((intptr + alignment - 1U) & hi_mask) - intptr;
-
-	return byteptr + offset;
-}
 } // namespace mem_
 } // namespace internal
 
 namespace nb {
-struct align_next {
-	auto operator()(usize alignment, void* ptr) const noexcept -> void* {
-		using byte_ptr = unsigned char*;
-		std::uintptr_t lo_mask = alignment - 1U;
-		std::uintptr_t hi_mask = ~lo_mask;
-		auto const intptr = reinterpret_cast<std::uintptr_t>(ptr);
-		auto* const byteptr = static_cast<byte_ptr>(ptr);
-		auto offset = ((intptr + alignment - 1U) & hi_mask) - intptr;
-
-		return byteptr + offset;
-	}
-	auto operator()(usize alignment, void const* ptr) const noexcept
-			-> void const* {
-		return this->operator()(alignment, const_cast<void*>(ptr));
-	}
-};
 struct from_callable {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Args),
@@ -99,7 +68,6 @@ struct from_callable {
 };
 } // namespace nb
 VEG_NIEBLOID(from_callable);
-VEG_NIEBLOID(align_next);
 
 namespace mem {
 namespace nb {
@@ -170,7 +138,24 @@ struct destroy_at {
 			(mem, T*))
 	const noexcept { mem->~T(); }
 };
+struct align_next {
+	auto operator()(usize alignment, void* ptr) const noexcept -> void* {
+		using byte_ptr = unsigned char*;
+		std::uintptr_t lo_mask = alignment - 1U;
+		std::uintptr_t hi_mask = ~lo_mask;
+		auto const intptr = reinterpret_cast<std::uintptr_t>(ptr);
+		auto* const byteptr = static_cast<byte_ptr>(ptr);
+		auto offset = ((intptr + alignment - 1U) & hi_mask) - intptr;
+
+		return byteptr + offset;
+	}
+	auto operator()(usize alignment, void const* ptr) const noexcept
+			-> void const* {
+		return this->operator()(alignment, const_cast<void*>(ptr));
+	}
+};
 } // namespace nb
+VEG_NIEBLOID(align_next);
 VEG_NIEBLOID(launder);
 VEG_NIEBLOID(construct_at);
 VEG_NIEBLOID(construct_with);
