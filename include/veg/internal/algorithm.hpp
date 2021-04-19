@@ -296,17 +296,18 @@ namespace algo_ {
 
 struct free_cleanup {
 	void* ptr;
+	usize align;
 	i64 cap_bytes;
-	auto operator()() const noexcept { mem::aligned_free(ptr, cap_bytes); }
+	auto operator()() const noexcept { mem::aligned_free(ptr, align, cap_bytes); }
 };
 
 template <typename T>
 HEDLEY_ALWAYS_INLINE auto reallocate_memory(
-		T* src, i64 align, i64 size, i64 cap, i64 new_cap) noexcept(false) -> T* {
+		T* src, usize align, i64 size, i64 cap, i64 new_cap) noexcept(false) -> T* {
 
 	constexpr i64 s = static_cast<i64>(sizeof(T));
 	T* p = static_cast<T*>(mem::aligned_alloc(align, new_cap * s));
-	auto&& cleanup = defer(free_cleanup{p, new_cap * s});
+	auto&& cleanup = defer(free_cleanup{p, align, new_cap * s});
 
 	relocate_n(p, src, size);
 

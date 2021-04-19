@@ -70,7 +70,7 @@ public:
 			: self{parts} {}
 
 	HEDLEY_ALWAYS_INLINE
-	~VecBase() { aligned_free(self.begin, nb::narrow<usize>{}(self.cap)); }
+	~VecBase() { this->_destroy(); }
 
 	HEDLEY_ALWAYS_INLINE
 	auto operator=(VecBase const& rhs) & noexcept(false) -> VecBase& {
@@ -91,7 +91,7 @@ public:
 private:
 	HEDLEY_ALWAYS_INLINE
 	void _destroy() noexcept {
-		aligned_free(self.begin, nb::narrow<usize>{}(self.cap));
+		aligned_free(self.begin, alignof(T), nb::narrow<usize>{}(self.cap));
 	}
 };
 
