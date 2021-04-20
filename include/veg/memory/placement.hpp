@@ -154,8 +154,25 @@ struct align_next {
 		return this->operator()(alignment, const_cast<void*>(ptr));
 	}
 };
+struct align_prev {
+	auto operator()(usize alignment, void* ptr) const noexcept -> void* {
+		using byte_ptr = unsigned char*;
+		std::uintptr_t lo_mask = alignment - 1U;
+		std::uintptr_t hi_mask = ~lo_mask;
+		auto const intptr = reinterpret_cast<std::uintptr_t>(ptr);
+		auto* const byteptr = static_cast<byte_ptr>(ptr);
+		auto offset = ((intptr)&hi_mask) - intptr;
+
+		return byteptr + offset;
+	}
+	auto operator()(usize alignment, void const* ptr) const noexcept
+			-> void const* {
+		return this->operator()(alignment, const_cast<void*>(ptr));
+	}
+};
 } // namespace nb
 VEG_NIEBLOID(align_next);
+VEG_NIEBLOID(align_prev);
 VEG_NIEBLOID(launder);
 VEG_NIEBLOID(construct_at);
 VEG_NIEBLOID(construct_with);
