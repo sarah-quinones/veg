@@ -50,13 +50,13 @@ struct Dyn {
 	operator i64() const noexcept {
 		return m_val;
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr friend auto
-	operator+(Dyn arg) noexcept -> Dyn {
-		return arg;
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto operator+() const noexcept
+			-> Dyn {
+		return *this;
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr friend auto
-	operator-(Dyn arg) noexcept -> Dyn {
-		return {-arg.m_val};
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto operator-() const noexcept
+			-> Dyn {
+		return Dyn{-m_val};
 	}
 
 	VEG_TEMPLATE(

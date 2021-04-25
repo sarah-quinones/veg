@@ -107,12 +107,12 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 	operator i64() const noexcept {
 		return N;
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr friend auto
-	operator+(Fix /**/) noexcept -> Fix {
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto operator+() const noexcept
+			-> Fix {
 		return {};
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr friend auto
-	operator-(Fix /**/) noexcept -> Fix<-N> {
+	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto operator-() const noexcept
+			-> Fix<-N> {
 		return {};
 	}
 
