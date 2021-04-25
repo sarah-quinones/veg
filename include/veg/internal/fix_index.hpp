@@ -13,6 +13,21 @@ template <i64 N>
 struct Fix;
 
 namespace internal {
+template <typename L, typename R>
+struct binary_traits {
+	using add = void;
+	using sub = void;
+	using mul = void;
+	using div = void;
+
+	using cmp_eq = void;
+	using cmp_neq = void;
+	using cmp_lt = void;
+	using cmp_le = void;
+	using cmp_gt = void;
+	using cmp_ge = void;
+};
+
 namespace idx {
 namespace adl {
 template <typename T>
@@ -100,6 +115,68 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 	operator-(Fix /**/) noexcept -> Fix<-N> {
 		return {};
 	}
+
+	VEG_TEMPLATE(
+			(typename R),
+			requires(VEG_CONCEPT(index<R>)),
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			operator+,
+			(b, R))
+	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::add_fn(*this, b));
+
+	VEG_TEMPLATE(
+			(typename R),
+			requires(VEG_CONCEPT(index<R>)),
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			operator-,
+			(b, R))
+	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::sub_fn(*this, b));
+
+	VEG_TEMPLATE(
+			(typename R),
+			requires(VEG_CONCEPT(index<R>)),
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			operator*,
+			(b, R))
+	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::mul_fn(*this, b));
+
+	VEG_TEMPLATE(
+			(typename R),
+			requires(
+					VEG_CONCEPT(index<R>) &&
+					VEG_CONCEPT(index<typename internal::binary_traits<Fix, R>::div>)),
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			operator/,
+			(b, R))
+	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::div_fn(*this, b));
+
+	VEG_TEMPLATE(
+			(typename R),
+			requires(
+					VEG_CONCEPT(index<R>) &&
+					VEG_CONCEPT(index<typename internal::binary_traits<Fix, R>::mod>)),
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			operator%,
+			(b, R))
+	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::mod_fn(*this, b));
+
+#define VEG_CMP(Name, Op)                                                      \
+	VEG_TEMPLATE(                                                                \
+			(typename R),                                                            \
+			requires(VEG_CONCEPT(index<R>)),                                         \
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto                        \
+			operator Op,                                                             \
+			(b, R))                                                                  \
+	VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::cmp_##Name##_fn(*this, b))
+
+	VEG_CMP(eq, ==);
+	VEG_CMP(neq, !=);
+	VEG_CMP(lt, <);
+	VEG_CMP(le, <=);
+	VEG_CMP(gt, >);
+	VEG_CMP(ge, >=);
+
+#undef VEG_CMP
 };
 
 namespace internal {
@@ -164,21 +241,6 @@ struct char_seq {
 	static constexpr char value[] = {Chars...};
 };
 
-template <typename L, typename R>
-struct binary_traits {
-	using add = void;
-	using sub = void;
-	using mul = void;
-	using div = void;
-
-	using cmp_eq = void;
-	using cmp_neq = void;
-	using cmp_lt = void;
-	using cmp_le = void;
-	using cmp_gt = void;
-	using cmp_ge = void;
-};
-
 template <i64 N, i64 M>
 struct binary_traits<Fix<N>, Fix<M>> {
 
@@ -225,78 +287,7 @@ struct binary_traits<Fix<N>, Fix<M>> {
 #undef VEG_CMP
 };
 namespace idx {
-namespace adl {
-VEG_TEMPLATE(
-		(typename L, typename R),
-		requires(VEG_CONCEPT(index<L>) && VEG_CONCEPT(index<R>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
-		operator+,
-		(a, L),
-		(b, R))
-VEG_DEDUCE_RET(internal::binary_traits<L, R>::add_fn(a, b));
-
-VEG_TEMPLATE(
-		(typename L, typename R),
-		requires(VEG_CONCEPT(index<L>) && VEG_CONCEPT(index<R>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
-		operator-,
-		(a, L),
-		(b, R))
-VEG_DEDUCE_RET(internal::binary_traits<L, R>::sub_fn(a, b));
-
-VEG_TEMPLATE(
-		(typename L, typename R),
-		requires(VEG_CONCEPT(index<L>) && VEG_CONCEPT(index<R>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
-		operator*,
-		(a, L),
-		(b, R))
-VEG_DEDUCE_RET(internal::binary_traits<L, R>::mul_fn(a, b));
-
-VEG_TEMPLATE(
-		(typename L, typename R),
-		requires(
-				VEG_CONCEPT(index<L>) && //
-				VEG_CONCEPT(index<R>) &&
-				VEG_CONCEPT(index<typename internal::binary_traits<L, R>::div>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
-		operator/,
-		(a, L),
-		(b, R))
-VEG_DEDUCE_RET(internal::binary_traits<L, R>::div_fn(a, b));
-
-VEG_TEMPLATE(
-		(typename L, typename R),
-		requires(
-				VEG_CONCEPT(index<L>) && //
-				VEG_CONCEPT(index<R>) &&
-				VEG_CONCEPT(index<typename internal::binary_traits<L, R>::mod>)),
-		VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
-		operator%,
-		(a, L),
-		(b, R))
-VEG_DEDUCE_RET(internal::binary_traits<L, R>::mod_fn(a, b));
-
-#define VEG_CMP(Name, Op)                                                      \
-	VEG_TEMPLATE(                                                                \
-			(typename L, typename R),                                                \
-			requires(VEG_CONCEPT(index<L>) && VEG_CONCEPT(index<R>)),                \
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto                        \
-			operator Op,                                                             \
-			(a, L),                                                                  \
-			(b, R))                                                                  \
-	VEG_DEDUCE_RET(internal::binary_traits<L, R>::cmp_##Name##_fn(a, b))
-
-VEG_CMP(eq, ==);
-VEG_CMP(neq, !=);
-VEG_CMP(lt, <);
-VEG_CMP(le, <=);
-VEG_CMP(gt, >);
-VEG_CMP(ge, >=);
-
-#undef VEG_CMP
-
-} // namespace adl
+namespace adl {} // namespace adl
 } // namespace idx
 } // namespace internal
 

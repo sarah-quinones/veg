@@ -59,6 +59,67 @@ struct Dyn {
 		return {-arg.m_val};
 	}
 
+	VEG_TEMPLATE(
+			(typename R),
+			requires(VEG_CONCEPT(index<R>)),
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			operator+,
+			(b, R))
+	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::add_fn(*this, b));
+
+	VEG_TEMPLATE(
+			(typename R),
+			requires(VEG_CONCEPT(index<R>)),
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			operator-,
+			(b, R))
+	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::sub_fn(*this, b));
+
+	VEG_TEMPLATE(
+			(typename R),
+			requires(VEG_CONCEPT(index<R>)),
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			operator*,
+			(b, R))
+	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::mul_fn(*this, b));
+
+	VEG_TEMPLATE(
+			(typename R),
+			requires(
+					VEG_CONCEPT(index<R>) &&
+					VEG_CONCEPT(index<typename internal::binary_traits<Dyn, R>::div>)),
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			operator/,
+			(b, R))
+	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::div_fn(*this, b));
+
+	VEG_TEMPLATE(
+			(typename R),
+			requires(
+					VEG_CONCEPT(index<R>) &&
+					VEG_CONCEPT(index<typename internal::binary_traits<Dyn, R>::mod>)),
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			operator%,
+			(b, R))
+	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::mod_fn(*this, b));
+
+#define VEG_CMP(Name, Op)                                                      \
+	VEG_TEMPLATE(                                                                \
+			(typename R),                                                            \
+			requires(VEG_CONCEPT(index<R>)),                                         \
+			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto                        \
+			operator Op,                                                             \
+			(b, R))                                                                  \
+	VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::cmp_##Name##_fn(*this, b))
+
+	VEG_CMP(eq, ==);
+	VEG_CMP(neq, !=);
+	VEG_CMP(lt, <);
+	VEG_CMP(le, <=);
+	VEG_CMP(gt, >);
+	VEG_CMP(ge, >=);
+
+#undef VEG_CMP
 private:
 	i64 m_val;
 };
