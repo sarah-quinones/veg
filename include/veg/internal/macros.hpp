@@ -179,7 +179,8 @@
 	template <                                                                   \
 			__VEG_PP_REMOVE_PAREN(__VEG_PP_TAIL Name_Tpl),                           \
 			::veg::meta::enable_if_t<__VEG_PP_UNWRAP Param, int> = 0>                \
-	void __VEG_PP_CAT(check_, __VEG_PP_HEAD Name_Tpl)() noexcept;
+	auto __VEG_PP_CAT(                                                           \
+			check_, __VEG_PP_HEAD Name_Tpl)() noexcept->::veg::meta::true_type;
 
 #define VEG_DEF_CONCEPT_BOOL_CONJUNCTION_IMPL(Tpl, Name, Base, Seq)            \
 	__VEG_IMPL_DEF_CONCEPT(                                                      \
