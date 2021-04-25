@@ -179,6 +179,11 @@ struct is_const : false_type {};
 template <typename T>
 struct is_const<T const> : true_type {};
 
+template <typename T, bool = true>
+struct is_complete : false_type {};
+template <typename T>
+struct is_complete<T, sizeof(T) == sizeof(T) /* NOLINT */> : true_type {};
+
 } // namespace meta_
 } // namespace internal
 
@@ -224,15 +229,22 @@ VEG_DEF_CONCEPT(
 		typename T,
 		void_type,
 		VEG_CONCEPT(same<void const volatile, T const volatile>));
-VEG_DEF_CONCEPT(typename T, complete, (sizeof(T) == sizeof(T)));
 
 // can't use __is_pointer because of <bits/cpp_type_traits.h> header
 VEG_DEF_CONCEPT(typename T, pointer, internal::meta_::is_pointer<T>::value);
 
 VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL(typename T, lvalue_reference, T);
 VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL(typename T, rvalue_reference, T);
-VEG_DEF_CONCEPT_DISJUNCTION(
-		typename T, reference, ((, lvalue_reference<T>), (, rvalue_reference<T>)));
+VEG_DEF_CONCEPT(
+		typename T,
+		reference,
+		(VEG_CONCEPT(lvalue_reference<T>) || VEG_CONCEPT(rvalue_reference<T>)));
+
+#if VEG_HAS_BUILTIN(__is_complete_type)
+VEG_DEF_CONCEPT(typename T, complete, __is_complete_type(T));
+#else
+VEG_DEF_CONCEPT(typename T, complete, internal::meta_::is_complete<T>::value);
+#endif
 
 } // namespace concepts
 
