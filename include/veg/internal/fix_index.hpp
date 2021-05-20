@@ -7,7 +7,6 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace VEG_ABI {
 struct Dyn;
 template <i64 N>
 struct Fix;
@@ -67,20 +66,20 @@ struct Boolean;
 
 template <ternary_e T>
 struct Boolean {
-	constexpr Boolean() noexcept = default;
+	constexpr Boolean() VEG_NOEXCEPT = default;
 	using type = meta::constant<ternary_e, T>;
 
-	HEDLEY_ALWAYS_INLINE constexpr Boolean(
-			Boolean<maybe> /*b*/, Unsafe /*tag*/) noexcept;
-	HEDLEY_ALWAYS_INLINE constexpr Boolean // NOLINT(hicpp-explicit-conversions)
-			(Boolean<maybe> b, Safe /*tag*/ = {}) noexcept;
+	VEG_INLINE constexpr Boolean(Boolean<maybe> /*b*/, Unsafe /*tag*/)
+			VEG_NOEXCEPT;
+	VEG_INLINE constexpr Boolean // NOLINT(hicpp-explicit-conversions)
+			(Boolean<maybe> b, Safe /*tag*/ = {}) VEG_NOEXCEPT;
 
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr friend auto
-	operator!(Boolean /*arg*/) noexcept -> Boolean<T == yes ? no : yes> {
+	VEG_NODISCARD VEG_INLINE constexpr friend auto
+	operator!(Boolean /*arg*/) VEG_NOEXCEPT -> Boolean<T == yes ? no : yes> {
 		return {};
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE explicit constexpr
-	operator bool() const noexcept {
+	VEG_NODISCARD VEG_INLINE explicit constexpr
+	operator bool() const VEG_NOEXCEPT {
 		return T == yes;
 	}
 
@@ -96,22 +95,22 @@ private:
 
 template <i64 N>
 struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
-	constexpr Fix() noexcept = default;
-	HEDLEY_ALWAYS_INLINE constexpr Fix(Dyn /*arg*/, Unsafe /*tag*/) noexcept;
-	HEDLEY_ALWAYS_INLINE constexpr Fix // NOLINT(hicpp-explicit-conversions)
-			(Dyn arg, Safe /*tag*/ = {}) noexcept;
+	constexpr Fix() VEG_NOEXCEPT = default;
+	VEG_INLINE constexpr Fix(Dyn /*arg*/, Unsafe /*tag*/) VEG_NOEXCEPT;
+	VEG_INLINE constexpr Fix // NOLINT(hicpp-explicit-conversions)
+			(Dyn arg, Safe /*tag*/ = {}) VEG_NOEXCEPT;
 	VEG_TEMPLATE((i64 M), requires((M != N)), constexpr Fix, (/*arg*/, Fix<M>)) =
 			delete;
 
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE explicit constexpr
-	operator i64() const noexcept {
+	VEG_NODISCARD VEG_INLINE explicit constexpr
+	operator i64() const VEG_NOEXCEPT {
 		return N;
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto operator+() const noexcept
+	VEG_NODISCARD VEG_INLINE constexpr auto operator+() const VEG_NOEXCEPT
 			-> Fix {
 		return {};
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto operator-() const noexcept
+	VEG_NODISCARD VEG_INLINE constexpr auto operator-() const VEG_NOEXCEPT
 			-> Fix<-N> {
 		return {};
 	}
@@ -119,7 +118,7 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 	VEG_TEMPLATE(
 			(typename R),
 			requires(VEG_CONCEPT(index<R>)),
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator+,
 			(b, R))
 	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::add_fn(*this, b));
@@ -127,7 +126,7 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 	VEG_TEMPLATE(
 			(typename R),
 			requires(VEG_CONCEPT(index<R>)),
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator-,
 			(b, R))
 	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::sub_fn(*this, b));
@@ -135,7 +134,7 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 	VEG_TEMPLATE(
 			(typename R),
 			requires(VEG_CONCEPT(index<R>)),
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator*,
 			(b, R))
 	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::mul_fn(*this, b));
@@ -145,7 +144,7 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 			requires(
 					VEG_CONCEPT(index<R>) &&
 					VEG_CONCEPT(index<typename internal::binary_traits<Fix, R>::div>)),
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator/,
 			(b, R))
 	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::div_fn(*this, b));
@@ -155,7 +154,7 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 			requires(
 					VEG_CONCEPT(index<R>) &&
 					VEG_CONCEPT(index<typename internal::binary_traits<Fix, R>::mod>)),
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator%,
 			(b, R))
 	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::mod_fn(*this, b));
@@ -164,10 +163,11 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 	VEG_TEMPLATE(                                                                \
 			(typename R),                                                            \
 			requires(VEG_CONCEPT(index<R>)),                                         \
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto                        \
+			VEG_NODISCARD VEG_INLINE constexpr auto                                  \
 			operator Op,                                                             \
 			(b, R))                                                                  \
-	VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::cmp_##Name##_fn(*this, b))
+	const VEG_DEDUCE_RET(                                                        \
+			internal::binary_traits<Fix, R>::cmp_##Name##_fn(*this, b))
 
 	VEG_CMP(eq, ==);
 	VEG_CMP(neq, !=);
@@ -181,22 +181,23 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 
 namespace internal {
 struct Error {
-	constexpr auto operator()(u64 const* fail = nullptr) const noexcept -> u64 {
+	constexpr auto operator()(u64 const* fail = nullptr) const VEG_NOEXCEPT
+			-> u64 {
 		return *fail;
 	}
 };
 
 using parser = auto (*)(char, Error) -> u64;
-constexpr auto parse_digit_2(char c, Error e) noexcept -> u64 {
+constexpr auto parse_digit_2(char c, Error e) VEG_NOEXCEPT -> u64 {
 	return (c == '0') ? 0 : (c == '1' ? 1 : e());
 }
-constexpr auto parse_digit_8(char c, Error e) noexcept -> u64 {
+constexpr auto parse_digit_8(char c, Error e) VEG_NOEXCEPT -> u64 {
 	return (c >= '0' && c <= '7') ? u64(c - '0') : e();
 }
-constexpr auto parse_digit_10(char c, Error e) noexcept -> u64 {
+constexpr auto parse_digit_10(char c, Error e) VEG_NOEXCEPT -> u64 {
 	return (c >= '0' && c <= '9') ? u64(c - '0') : e();
 }
-constexpr auto parse_digit_16(char c, Error e) noexcept -> u64 {
+constexpr auto parse_digit_16(char c, Error e) VEG_NOEXCEPT -> u64 {
 	return (c >= '0' && c <= '9') //
 	           ? u64(c - '0')
 	           : (c >= 'a' && c <= 'f') //
@@ -206,7 +207,7 @@ constexpr auto parse_digit_16(char c, Error e) noexcept -> u64 {
 	                       : e();
 }
 
-constexpr auto parse_digit(u64 radix) noexcept -> parser {
+constexpr auto parse_digit(u64 radix) VEG_NOEXCEPT -> parser {
 	return radix == 2
 	           ? parse_digit_2
 	           : (radix == 8
@@ -215,14 +216,15 @@ constexpr auto parse_digit(u64 radix) noexcept -> parser {
 	                                 : (radix == 16 ? parse_digit_16 : nullptr)));
 }
 
-constexpr auto parse_num(char const* str, u64 len, u64 radix, Error e) noexcept
-		-> u64 {
+constexpr auto
+parse_num(char const* str, u64 len, u64 radix, Error e) VEG_NOEXCEPT -> u64 {
 	return (len == 0) ? 0
 	                  : radix * parse_num(str, len - 1, radix, e) +
 	                        (parse_digit(radix)(str[len - 1], e));
 }
 
-constexpr auto parse_int(char const* str, u64 len, Error e) noexcept -> u64 {
+constexpr auto parse_int(char const* str, u64 len, Error e) VEG_NOEXCEPT
+		-> u64 {
 	return (len == 0) //
 	           ? e()
 	           : ((str[0] == '0')   //
@@ -246,8 +248,8 @@ struct binary_traits<Fix<N>, Fix<M>> {
 
 #define VEG_OP(Name, Op)                                                       \
 	using Name /* NOLINT(bugprone-macro-parentheses) */ = Fix<N Op M>;           \
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE static constexpr auto Name##_fn(          \
-			Fix<N>, Fix<M>) noexcept->Name {                                         \
+	VEG_NODISCARD VEG_INLINE static constexpr auto Name##_fn(Fix<N>, Fix<M>)     \
+			VEG_NOEXCEPT->Name {                                                     \
 		return {};                                                                 \
 	}                                                                            \
 	static_assert(true, "")
@@ -255,8 +257,8 @@ struct binary_traits<Fix<N>, Fix<M>> {
 #define VEG_CMP(Name, Op)                                                      \
 	using Name /* NOLINT(bugprone-macro-parentheses) */ =                        \
 			Boolean<(N Op M) ? yes : no>;                                            \
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE static constexpr auto Name##_fn(          \
-			Fix<N>, Fix<M>) noexcept->Name {                                         \
+	VEG_NODISCARD VEG_INLINE static constexpr auto Name##_fn(Fix<N>, Fix<M>)     \
+			VEG_NOEXCEPT->Name {                                                     \
 		return {};                                                                 \
 	}                                                                            \
 	static_assert(true, "")
@@ -274,12 +276,12 @@ struct binary_traits<Fix<N>, Fix<M>> {
 	using div = meta::conditional_t<M == 0, void, Fix<N / (M != 0 ? M : 1)>>;
 	using mod = meta::conditional_t<M == 0, void, Fix<N % (M != 0 ? M : 1)>>;
 
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE static constexpr auto
-	div_fn(Fix<N> /*a*/, Fix<M> /*b*/) noexcept -> div {
+	VEG_NODISCARD VEG_INLINE static constexpr auto
+	div_fn(Fix<N> /*a*/, Fix<M> /*b*/) VEG_NOEXCEPT -> div {
 		return div();
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE static constexpr auto
-	mod_fn(Fix<N> /*a*/, Fix<M> /*b*/) noexcept -> mod {
+	VEG_NODISCARD VEG_INLINE static constexpr auto
+	mod_fn(Fix<N> /*a*/, Fix<M> /*b*/) VEG_NOEXCEPT -> mod {
 		return mod();
 	}
 
@@ -293,8 +295,8 @@ namespace adl {} // namespace adl
 
 inline namespace literals {
 template <char... Chars>
-HEDLEY_ALWAYS_INLINE constexpr auto
-operator"" _c() noexcept -> Fix<internal::parse_int(
+VEG_INLINE constexpr auto
+operator"" _c() VEG_NOEXCEPT -> Fix<internal::parse_int(
 		internal::char_seq<Chars...>::value, sizeof...(Chars), internal::Error{})> {
 	return {};
 }
@@ -323,7 +325,6 @@ struct Debug<Fix<N>> {
 	}
 };
 } // namespace fmt
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

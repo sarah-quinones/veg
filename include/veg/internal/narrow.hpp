@@ -5,7 +5,6 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace VEG_ABI {
 namespace nb {
 template <typename To>
 struct narrow {
@@ -15,23 +14,23 @@ struct narrow {
 			constexpr auto
 			operator(),
 			(from, From))
-	const noexcept->To {
+	const VEG_NOEXCEPT->To {
 #if __cplusplus >= 201402L
 
 		To to = static_cast<To>(from);
 		From roundtrip_from = static_cast<From>(static_cast<To>(from));
-		VEG_ASSERT(roundtrip_from == from);
+		VEG_INTERNAL_ASSERT_PRECONDITION(roundtrip_from == from);
 		return to;
 
 #else
-		return VEG_ASSERT(static_cast<From>(static_cast<To>(from)) == from),
-					 static_cast<To>(from);
+		return VEG_INTERNAL_ASSERT_PRECONDITION(
+							 static_cast<From>(static_cast<To>(from)) == from),
+		       static_cast<To>(from);
 #endif
 	}
 };
 } // namespace nb
 VEG_NIEBLOID_TEMPLATE(typename To, narrow, To);
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

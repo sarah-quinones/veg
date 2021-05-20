@@ -14,7 +14,6 @@ auto snprintf1(char* out, usize n, char const* fmt, void* arg) -> int;
 } // namespace VEG_ABI_VERSION
 } // namespace abi
 
-inline namespace VEG_ABI {
 namespace fmt {
 
 struct Buffer {
@@ -22,8 +21,8 @@ struct Buffer {
 	virtual void resize(i64 new_len) = 0;
 	virtual void insert(i64 pos, char const* data, i64 len) = 0;
 
-	VEG_NODISCARD virtual auto data() const noexcept -> char* = 0;
-	VEG_NODISCARD virtual auto size() const noexcept -> i64 = 0;
+	VEG_NODISCARD virtual auto data() const VEG_ALWAYS_NOEXCEPT -> char* = 0;
+	VEG_NODISCARD virtual auto size() const VEG_ALWAYS_NOEXCEPT -> i64 = 0;
 
 protected:
 	~Buffer() = default;
@@ -124,7 +123,6 @@ template <typename Ret, typename... Args>
 struct Debug<Ret (*)(Args...)> : internal::fmt::dbg_pf {};
 
 } // namespace fmt
-} // namespace VEG_ABI
 
 namespace abi {
 inline namespace VEG_ABI_VERSION {
@@ -138,7 +136,7 @@ struct String final : fmt::Buffer {
 
 	~String();
 	String() = default;
-	HEDLEY_ALWAYS_INLINE String(String&& other) noexcept : self{other.self} {
+	VEG_INLINE String(String&& other) VEG_ALWAYS_NOEXCEPT : self{other.self} {
 		other.self = layout{nullptr, 0, 0};
 	}
 	String(String const&) = delete;
@@ -148,13 +146,13 @@ struct String final : fmt::Buffer {
 	void resize(i64 new_len) override;
 	void reserve(i64 new_cap) override;
 	void insert(i64 pos, char const* data, i64 len) override;
-	void eprint() const noexcept;
+	void eprint() const VEG_ALWAYS_NOEXCEPT;
 
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto data() const noexcept
+	VEG_NODISCARD VEG_INLINE auto data() const VEG_ALWAYS_NOEXCEPT
 			-> char* override {
 		return self.ptr;
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto size() const noexcept
+	VEG_NODISCARD VEG_INLINE auto size() const VEG_ALWAYS_NOEXCEPT
 			-> i64 override {
 		return self.len;
 	}
@@ -163,7 +161,6 @@ struct String final : fmt::Buffer {
 } // namespace VEG_ABI_VERSION
 } // namespace abi
 
-inline namespace VEG_ABI {
 namespace nb {
 struct dbg {
 	template <typename T>
@@ -177,7 +174,6 @@ struct dbg {
 };
 } // namespace nb
 VEG_NIEBLOID(dbg);
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

@@ -36,7 +36,7 @@ String::~String() {
 	std::free(self.ptr);
 }
 
-void String::eprint() const noexcept {
+void String::eprint() const VEG_ALWAYS_NOEXCEPT {
 	std::cerr.write(self.ptr, self.len);
 	std::cerr.put('\n');
 }
@@ -67,13 +67,13 @@ void String::insert(i64 pos, char const* data_, i64 len) {
 	}
 }
 
-[[noreturn]] void terminate() noexcept {
+[[noreturn]] void terminate() VEG_ALWAYS_NOEXCEPT {
 	std::terminate();
 }
 thread_local i64
 		counter = // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 		0;
-void incr_counter() noexcept {
+void incr_counter() VEG_ALWAYS_NOEXCEPT {
 	if (counter > 0) {
 		std::fputs(
 				"assertion failed during the handling of another failed assertion\n",
@@ -82,19 +82,19 @@ void incr_counter() noexcept {
 	}
 	++counter;
 }
-void decr_counter() noexcept {
+void decr_counter() VEG_ALWAYS_NOEXCEPT {
 	--counter;
 }
 
-auto ByteStringView::starts_with(ByteStringView other) const noexcept -> bool {
+auto ByteStringView::starts_with(ByteStringView other) const VEG_ALWAYS_NOEXCEPT -> bool {
 	return size() >= other.size() &&
 				 std::memcmp(data(), other.data(), other.size()) == 0;
 }
-auto ByteStringView::operator==(ByteStringView other) const noexcept -> bool {
+auto ByteStringView::operator==(ByteStringView other) const VEG_ALWAYS_NOEXCEPT -> bool {
 	return size() == other.size() &&
 				 std::memcmp(data(), other.data(), other.size()) == 0;
 }
-ByteStringView::ByteStringView(char const* str) noexcept
+ByteStringView::ByteStringView(char const* str) VEG_ALWAYS_NOEXCEPT
 		: ByteStringView{str, static_cast<i64>(std::strlen(str))} {}
 
 #define LIT(x)                                                                 \
@@ -148,7 +148,7 @@ thread_local std::vector<assertion_data>
 		failed_asserts // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 		= {};
 
-cleanup::~cleanup() noexcept {
+cleanup::~cleanup() VEG_ALWAYS_NOEXCEPT {
 	failed_asserts.clear();
 }
 
@@ -870,7 +870,7 @@ void set_assert_params1( //
 void set_assert_params2(       //
 		ByteStringView expression, //
 		ByteStringView msg         //
-		) noexcept {
+		) VEG_ALWAYS_NOEXCEPT {
 	failed_asserts.back().finished_setup = true;
 	failed_asserts.back().expr = expression;
 	failed_asserts.back().callback = msg;
@@ -883,7 +883,7 @@ void set_assert_params2(       //
 //
 // otherwise, if there is not enough space for aligning or advancing the
 // pointer, returns nullptr and the values are left unmodified
-auto align_next(i64 alignment, i64 size, void*& ptr, i64& space) noexcept
+auto align_next(i64 alignment, i64 size, void*& ptr, i64& space) VEG_ALWAYS_NOEXCEPT
 		-> void* {
 	static_assert(
 			sizeof(std::uintptr_t) >= sizeof(void*),

@@ -7,8 +7,6 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace VEG_ABI {
-
 namespace internal {
 namespace meta_ {
 
@@ -60,7 +58,7 @@ namespace cmp {
 struct aux_zero {};
 template <typename Ptr = aux_zero*> // suppress clang-tidy warning
 struct zero {
-	HEDLEY_ALWAYS_INLINE constexpr zero(Ptr /*unused*/) noexcept {}
+	VEG_INLINE constexpr zero(Ptr /*unused*/) VEG_NOEXCEPT {}
 	VEG_TEMPLATE(
 			(typename T),
 			requires(VEG_CONCEPT(pointer<T>) || VEG_CONCEPT(same<T, std::nullptr_t>)),
@@ -123,105 +121,105 @@ constexpr Ord const& ordering_impl_base<Ord>::greater =
 		ordering_impl<Ord>::greater;
 
 struct cmp_base {
-	friend HEDLEY_ALWAYS_INLINE constexpr auto
-	operator==(internal::cmp::values_t lhs, internal::cmp::values_t rhs) noexcept
+	friend VEG_INLINE constexpr auto operator==(
+			internal::cmp::values_t lhs, internal::cmp::values_t rhs) VEG_NOEXCEPT
 			-> bool {
 		return lhs.value == rhs.value;
 	}
-	friend HEDLEY_ALWAYS_INLINE constexpr auto
-	operator!=(internal::cmp::values_t lhs, internal::cmp::values_t rhs) noexcept
+	friend VEG_INLINE constexpr auto operator!=(
+			internal::cmp::values_t lhs, internal::cmp::values_t rhs) VEG_NOEXCEPT
 			-> bool {
 		return lhs.value != rhs.value;
 	}
 
-	friend HEDLEY_ALWAYS_INLINE constexpr auto operator==(
-			internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) noexcept
+	friend VEG_INLINE constexpr auto operator==(
+			internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) VEG_NOEXCEPT
 			-> bool {
 		return lhs.value == internal::cmp::values::equivalent;
 	}
-	friend HEDLEY_ALWAYS_INLINE constexpr auto operator==(
-			internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) noexcept
+	friend VEG_INLINE constexpr auto operator==(
+			internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) VEG_NOEXCEPT
 			-> bool {
 		return rhs.value == internal::cmp::values::equivalent;
 	}
-	friend HEDLEY_ALWAYS_INLINE constexpr auto operator!=(
-			internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) noexcept
+	friend VEG_INLINE constexpr auto operator!=(
+			internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) VEG_NOEXCEPT
 			-> bool {
 		return lhs.value != internal::cmp::values::equivalent;
 	}
-	friend HEDLEY_ALWAYS_INLINE constexpr auto operator!=(
-			internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) noexcept
+	friend VEG_INLINE constexpr auto operator!=(
+			internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) VEG_NOEXCEPT
 			-> bool {
 		return rhs.value != internal::cmp::values::equivalent;
 	}
-	friend HEDLEY_ALWAYS_INLINE constexpr auto
-	operator<(internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) noexcept
+	friend VEG_INLINE constexpr auto operator<(
+			internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) VEG_NOEXCEPT
 			-> bool {
 		return lhs.value == internal::cmp::values::less;
 	}
-	friend HEDLEY_ALWAYS_INLINE constexpr auto
-	operator<(internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) noexcept
+	friend VEG_INLINE constexpr auto operator<(
+			internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) VEG_NOEXCEPT
 			-> bool {
 		return rhs.value == internal::cmp::values::greater;
 	}
-	friend HEDLEY_ALWAYS_INLINE constexpr auto
-	operator>(internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) noexcept
+	friend VEG_INLINE constexpr auto operator>(
+			internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) VEG_NOEXCEPT
 			-> bool {
 		return lhs.value == internal::cmp::values::greater;
 	}
-	friend HEDLEY_ALWAYS_INLINE constexpr auto
-	operator>(internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) noexcept
+	friend VEG_INLINE constexpr auto operator>(
+			internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) VEG_NOEXCEPT
 			-> bool {
 		return rhs.value == internal::cmp::values::less;
 	}
 };
 
 struct cmp_base_partial : cmp_base {
-	friend HEDLEY_ALWAYS_INLINE constexpr auto operator<=(
-			internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) noexcept
+	friend VEG_INLINE constexpr auto operator<=(
+			internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) VEG_NOEXCEPT
 			-> bool {
 		return lhs.value == internal::cmp::values::less ||
-					 lhs.value == internal::cmp::values::equivalent;
+		       lhs.value == internal::cmp::values::equivalent;
 	}
-	friend HEDLEY_ALWAYS_INLINE constexpr auto operator<=(
-			internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) noexcept
+	friend VEG_INLINE constexpr auto operator<=(
+			internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) VEG_NOEXCEPT
 			-> bool {
 		return rhs.value == internal::cmp::values::greater ||
-					 rhs.value == internal::cmp::values::equivalent;
+		       rhs.value == internal::cmp::values::equivalent;
 	}
-	friend HEDLEY_ALWAYS_INLINE constexpr auto operator>=(
-			internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) noexcept
+	friend VEG_INLINE constexpr auto operator>=(
+			internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) VEG_NOEXCEPT
 			-> bool {
 		return lhs.value == internal::cmp::values::greater ||
-					 lhs.value == internal::cmp::values::equivalent;
+		       lhs.value == internal::cmp::values::equivalent;
 	}
-	friend HEDLEY_ALWAYS_INLINE constexpr auto operator>=(
-			internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) noexcept
+	friend VEG_INLINE constexpr auto operator>=(
+			internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) VEG_NOEXCEPT
 			-> bool {
 		return rhs.value == internal::cmp::values::less ||
-					 rhs.value == internal::cmp::values::equivalent;
+		       rhs.value == internal::cmp::values::equivalent;
 	}
 };
 
 namespace _ {
 struct cmp_base_strong : cmp_base {
-	friend HEDLEY_ALWAYS_INLINE constexpr auto operator<=(
-			internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) noexcept
+	friend VEG_INLINE constexpr auto operator<=(
+			internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) VEG_NOEXCEPT
 			-> bool {
 		return lhs.value != internal::cmp::values::greater;
 	}
-	friend HEDLEY_ALWAYS_INLINE constexpr auto operator<=(
-			internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) noexcept
+	friend VEG_INLINE constexpr auto operator<=(
+			internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) VEG_NOEXCEPT
 			-> bool {
 		return rhs.value != internal::cmp::values::less;
 	}
-	friend HEDLEY_ALWAYS_INLINE constexpr auto operator>=(
-			internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) noexcept
+	friend VEG_INLINE constexpr auto operator>=(
+			internal::cmp::values_t lhs, internal::cmp::zero<> /*rhs*/) VEG_NOEXCEPT
 			-> bool {
 		return lhs.value != internal::cmp::values::less;
 	}
-	friend HEDLEY_ALWAYS_INLINE constexpr auto operator>=(
-			internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) noexcept
+	friend VEG_INLINE constexpr auto operator>=(
+			internal::cmp::zero<> /*lhs*/, internal::cmp::values_t rhs) VEG_NOEXCEPT
 			-> bool {
 		return rhs.value != internal::cmp::values::greater;
 	}
@@ -236,7 +234,7 @@ namespace cmp {
 struct partial_ordering
 		: private internal::cmp::cmp_base_partial,
 			private internal::cmp::ordering_impl_base<partial_ordering> {
-	constexpr operator internal::cmp::values_t() const noexcept {
+	constexpr operator internal::cmp::values_t() const VEG_NOEXCEPT {
 		return {value};
 	}
 
@@ -246,7 +244,7 @@ private:
 	friend struct strong_ordering;
 	using values = internal::cmp::values;
 	values value;
-	constexpr partial_ordering(values val) noexcept : value{val} {}
+	constexpr partial_ordering(values val) VEG_NOEXCEPT : value{val} {}
 
 public:
 	using ordering_impl_base::unordered;
@@ -258,8 +256,8 @@ public:
 struct weak_ordering
 		: private internal::cmp::cmp_base_partial,
 			private internal::cmp::ordering_impl_base<weak_ordering> {
-	constexpr operator partial_ordering() const noexcept { return value; }
-	constexpr operator internal::cmp::values_t() const noexcept {
+	constexpr operator partial_ordering() const VEG_NOEXCEPT { return value; }
+	constexpr operator internal::cmp::values_t() const VEG_NOEXCEPT {
 		return {value};
 	}
 
@@ -268,7 +266,7 @@ private:
 	friend struct strong_ordering;
 	using values = internal::cmp::values;
 	values value;
-	constexpr weak_ordering(values val) noexcept : value{val} {}
+	constexpr weak_ordering(values val) VEG_NOEXCEPT : value{val} {}
 
 public:
 	using ordering_impl_base::less;
@@ -279,9 +277,9 @@ public:
 struct strong_ordering
 		: private internal::cmp::_::cmp_base_strong,
 			private internal::cmp::ordering_impl_base<strong_ordering> {
-	constexpr operator partial_ordering() const noexcept { return value; }
-	constexpr operator weak_ordering() const noexcept { return value; }
-	constexpr operator internal::cmp::values_t() const noexcept {
+	constexpr operator partial_ordering() const VEG_NOEXCEPT { return value; }
+	constexpr operator weak_ordering() const VEG_NOEXCEPT { return value; }
+	constexpr operator internal::cmp::values_t() const VEG_NOEXCEPT {
 		return {value};
 	}
 
@@ -289,7 +287,7 @@ private:
 	friend struct internal::cmp::ordering_impl<strong_ordering>;
 	using values = internal::cmp::values;
 	values value;
-	constexpr strong_ordering(values val) noexcept : value{val} {}
+	constexpr strong_ordering(values val) VEG_NOEXCEPT : value{val} {}
 
 public:
 	using ordering_impl_base::less;
@@ -309,67 +307,67 @@ struct compare_three_way_generic {
 	VEG_TEMPLATE(
 			(typename L, typename R),
 			requires(VEG_CONCEPT(partially_ordered_with<L, R>)),
-			HEDLEY_ALWAYS_INLINE static constexpr auto fn,
+			VEG_INLINE static constexpr auto fn,
 			(lhs, L const&),
 			(rhs, R const&))
-	noexcept -> weak_ordering {
+	VEG_NOEXCEPT->weak_ordering {
 		return lhs < rhs                              //
-							 ? weak_ordering::less              //
-							 : lhs > rhs                        //
-										 ? weak_ordering::greater     //
-										 : weak_ordering::equivalent; //
+		           ? weak_ordering::less              //
+		           : lhs > rhs                        //
+		                 ? weak_ordering::greater     //
+		                 : weak_ordering::equivalent; //
 	}
 };
 
 struct compare_three_way_signed_unsigned {
 	template <typename L, typename R>
-	HEDLEY_ALWAYS_INLINE static constexpr auto fn(L lhs, R rhs) noexcept
+	VEG_INLINE static constexpr auto fn(L lhs, R rhs) VEG_NOEXCEPT
 			-> strong_ordering {
 		return ((lhs < 0) || static_cast<R>(lhs) < rhs) //
-							 ? strong_ordering::less              //
-							 : (static_cast<R>(lhs) == rhs)       //
-										 ? strong_ordering::equal       //
-										 : strong_ordering::greater;    //
+		           ? strong_ordering::less              //
+		           : (static_cast<R>(lhs) == rhs)       //
+		                 ? strong_ordering::equal       //
+		                 : strong_ordering::greater;    //
 	}
 };
 
 struct compare_three_way_unsigned_signed {
 	template <typename L, typename R>
-	HEDLEY_ALWAYS_INLINE static constexpr auto fn(L lhs, R rhs) noexcept
+	VEG_INLINE static constexpr auto fn(L lhs, R rhs) VEG_NOEXCEPT
 			-> strong_ordering {
 		return ((rhs < 0) || static_cast<L>(rhs) < lhs) //
-							 ? strong_ordering::greater           //
-							 : (static_cast<L>(rhs) == lhs)       //
-										 ? strong_ordering::equal       //
-										 : strong_ordering::less;       //
+		           ? strong_ordering::greater           //
+		           : (static_cast<L>(rhs) == lhs)       //
+		                 ? strong_ordering::equal       //
+		                 : strong_ordering::less;       //
 	}
 };
 
 struct compare_three_way_common_type_int {
 	template <typename L, typename R>
-	HEDLEY_ALWAYS_INLINE static constexpr auto fn(L lhs, R rhs) noexcept
+	VEG_INLINE static constexpr auto fn(L lhs, R rhs) VEG_NOEXCEPT
 			-> strong_ordering {
 		using common_type = decltype(lhs + rhs);
 		return common_type(lhs) < common_type(rhs)       //
-							 ? strong_ordering::less               //
-							 : common_type(lhs) > common_type(rhs) //
-										 ? strong_ordering::greater      //
-										 : strong_ordering::equivalent;  //
+		           ? strong_ordering::less               //
+		           : common_type(lhs) > common_type(rhs) //
+		                 ? strong_ordering::greater      //
+		                 : strong_ordering::equivalent;  //
 	}
 };
 
 struct compare_three_way_common_type_float {
 	template <typename L, typename R>
-	HEDLEY_ALWAYS_INLINE static constexpr auto fn(L lhs, R rhs) noexcept
+	VEG_INLINE static constexpr auto fn(L lhs, R rhs) VEG_NOEXCEPT
 			-> partial_ordering {
 		using common_type = decltype(lhs + rhs);
 		return common_type(lhs) == common_type(rhs) //
-							 ? partial_ordering::equivalent
-							 : common_type(lhs) < common_type(rhs)       //
-										 ? partial_ordering::less              //
-										 : common_type(lhs) > common_type(rhs) //
-													 ? partial_ordering::greater     //
-													 : partial_ordering::unordered;  //
+		           ? partial_ordering::equivalent
+		           : common_type(lhs) < common_type(rhs)       //
+		                 ? partial_ordering::less              //
+		                 : common_type(lhs) > common_type(rhs) //
+		                       ? partial_ordering::greater     //
+		                       : partial_ordering::unordered;  //
 	}
 };
 
@@ -402,7 +400,7 @@ enum struct which {
 template <which Signedness /* same_sign */>
 struct cmp_impl {
 	template <typename A, typename B>
-	HEDLEY_ALWAYS_INLINE static constexpr auto eq(A const& a, B const& b) noexcept
+	VEG_INLINE static constexpr auto eq(A const& a, B const& b) VEG_NOEXCEPT
 			-> bool {
 		return static_cast<bool>(a == b);
 	}
@@ -411,7 +409,7 @@ struct cmp_impl {
 template <>
 struct cmp_impl<which::to_common_type> {
 	template <typename A, typename B>
-	HEDLEY_ALWAYS_INLINE static constexpr auto eq(A a, B b) noexcept -> bool {
+	VEG_INLINE static constexpr auto eq(A a, B b) VEG_NOEXCEPT -> bool {
 		using common = decltype(a + b);
 		return static_cast<common>(a) == static_cast<common>(b);
 	}
@@ -420,7 +418,7 @@ struct cmp_impl<which::to_common_type> {
 template <>
 struct cmp_impl<which::int_signed_unsigned> {
 	template <typename A, typename B>
-	HEDLEY_ALWAYS_INLINE static constexpr auto eq(A a, B b) noexcept -> bool {
+	VEG_INLINE static constexpr auto eq(A a, B b) VEG_NOEXCEPT -> bool {
 		return (a >= 0) && (static_cast<B>(a) == b);
 	}
 };
@@ -428,7 +426,7 @@ struct cmp_impl<which::int_signed_unsigned> {
 template <>
 struct cmp_impl<which::int_unsigned_signed> {
 	template <typename A, typename B>
-	HEDLEY_ALWAYS_INLINE static constexpr auto eq(A a, B b) noexcept -> bool {
+	VEG_INLINE static constexpr auto eq(A a, B b) VEG_NOEXCEPT -> bool {
 		return cmp_impl<which::int_signed_unsigned>::eq(b, a);
 	}
 };
@@ -457,24 +455,22 @@ using cmp_impl_ = internal::cmp::cmp_impl<
 
 namespace builtin_ops {
 #define VEG_CMP_FLT(A, B)                                                      \
-	HEDLEY_ALWAYS_INLINE constexpr auto cmp_3way(                                \
-			A a, B b) noexcept->partial_ordering {                                   \
+	VEG_INLINE constexpr auto cmp_3way(A a, B b)                                 \
+			VEG_NOEXCEPT->partial_ordering {                                         \
 		using T = decltype(a + b);                                                 \
 		return compare_three_way_common_type_float::fn(T(a), T(b));                \
 	}                                                                            \
 	VEG_NOM_SEMICOLON
 
 #define VEG_CMP_INT(A, B)                                                      \
-	HEDLEY_ALWAYS_INLINE constexpr auto cmp_3way(                                \
-			A a, B b) noexcept->strong_ordering {                                    \
+	VEG_INLINE constexpr auto cmp_3way(A a, B b) VEG_NOEXCEPT->strong_ordering { \
 		using T = decltype(a + b);                                                 \
 		return compare_three_way_common_type_int::fn(T(a), T(b));                  \
 	}                                                                            \
 	VEG_NOM_SEMICOLON
 
 #define VEG_CMP_SIGN_UNSIGN(A, B)                                              \
-	HEDLEY_ALWAYS_INLINE constexpr auto cmp_3way(                                \
-			A a, B b) noexcept->strong_ordering {                                    \
+	VEG_INLINE constexpr auto cmp_3way(A a, B b) VEG_NOEXCEPT->strong_ordering { \
 		using T = decltype(a + b);                                                 \
 		return meta::conditional_t<                                                \
 				sizeof(A) == sizeof(B),                                                \
@@ -484,8 +480,7 @@ namespace builtin_ops {
 	VEG_NOM_SEMICOLON
 
 #define VEG_CMP_UNSIGN_SIGN(A, B)                                              \
-	HEDLEY_ALWAYS_INLINE constexpr auto cmp_3way(                                \
-			A a, B b) noexcept->strong_ordering {                                    \
+	VEG_INLINE constexpr auto cmp_3way(A a, B b) VEG_NOEXCEPT->strong_ordering { \
 		using T = decltype(a + b);                                                 \
 		return meta::conditional_t<                                                \
 				sizeof(A) == sizeof(B),                                                \
@@ -599,13 +594,12 @@ VEG_CMP_UNSIGN_SIGN(unsigned long long, long long);
 #undef VEG_CMP_INT
 
 template <typename T>
-HEDLEY_ALWAYS_INLINE constexpr auto cmp_3way(T const* a, T const* b)
-		-> strong_ordering {
+VEG_INLINE constexpr auto cmp_3way(T const* a, T const* b) -> strong_ordering {
 	return a == b //
-						 ? strong_ordering::equal
-						 : a < b //
-									 ? strong_ordering::less
-									 : strong_ordering::greater;
+	           ? strong_ordering::equal
+	           : a < b //
+	                 ? strong_ordering::less
+	                 : strong_ordering::greater;
 }
 
 template <typename A, typename B>
@@ -614,7 +608,7 @@ using threeway_result =
 
 struct adl_3way {
 	template <typename A, typename B>
-	HEDLEY_ALWAYS_INLINE static constexpr auto fn(A const& a, B const& b)
+	VEG_INLINE static constexpr auto fn(A const& a, B const& b)
 			VEG_DEDUCE_RET(cmp_3way(VEG_FWD(a), VEG_FWD(b)));
 };
 } // namespace builtin_ops
@@ -634,13 +628,7 @@ using three_way_comparison_result_t = detected_t<
 namespace internal {
 namespace meta_ {
 template <typename C>
-using test_ordering = decltype(
-		static_cast<bool>(VEG_DECLVAL(C) < 0) &&
-		static_cast<bool>(VEG_DECLVAL(C) > 0) &&
-		static_cast<bool>(VEG_DECLVAL(C) <= 0) &&
-		static_cast<bool>(VEG_DECLVAL(C) >= 0) &&
-		static_cast<bool>(VEG_DECLVAL(C) != 0) &&
-		static_cast<bool>(VEG_DECLVAL(C) == 0));
+using test_ordering = decltype(static_cast<bool>(VEG_DECLVAL(C) < 0) && static_cast<bool>(VEG_DECLVAL(C) > 0) && static_cast<bool>(VEG_DECLVAL(C) <= 0) && static_cast<bool>(VEG_DECLVAL(C) >= 0) && static_cast<bool>(VEG_DECLVAL(C) != 0) && static_cast<bool>(VEG_DECLVAL(C) == 0));
 
 template <typename A, typename B>
 using threeway_result_test =
@@ -747,10 +735,9 @@ namespace meta {
 
 template <typename... Ts>
 struct common_comparison_category
-		: type_identity<decltype(
-					internal::meta_::common_comparison_category_impl<
-							make_index_sequence<sizeof...(Ts)>>::apply(VEG_DECLVAL(Ts)...))> {
-};
+		: type_identity<decltype(internal::meta_::common_comparison_category_impl<
+														 make_index_sequence<sizeof...(Ts)>>::
+                                 apply(VEG_DECLVAL(Ts)...))> {};
 
 template <>
 struct common_comparison_category<> : type_identity<cmp::strong_ordering> {};
@@ -767,11 +754,11 @@ struct three_way {
 	VEG_TEMPLATE(
 			(typename A, typename B),
 			requires(VEG_CONCEPT(three_way_comparable_with<A, B>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator(),
 			(a, A const&),
 			(b, B const&))
-	const noexcept->meta::three_way_comparison_result_t<A, B> {
+	const VEG_NOEXCEPT->meta::three_way_comparison_result_t<A, B> {
 		using internal::cmp::builtin_ops::cmp_3way;
 		return cmp_3way(a, b);
 	}
@@ -782,11 +769,11 @@ struct synth_three_way {
 	VEG_TEMPLATE(
 			(typename A, typename B),
 			requires(VEG_CONCEPT(three_way_comparable_with<A, B>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator(),
 			(a, A const&),
 			(b, B const&))
-	const noexcept->meta::three_way_comparison_result_t<A, B> {
+	const VEG_NOEXCEPT->meta::three_way_comparison_result_t<A, B> {
 		using internal::cmp::builtin_ops::cmp_3way;
 		return cmp_3way(a, b);
 	}
@@ -800,12 +787,12 @@ struct synth_three_way {
 			operator(),
 			(a, A const&),
 			(b, B const&))
-	const noexcept->cmp::weak_ordering {
+	const VEG_NOEXCEPT->cmp::weak_ordering {
 		return a < b                                  //
-							 ? weak_ordering::less              //
-							 : a > b                            //
-										 ? weak_ordering::greater     //
-										 : weak_ordering::equivalent; //
+		           ? weak_ordering::less              //
+		           : a > b                            //
+		                 ? weak_ordering::greater     //
+		                 : weak_ordering::equivalent; //
 	}
 };
 
@@ -813,11 +800,11 @@ struct equal {
 	VEG_TEMPLATE(
 			(typename A, typename B),
 			requires(VEG_CONCEPT(equality_comparable_with<A, B>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator(),
 			(a, A const&),
 			(b, B const&))
-	const noexcept->bool { return internal::cmp::cmp_impl_<A, B>::eq(a, b); }
+	const VEG_NOEXCEPT->bool { return internal::cmp::cmp_impl_<A, B>::eq(a, b); }
 };
 } // namespace nb
 VEG_NIEBLOID(three_way);
@@ -833,7 +820,6 @@ VEG_DEF_CONCEPT_DISJUNCTION(
 		((, three_way_comparable_with<A, B>), (, partially_ordered_with<A, B>)));
 
 } // namespace concepts
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

@@ -8,7 +8,6 @@
 #include "veg/functional/utils.hpp"
 #include "veg/internal/prologue.hpp"
 
-#define MOV VEG_MOV
 #define FWD VEG_FWD
 #define ASSERT_SAME(...) STATIC_ASSERT(::std::is_same<__VA_ARGS__>::value)
 
@@ -33,23 +32,18 @@ TEST_CASE("tuple: adl_get") {
 TEST_CASE("tuple: all") {
 	using namespace veg;
 
-	veg::Tuple<int, char, bool> tup{cvt, 1, 'c', true};
+	auto tup = tuple(1, 'c', true);
 	veg::Tuple<int, char&&, char, bool&, bool const&> tup_ref{
-			cvt,
+			direct,
 			1,
-			MOV(tup).as_ref()[1_c],
+			FWD(tup).as_ref()[1_c],
 			'c',
 			nb::get<2>{}(tup),
 			nb::get<2>{}(tup)};
-
 	{
-		STATIC_ASSERT(VEG_CONCEPT(trivially_relocatable<decltype(tup)>));
+		STATIC_ASSERT(veg::cpo::is_trivially_relocatable<decltype(tup)>::value);
 		STATIC_ASSERT(VEG_CONCEPT(trivially_copyable<decltype(tup)>));
 
-		STATIC_ASSERT(VEG_CONCEPT(
-				trivially_copy_constructible<veg::Tuple<int&, int const&>>));
-		STATIC_ASSERT(VEG_CONCEPT(
-				trivially_move_constructible<veg::Tuple<int&, int const&>>));
 		STATIC_ASSERT(!VEG_CONCEPT(copy_assignable<veg::Tuple<int&, int const&>>));
 		STATIC_ASSERT(!VEG_CONCEPT(move_assignable<veg::Tuple<int&, int const&>>));
 
@@ -66,8 +60,6 @@ TEST_CASE("tuple: all") {
 		STATIC_ASSERT(!VEG_CONCEPT(copy_constructible<decltype(tup_ref)>));
 		STATIC_ASSERT(VEG_CONCEPT(trivially_move_constructible<decltype(tup_ref)>));
 		STATIC_ASSERT(!std::is_copy_constructible<decltype(tup_ref)>::value);
-		STATIC_ASSERT(std::is_copy_constructible<decltype(tup)>::value);
-		STATIC_ASSERT(std::is_copy_constructible<veg::Tuple<int&, bool&>>::value);
 		using val_tup = veg::Tuple<int, bool>;
 		using ref_tup = veg::Tuple<int&, bool&>;
 
@@ -76,6 +68,7 @@ TEST_CASE("tuple: all") {
 		STATIC_ASSERT(VEG_CONCEPT(swappable<ref_tup const&&, ref_tup&&>));
 		STATIC_ASSERT(VEG_CONCEPT(swappable<ref_tup const&&, ref_tup const&&>));
 		STATIC_ASSERT(VEG_CONCEPT(swappable<ref_tup&&, ref_tup&&>));
+
 		STATIC_ASSERT(VEG_CONCEPT(nothrow_swappable<ref_tup&&, ref_tup&&>));
 
 		STATIC_ASSERT(VEG_CONCEPT(swappable<ref_tup const&&, val_tup&>));
@@ -98,43 +91,49 @@ TEST_CASE("tuple: all") {
 	}
 	{
 		using val_tup = veg::Tuple<int, bool>;
-		val_tup a{cvt, 5, true};
-		val_tup b{cvt, 3, false};
-		STATIC_ASSERT(
-				VEG_CONCEPT(constructible<veg::Tuple<long, bool>, Into, val_tup>));
-		STATIC_ASSERT(VEG_CONCEPT(
-				constructible<veg::Tuple<long, bool>, Into, val_tup const&>));
+		val_tup a = tuple(5, true);
+		val_tup b = tuple(3, false);
+
+		unused(Tuple<long, bool>{
+				tuple.map_i(
+						val_tup{},
+						overload(
+								nb::indexed<0>{}(nb::convert<long>{}),
+								nb::indexed<1>{}(nb::convert<bool>{}))),
+		});
 
 		veg::swap(a, b);
 		CHECK(a[0_c] == 3);
 		CHECK(b[0_c] == 5);
 		CHECK(a[1_c] == false);
 		CHECK(b[1_c] == true);
-		STATIC_ASSERT(val_tup{cvt, 1, true} == val_tup{cvt, 1, true});
-		STATIC_ASSERT(noexcept(val_tup{cvt, 1, true} == val_tup{cvt, 1, true}));
+		STATIC_ASSERT(val_tup{direct, 1, true} == val_tup{direct, 1, true});
 		STATIC_ASSERT(
-				cmp::three_way(val_tup{cvt, 1, true}, val_tup{cvt, 1, true}) == 0);
+				noexcept(val_tup{direct, 1, true} == val_tup{direct, 1, true}));
+		STATIC_ASSERT(
+				cmp::three_way(val_tup{direct, 1, true}, val_tup{direct, 1, true}) ==
+				0);
 
-		CHECK(a == (val_tup{cvt, 3, false}));
-		CHECK(b == (val_tup{cvt, 5, true}));
+		CHECK(a == (val_tup{direct, 3, false}));
+		CHECK(b == (val_tup{direct, 5, true}));
 	}
 	{
 		using ref_tup = veg::Tuple<int&>;
 		using val_tup = veg::Tuple<int>;
 		int i = 13;
-		val_tup j{cvt, 12};
-		ref_tup a{cvt, i};
-		ref_tup const b{into, j};
+		val_tup j{direct, 12};
+		ref_tup a{direct, i};
+		ref_tup const b = j.as_ref();
 		veg::swap(FWD(a), FWD(b));
 
 		CHECK(i == 12);
 		CHECK(j[0_c] == 13);
 
-		FWD(a) = b;
+		FWD(a) = b.as_ref();
 		CHECK(i == 13);
 		CHECK(j[0_c] == 13);
 
-		STATIC_ASSERT(VEG_CONCEPT(assignable<ref_tup const&&, ref_tup const&>));
+		STATIC_ASSERT(VEG_CONCEPT(assignable<ref_tup const&&, ref_tup&&>));
 	}
 
 	{
@@ -143,14 +142,12 @@ TEST_CASE("tuple: all") {
 		STATIC_ASSERT(VEG_CONCEPT(trivially_copyable<ref_tup>));
 		STATIC_ASSERT(VEG_CONCEPT(trivially_copyable<rref_tup>));
 		STATIC_ASSERT(VEG_CONCEPT(constructible<ref_tup, ref_tup>));
-		STATIC_ASSERT(VEG_CONCEPT(constructible<ref_tup, ref_tup&>));
-		STATIC_ASSERT(VEG_CONCEPT(constructible<ref_tup, Into, rref_tup&>));
-		STATIC_ASSERT(VEG_CONCEPT(constructible<ref_tup, Into, rref_tup const&>));
 		STATIC_ASSERT(!VEG_CONCEPT(constructible<ref_tup, rref_tup&&>));
+
 		int i = 13;
 		int j = 12;
-		ref_tup a{cvt, i};
-		rref_tup b{cvt, FWD(j)};
+		ref_tup a{direct, i};
+		rref_tup b{direct, FWD(j)};
 
 		veg::swap(a.as_ref(), b.as_ref());
 
@@ -158,12 +155,12 @@ TEST_CASE("tuple: all") {
 		CHECK(j == 13);
 
 		FWD(a) = FWD(b);
-		static_cast<ref_tup const&&>(a) = b;
+		static_cast<ref_tup const&&>(a) = b.as_ref();
 		static_cast<ref_tup const&&>(a) = FWD(b);
 		CHECK(i == 13);
 		CHECK(j == 13);
 
-		STATIC_ASSERT(VEG_CONCEPT(assignable<ref_tup const&&, ref_tup const&>));
+		STATIC_ASSERT(VEG_CONCEPT(assignable<ref_tup const&&, ref_tup&&>));
 	}
 
 	CHECK(tup[0_c] == 1);
@@ -171,8 +168,8 @@ TEST_CASE("tuple: all") {
 	CHECK(tup[2_c]);
 
 	{
-		auto&& ref1 = VEG_MOV(tup)[2_c];
-		auto&& ref2 = VEG_MOV(tup).as_ref()[2_c];
+		auto&& ref1 = FWD(tup)[2_c];
+		auto&& ref2 = FWD(tup).as_ref()[2_c];
 		CHECK(&ref1 != &tup[2_c]);
 		CHECK(&ref2 == &tup[2_c]);
 	}
@@ -185,7 +182,7 @@ TEST_CASE("tuple: all") {
 	CHECK(i == 1);
 	CHECK(c == 'c');
 	CHECK(b);
-	veg::Tuple tup_deduce{cvt, 1, 'c', true};
+	veg::Tuple tup_deduce{direct, 1, 'c', true};
 #endif
 
 	STATIC_ASSERT(std::is_copy_assignable<veg::Tuple<int, char>>());
@@ -194,12 +191,12 @@ TEST_CASE("tuple: all") {
 	STATIC_ASSERT(!std::is_copy_assignable<veg::Tuple<int&>>());
 	ASSERT_SAME(decltype(tup[0_c]), int&);
 	ASSERT_SAME(decltype(tup[0_c]), decltype(tup[0_c]));
-	ASSERT_SAME(decltype(MOV(tup)[0_c]), decltype(MOV(tup)[0_c]));
-	ASSERT_SAME(decltype(MOV(tup)[0_c]), int);
-	ASSERT_SAME(decltype(MOV(tup).as_ref()[0_c]), int&&);
+	ASSERT_SAME(decltype(FWD(tup)[0_c]), decltype(FWD(tup)[0_c]));
+	ASSERT_SAME(decltype(FWD(tup)[0_c]), int);
+	ASSERT_SAME(decltype(FWD(tup).as_ref()[0_c]), int&&);
 
 	ASSERT_SAME(decltype(tup.as_ref()), veg::Tuple<int&, char&, bool&>);
-	ASSERT_SAME(decltype(MOV(tup).as_ref()), veg::Tuple<int&&, char&&, bool&&>);
+	ASSERT_SAME(decltype(FWD(tup).as_ref()), veg::Tuple<int&&, char&&, bool&&>);
 
 	ASSERT_SAME(decltype(e), int&&);
 	ASSERT_SAME(decltype((e)), int&);
@@ -208,18 +205,18 @@ TEST_CASE("tuple: all") {
 	ASSERT_SAME(decltype((g)), bool&);
 
 	ASSERT_SAME(decltype(tup_ref[0_c]), int&);
-	ASSERT_SAME(decltype(MOV(tup_ref).as_ref()[0_c]), int&&);
+	ASSERT_SAME(decltype(FWD(tup_ref).as_ref()[0_c]), int&&);
 
 	ASSERT_SAME(decltype(tup_ref[1_c]), char&);
 	ASSERT_SAME(decltype(tup_ref[2_c]), char&);
-	ASSERT_SAME(decltype(MOV(tup_ref)[1_c]), char&&);
-	ASSERT_SAME(decltype(MOV(tup_ref)[2_c]), char);
-	ASSERT_SAME(decltype(MOV(tup_ref).as_ref()[2_c]), char&&);
+	ASSERT_SAME(decltype(FWD(tup_ref)[1_c]), char&&);
+	ASSERT_SAME(decltype(FWD(tup_ref)[2_c]), char);
+	ASSERT_SAME(decltype(FWD(tup_ref).as_ref()[2_c]), char&&);
 
 	ASSERT_SAME(decltype(tup_ref[3_c]), bool&);
 	ASSERT_SAME(decltype(tup_ref[4_c]), bool const&);
-	ASSERT_SAME(decltype(MOV(tup_ref)[3_c]), bool&);
-	ASSERT_SAME(decltype(MOV(tup_ref)[4_c]), bool const&);
+	ASSERT_SAME(decltype(FWD(tup_ref)[3_c]), bool&);
+	ASSERT_SAME(decltype(FWD(tup_ref)[4_c]), bool const&);
 
 #if __cplusplus >= 201703L
 	ASSERT_SAME(decltype(i), int);
@@ -228,27 +225,27 @@ TEST_CASE("tuple: all") {
 	ASSERT_SAME(decltype(tup_deduce), veg::Tuple<int, char, bool>);
 #endif
 
-	STATIC_ASSERT(Tuple<int>{cvt, 1} == Tuple<int>{cvt, 1});
-	STATIC_ASSERT(Tuple<int>{cvt, 1} == Tuple<double>{cvt, 1});
-	STATIC_ASSERT(Tuple<int>{cvt, 1} != Tuple<double>{cvt, 2});
+	STATIC_ASSERT(Tuple<int>{direct, 1} == Tuple<int>{direct, 1});
+	STATIC_ASSERT(Tuple<int>{direct, 1} == Tuple<double>{direct, 1});
+	STATIC_ASSERT(Tuple<int>{direct, 1} != Tuple<double>{direct, 2});
 	STATIC_ASSERT(
-			Tuple<int, double>{cvt, 1, 2.0F} == Tuple<double, int>{cvt, 1.0F, 2});
+			Tuple<int, double>{direct, 1, 2.0} == Tuple<double, int>{direct, 1.0, 2});
 	STATIC_ASSERT(
-			Tuple<int, double>{cvt, 1, 2.0F} == Tuple<double, int>{cvt, 1.0F, 2});
+			Tuple<int, double>{direct, 1, 2.0} == Tuple<double, int>{direct, 1.0, 2});
 	STATIC_ASSERT(
-			Tuple<int, double>{cvt, 1, 2.0F} != Tuple<double, int>{cvt, 2.0F, 2});
+			Tuple<int, double>{direct, 1, 2.0} != Tuple<double, int>{direct, 2.0, 2});
 }
 
 TEST_CASE("tuple: nested") {
 	using namespace veg;
-	Tuple<int, Tuple<int, float>> tup{cvt, 1, tuple(2, 3.0F)};
+	Tuple<int, Tuple<int, float>> tup{direct, 1, {direct, 2, 3.0F}};
 	CHECK(tup[0_c] == 1);
 
 	CHECK(tup[1_c][1_c] == 3.0F);
 	CHECK(tup[1_c][0_c] == 2);
 	ASSERT_SAME(decltype(tup[1_c][0_c]), int&);
 	ASSERT_SAME(decltype(tup[1_c][0_c]), int&);
-	ASSERT_SAME(decltype(VEG_MOV(tup)[1_c][0_c]), int);
+	ASSERT_SAME(decltype(FWD(tup)[1_c][0_c]), int);
 
 	STATIC_ASSERT(sizeof(Tuple<int>) == sizeof(int));
 	STATIC_ASSERT(sizeof(Tuple<Tuple<int>>) == sizeof(int));
@@ -300,99 +297,103 @@ TEST_CASE("tuple: cmp") {
 TEST_CASE("tuple: empty") {
 	using namespace veg;
 	Tuple<> t1{};
-	Tuple<> t2(cvt);
+	Tuple<> t2;
 	CHECK(t1 == t2);
 	STATIC_ASSERT(sizeof(t1) == 1);
 	STATIC_ASSERT(Tuple<>{} == Tuple<>{});
 }
 
-TEST_CASE("tuple: cvt") {
+TEST_CASE("tuple: direct") {
 	using namespace veg;
-	Tuple<int, double> t1{cvt, 1, 1.5F};
-	Tuple<long, double> t2(cvt, 3, 2.5);
-	Tuple<long, double> t3{into, t1};
-	Tuple<int, double> t4{into, t3};
+	Tuple<int, double> t1{direct, 1, 1.5};
+	Tuple<long, double> t2(direct, 3, 2.5);
+	Tuple<long, double> t3 = tuple.map_i(
+			FWD(t1),
+			overload(
+					nb::indexed<0>{}(nb::convert<long>{}),
+					nb::indexed<1>{}(nb::convert<double>{})));
+	Tuple<int, double> t4 = tuple.map_i(
+			FWD(t3),
+			overload(
+					nb::indexed<0>{}(nb::convert<int>{}),
+					nb::indexed<1>{}(nb::convert<double>{})));
 
 	STATIC_ASSERT(sizeof(t2) == sizeof(long) + sizeof(double));
 
 	CHECK(t1 == t4);
-	t1 = t2;
+	t2 = t1.as_ref();
 	CHECK(t1 == t2);
-}
-
-TEST_CASE("tuple: non_movable") {
-	struct S {
-		S() = default;
-		S(S&&) = delete;
-		S(S const&) = delete;
-	};
-	using namespace veg;
-	{
-		Tuple<S> s{};
-		(void)s;
-	}
-	VEG_CPP17({
-		Tuple<S> s{cvt, from_callable([] { return S{}; })};
-		(void)s;
-	})
 }
 
 TEST_CASE("tuple: get") {
 	using namespace veg;
-	int arr[] = {1, 2, 3};
+	i64 arr[] = {1, 2, 3};
 	nb::get<0>{}(arr);
 	nb::get<0>{}(FWD(arr));
 }
 
-struct T : veg::Tuple<int, float> {
-	using Tuple::Tuple;
-	using Tuple::operator=;
-};
-struct Tref : veg::Tuple<int&, float&> {
-	using Tuple::Tuple;
-	using Tuple::operator=;
-};
-
-TEST_CASE("tuple: derived") {
-	T t{cvt, 1, 2.0F};
-	T t2{cvt, 3, 4.0F};
-
-	CHECK(t[0_c] == 1);
-	CHECK(t[1_c] == 2.0F);
-	swap(t, t);
-	CHECK(t[0_c] == 1);
-	CHECK(t[1_c] == 2.0F);
-	Tref r{into, t};
-	swap(t, FWD(r));
-	CHECK(t[0_c] == 1);
-	CHECK(t[1_c] == 2.0F);
-	swap(FWD(r), FWD(r));
-	CHECK(t[0_c] == 1);
-	CHECK(t[1_c] == 2.0F);
-
-	swap(t2, FWD(r));
-	CHECK(t[0_c] == 3);
-	CHECK(t[1_c] == 4.0F);
-	swap(FWD(r), t2);
-	CHECK(t[0_c] == 1);
-	CHECK(t[1_c] == 2.0F);
-
-	FWD(r) = static_cast<veg::Tuple<int, float> const&>(t2);
-	CHECK(t[0_c] == 3);
-	CHECK(t[1_c] == 4.0F);
+TEST_CASE("tuple: *sparkles* functional programming *sparkles*") {
+	using namespace veg;
+	using veg::clone;
 
 	{
-		using namespace veg;
-		STATIC_ASSERT(!VEG_CONCEPT(swappable<T, T>));
-		STATIC_ASSERT(!VEG_CONCEPT(swappable<T const&, T const&>));
-		STATIC_ASSERT(VEG_CONCEPT(swappable<Tref const&&, Tref const&&>));
-		STATIC_ASSERT(VEG_CONCEPT(swappable<Tref, Tref>));
+		constexpr auto x = tuple(i64(1), i64(2), i64(3));
+		CHECK(tuple.map(x.as_ref(), [](i64 i) -> float {
+			return 2 * float(i);
+		}) == tuple(2.0F, 4.0F, 6.0F));
+		i64 acc = 0;
+		tuple.for_each(x.as_ref(), [&](i64 i) -> void { acc += i; });
+		CHECK(acc == 1 + 2 + 3);
 	}
-	ASSERT_SAME(decltype(get<0>(r)), int&);
-	ASSERT_SAME(decltype(get<0>(FWD(r))), int&);
-	ASSERT_SAME(decltype(get<0>(t)), int&);
-	ASSERT_SAME(decltype(get<0>(FWD(t))), int&&);
-	ASSERT_SAME(decltype(t[0_c]), int&);
-	ASSERT_SAME(decltype(FWD(t)[0_c]), int);
+
+	{
+		constexpr auto x = tuple(2.5, 3, tuple(&tuple, 10.0));
+		tuple.unpack(
+				clone(x), [](double d, int i, Tuple<decltype(&tuple), double> tup) {
+					CHECK(d == 2.5);
+					CHECK(i == i);
+					CHECK(tup == tuple(&tuple, 10.0));
+					CHECK(tup[0_c] == &tuple);
+					CHECK(tup[1_c] == 10.0);
+				});
+	}
+	{
+		unused(
+				Tuple<Tuple<int>>{tuple.map(tuple(tuple(2.0)), [](Tuple<double> inner) {
+					return tuple.map(FWD(inner), nb::convert<int>{});
+				})});
+	}
+
+	{
+		STATIC_ASSERT(
+				tuple.cat(tuple(1.0, 2), tuple(1, 4.0)) == tuple(1.0, 2, 1, 4.0));
+	}
+
+	// sfinae test
+	STATIC_ASSERT(!VEG_CONCEPT(invocable<struct nb::tuple::zip, int>));
+	STATIC_ASSERT(!VEG_CONCEPT(
+			invocable<struct nb::tuple::zip, Tuple<int>, Tuple<float, bool>>));
+	{
+		STATIC_ASSERT(tuple.ref(1.0, 2) == tuple(1.0, 2));
+		STATIC_ASSERT(tuple.zip(tuple.ref(1.0, 2)) == tuple(tuple(1.0), tuple(2)));
+		STATIC_ASSERT(tuple.zip(tuple.ref(1.0), tuple(2)) == tuple(tuple(1.0, 2)));
+
+		constexpr void* p = nullptr;
+		STATIC_ASSERT(
+				tuple.zip(tuple.fwd(nullptr, 'c'), tuple.ref(1.0, 2), tuple(13, 4.0)) ==
+				tuple(tuple(p, 1.0, 13), tuple('c', 2, 4.0)));
+	}
+
+	{ STATIC_ASSERT(tuple.zip(tuple.fwd(), tuple.ref(), tuple()) == tuple()); }
+
+#if __cplusplus >= 201402L
+	{
+		constexpr auto x = tuple(i64(1), float(2.5), i64(3));
+		float acc = 0;
+		tuple.for_each_i(
+				x.as_ref(), [&](auto N, auto i) -> void { acc += float(i) * i64{N}; });
+		CHECK(acc == 1 * 0 + 2.5F * 1 + 3 * 2);
+	}
+#endif
 }
 #include "veg/internal/epilogue.hpp"

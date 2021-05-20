@@ -7,8 +7,6 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace VEG_ABI {
-
 namespace internal {
 namespace meta_ {
 
@@ -17,8 +15,7 @@ struct adl_fn_swap {
 	using type = decltype(swap(VEG_DECLVAL(U &&), (VEG_DECLVAL(V &&))));
 
 	template <typename U, typename V>
-	HEDLEY_ALWAYS_INLINE static VEG_CPP14(constexpr) void apply(
-			U&& u, V&& v) noexcept(noexcept(swap(VEG_FWD(u), VEG_FWD(v)))) {
+	VEG_INLINE static VEG_CPP14(constexpr) void apply(U&& u, V&& v) noexcept {
 		swap(VEG_FWD(u), (VEG_FWD(v)));
 	}
 };
@@ -27,9 +24,7 @@ struct mov_fn_swap {
 	using type = void;
 
 	template <typename U>
-	HEDLEY_ALWAYS_INLINE static VEG_CPP14(constexpr) void apply(U& u, U& v) noexcept(
-			(VEG_CONCEPT(nothrow_move_constructible<U>) &&
-	     VEG_CONCEPT(nothrow_move_assignable<U>))) {
+	VEG_INLINE static VEG_CPP14(constexpr) void apply(U& u, U& v) noexcept {
 		auto tmp = static_cast<U&&>(u);
 		u = static_cast<U&&>(v);
 		v = static_cast<U&&>(tmp);
@@ -53,8 +48,8 @@ template <typename U, typename V>
 struct swap_impl : meta::disjunction<has_adl_swap<U, V>, has_mov_swap<U, V>> {};
 
 template <typename U, typename V>
-using nothrow_swap_expr = enable_if_t<noexcept(swap_impl<U, V>::apply(
-		VEG_DECLVAL_NOEXCEPT(U&&), VEG_DECLVAL_NOEXCEPT(V&&)))>;
+using nothrow_swap_expr = enable_if_t<VEG_IS_NOEXCEPT((swap_impl<U, V>::apply(
+		VEG_DECLVAL_NOEXCEPT(U &&), VEG_DECLVAL_NOEXCEPT(V&&))))>;
 
 template <typename U, typename V>
 using adl_swap_expr = decltype(swap(VEG_DECLVAL(U &&), (VEG_DECLVAL(V &&))));
@@ -91,34 +86,33 @@ struct swap {
 	VEG_TEMPLATE(
 			(typename U, typename V),
 			requires(VEG_CONCEPT(swappable<U&&, V&&>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP14(constexpr) void
+			VEG_INLINE VEG_CPP14(constexpr) void
 			operator(),
 			(u, U&&),
 			(v, V&&))
-	const noexcept(VEG_CONCEPT(nothrow_swappable<U&&, V&&>)) {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_swappable<U&&, V&&>)) {
 		internal::meta_::swap_impl<U&&, V&&>::apply(VEG_FWD(u), VEG_FWD(v));
 	}
 };
 } // namespace nb
 VEG_NIEBLOID(swap);
 
-namespace meta {
+namespace cpo {
 template <typename U>
-struct is_trivially_swappable : false_type {};
+struct is_trivially_swappable : meta::false_type {};
 
 template <typename T>
 struct is_trivially_swappable<T&>
-		: bool_constant<(
+		: meta::bool_constant<(
 					VEG_CONCEPT(trivially_copyable<T>) &&
 					VEG_CONCEPT(trivially_move_assignable<T>) &&
 					VEG_CONCEPT(trivially_move_constructible<T>) &&
 					!VEG_CONCEPT(adl_swappable<T&, T&>))> {};
-} // namespace meta
+} // namespace cpo
 namespace concepts {
 VEG_DEF_CONCEPT(
-		typename T, trivially_swappable, meta::is_trivially_swappable<T>::value);
+		typename T, trivially_swappable, cpo::is_trivially_swappable<T>::value);
 } // namespace concepts
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

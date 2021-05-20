@@ -9,7 +9,6 @@
 #endif
 
 namespace veg {
-inline namespace VEG_ABI {
 namespace concepts {
 namespace aux {
 VEG_DEF_CONCEPT(typename T, no_wraps_around, (T(-1) <= T(0)));
@@ -26,7 +25,6 @@ VEG_DEF_CONCEPT_CONJUNCTION(
 VEG_DEF_CONCEPT_CONJUNCTION(
 		typename T, unsigned_integral, ((, integral<T>), (aux::, wraps_around<T>)));
 } // namespace concepts
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

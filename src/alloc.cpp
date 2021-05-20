@@ -24,7 +24,7 @@ auto aligned_alloc(usize align, i64 nbytes) -> void* {
 	return p;
 }
 
-void aligned_free(void* ptr, usize align, i64 nbytes) noexcept {
+void aligned_free(void* ptr, usize align, i64 nbytes) VEG_ALWAYS_NOEXCEPT {
 	(void)nbytes, (void)align;
 	std::free(ptr);
 }

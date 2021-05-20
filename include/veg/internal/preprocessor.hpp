@@ -63,6 +63,7 @@
 #define __VEG_IMPL_PP_IS_1_30 0
 #define __VEG_IMPL_PP_IS_1_31 0
 #define __VEG_IMPL_PP_IS_1_32 0
+#define __VEG_IMPL_PP_IS_1_33 0
 
 #define __VEG_IMPL_PP_INC_0 1
 #define __VEG_IMPL_PP_INC_1 2
@@ -103,8 +104,52 @@
 #define __VEG_IMPL_PP_IS_1_I(X) __VEG_IMPL_PP_IS_1_##X
 #define __VEG_IMPL_PP_IS_1(X) __VEG_IMPL_PP_IS_1_I(X)
 
-#define __VEG_PP_IMPL_VARIADIC_SIZE(...) __VEG_IMPL_PP_COUNT(__VA_ARGS__, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+#define __VEG_IMPL_PP_COMMA_IF_NOT_0_1
+#define __VEG_IMPL_PP_COMMA_IF_NOT_0_0 ,
+#define __VEG_PP_COMMA_IF_NOT_0(X) __VEG_PP_CAT2(__VEG_IMPL_PP_COMMA_IF_NOT_0_, __VEG_PP_IS_0(X))
+
+#define __VEG_PP_IS_1(X) __VEG_IMPL_PP_IS_1_I(X)
+#define __VEG_PP_IS_0(X) __VEG_PP_IS_1(__VEG_IMPL_PP_INC_I(X))
+
+
+#define __VEG_IMPL_PP_VARIADIC_SIZE(...) __VEG_IMPL_PP_COUNT(__VA_ARGS__, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+
+#define __VEG_IMPL_PP_MAKE_TUPLE0 ()
+#define __VEG_IMPL_PP_MAKE_TUPLE1 (0)
+#define __VEG_IMPL_PP_MAKE_TUPLE2 (0, 1)
+#define __VEG_IMPL_PP_MAKE_TUPLE3 (0, 1, 2)
+#define __VEG_IMPL_PP_MAKE_TUPLE4 (0, 1, 2, 3)
+#define __VEG_IMPL_PP_MAKE_TUPLE5 (0, 1, 2, 3, 4)
+#define __VEG_IMPL_PP_MAKE_TUPLE6 (0, 1, 2, 3, 4, 5)
+#define __VEG_IMPL_PP_MAKE_TUPLE7 (0, 1, 2, 3, 4, 5, 6)
+#define __VEG_IMPL_PP_MAKE_TUPLE8 (0, 1, 2, 3, 4, 5, 6, 7)
+#define __VEG_IMPL_PP_MAKE_TUPLE9 (0, 1, 2, 3, 4, 5, 6, 7, 8)
+#define __VEG_IMPL_PP_MAKE_TUPLE10 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+#define __VEG_IMPL_PP_MAKE_TUPLE11 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+#define __VEG_IMPL_PP_MAKE_TUPLE12 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+#define __VEG_IMPL_PP_MAKE_TUPLE13 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+#define __VEG_IMPL_PP_MAKE_TUPLE14 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
+#define __VEG_IMPL_PP_MAKE_TUPLE15 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+#define __VEG_IMPL_PP_MAKE_TUPLE16 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+#define __VEG_IMPL_PP_MAKE_TUPLE17 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
+#define __VEG_IMPL_PP_MAKE_TUPLE18 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17)
+#define __VEG_IMPL_PP_MAKE_TUPLE19 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18)
+#define __VEG_IMPL_PP_MAKE_TUPLE20 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)
+#define __VEG_IMPL_PP_MAKE_TUPLE21 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
+#define __VEG_IMPL_PP_MAKE_TUPLE22 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21)
+#define __VEG_IMPL_PP_MAKE_TUPLE23 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22)
+#define __VEG_IMPL_PP_MAKE_TUPLE24 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23)
+#define __VEG_IMPL_PP_MAKE_TUPLE25 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24)
+#define __VEG_IMPL_PP_MAKE_TUPLE26 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
+#define __VEG_IMPL_PP_MAKE_TUPLE27 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26)
+#define __VEG_IMPL_PP_MAKE_TUPLE28 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27)
+#define __VEG_IMPL_PP_MAKE_TUPLE29 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28)
+#define __VEG_IMPL_PP_MAKE_TUPLE30 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29)
+#define __VEG_IMPL_PP_MAKE_TUPLE31 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30)
+#define __VEG_IMPL_PP_MAKE_TUPLE32 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31)
 // clang-format on
+
+#define __VEG_PP_MAKE_TUPLE(N) __VEG_PP_CAT2(__VEG_IMPL_PP_MAKE_TUPLE, N)
 
 #define __VEG_IMPL_PP_TUPLE_FOR_EACH_1(Macro, Data, Tuple)                     \
 	Macro(Data, __VEG_PP_REMOVE_PAREN1(Tuple))
@@ -322,7 +367,7 @@
 			__VEG_IMPL_PP_IS_1(__VEG_PP_TUPLE_SIZE(Tuple)))                          \
 	(Macro, Data, Tuple)
 
-#define __VEG_PP_TUPLE_SIZE(Tuple) __VEG_PP_IMPL_VARIADIC_SIZE Tuple
+#define __VEG_PP_TUPLE_SIZE(Tuple) __VEG_IMPL_PP_VARIADIC_SIZE Tuple
 #define __VEG_PP_SEQ_HEAD(Seq)                                                 \
 	__VEG_IMPL_PP_SEQ_HEAD_0 Seq)
 #define __VEG_PP_SEQ_TAIL(Seq) __VEG_IMPL_PP_CONSUME Seq

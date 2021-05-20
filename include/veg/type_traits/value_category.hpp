@@ -5,7 +5,6 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace VEG_ABI {
 namespace meta {
 enum struct category_e {
 	own,
@@ -49,24 +48,19 @@ template <typename T>
 struct value_category : constant<category_e, category_e::own> {};
 
 template <typename T>
-struct value_category<T const&>
-		: constant<category_e, category_e::ref> {};
+struct value_category<T const&> : constant<category_e, category_e::ref> {};
 template <typename T>
-struct value_category<T const&&>
-		: constant<category_e, category_e::ref> {};
+struct value_category<T const&&> : constant<category_e, category_e::ref> {};
 
 template <typename T>
-struct value_category<T&>
-		: constant<category_e, category_e::ref_mut> {};
+struct value_category<T&> : constant<category_e, category_e::ref_mut> {};
 template <typename T>
-struct value_category<T&&>
-		: constant<category_e, category_e::ref_mov> {};
+struct value_category<T&&> : constant<category_e, category_e::ref_mov> {};
 
 template <typename To, typename From>
 using collapse_category_t = typename internal::meta_::apply_categ<
 		value_category<From>::value>::template type<To>;
 } // namespace meta
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

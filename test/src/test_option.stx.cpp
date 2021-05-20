@@ -27,9 +27,11 @@
  *
  */
 
+#define __VEG_DISABLE_NOEXCEPT
+
 #include "static_assert.hpp"
 #include "veg/option.hpp"
-#include "assert_death.hpp"
+#include "veg/functional/utils.hpp"
 
 #include <memory>
 #include <numeric>
@@ -112,8 +114,8 @@ TEST_CASE("OptionTest: Misc") {
 TEST_CASE("OptionTest: ObjectConstructionTest") {
 	Option<int> a = none;
 	auto b = some(89);
-	CHECK_DEATH({ void(VEG_MOV(a).unwrap()); });
-	CHECK_NO_DEATH({ void(VEG_MOV(b).unwrap()); });
+	CHECK_THROWS(void(VEG_MOV(a).unwrap()));
+	CHECK_NOTHROW(void(VEG_MOV(b).unwrap()));
 	CHECK(some(89).unwrap() == 89);
 
 	auto fn_a = []() -> Option<MoveOnly<0>> {
@@ -205,21 +207,21 @@ TEST_CASE("OptionTest: Equality") {
 	int const x = 909909;
 	int y = 909909;
 
-	CHECK(some_ref(x) == some(909909));
-	CHECK(some_ref(y) == some(909909));
+	CHECK(some.ref(x) == some(909909));
+	CHECK(some.ref(y) == some(909909));
 
-	CHECK(some(909909) == some_ref(y));
-	CHECK(some(909909) == some_ref(y));
+	CHECK(some(909909) == some.ref(y));
+	CHECK(some(909909) == some.ref(y));
 
-	CHECK(some(909909) == some_ref(x));
-	CHECK(some(909909) == some_ref(y));
-	CHECK(some(101101) != some_ref(x));
-	CHECK(some(101101) != some_ref(y));
+	CHECK(some(909909) == some.ref(x));
+	CHECK(some(909909) == some.ref(y));
+	CHECK(some(101101) != some.ref(x));
+	CHECK(some(101101) != some.ref(y));
 
-	CHECK(some_ref(x) == some(909909));
-	CHECK(some_ref(y) == some(909909));
-	CHECK(some_ref(x) != some(101101));
-	CHECK(some_ref(y) != some(101101));
+	CHECK(some.ref(x) == some(909909));
+	CHECK(some.ref(y) == some(909909));
+	CHECK(some.ref(x) != some(101101));
+	CHECK(some.ref(y) != some(101101));
 }
 
 TEST_CASE("OptionTest: Contains") {
@@ -231,8 +233,8 @@ TEST_CASE("OptionTest: Contains") {
 }
 
 TEST_CASE("OptionLifetimeTest: Contains") {
-	CHECK_NO_DEATH({ (void)some(make_mv<0>()); });
-	CHECK_NO_DEATH({ (void)Option<MoveOnly<1>>{none}.contains(make_mv<1>()); });
+	CHECK_NOTHROW((void)some(make_mv<0>()));
+	CHECK_NOTHROW((void)Option<MoveOnly<1>>{none}.contains(make_mv<1>()));
 }
 
 TEST_CASE("OptionTest: Exists") {
@@ -281,28 +283,28 @@ TEST_CASE("OptionTest: AsRef") {
 
 TEST_CASE("OptionLifeTimeTest: AsRef") {
 	auto a = some(make_mv<0>());
-	CHECK_NO_DEATH({ (void)a.as_ref().unwrap().done(); });
+	CHECK_NOTHROW((void)a.as_ref().unwrap().done());
 
 	auto b = Option<MoveOnly<1>>(none);
-	CHECK_NO_DEATH({ (void)a.as_ref().unwrap().done(); });
-	CHECK_NO_DEATH({
+	CHECK_NOTHROW((void)a.as_ref().unwrap().done());
+	CHECK_NOTHROW([&] {
 		auto b_ = b.as_ref();
 		(void)b_;
-	});
+	}());
 }
 
 TEST_CASE("OptionTest: Unwrap") {
 	CHECK(some(0).unwrap() == 0);
-	CHECK_DEATH({ (void)Option<int>(none).unwrap(); });
+	CHECK_THROWS((void)Option<int>(none).unwrap());
 
 	CHECK(
 			some(vector<int>{1, 2, 3, 4, 5}).unwrap() == vector<int>{1, 2, 3, 4, 5});
-	CHECK_DEATH({ (void)Option<vector<int>>(none).unwrap(); });
+	CHECK_THROWS((void)Option<vector<int>>(none).unwrap());
 }
 
 TEST_CASE("OptionLifetimeTest: Unwrap") {
 	auto a = some(make_mv<0>());
-	CHECK_NO_DEATH({ VEG_FWD(a).unwrap().done(); });
+	CHECK_NOTHROW(VEG_FWD(a).unwrap().done());
 }
 
 // TEST_CASE("OptionTest: UnwrapOr") {
@@ -375,8 +377,8 @@ TEST_CASE("OptionLifetimeTest: Unwrap") {
 
 TEST_CASE("OptionLifetimeTest: Map") {
 	auto a = some(make_mv<0>());
-	CHECK_NO_DEATH(
-			{ VEG_FWD(a).map([](MoveOnly<0> r) { return r; }).unwrap().done(); });
+	CHECK_NOTHROW(
+			VEG_FWD(a).map([](MoveOnly<0> r) { return r; }).unwrap().done());
 }
 
 TEST_CASE("OptionTest: FnMutMap") {
@@ -411,7 +413,7 @@ TEST_CASE("OptionLifetimeTest: MapOrElse") {
 	auto a = some(make_mv<0>());
 	auto fn = [](MoveOnly<0>) { return make_mv<0>(); };
 	auto fn_b = []() { return make_mv<0>(); };
-	CHECK_NO_DEATH({ VEG_FWD(a).map_or_else(fn, fn_b).done(); });
+	CHECK_NOTHROW(VEG_FWD(a).map_or_else(fn, fn_b).done());
 }
 
 // TEST_CASE("OptionTest: And") {
@@ -590,16 +592,17 @@ TEST_CASE("OptionTest: Take") {
 //}
 
 TEST_CASE("OptionTest: Clone") {
+	using veg::clone;
 	auto a = some(9);
-	CHECK(a.clone() == some(9));
+	CHECK(clone(a) == some(9));
 	CHECK(a == some(9));
 
 	auto b = some(static_cast<int*>(nullptr));
-	CHECK(b.clone() == some(static_cast<int*>(nullptr)));
+	CHECK(clone(b) == some(static_cast<int*>(nullptr)));
 	CHECK(b == some(static_cast<int*>(nullptr)));
 
 	auto c = some(vector<int>{1, 2, 3, 4, 5});
-	CHECK(c.clone() == some(vector<int>{1, 2, 3, 4, 5}));
+	CHECK(clone(c) == some(vector<int>{1, 2, 3, 4, 5}));
 	CHECK(c == some(vector<int>{1, 2, 3, 4, 5}));
 }
 

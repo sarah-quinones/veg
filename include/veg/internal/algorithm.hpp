@@ -9,13 +9,12 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace VEG_ABI {
 namespace internal {
 namespace algo_ {
 
 template <typename T, typename... Args>
-HEDLEY_ALWAYS_INLINE
-VEG_CPP20(constexpr) void backward_destroy_n(T* ptr, i64 n) noexcept {
+VEG_INLINE
+VEG_CPP20(constexpr) void backward_destroy_n(T* ptr, i64 n) VEG_NOEXCEPT {
 	if (n == 0) {
 		return;
 	}
@@ -35,15 +34,15 @@ struct destroy_range_fn {
 	i64 const& size;
 
 	VEG_CPP20(constexpr)
-	void operator()() const noexcept {
+	void operator()() const VEG_NOEXCEPT {
 		algo_::backward_destroy_n(cleanup_ptr, size);
 	}
 };
 
 template <typename Cast, typename T, typename... Args>
 VEG_CPP20(constexpr)
-void uninit_emplace_n(T* dest, T const* src, i64 n) noexcept(
-		VEG_CONCEPT(nothrow_constructible<T, Cast>)) {
+void uninit_emplace_n(T* dest, T const* src, i64 n)
+		VEG_NOEXCEPT(VEG_CONCEPT(nothrow_constructible<T, Cast>)) {
 
 	i64 i = 0;
 	auto&& cleanup = defer(internal::algo_::destroy_range_fn<T>{dest, i});
@@ -55,8 +54,8 @@ void uninit_emplace_n(T* dest, T const* src, i64 n) noexcept(
 
 template <typename Cast, typename T>
 VEG_CPP20(constexpr)
-void reloc_fallible(T* dest, T* src, i64 n) noexcept(
-		VEG_CONCEPT(nothrow_constructible<T, Cast>)) {
+void reloc_fallible(T* dest, T* src, i64 n)
+		VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T, Cast>)) {
 
 	i64 i = 0;
 	auto&& cleanup = defer(destroy_range_fn<T>{dest, i});
@@ -79,7 +78,7 @@ struct reloc_impl;
 template <>
 struct reloc_impl<which::nothrow_move> {
 	template <typename T>
-	static VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) noexcept {
+	static VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) VEG_NOEXCEPT {
 		T* end = dest + n;
 		for (; dest < end; ++dest, ++src) {
 			mem::construct_at(dest, static_cast<T&&>(*src));
@@ -91,7 +90,7 @@ struct reloc_impl<which::nothrow_move> {
 template <>
 struct reloc_impl<which::trivial> {
 	template <typename T>
-	static VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) noexcept {
+	static VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) VEG_NOEXCEPT {
 		static_assert(
 				VEG_CONCEPT(nothrow_move_constructible<T>),
 				"is T really trivially relocatable?");
@@ -114,8 +113,8 @@ struct reloc_impl<which::trivial> {
 template <>
 struct reloc_impl<which::copy> {
 	template <typename T>
-	static VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) noexcept(
-			VEG_CONCEPT(nothrow_constructible<T, T const&>)) {
+	static VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T, T const&>)) {
 		algo_::reloc_fallible<T const&>(dest, src, n);
 	}
 };
@@ -123,9 +122,8 @@ struct reloc_impl<which::copy> {
 template <>
 struct reloc_impl<which::throw_move> {
 	template <typename T>
-	HEDLEY_ALWAYS_INLINE static VEG_CPP20(constexpr) void apply(
-			T* dest, T* src, i64 n) //
-			noexcept(false) {
+	VEG_INLINE static VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) //
+			VEG_NOEXCEPT_IF(false) {
 		algo_::reloc_fallible<T&&>(dest, src, n);
 	}
 };
@@ -139,11 +137,11 @@ struct backward_destroy_n {
 	VEG_TEMPLATE(
 			(typename T, typename... Args),
 			requires(!VEG_CONCEPT(void_type<T>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			VEG_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(ptr, T*),
 			(n, i64))
-	const noexcept {
+	const VEG_NOEXCEPT {
 		if (n == 0) {
 			return;
 		}
@@ -163,12 +161,12 @@ struct relocate_n {
 			requires(
 					!VEG_CONCEPT(const_type<T>) && (VEG_CONCEPT(move_constructible<T>) ||
 	                                        VEG_CONCEPT(copy_constructible<T>))),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			VEG_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T*),
 			(n, i64))
-	const noexcept(
+	const VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_move_constructible<T>) ||
 			VEG_CONCEPT(nothrow_constructible<T, T const&>)) {
 
@@ -189,12 +187,12 @@ struct uninitialized_move_n {
 	VEG_TEMPLATE(
 			(typename T),
 			requires(VEG_CONCEPT(move_constructible<T>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			VEG_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T*),
 			(n, i64))
-	const noexcept(VEG_CONCEPT(nothrow_move_constructible<T>)) {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>)) {
 		internal::algo_::uninit_emplace_n<T&&>(dest, src, n);
 	}
 };
@@ -205,12 +203,12 @@ struct uninitialized_copy_n {
 			requires(
 					VEG_CONCEPT(trivially_copyable<T>) &&
 					VEG_CONCEPT(copy_constructible<T>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			VEG_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T const*),
 			(n, i64))
-	const noexcept(VEG_CONCEPT(nothrow_copy_constructible<T>)) {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_copy_constructible<T>)) {
 		abi::internal::opaque_memmove(dest, src, sizeof(T) * static_cast<usize>(n));
 	}
 	VEG_TEMPLATE(
@@ -218,12 +216,12 @@ struct uninitialized_copy_n {
 			requires(
 					!VEG_CONCEPT(trivially_copyable<T>) &&
 					VEG_CONCEPT(copy_constructible<T>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			VEG_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T const*),
 			(n, i64))
-	const noexcept(VEG_CONCEPT(nothrow_copy_constructible<T>)) {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_copy_constructible<T>)) {
 		internal::algo_::uninit_emplace_n<T const&>(dest, src, n);
 	}
 };
@@ -232,12 +230,12 @@ struct copy_n {
 	VEG_TEMPLATE(
 			(typename T),
 			requires(VEG_CONCEPT(copy_assignable<T>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			VEG_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T const*),
 			(n, i64))
-	const noexcept(VEG_CONCEPT(nothrow_copy_assignable<T>)) {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_copy_assignable<T>)) {
 		for (i64 i = 0; i < n; ++i) {
 			dest[i] = src[i];
 		}
@@ -251,13 +249,13 @@ struct mixed_init_copy_n {
 					VEG_CONCEPT(trivially_copyable<T>) &&
 					VEG_CONCEPT(copy_assignable<T>) &&
 					VEG_CONCEPT(copy_constructible<T>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			VEG_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T const*),
 			(n, i64),
 			(n_init, i64))
-	const noexcept {
+	const VEG_NOEXCEPT {
 		(void)n_init;
 		abi::internal::opaque_memmove(dest, src, sizeof(T) * static_cast<usize>(n));
 	}
@@ -268,13 +266,13 @@ struct mixed_init_copy_n {
 					!VEG_CONCEPT(trivially_copyable<T>) &&
 					VEG_CONCEPT(copy_assignable<T>) &&
 					VEG_CONCEPT(copy_constructible<T>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			VEG_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T const*),
 			(n, i64),
 			(n_init, i64))
-	const noexcept(
+	const VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_copy_assignable<T>) &&
 			VEG_CONCEPT(copy_constructible<T>)) {
 		n_init = n < n_init ? n : n_init;
@@ -298,12 +296,15 @@ struct free_cleanup {
 	void* ptr;
 	usize align;
 	i64 cap_bytes;
-	auto operator()() const noexcept { mem::aligned_free(ptr, align, cap_bytes); }
+	auto operator()() const VEG_NOEXCEPT {
+		mem::aligned_free(ptr, align, cap_bytes);
+	}
 };
 
 template <typename T>
-HEDLEY_ALWAYS_INLINE auto reallocate_memory(
-		T* src, usize align, i64 size, i64 cap, i64 new_cap) noexcept(false) -> T* {
+VEG_INLINE auto
+reallocate_memory(T* src, usize align, i64 size, i64 cap, i64 new_cap)
+		VEG_NOEXCEPT_IF(false) -> T* {
 
 	constexpr i64 s = static_cast<i64>(sizeof(T));
 	T* p = static_cast<T*>(mem::aligned_alloc(align, new_cap * s));
@@ -319,7 +320,6 @@ HEDLEY_ALWAYS_INLINE auto reallocate_memory(
 
 } // namespace algo_
 } // namespace internal
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

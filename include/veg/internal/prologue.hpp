@@ -3,6 +3,19 @@
 #endif
 #define VEG_PROLOGUE
 
+#define VEG_ALWAYS_NOEXCEPT noexcept
+
+#ifdef __VEG_DISABLE_NOEXCEPT
+#define VEG_NOEXCEPT
+#define VEG_NOEXCEPT_IF(Cond) noexcept(false)
+#define VEG_IS_NOEXCEPT(Expr) noexcept(Expr)
+#else
+#define VEG_NOEXCEPT noexcept
+#define VEG_NOEXCEPT_IF(Cond) noexcept(Cond)
+#define VEG_IS_NOEXCEPT(Expr) noexcept(Expr)
+#endif
+#define VEG_NOEXCEPT_LIKE(Expr) VEG_NOEXCEPT_IF(VEG_IS_NOEXCEPT(Expr))
+
 #define VEG_HAS_BUILTIN_OR_0(True, False) __VEG_PP_REMOVE_PAREN(False)
 #define VEG_HAS_BUILTIN_OR_1(True, False) __VEG_PP_REMOVE_PAREN(True)
 #define VEG_HAS_BUILTIN_OR(Builtin, True, False)                               \
@@ -23,6 +36,13 @@
 	~Class() = default; /**/                                                     \
 	Class(Class&&) = default;                                                    \
 	Class(Class const&) = default;                                               \
+	auto operator=(Class&&)&->Class& = default;                                  \
+	auto operator=(Class const&)&->Class& = default
+
+#define VEG_EXPLICIT_COPY(Class)                                               \
+	~Class() = default; /**/                                                     \
+	Class(Class&&) = default;                                                    \
+	explicit Class(Class const&) = default;                                      \
 	auto operator=(Class&&)&->Class& = default;                                  \
 	auto operator=(Class const&)&->Class& = default
 
@@ -58,12 +78,30 @@
 #define VEG_NODISCARD
 #endif
 
-#ifdef VEG_INTERNAL_ASSERTIONS
-#define VEG_INTERNAL_ASSERT(...)                                               \
+#define VEG_INTERNAL_ASSERT_PRECONDITION VEG_ASSERT
+#define VEG_INTERNAL_ASSERT_PRECONDITIONS VEG_ASSERT_ALL_OF
+
+#ifdef __VEG_INTERNAL_ASSERTIONS
+#define VEG_INTERNAL_ASSERT_INVARIANT(...)                                     \
 	VEG_ASSERT_ELSE("inner assertion failed", __VA_ARGS__)
 #else
-#define VEG_INTERNAL_ASSERT(...)                                               \
-	VEG_DEBUG_ASSERT_ELSE("inner assertion failed", __VA_ARGS__)
+#define VEG_INTERNAL_ASSERT_INVARIANT(...)                                     \
+	(VEG_DEBUG_ASSERT_ELSE("inner assertion failed", __VA_ARGS__),               \
+	 HEDLEY_UNREACHABLE())
+#endif
+
+#ifdef __VEG_DISABLE_NOEXCEPT
+#undef VEG_INTERNAL_ASSERT_PRECONDITION
+#undef VEG_INTERNAL_ASSERT_PRECONDITIONS
+#undef VEG_INTERNAL_ASSERT_INVARIANT
+
+#define VEG_INTERNAL_ASSERT_PRECONDITIONS(...)                                 \
+	VEG_INTERNAL_ASSERT_PRECONDITION(::veg::internal::all_of({__VA_ARGS__}))
+
+#define VEG_INTERNAL_ASSERT_PRECONDITION(Cond)                                 \
+	((Cond) ? (void)0 : ((throw 0), (void)0))
+#define VEG_INTERNAL_ASSERT_INVARIANT(...)                                     \
+	((__VA_ARGS__) ? (void)0 : ((throw 0), (void)0))
 #endif
 
 #if __cplusplus >= 201402L

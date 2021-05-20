@@ -2,6 +2,7 @@
 #define VEG_INVOCABLE_HPP_GVSWRKAYS
 
 #include "veg/type_traits/core.hpp"
+#include "veg/type_traits/constructible.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
@@ -17,7 +18,6 @@ using invoke_result_t =
 		meta::detected_t<internal::meta_::call_expr, Fn&&, Args&&...>;
 } // namespace meta
 
-inline namespace VEG_ABI {
 namespace concepts {
 
 namespace aux {
@@ -29,7 +29,8 @@ VEG_DEF_CONCEPT_DISJUNCTION(
 VEG_DEF_CONCEPT(
 		(typename Fn, typename... Args),
 		nothrow_invocable_pre,
-		noexcept(VEG_DECLVAL_NOEXCEPT(Fn&&)(VEG_DECLVAL_NOEXCEPT(Args&&)...)));
+		VEG_IS_NOEXCEPT(
+				VEG_DECLVAL_NOEXCEPT(Fn&&)(VEG_DECLVAL_NOEXCEPT(Args&&)...)));
 } // namespace aux
 
 #if __cplusplus >= 202002L
@@ -40,7 +41,8 @@ concept invocable = requires(Fn&& fn, Args&&... args) {
 };
 template <typename Fn, typename... Args>
 concept nothrow_invocable = requires(Fn&& fn, Args&&... args) {
-	requires noexcept(static_cast<Fn&&>(fn)(static_cast<Args&&>(args)...));
+	{ static_cast<Fn&&>(fn)(static_cast<Args&&>(args)...) }
+	noexcept;
 };
 
 #else
@@ -56,11 +58,24 @@ VEG_DEF_CONCEPT_CONJUNCTION(
      (aux::, nothrow_invocable_pre<Fn, Args&&...>)));
 #endif
 
+#if __cplusplus >= 201703L
 VEG_DEF_CONCEPT_CONJUNCTION(
 		(typename Fn, typename Ret, typename... Args),
 		invocable_r,
 		((, invocable<Fn, Args&&...>),
      (aux::, matches_if_not_void<meta::invoke_result_t<Fn, Args&&...>, Ret>)));
+#else
+VEG_DEF_CONCEPT_CONJUNCTION(
+		(typename Fn, typename Ret, typename... Args),
+		invocable_r,
+		((, invocable<Fn, Args&&...>),
+     (aux::, matches_if_not_void<meta::invoke_result_t<Fn, Args&&...>, Ret>),
+     (concepts::,
+      move_constructible<meta::conditional_t<
+					VEG_CONCEPT(same<meta::invoke_result_t<Fn, Args&&...>, void>),
+					decltype(nullptr),
+					meta::invoke_result_t<Fn, Args&&...>>>)));
+#endif
 
 VEG_DEF_CONCEPT_CONJUNCTION(
 		(typename Fn, typename Ret, typename... Args),
@@ -69,7 +84,6 @@ VEG_DEF_CONCEPT_CONJUNCTION(
      (, nothrow_invocable<Fn, Args&&...>)));
 
 } // namespace concepts
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

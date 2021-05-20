@@ -1,5 +1,6 @@
 #include "veg/option.hpp"
 #include "veg/fn_view.hpp"
+#include "veg/functional/utils.hpp"
 #include <doctest.h>
 #include <vector>
 #include "static_assert.hpp"
@@ -41,22 +42,11 @@ TEST_CASE("option: all") {
 		VEG_CPP14(constexpr) auto operator()() const -> double { return 2000.; }
 	};
 
-	STATIC_ASSERT(sizeof(Option<bool>) == sizeof(bool) * 2);
-	STATIC_ASSERT(sizeof(Option<Option<bool>>) == sizeof(bool) * 2);
-	STATIC_ASSERT(sizeof(Option<Option<Option<bool>>>) == sizeof(bool) * 2);
-
-	STATIC_ASSERT(sizeof(Option<int>) == sizeof(int) * 2);
-	STATIC_ASSERT(sizeof(Option<Option<int>>) == sizeof(int) * 2);
-	STATIC_ASSERT(sizeof(Option<Option<Option<Option<int>>>>) == sizeof(int) * 2);
-	STATIC_ASSERT(
-			sizeof(Option<fn::FnView<void()>>) == sizeof(fn::FnView<void()>));
-	STATIC_ASSERT(
-			sizeof(Option<fn::FnView<void()>>) == sizeof(fn::FnView<void()>));
-
-	VEG_CPP14(constexpr) Option<int> i = {some, 3};
-	VEG_CPP14(constexpr) Option<int> j = none;
+	constexpr Option<int> i = {some, 3};
+	constexpr Option<int> j = none;
+	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}));
 	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).unwrap() == 1000. / 3);
-	STATIC_ASSERT_IF_17(Option<int>{some, from_callable([&] { return 0; })});
+	STATIC_ASSERT_IF_17(Option<int>{inplace, [&] { return 0; }});
 	STATIC_ASSERT_IF_14(i.as_ref().map(B{}).unwrap() == 2000. / 3);
 
 	STATIC_ASSERT_IF_14(i.as_ref().map_or_else(B{}, C{}) == 2000. / 3);
@@ -78,6 +68,7 @@ TEST_CASE("option: all") {
 	STATIC_ASSERT(sizeof(Option<int&>) == sizeof(int*));
 
 	{
+		using veg::clone;
 		VEG_CPP14(constexpr)
 		Option<Option<Option<int>>> opt = some(some(some(3)));
 		VEG_CPP14(constexpr)
@@ -93,12 +84,12 @@ TEST_CASE("option: all") {
 						.unwrap()
 						.as_ref()
 						.unwrap() == 3);
-		STATIC_ASSERT_IF_14(opt.clone().unwrap().unwrap().unwrap() == 3);
-		STATIC_ASSERT_IF_14(opt.clone().flatten().flatten().unwrap() == 3);
-		STATIC_ASSERT_IF_14(!opt2.clone().unwrap().unwrap());
-		STATIC_ASSERT_IF_14(!opt2.clone().flatten().flatten());
-		STATIC_ASSERT_IF_14(opt2.clone().flatten());
-		STATIC_ASSERT_IF_14(opt2.clone().flatten());
+		STATIC_ASSERT_IF_14(clone(opt).unwrap().unwrap().unwrap() == 3);
+		STATIC_ASSERT_IF_14(clone(opt).flatten().flatten().unwrap() == 3);
+		STATIC_ASSERT_IF_14(!clone(opt2).unwrap().unwrap());
+		STATIC_ASSERT_IF_14(!clone(opt2).flatten().flatten());
+		STATIC_ASSERT_IF_14(clone(opt2).flatten());
+		STATIC_ASSERT_IF_14(clone(opt2).flatten());
 	}
 
 	{
@@ -130,19 +121,19 @@ TEST_CASE("option: all") {
 		VEG_CPP17(constexpr)
 		auto opt = [&] {
 			Option<int> x;
-			x.emplace(from_callable([&] { return 1; }));
+			x.emplace([&] { return 1; });
 			return x;
 		}();
 
 		STATIC_ASSERT_IF_17(opt == some(1));
 	}
 	{
-		STATIC_ASSERT(VEG_CONCEPT(mostly_trivial<int>));
-		STATIC_ASSERT(VEG_CONCEPT(mostly_trivial<Option<int>>));
+		STATIC_ASSERT(veg::cpo::is_trivially_constructible<int>::value);
+		STATIC_ASSERT(veg::cpo::is_trivially_constructible<Option<int>>::value);
 		VEG_CPP17(constexpr)
 		auto opt = [&] {
 			Option<Option<int>> x;
-			x.emplace(from_callable([&] { return some(1); }));
+			x.emplace([&] { return some(1); });
 			return x;
 		}();
 
@@ -153,110 +144,15 @@ TEST_CASE("option: all") {
 
 		auto opt = [&] {
 			Option<vector<int>> x;
-			x.emplace(from_callable(
-					[&](int i_) {
-						return vector<int>{1, 2, 3, i_};
-					},
-					5));
+			x.emplace([&] { return vector<int>{1, 2, 3, 4}; });
 			return x;
 		}();
 
-		CHECK(opt == some(vector<int>{1, 2, 3, 5}));
-	}
-	{
-		using std::vector;
-
-		STATIC_ASSERT_IF_14(
-				+meta::tombstone_traits<Option<vector<int>>>::spare_representations ==
-				253);
-
-		auto opt = [&] {
-			Option<Option<vector<int>>> x;
-			x.emplace(from_callable([&] { return some(vector<int>{1, 2, 3}); }));
-			return x;
-		}();
-
-		CHECK(opt == some(some(vector<int>{1, 2, 3})));
-	}
-	{
-		using std::vector;
-
-		STATIC_ASSERT_IF_14(
-				+meta::tombstone_traits<
-						Option<Option<vector<int>>>>::spare_representations == 252);
-
-		auto opt = [&] {
-			Option<Option<Option<vector<int>>>> x;
-			x.emplace(from_callable([&] {
-				return some(some(vector<int>{1, 2, 3}));
-			}));
-			return x;
-		}();
-
-		CHECK(opt == some(some(some(vector<int>{1, 2, 3}))));
-	}
-	{
-		using std::vector;
-
-		STATIC_ASSERT_IF_14(
-				+meta::tombstone_traits<
-						Option<Option<Option<vector<int>>>>>::spare_representations == 251);
-
-		auto opt = [&] {
-			Option<Option<Option<Option<vector<int>>>>> x;
-			x.emplace(from_callable([&] {
-				return some(some(some(vector<int>{1, 2, 3})));
-			}));
-			return x;
-		}();
-
-		CHECK(opt == some(some(some(some(vector<int>{1, 2, 3})))));
-	}
-
-	{
-		using std::vector;
-
-		STATIC_ASSERT_IF_14(
-				+meta::tombstone_traits<Option<vector<int>>>::spare_representations ==
-				253);
-
-		auto opt = [&] {
-			Option<Option<vector<int>>> x;
-			x.emplace(some(vector<int>{1, 2, 3}));
-			return x;
-		}();
-
-		CHECK(opt == some(some(vector<int>{1, 2, 3})));
-	}
-	{
-		using std::vector;
-
-		STATIC_ASSERT_IF_14(
-				+meta::tombstone_traits<
-						Option<Option<vector<int>>>>::spare_representations == 252);
-
-		auto opt = [&] {
-			Option<Option<Option<vector<int>>>> x;
-			x.emplace(some(some(vector<int>{1, 2, 3})));
-			return x;
-		}();
-
-		CHECK(opt == some(some(some(vector<int>{1, 2, 3}))));
-	}
-	{
-		using std::vector;
-
-		STATIC_ASSERT_IF_14(
-				+meta::tombstone_traits<
-						Option<Option<Option<vector<int>>>>>::spare_representations == 251);
-
-		auto opt = [&] {
-			Option<Option<Option<Option<vector<int>>>>> x;
-			x.emplace(some(some(some(vector<int>{1, 2, 3}))));
-			return x;
-		}();
-
-		CHECK(opt == some(some(some(some(vector<int>{1, 2, 3})))));
+		CHECK(opt == some(vector<int>{1, 2, 3, 4}));
+		CHECK(VEG_FWD(opt).map([](vector<int> v) {
+			v.push_back(5);
+			return v;
+		}) == some(vector<int>{1, 2, 3, 4, 5}));
 	}
 }
 #include "veg/internal/epilogue.hpp"

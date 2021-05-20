@@ -5,8 +5,6 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace VEG_ABI {
-
 namespace meta {
 template <typename T>
 struct is_bounded_array : false_type {};
@@ -30,7 +28,7 @@ struct array_get {
 	using result_type = decltype(VEG_DECLVAL(T &&)[I::value]);
 
 	template <usize I, typename T>
-	HEDLEY_ALWAYS_INLINE static constexpr auto apply(T&& arr) noexcept
+	VEG_INLINE static constexpr auto apply(T&& arr) VEG_NOEXCEPT
 			-> decltype(VEG_FWD(arr)[I]) {
 		return VEG_FWD(arr)[I];
 	}
@@ -40,7 +38,7 @@ struct member_get {
 	template <typename I, typename T>
 	using result_type = decltype(VEG_DECLVAL(T &&).template get<I::value>());
 	template <usize I, typename T>
-	HEDLEY_ALWAYS_INLINE static constexpr auto apply(T&& arg)
+	VEG_INLINE static constexpr auto apply(T&& arg)
 			VEG_DEDUCE_RET(VEG_FWD(arg).template get<I>());
 };
 struct adl_get {
@@ -48,7 +46,7 @@ struct adl_get {
 	using result_type = decltype(get<I::value>(VEG_DECLVAL(T &&)));
 
 	template <usize I, typename T>
-	HEDLEY_ALWAYS_INLINE static constexpr auto apply(T&& arg)
+	VEG_INLINE static constexpr auto apply(T&& arg)
 			VEG_DEDUCE_RET(get<I>(VEG_FWD(arg)));
 };
 
@@ -123,10 +121,10 @@ struct get {
 					 internal::meta_::has_adl_get<I, T>,
 					 internal::meta_::none_found>),
 			requires(VEG_CONCEPT(gettable<I, T>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator(),
 			(arg, T&&))
-	const noexcept(noexcept(Impl::template apply<I>(VEG_FWD(arg))))
+	const VEG_NOEXCEPT_IF(VEG_IS_NOEXCEPT(Impl::template apply<I>(VEG_FWD(arg))))
 			->meta::
 					detected_t<Impl::template result_type, meta::constant<usize, I>, T> {
 		return Impl::template apply<I>(VEG_FWD(arg));
@@ -135,7 +133,6 @@ struct get {
 } // namespace nb
 
 VEG_NIEBLOID_TEMPLATE(usize I, get, I);
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

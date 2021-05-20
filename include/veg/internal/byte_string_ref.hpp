@@ -9,11 +9,11 @@ namespace abi {
 inline namespace VEG_ABI_VERSION {
 namespace internal {
 struct ByteStringView {
-	HEDLEY_ALWAYS_INLINE constexpr ByteStringView(
-			char const* data, i64 len) noexcept
-			: data_{data}, len_{len} {}
+	VEG_INLINE constexpr ByteStringView(char const* data, i64 len)
+			VEG_ALWAYS_NOEXCEPT : data_{data},
+														len_{len} {}
 
-	ByteStringView(char const* str) noexcept;
+	ByteStringView(char const* str) VEG_ALWAYS_NOEXCEPT;
 
 	VEG_TEMPLATE(
 			typename T,
@@ -24,28 +24,27 @@ struct ByteStringView {
 					VEG_CONCEPT(
 							constructible<i64, decltype(VEG_DECLVAL(T const&).size())>)),
 
-			HEDLEY_ALWAYS_INLINE constexpr ByteStringView,
+			VEG_INLINE constexpr ByteStringView,
 			(arg, T const&))
-	noexcept
-			: ByteStringView{
-						static_cast<char const*>(arg.data()),
-						static_cast<i64>(arg.size())} {}
+	VEG_ALWAYS_NOEXCEPT : ByteStringView{
+														static_cast<char const*>(arg.data()),
+														static_cast<i64>(arg.size())} {}
 
 	char const* data_;
 	i64 len_;
 
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto data() const noexcept
+	VEG_NODISCARD VEG_INLINE constexpr auto data() const VEG_ALWAYS_NOEXCEPT
 			-> char const* {
 		return data_;
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto size() const noexcept
+	VEG_NODISCARD VEG_INLINE constexpr auto size() const VEG_ALWAYS_NOEXCEPT
 			-> i64 {
 		return len_;
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto
-	starts_with(ByteStringView other) const noexcept -> bool;
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto
-	operator==(ByteStringView other) const noexcept -> bool;
+	VEG_NODISCARD VEG_INLINE auto
+	starts_with(ByteStringView other) const VEG_ALWAYS_NOEXCEPT -> bool;
+	VEG_NODISCARD VEG_INLINE auto
+	operator==(ByteStringView other) const VEG_ALWAYS_NOEXCEPT -> bool;
 };
 template <typename T>
 struct byte_str_static_const {

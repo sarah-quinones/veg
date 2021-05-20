@@ -5,7 +5,6 @@
 #include "veg/internal/typedefs.hpp"
 
 namespace veg {
-inline namespace VEG_ABI {
 namespace internal {
 struct NoDefaultCtor {
 	NoDefaultCtor() = delete;
@@ -14,37 +13,36 @@ struct NoMoveAssign {
 	NoMoveAssign() = default;
 	~NoMoveAssign() = default;
 	NoMoveAssign(NoMoveAssign const&) = default;
-	NoMoveAssign(NoMoveAssign&&) noexcept = default;
+	NoMoveAssign(NoMoveAssign&&) = default;
 	auto operator=(NoMoveAssign const&) -> NoMoveAssign& = default;
-	auto operator=(NoMoveAssign&&) noexcept -> NoMoveAssign& = delete;
+	auto operator=(NoMoveAssign&&) -> NoMoveAssign& = delete;
 };
 struct NoCopyAssign {
 	NoCopyAssign() = default;
 	~NoCopyAssign() = default;
 	NoCopyAssign(NoCopyAssign const&) = default;
-	NoCopyAssign(NoCopyAssign&&) noexcept = default;
+	NoCopyAssign(NoCopyAssign&&) = default;
 	auto operator=(NoCopyAssign const&) -> NoCopyAssign& = delete;
-	auto operator=(NoCopyAssign&&) noexcept -> NoCopyAssign& = default;
+	auto operator=(NoCopyAssign&&) -> NoCopyAssign& = default;
 };
 struct NoMoveCtor {
 	NoMoveCtor() = default;
 	~NoMoveCtor() = default;
 	NoMoveCtor(NoMoveCtor const&) = default;
-	NoMoveCtor(NoMoveCtor&&) noexcept = delete;
+	NoMoveCtor(NoMoveCtor&&) = delete;
 	auto operator=(NoMoveCtor const&) -> NoMoveCtor& = default;
-	auto operator=(NoMoveCtor&&) noexcept -> NoMoveCtor& = default;
+	auto operator=(NoMoveCtor&&) -> NoMoveCtor& = default;
 };
 struct NoCopyCtor {
 	NoCopyCtor() = default;
 	~NoCopyCtor() = default;
 	NoCopyCtor(NoCopyCtor const&) = delete;
-	NoCopyCtor(NoCopyCtor&&) noexcept = default;
+	NoCopyCtor(NoCopyCtor&&) = default;
 	auto operator=(NoCopyCtor const&) -> NoCopyCtor& = default;
-	auto operator=(NoCopyCtor&&) noexcept -> NoCopyCtor& = default;
+	auto operator=(NoCopyCtor&&) -> NoCopyCtor& = default;
 };
 
 } // namespace internal
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

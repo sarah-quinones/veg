@@ -7,7 +7,6 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace VEG_ABI {
 namespace fn {
 template <typename Fn>
 struct CopyFn {
@@ -17,10 +16,10 @@ struct CopyFn {
 	VEG_TEMPLATE(
 			typename... Args,
 			requires(VEG_CONCEPT(invocable<Fn, Args&&...>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator(),
 			(... args, Args&&))
-	const noexcept(
+	const VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_copy_constructible<Fn>) &&
 			VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>))
 			->meta::invoke_result_t<Fn, Args&&...> {
@@ -34,17 +33,17 @@ struct copy_fn {
 			requires(
 					VEG_CONCEPT(constructible<Fn, Fn&&>) &&
 					VEG_CONCEPT(copy_constructible<Fn>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator(),
 			(fn, Fn&&))
-	const noexcept(VEG_CONCEPT(nothrow_move_constructible<Fn>))->CopyFn<Fn> {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<Fn>))
+			->CopyFn<Fn> {
 		return {Fn(VEG_FWD(fn))};
 	}
 };
 } // namespace nb
 VEG_NIEBLOID(copy_fn);
 } // namespace fn
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

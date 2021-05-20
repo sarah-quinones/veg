@@ -7,7 +7,6 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace VEG_ABI {
 namespace fn {
 template <typename... Fns>
 struct Compose;
@@ -15,7 +14,7 @@ struct Compose;
 template <>
 struct Compose<> {
 	template <typename T>
-	constexpr auto operator()(T&& arg) noexcept -> T&& {
+	constexpr auto operator()(T&& arg) VEG_NOEXCEPT -> T&& {
 		return VEG_FWD(arg);
 	}
 };
@@ -34,38 +33,24 @@ struct Compose<First, RestElems...> {
 							invocable<First, meta::invoke_result_t<Rest, Args&&...>>)),
 			constexpr auto
 			operator(),
-			(... args,
-	     Args&&)) && noexcept(noexcept(VEG_FWD(first)(VEG_FWD(rest)(VEG_FWD(args)...))))
-			-> meta::invoke_result_t<First, meta::invoke_result_t<Rest, Args&&...>> {
+			(... args, Args&&)) &&
+			VEG_NOEXCEPT_IF(VEG_IS_NOEXCEPT(
+					VEG_FWD(first)(VEG_FWD(rest)(VEG_FWD(args)...)))) -> meta::
+					invoke_result_t<First, meta::invoke_result_t<Rest, Args&&...>> {
 		return VEG_FWD(first)(VEG_FWD(rest)(VEG_FWD(args)...));
-	}
-
-	VEG_TEMPLATE(
-			(typename... Args),
-			requires(
-					VEG_CONCEPT(trivially_copy_constructible<First>) &&
-					VEG_ALL_OF(VEG_CONCEPT(trivially_copy_constructible<RestElems>)) &&
-					VEG_CONCEPT(invocable<Rest, Args&&...>) &&
-					VEG_CONCEPT(
-							invocable<First, meta::invoke_result_t<Rest, Args&&...>>)),
-			constexpr auto
-			operator(),
-			(... args, Args&&))
-	const& noexcept(noexcept(First(first)(Rest(rest)(VEG_FWD(args)...))))
-			->meta::invoke_result_t<First, meta::invoke_result_t<Rest, Args&&...>> {
-		return VEG_FWD(First(first))(VEG_FWD(Rest(rest))(VEG_FWD(args)...));
 	}
 };
 
 namespace nb {
-struct compose_fwd {
+struct compose {
 	VEG_TEMPLATE(
 			typename... Fns,
 			requires(VEG_ALL_OF(VEG_CONCEPT(move_constructible<Fns>))),
 			constexpr auto
 			operator(),
-			(... fns, Fns&&))
-	const noexcept(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Fns>)))
+			(... fns, Fns))
+	const VEG_NOEXCEPT_IF(
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Fns>)))
 			->Compose<Fns...> {
 #ifdef __clang__
 		HEDLEY_DIAGNOSTIC_PUSH
@@ -81,9 +66,8 @@ struct compose_fwd {
 	}
 }; // namespace nb
 } // namespace nb
-VEG_NIEBLOID(compose_fwd);
+VEG_NIEBLOID(compose);
 } // namespace fn
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

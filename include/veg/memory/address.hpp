@@ -16,7 +16,6 @@
 #endif
 
 namespace veg {
-inline namespace VEG_ABI {
 
 #if !(VEG_HAS_BUILTIN(__builtin_addressof) || __cplusplus >= 201703L)
 
@@ -27,7 +26,7 @@ struct member_addr {
 	using type = decltype(void(VEG_DECLVAL(T&).operator&()));
 
 	template <typename T>
-	HEDLEY_ALWAYS_INLINE static auto apply(T& var) noexcept -> T* {
+	VEG_INLINE static auto apply(T& var) VEG_NOEXCEPT -> T* {
 		using char_ref = char&;
 		return static_cast<T*>(static_cast<void*>(&char_ref(var)));
 	}
@@ -38,7 +37,7 @@ struct adl_addr : member_addr {
 };
 struct builtin_addr : meta::true_type {
 	template <typename T>
-	HEDLEY_ALWAYS_INLINE static constexpr auto apply(T& var) noexcept -> T* {
+	VEG_INLINE static constexpr auto apply(T& var) VEG_NOEXCEPT -> T* {
 		return &var;
 	}
 };
@@ -61,10 +60,10 @@ namespace mem {
 namespace nb {
 struct addressof {
 	template <typename T>
-	constexpr void operator()(T const&& var) const noexcept = delete;
+	constexpr void operator()(T const&& var) const VEG_NOEXCEPT = delete;
 
 	template <typename T>
-	HEDLEY_ALWAYS_INLINE constexpr auto operator()(T& var) const noexcept -> T* {
+	VEG_INLINE constexpr auto operator()(T& var) const VEG_NOEXCEPT -> T* {
 #if VEG_HAS_BUILTIN(__builtin_addressof)
 		return __builtin_addressof(var);
 #elif __cplusplus >= 201703L
@@ -77,7 +76,6 @@ struct addressof {
 } // namespace nb
 VEG_NIEBLOID(addressof);
 } // namespace mem
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

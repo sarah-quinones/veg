@@ -55,10 +55,15 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef VEG_INLINE
+#define VEG_INLINE HEDLEY_ALWAYS_INLINE
+#endif
+
 #define VEG_DECLVAL(...) (static_cast<__VA_ARGS__ (*)()>(nullptr)())
 #if defined(__cpp_concepts) && __cpp_concepts >= 201907L
 #define VEG_HAS_CONCEPTS 1
 #else
+#define VEG_HAS_CONCEPTS 0
 #endif
 
 #if __cplusplus >= 201703L
@@ -70,7 +75,9 @@
 #endif
 
 #define VEG_ARROW(...)                                                         \
-	noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) { return __VA_ARGS__; }
+	VEG_NOEXCEPT_IF(VEG_IS_NOEXCEPT((__VA_ARGS__)))->decltype(__VA_ARGS__) {     \
+		return __VA_ARGS__;                                                        \
+	}
 
 #define VEG_LIFT(...)                                                          \
 	[&](auto&&... args) VEG_ARROW((__VA_ARGS__)(VEG_FWD(args)...))
@@ -93,9 +100,14 @@
 			::veg::meta::bool_constant<(__VA_ARGS__)>...>::value
 #endif
 
+#define VEG_EVAL_ALL(...)                                                      \
+	((void)(::veg::internal::EmptyArr{                                           \
+			::veg::internal::Empty{},                                                \
+			((void)(__VA_ARGS__), ::veg::internal::Empty{})...}))
+
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef VEG_HAS_CONCEPTS
+#if VEG_HAS_CONCEPTS
 
 #define __VEG_IMPL_AND(_, Param) &&__VEG_PP_UNWRAP(Param)
 #define __VEG_IMPL_OR(_, Param) || __VEG_PP_UNWRAP(Param)
@@ -170,7 +182,7 @@
 			Tpl, Name, (__VA_ARGS__), ::veg::meta::bool_constant<__VA_ARGS__>);      \
 	VEG_TEMPLATE(                                                                \
 			Tpl, requires(__VA_ARGS__), constexpr auto check_##Name, (_ = 0, int))   \
-	noexcept->::veg::meta::true_type
+	VEG_NOEXCEPT->::veg::meta::true_type
 
 #define __VEG_IMPL_SFINAE(_, Param)                                            \
 	, ::veg::meta::enable_if_t<__VEG_PP_UNWRAP Param, int> = 0
@@ -179,8 +191,8 @@
 	template <                                                                   \
 			__VEG_PP_REMOVE_PAREN(__VEG_PP_TAIL Name_Tpl),                           \
 			::veg::meta::enable_if_t<__VEG_PP_UNWRAP Param, int> = 0>                \
-	auto __VEG_PP_CAT(                                                           \
-			check_, __VEG_PP_HEAD Name_Tpl)() noexcept->::veg::meta::true_type;
+	auto __VEG_PP_CAT(check_, __VEG_PP_HEAD Name_Tpl)()                          \
+			VEG_NOEXCEPT->::veg::meta::true_type;
 
 #define VEG_DEF_CONCEPT_BOOL_CONJUNCTION_IMPL(Tpl, Name, Base, Seq)            \
 	__VEG_IMPL_DEF_CONCEPT(                                                      \
@@ -190,7 +202,7 @@
 			__VEG_PP_REMOVE_PAREN1(Base));                                           \
 	template <__VEG_PP_REMOVE_PAREN(Tpl)                                         \
 	              __VEG_PP_TUPLE_FOR_EACH(__VEG_IMPL_SFINAE, _, Seq)>            \
-	auto check_##Name() noexcept->::veg::meta::true_type
+	auto check_##Name() VEG_NOEXCEPT->::veg::meta::true_type
 #define VEG_DEF_CONCEPT_BOOL_DISJUNCTION_IMPL(Tpl, Name, Base, Seq)            \
 	__VEG_IMPL_DEF_CONCEPT(                                                      \
 			Tpl,                                                                     \
@@ -232,7 +244,34 @@
 			__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint),                           \
 			__VA_ARGS__)
 
-#if defined(VEG_HAS_CONCEPTS) && defined(__cpp_conditional_explicit) &&        \
+#if VEG_HAS_CONCEPTS
+#define VEG_CONSTRAINED_MEMBER_FN(Constraint, Attr_Name, Params, ...)          \
+	Attr_Name __VEG_PP_TUPLE_TRANSFORM_I(__VEG_IMPL_PARAM_EXPAND, _, Params)     \
+			__VA_ARGS__ requires __VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint)
+
+#define VEG_TEMPLATE_CVT(TParams, Constraint, Attr, ...)                       \
+	template <__VEG_PP_REMOVE_PAREN(TParams)>                                    \
+	Constraint Attr operator __VA_ARGS__()
+#else
+#define VEG_CONSTRAINED_MEMBER_FN(Constraint, Attr_Name, Params, ...)          \
+	VEG_TEMPLATE(                                                                \
+			(int _ = 0),                                                             \
+			requires(                                                                \
+					__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint) &&                     \
+					::veg::meta::bool_constant<(_ == 0)>::value),                        \
+			Attr_Name,                                                               \
+			__VEG_PP_REMOVE_PAREN(Params))                                           \
+	__VA_ARGS__
+
+#define VEG_TEMPLATE_CVT(TParams, Constraint, Attr, ...)                       \
+	template <__VEG_PP_REMOVE_PAREN(TParams)>                                    \
+	Attr operator ::veg::internal::meta_::discard_1st<                           \
+			::veg::meta::enable_if_t<(                                               \
+					__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint))>,                     \
+			__VA_ARGS__>()
+#endif
+
+#if VEG_HAS_CONCEPTS && defined(__cpp_conditional_explicit) &&                 \
 		(__cpp_conditional_explicit >= 201806L)
 #define VEG_TEMPLATE_EXPLICIT(                                                 \
 		TParams, Constraint, Explicit_Cond, Attr_Name, Params, ...)                \
@@ -243,13 +282,12 @@
 			__VEG_PP_REMOVE_PAREN(Params))                                           \
 	__VA_ARGS__
 
-#define VEG_CONSTRAINED_MEMBER_FN(Constraint, Attr_Name, Params, ...)          \
-	Attr_Name __VEG_PP_TUPLE_TRANSFORM_I(__VEG_IMPL_PARAM_EXPAND, _, Params)     \
-			__VA_ARGS__ requires __VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint)
-
-#define VEG_TEMPLATE_CVT(TParams, Constraint, Attr, ...)                       \
+#define VEG_TEMPLATE_CVT_EXPLICIT(                                             \
+		TParams, Constraint, Explicit_Cond, Attr, Type, ...)                       \
 	template <__VEG_PP_REMOVE_PAREN(TParams)>                                    \
-	Constraint Attr operator __VA_ARGS__()
+	Constraint Explicit_Cond Attr operator __VEG_PP_REMOVE_PAREN(Type)()         \
+			__VA_ARGS__
+
 #else
 #define VEG_TEMPLATE_EXPLICIT(                                                 \
 		TParams, Constraint, Explicit_Cond, Attr_Name, Params, ...)                \
@@ -272,22 +310,27 @@
 			__VEG_PP_REMOVE_PAREN(Params))                                           \
 	__VA_ARGS__
 
-#define VEG_CONSTRAINED_MEMBER_FN(Constraint, Attr_Name, Params, ...)          \
-	VEG_TEMPLATE(                                                                \
-			(int _ = 0),                                                             \
-			requires(                                                                \
-					__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint) &&                     \
-					::veg::meta::bool_constant<(_ == 0)>::value),                        \
-			Attr_Name,                                                               \
-			__VEG_PP_REMOVE_PAREN(Params))                                           \
+#define VEG_TEMPLATE_CVT_EXPLICIT(                                             \
+		TParams, Constraint, Explicit_Cond, Attr, Type, ...)                       \
+	VEG_TEMPLATE_CVT(                                                            \
+			(__VEG_PP_REMOVE_PAREN TParams,                                          \
+	     ::veg::meta::enable_if_t<                                               \
+					 (__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Explicit_Cond)),                 \
+					 int> = 0),                                                          \
+			Constraint,                                                              \
+			explicit Attr,                                                           \
+			__VEG_PP_REMOVE_PAREN(Type))                                             \
+	__VA_ARGS__                                                                  \
+                                                                               \
+	VEG_TEMPLATE_CVT(                                                            \
+			(__VEG_PP_REMOVE_PAREN TParams,                                          \
+	     ::veg::meta::enable_if_t<                                               \
+					 !(__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Explicit_Cond)),                \
+					 unsigned> = 0),                                                     \
+			Constraint,                                                              \
+			Attr,                                                                    \
+			__VEG_PP_REMOVE_PAREN(Type))                                             \
 	__VA_ARGS__
-
-#define VEG_TEMPLATE_CVT(TParams, Constraint, Attr, ...)                       \
-	template <__VEG_PP_REMOVE_PAREN(TParams)>                                    \
-	Attr operator ::veg::internal::meta_::discard_1st<                           \
-			::veg::meta::enable_if_t<(                                               \
-					__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint))>,                     \
-			__VA_ARGS__>()
 #endif
 
 #define __VEG_IMPL_PREFIX_requires
@@ -295,7 +338,7 @@
 
 #define __VEG_IMPL_PARAM_EXPAND(I, _, Param)                                   \
 	__VEG_PP_TAIL Param __VEG_PP_HEAD Param
-#ifdef VEG_HAS_CONCEPTS
+#if VEG_HAS_CONCEPTS
 #define __VEG_IMPL_TEMPLATE(Attr_Name, TParams, Constraint, ...)               \
 	template <__VEG_PP_REMOVE_PAREN(TParams)>                                    \
 	requires Constraint Attr_Name __VEG_PP_TUPLE_TRANSFORM_I(                    \
@@ -376,7 +419,6 @@
 #define VEG_NOM_SEMICOLON static_assert(true, ".")
 
 namespace veg {
-inline namespace VEG_ABI {
 namespace internal {
 namespace meta_ {
 
@@ -417,7 +459,7 @@ struct unref<T&> {
 };
 
 template <typename T>
-auto declval() noexcept -> T;
+auto declval() VEG_ALWAYS_NOEXCEPT -> T;
 } // namespace meta_
 } // namespace internal
 
@@ -438,23 +480,24 @@ template <typename... Types, typename... Args>
 auto print_types_halt(Args&&...) -> incomplete_t<Types..., Args...>;
 template <typename... Types, typename... Args>
 VEG_DEPRECATED("")
-void print_types(Args&&... /*unused*/) {}
+VEG_CPP14(constexpr) void print_types(Args&&... /*unused*/) {}
 
 namespace nb {
 struct unused {
 	template <typename... Ts>
 	VEG_CPP14(constexpr)
-	void operator()(Ts const&... /*unused*/) const noexcept {}
+	void operator()(Ts const&... /*unused*/) const VEG_NOEXCEPT {}
 };
 } // namespace nb
 VEG_NIEBLOID(unused);
 
 namespace internal {
-constexpr auto all_of_slice(bool const* arr, i64 size) noexcept -> bool {
+constexpr auto all_of_slice(bool const* arr, i64 size) VEG_NOEXCEPT -> bool {
 	return size == 0 ? true
 	                 : (arr[0] && internal::all_of_slice(arr + 1, size - 1));
 }
-constexpr auto all_of(std::initializer_list<bool> lst) noexcept -> bool {
+VEG_CPP14(constexpr)
+auto all_of(std::initializer_list<bool> lst) VEG_NOEXCEPT -> bool {
 	return internal::all_of_slice(lst.begin(), static_cast<i64>(lst.size()));
 }
 } // namespace internal
@@ -466,7 +509,6 @@ template <typename T>
 using uncvref_t = typename internal::meta_::uncvlref<T&>::type;
 } // namespace meta
 using meta::uncvref_t;
-} // namespace VEG_ABI
 } // namespace veg
 
 #define VEG_CHECK_CONCEPT(...)                                                 \

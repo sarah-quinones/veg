@@ -36,23 +36,23 @@ namespace veg {
 namespace abi {
 inline namespace VEG_ABI_VERSION {
 namespace internal {
-void incr_counter() noexcept;
-void decr_counter() noexcept;
+void incr_counter() VEG_ALWAYS_NOEXCEPT;
+void decr_counter() VEG_ALWAYS_NOEXCEPT;
 
 [[noreturn]] void
 on_assert_fail(long line, ByteStringView file, ByteStringView func);
 void on_expect_fail(long line, ByteStringView file, ByteStringView func);
 void set_assert_params1(ByteStringView op, String lhs, String rhs);
-void set_assert_params2(ByteStringView expression, ByteStringView msg) noexcept;
+void set_assert_params2(ByteStringView expression, ByteStringView msg)
+		VEG_ALWAYS_NOEXCEPT;
 
 struct cleanup { // NOLINT(cppcoreguidelines-special-member-functions)
-	~cleanup() noexcept;
+	~cleanup() VEG_ALWAYS_NOEXCEPT;
 };
 } // namespace internal
 } // namespace VEG_ABI_VERSION
 } // namespace abi
 
-inline namespace VEG_ABI {
 namespace internal {
 namespace assert_ {
 
@@ -75,7 +75,7 @@ struct lhs_all_of_t {
 	T const& lhs;
 
 	template <typename U>
-	HEDLEY_ALWAYS_INLINE void
+	VEG_INLINE void
 	on_assertion_fail(U const& rhs, abi::internal::ByteStringView op_str) const {
 		abi::internal::set_assert_params1(
 				op_str, assert_::to_string(lhs), assert_::to_string(rhs));
@@ -115,7 +115,7 @@ struct lhs_all_of_t {
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(equality_comparable_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator==,
 			(rhs, U const&))
 	const->bool {
@@ -125,7 +125,7 @@ struct lhs_all_of_t {
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(equality_comparable_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator!=,
 			(rhs, U const&))
 	const->bool {
@@ -136,7 +136,7 @@ struct lhs_all_of_t {
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(synth_three_way_comparable_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator<,
 			(rhs, U const&))
 	const->bool {
@@ -148,7 +148,7 @@ struct lhs_all_of_t {
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(synth_three_way_comparable_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator>,
 			(rhs, U const&))
 	const->bool {
@@ -160,7 +160,7 @@ struct lhs_all_of_t {
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(synth_three_way_comparable_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator<=,
 			(rhs, U const&))
 	const->bool {
@@ -172,7 +172,7 @@ struct lhs_all_of_t {
 	VEG_TEMPLATE(
 			typename U,
 			requires(VEG_CONCEPT(synth_three_way_comparable_with<T, U>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator>=,
 			(rhs, U const&))
 	const->bool {
@@ -184,20 +184,19 @@ struct lhs_all_of_t {
 
 #undef VEG_DISABLE
 
-	HEDLEY_ALWAYS_INLINE explicit constexpr
+	VEG_INLINE explicit constexpr
 	operator bool() const { // NOLINT(hicpp-explicit-conversions)
 		return process_bool(static_cast<bool>(lhs));
 	}
 
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto process_bool(bool res) const
-			-> bool {
+	VEG_NODISCARD VEG_INLINE constexpr auto process_bool(bool res) const -> bool {
 		return (res ? void(0)
 		            : abi::internal::set_assert_params1(
 											abi::internal::empty_str, assert_::to_string(lhs), {})),
-					 res;
+		       res;
 	}
 	template <typename U>
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+	VEG_NODISCARD VEG_INLINE constexpr auto
 	process_op(bool res, U const& rhs, abi::internal::ByteStringView op) const
 			-> bool {
 		return (res ? void(0) : on_assertion_fail(rhs, op)), res;
@@ -206,7 +205,7 @@ struct lhs_all_of_t {
 
 struct decomposer {
 	template <typename T>
-	HEDLEY_ALWAYS_INLINE constexpr auto operator<<(T const& lhs) const noexcept
+	VEG_INLINE constexpr auto operator<<(T const& lhs) const VEG_NOEXCEPT
 			-> lhs_all_of_t<T> {
 		return {lhs};
 	}
@@ -314,7 +313,6 @@ struct decomposer {
 
 } // namespace assert_
 } // namespace internal
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

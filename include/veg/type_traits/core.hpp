@@ -1,13 +1,36 @@
 #ifndef VEG_CORE_HPP_GJCBNFLAS
 #define VEG_CORE_HPP_GJCBNFLAS
 
-#include "veg/internal/macros.hpp"
 #include "veg/internal/typedefs.hpp"
 #include "veg/internal/integer_seq.hpp"
 #include "veg/internal/prologue.hpp"
 
+#if __cplusplus >= 202002L && !VEG_HAS_BUILTIN(__builtin_is_constant_evaluated)
+#include <type_traits>
+#define VEG_HAS_CONSTEVAL 1
+#define VEG_IS_CONSTEVAL() ::std::is_constant_evaluated()
+#elif VEG_HAS_BUILTIN(__builtin_is_constant_evaluated)
+#define VEG_HAS_CONSTEVAL 1
+#define VEG_IS_CONSTEVAL() __builtin_is_constant_evaluated()
+#else
+#define VEG_HAS_CONSTEVAL 0
+#endif
+
 namespace veg {
-inline namespace VEG_ABI {
+namespace meta {
+namespace nb {
+struct is_consteval {
+	constexpr auto operator()() const noexcept -> bool {
+#if VEG_HAS_CONSTEVAL
+		return VEG_IS_CONSTEVAL();
+#else
+		return true;
+#endif
+	}
+};
+} // namespace nb
+VEG_NIEBLOID(is_consteval);
+} // namespace meta
 
 namespace internal {
 namespace meta_ {
@@ -33,6 +56,11 @@ template <template <typename...> class F, typename... Ts>
 struct meta_apply {
 	using type = F<Ts...>;
 };
+template <template <typename...> class F>
+struct apply_wrapper {
+	template <typename... Ts>
+	using type = F<Ts...>;
+};
 template <typename T>
 struct type_identity {
 	using type = T;
@@ -41,38 +69,6 @@ struct type_identity {
 template <bool B, typename T, typename F>
 using conditional_t =
 		typename internal::meta_::conditional_<B>::template type<T, F>;
-
-template <typename T, T Value>
-struct constant {
-	static constexpr T value = Value;
-};
-template <typename T, T Value>
-constexpr T constant<T, Value>::value;
-
-template <bool B>
-using bool_constant = constant<bool, B>;
-
-using true_type = bool_constant<true>;
-using false_type = bool_constant<false>;
-
-template <typename Seq, typename... Bs>
-struct and_test : false_type {};
-template <typename Seq, typename... Bs>
-struct or_test : true_type {};
-
-template <usize Is, typename T>
-using indexed = T;
-
-template <typename... Ts>
-struct pack_size {
-	static constexpr usize value = sizeof...(Ts);
-};
-template <usize... Is>
-struct and_test<index_sequence<Is...>, indexed<Is, true_type>...> : true_type {
-};
-template <usize... Is>
-struct or_test<index_sequence<Is...>, indexed<Is, false_type>...> : false_type {
-};
 
 template <typename...>
 using void_t = void;
@@ -94,7 +90,6 @@ struct disjunction<First, Preds...>
 template <typename First, typename... Preds>
 struct conjunction<First, Preds...>
 		: conditional_t<First::value, conjunction<Preds...>, First> {};
-
 } // namespace meta
 
 namespace internal {
@@ -179,10 +174,11 @@ struct is_const : false_type {};
 template <typename T>
 struct is_const<T const> : true_type {};
 
-template <typename T, bool = true>
+template <typename T, typename = true_type>
 struct is_complete : false_type {};
 template <typename T>
-struct is_complete<T, sizeof(T) == sizeof(T) /* NOLINT */> : true_type {};
+struct is_complete<T, bool_constant<sizeof(T) == sizeof(T)> /* NOLINT */>
+		: true_type {};
 
 } // namespace meta_
 } // namespace internal
@@ -249,6 +245,7 @@ VEG_DEF_CONCEPT(typename T, complete, internal::meta_::is_complete<T>::value);
 } // namespace concepts
 
 namespace meta {
+
 template <typename T>
 using unref_t = typename internal::meta_::unref<T&>::type;
 template <typename T>
@@ -263,10 +260,17 @@ using detected_or_t = typename meta::conditional_t<
 template <template <typename...> class Op, typename... Args>
 using detected_t = detected_or_t<internal::meta_::none, Op, Args...>;
 
+#ifdef __clang__
+template <template <typename...> class Op, typename... Args>
+using detected_return_t = Op<Args...>;
+#else
+template <template <typename...> class Op, typename... Args>
+using detected_return_t = detected_or_t<internal::meta_::none, Op, Args...>;
+#endif
+
 template <typename T>
 using decay_t = typename internal::meta_::decay_helper<uncvref_t<T>>::type;
 } // namespace meta
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

@@ -67,7 +67,7 @@ macro(add_all_tests_std_version std_version)
   target_link_libraries(veg.${std_version} veg.all)
   set_cxx_version(veg.${std_version} ${std_version})
   target_compile_definitions(
-    veg.${std_version} PUBLIC -DVEG_INTERNAL_ASSERTIONS
+    veg.${std_version} PUBLIC -D__VEG_INTERNAL_ASSERTIONS
   )
 
   add_test_std_version(${std_version} idx src/test_index.cpp)

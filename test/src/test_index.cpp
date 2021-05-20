@@ -1,7 +1,9 @@
-#include "assert_death.hpp"
+#define __VEG_DISABLE_NOEXCEPT
+
 #include <veg/util/index.hpp>
 #include <ostream>
 #include <doctest.h>
+#include <veg/internal/prologue.hpp>
 
 TEST_CASE("index: all") {
 	using namespace veg;
@@ -29,10 +31,11 @@ TEST_CASE("index: all") {
 	CHECK(!Boolean<maybe>());
 	CHECK(!Boolean<no>());
 	CHECK(Boolean<yes>());
-	CHECK_DEATH({ Fix<2>{3}; });
-	CHECK_DEATH({ void(2_c / 0_v); });
+	CHECK_THROWS(Fix<2>{3});
+	CHECK_THROWS(void(2_c / 0_v));
 
 	VEG_ASSERT(0_v < 2_c);
-	CHECK_DEATH({ VEG_ASSERT(0_v > 2_c); });
-	CHECK_DEATH({ VEG_ASSERT(0_v == 2_c); });
+	CHECK_THROWS(VEG_INTERNAL_ASSERT_PRECONDITION(0_v > 2_c));
+	CHECK_THROWS(VEG_INTERNAL_ASSERT_PRECONDITION(0_v == 2_c));
 }
+#include <veg/internal/epilogue.hpp>

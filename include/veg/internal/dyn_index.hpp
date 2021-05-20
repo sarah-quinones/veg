@@ -7,7 +7,6 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace VEG_ABI {
 
 template <ternary_e T>
 struct Boolean;
@@ -16,21 +15,19 @@ template <>
 struct Boolean<maybe> {
 	using type = maybe_c;
 
-	constexpr Boolean /* NOLINT(hicpp-explicit-conversions) */ (
-			bool _val = false) noexcept
-			: val{_val} {}
+	constexpr Boolean /* NOLINT(hicpp-explicit-conversions) */ (bool _val = false)
+			VEG_NOEXCEPT : val{_val} {}
 	template <ternary_e T>
-	HEDLEY_ALWAYS_INLINE constexpr Boolean /* NOLINT(hicpp-explicit-conversions)
-	                                        */
-			(Boolean<T> /*arg*/, Safe /*tag*/ = {}) noexcept
-			: val(T == yes) {}
+	VEG_INLINE constexpr Boolean /* NOLINT(hicpp-explicit-conversions)
+	                              */
+			(Boolean<T> /*arg*/, Safe /*tag*/ = {}) VEG_NOEXCEPT : val(T == yes) {}
 
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr friend auto
-	operator!(Boolean arg) noexcept -> Boolean {
+	VEG_NODISCARD VEG_INLINE constexpr friend auto
+	operator!(Boolean arg) VEG_NOEXCEPT -> Boolean {
 		return {!arg.val};
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE explicit constexpr
-	operator bool() const noexcept {
+	VEG_NODISCARD VEG_INLINE explicit constexpr
+	operator bool() const VEG_NOEXCEPT {
 		return val;
 	}
 
@@ -39,22 +36,21 @@ private:
 };
 
 struct Dyn {
-	constexpr Dyn /* NOLINT(hicpp-explicit-conversions) */ (i64 val = 0) noexcept
-			: m_val(val) {}
+	constexpr Dyn /* NOLINT(hicpp-explicit-conversions) */ (i64 val = 0)
+			VEG_NOEXCEPT : m_val(val) {}
 	template <i64 N>
-	constexpr Dyn /* NOLINT(hicpp-explicit-conversions) */ (
-			Fix<N> /*arg*/) noexcept
-			: m_val(N) {}
+	constexpr Dyn /* NOLINT(hicpp-explicit-conversions) */ (Fix<N> /*arg*/)
+			VEG_NOEXCEPT : m_val(N) {}
 
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE explicit constexpr
-	operator i64() const noexcept {
+	VEG_NODISCARD VEG_INLINE explicit constexpr
+	operator i64() const VEG_NOEXCEPT {
 		return m_val;
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto operator+() const noexcept
+	VEG_NODISCARD VEG_INLINE constexpr auto operator+() const VEG_NOEXCEPT
 			-> Dyn {
 		return *this;
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto operator-() const noexcept
+	VEG_NODISCARD VEG_INLINE constexpr auto operator-() const VEG_NOEXCEPT
 			-> Dyn {
 		return Dyn{-m_val};
 	}
@@ -62,7 +58,7 @@ struct Dyn {
 	VEG_TEMPLATE(
 			(typename R),
 			requires(VEG_CONCEPT(index<R>)),
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator+,
 			(b, R))
 	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::add_fn(*this, b));
@@ -70,7 +66,7 @@ struct Dyn {
 	VEG_TEMPLATE(
 			(typename R),
 			requires(VEG_CONCEPT(index<R>)),
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator-,
 			(b, R))
 	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::sub_fn(*this, b));
@@ -78,7 +74,7 @@ struct Dyn {
 	VEG_TEMPLATE(
 			(typename R),
 			requires(VEG_CONCEPT(index<R>)),
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator*,
 			(b, R))
 	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::mul_fn(*this, b));
@@ -88,7 +84,7 @@ struct Dyn {
 			requires(
 					VEG_CONCEPT(index<R>) &&
 					VEG_CONCEPT(index<typename internal::binary_traits<Dyn, R>::div>)),
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator/,
 			(b, R))
 	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::div_fn(*this, b));
@@ -98,7 +94,7 @@ struct Dyn {
 			requires(
 					VEG_CONCEPT(index<R>) &&
 					VEG_CONCEPT(index<typename internal::binary_traits<Dyn, R>::mod>)),
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator%,
 			(b, R))
 	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::mod_fn(*this, b));
@@ -107,10 +103,11 @@ struct Dyn {
 	VEG_TEMPLATE(                                                                \
 			(typename R),                                                            \
 			requires(VEG_CONCEPT(index<R>)),                                         \
-			VEG_NODISCARD HEDLEY_ALWAYS_INLINE constexpr auto                        \
+			VEG_NODISCARD VEG_INLINE constexpr auto                                  \
 			operator Op,                                                             \
 			(b, R))                                                                  \
-	VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::cmp_##Name##_fn(*this, b))
+	const VEG_DEDUCE_RET(                                                        \
+			internal::binary_traits<Dyn, R>::cmp_##Name##_fn(*this, b))
 
 	VEG_CMP(eq, ==);
 	VEG_CMP(neq, !=);
@@ -125,21 +122,21 @@ private:
 };
 
 template <ternary_e T>
-HEDLEY_ALWAYS_INLINE constexpr Boolean<T>::Boolean(
-		Boolean<maybe> /*b*/, Unsafe /*tag*/) noexcept {}
+VEG_INLINE constexpr Boolean<T>::Boolean(Boolean<maybe> /*b*/, Unsafe /*tag*/)
+		VEG_NOEXCEPT {}
 template <ternary_e T>
-HEDLEY_ALWAYS_INLINE constexpr Boolean<
-		T>::Boolean // NOLINT(hicpp-explicit-conversions)
-		(Boolean<maybe> b, Safe /*tag*/) noexcept
-		: Boolean(((void)VEG_ASSERT(b.val == (T == yes)), b), unsafe) {}
+VEG_INLINE constexpr Boolean<T>::Boolean // NOLINT(hicpp-explicit-conversions)
+		(Boolean<maybe> b, Safe /*tag*/) VEG_NOEXCEPT
+		: Boolean(
+					((void)VEG_INTERNAL_ASSERT_PRECONDITION(b.val == (T == yes)), b),
+					unsafe) {}
 
 template <i64 N>
-HEDLEY_ALWAYS_INLINE constexpr Fix<N>::Fix(
-		Dyn /*arg*/, Unsafe /*tag*/) noexcept {}
+VEG_INLINE constexpr Fix<N>::Fix(Dyn /*arg*/, Unsafe /*tag*/) VEG_NOEXCEPT {}
 template <i64 N>
-HEDLEY_ALWAYS_INLINE constexpr Fix<N>::Fix // NOLINT(hicpp-explicit-conversions)
-		(Dyn arg, Safe /*tag*/) noexcept
-		: Fix((VEG_ASSERT(i64(arg) == N), arg), unsafe) {}
+VEG_INLINE constexpr Fix<N>::Fix // NOLINT(hicpp-explicit-conversions)
+		(Dyn arg, Safe /*tag*/) VEG_NOEXCEPT
+		: Fix((VEG_INTERNAL_ASSERT_PRECONDITION(i64(arg) == N), arg), unsafe) {}
 
 namespace internal {
 
@@ -147,16 +144,16 @@ template <>
 struct binary_traits<Dyn, Dyn> {
 #define VEG_OP(Name, Op)                                                       \
 	using Name /* NOLINT(bugprone-macro-parentheses) */ = Dyn;                   \
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE static constexpr auto Name##_fn(          \
-			Dyn a, Dyn b) noexcept->Name {                                           \
+	VEG_NODISCARD VEG_INLINE static constexpr auto Name##_fn(Dyn a, Dyn b)       \
+			VEG_NOEXCEPT->Name {                                                     \
 		return {i64(a) Op i64(b)};                                                 \
 	}                                                                            \
 	static_assert(true, "")
 
 #define VEG_CMP(Name, Op)                                                      \
 	using Name /* NOLINT(bugprone-macro-parentheses) */ = Boolean<maybe>;        \
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE static constexpr auto Name##_fn(          \
-			Dyn a, Dyn b) noexcept->Name {                                           \
+	VEG_NODISCARD VEG_INLINE static constexpr auto Name##_fn(Dyn a, Dyn b)       \
+			VEG_NOEXCEPT->Name {                                                     \
 		return (i64(a) Op i64(b));                                                 \
 	}                                                                            \
 	static_assert(true, "")
@@ -174,12 +171,12 @@ struct binary_traits<Dyn, Dyn> {
 	using div = Dyn;
 	using mod = Dyn;
 
-	VEG_NODISCARD static constexpr auto div_fn(Dyn a, Dyn b) noexcept -> div {
-		return VEG_ASSERT(i64(b) != i64(0)), i64(a) / i64(b);
+	VEG_NODISCARD static constexpr auto div_fn(Dyn a, Dyn b) VEG_NOEXCEPT -> div {
+		return VEG_INTERNAL_ASSERT_PRECONDITION(i64(b) != i64(0)), i64(a) / i64(b);
 	}
-	VEG_NODISCARD static constexpr auto mod_fn(Dyn a, Dyn b) noexcept -> mod {
+	VEG_NODISCARD static constexpr auto mod_fn(Dyn a, Dyn b) VEG_NOEXCEPT -> mod {
 
-		return VEG_ASSERT(i64(b) != i64(0)), i64(a) % i64(b);
+		return VEG_INTERNAL_ASSERT_PRECONDITION(i64(b) != i64(0)), i64(a) % i64(b);
 	}
 
 #undef VEG_OP
@@ -193,8 +190,8 @@ template <>
 struct binary_traits<Fix<0>, Dyn> : binary_traits<Dyn, Dyn> {
 	using mul = Fix<0>;
 	VEG_NODISCARD
-	constexpr HEDLEY_ALWAYS_INLINE static auto
-	mul_fn(Fix<0> /*a*/, Dyn /*b*/) noexcept -> mul {
+	constexpr VEG_INLINE static auto mul_fn(Fix<0> /*a*/, Dyn /*b*/) VEG_NOEXCEPT
+			-> mul {
 		return {};
 	}
 };
@@ -202,20 +199,20 @@ struct binary_traits<Fix<0>, Dyn> : binary_traits<Dyn, Dyn> {
 template <i64 N>
 struct binary_traits<Dyn, Fix<N>> : binary_traits<Dyn, Dyn> {
 	using mul = typename binary_traits<Fix<N>, Dyn>::mul;
-	HEDLEY_ALWAYS_INLINE static constexpr auto
-	mul_fn(Dyn a, Fix<N> /*b*/) noexcept -> mul {
+	VEG_INLINE static constexpr auto mul_fn(Dyn a, Fix<N> /*b*/) VEG_NOEXCEPT
+			-> mul {
 		return binary_traits<Fix<N>, Dyn>::mul_fn({}, a);
 	}
 
 	using div = meta::conditional_t<N == 0, void, Dyn>;
 	using mod = meta::conditional_t<N == 0, void, Dyn>;
 
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE static constexpr auto
-	div_fn(Dyn a, Fix<N> /*b*/) noexcept -> div {
+	VEG_NODISCARD VEG_INLINE static constexpr auto
+	div_fn(Dyn a, Fix<N> /*b*/) VEG_NOEXCEPT -> div {
 		return div(i64(a) / N);
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE static constexpr auto
-	mod_fn(Dyn a, Fix<N> /*b*/) noexcept -> mod {
+	VEG_NODISCARD VEG_INLINE static constexpr auto
+	mod_fn(Dyn a, Fix<N> /*b*/) VEG_NOEXCEPT -> mod {
 		return mod(i64(a) % N);
 	}
 };
@@ -223,7 +220,7 @@ struct binary_traits<Dyn, Fix<N>> : binary_traits<Dyn, Dyn> {
 } // namespace internal
 
 inline namespace literals {
-HEDLEY_ALWAYS_INLINE constexpr auto operator"" _v(unsigned long long n) noexcept
+VEG_INLINE constexpr auto operator"" _v(unsigned long long n) VEG_NOEXCEPT
 		-> Dyn {
 	return nb::narrow<i64>{}(n);
 }
@@ -248,7 +245,6 @@ struct Debug<Dyn> {
 	}
 };
 } // namespace fmt
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

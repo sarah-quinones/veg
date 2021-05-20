@@ -7,22 +7,21 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace VEG_ABI {
 namespace fn {
 
 template <typename Fn, typename... StoredArgs>
 struct Curried {
 	Fn fn;
-	veg::internal::SimpleTuple<StoredArgs...> stored_args;
+	Tuple<StoredArgs...> stored_args;
 
 	VEG_TEMPLATE(
 			typename... Args,
 			requires(
 					VEG_CONCEPT(move_constructible<Fn>) &&
 					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
-			HEDLEY_ALWAYS_INLINE constexpr auto push_fwd,
+			VEG_INLINE constexpr auto push_fwd,
 			(... args, Args&&))
-	&&noexcept(
+	&&VEG_NOEXCEPT_IF(
 				VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
 				VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
 				->Curried<Fn, Args..., StoredArgs...> {
@@ -32,11 +31,12 @@ struct Curried {
 	VEG_TEMPLATE(
 			typename... Args,
 			requires(VEG_CONCEPT(invocable<Fn, Args&&..., StoredArgs&&...>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator(),
-			(... args,
-	     Args&&)) && noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args&&..., StoredArgs&&...>))
-			-> meta::invoke_result_t<Fn, Args&&..., StoredArgs&&...> {
+			(... args, Args&&)) &&
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_invocable<Fn, Args&&..., StoredArgs&&...>))
+					-> meta::invoke_result_t<Fn, Args&&..., StoredArgs&&...> {
 		return Curried::template call<
 				(VEG_CONCEPT(nothrow_invocable<Fn, Args&&..., StoredArgs&&...>)),
 				meta::invoke_result_t<Fn, Args&&..., StoredArgs&&...>>(
@@ -51,10 +51,10 @@ struct Curried {
 					VEG_CONCEPT(trivially_copy_constructible<Fn>) &&
 					VEG_ALL_OF(VEG_CONCEPT(trivially_copy_constructible<StoredArgs>)) &&
 					VEG_CONCEPT(invocable<Fn, Args&&..., StoredArgs&&...>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator(),
 			(... args, Args&&))
-	const& noexcept(
+	const& VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_invocable<Fn, Args&&..., StoredArgs&&...>))
 			->meta::invoke_result_t<Fn, Args&&..., StoredArgs&&...> {
 		return static_cast<Curried>(*this)(VEG_FWD(args)...);
@@ -67,29 +67,26 @@ private:
 			typename Self,
 			typename... Args,
 			usize... Is>
-	HEDLEY_ALWAYS_INLINE static constexpr auto call(
-			meta::index_sequence<Is...> /*iseq*/,
-			Self&& self,
-			Args&&... args) noexcept(NoExcept) -> Ret {
-		return (VEG_FWD(self).fn)(
-				VEG_FWD(args)...,
-				static_cast<StoredArgs&&>(
-						internal::tup_::get_impl<Is>(self.stored_args))...);
+	VEG_INLINE static constexpr auto
+	call(meta::index_sequence<Is...> /*iseq*/, Self&& self, Args&&... args)
+			VEG_NOEXCEPT_IF(NoExcept) -> Ret {
+		return (
+				VEG_FWD(self)
+						.fn)(VEG_FWD(args)..., static_cast<StoredArgs&&>(internal::tup_::get_impl<Is>(self.stored_args))...);
 	}
 
 	template <typename... Args, usize... Is, typename... Ts>
-	HEDLEY_ALWAYS_INLINE constexpr auto push_fwd_impl(
-			Args&&... args,
-			internal::tup_::IndexedTuple<meta::index_sequence<Is...>, Ts...>&&
-					stored) //
-			&& noexcept(
-					VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
-					VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
-					-> Curried<Fn, Args..., StoredArgs...> {
+			VEG_INLINE constexpr auto push_fwd_impl(
+					Args&&... args,
+					internal::tup_::IndexedTuple<meta::index_sequence<Is...>, Ts...>&&
+							stored) //
+			&& VEG_NOEXCEPT_IF(
+						 VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
+						 VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
+						 -> Curried<Fn, Args..., StoredArgs...> {
 		return {
 				VEG_FWD(fn),
-				{Cvt{},
-		     VEG_FWD(args)...,
+				{VEG_FWD(args)...,
 		     static_cast<Ts&&>(internal::tup_::get_impl<Is>(stored))...}};
 	}
 };
@@ -97,16 +94,16 @@ private:
 template <typename Fn, typename... StoredArgs>
 struct RCurried {
 	Fn fn;
-	veg::internal::SimpleTuple<StoredArgs...> stored_args;
+	Tuple<StoredArgs...> stored_args;
 
 	VEG_TEMPLATE(
 			typename... Args,
 			requires(
 					VEG_CONCEPT(move_constructible<Fn>) &&
 					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
-			HEDLEY_ALWAYS_INLINE constexpr auto push_fwd,
+			VEG_INLINE constexpr auto push_fwd,
 			(... args, Args&&))
-	&&noexcept(
+	&&VEG_NOEXCEPT_IF(
 				VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
 				VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
 				->RCurried<Fn, Args..., StoredArgs...> {
@@ -116,11 +113,12 @@ struct RCurried {
 	VEG_TEMPLATE(
 			typename... Args,
 			requires(VEG_CONCEPT(invocable<Fn, StoredArgs&&..., Args&&...>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator(),
-			(... args,
-	     Args&&)) && noexcept(VEG_CONCEPT(nothrow_invocable<Fn, StoredArgs&&..., Args&&...>))
-			-> meta::invoke_result_t<Fn, StoredArgs&&..., Args&&...> {
+			(... args, Args&&)) &&
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_invocable<Fn, StoredArgs&&..., Args&&...>))
+					-> meta::invoke_result_t<Fn, StoredArgs&&..., Args&&...> {
 		return RCurried::template call<
 				(VEG_CONCEPT(nothrow_invocable<Fn, StoredArgs&&..., Args&&...>)),
 				meta::invoke_result_t<Fn, StoredArgs&&..., Args&&...>>(
@@ -135,12 +133,12 @@ struct RCurried {
 					VEG_CONCEPT(trivially_copy_constructible<Fn>) &&
 					VEG_ALL_OF(VEG_CONCEPT(trivially_copy_constructible<StoredArgs>)) &&
 					VEG_CONCEPT(invocable<Fn, StoredArgs&&..., Args&&...>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator(),
 			(... args, Args&&))
-	const& noexcept(
+	const& VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_invocable<Fn, StoredArgs&&..., Args&&...>))
-			-> meta::invoke_result_t<Fn, StoredArgs&&..., Args&&...> {
+			->meta::invoke_result_t<Fn, StoredArgs&&..., Args&&...> {
 		return static_cast<RCurried>(*this)(VEG_FWD(args)...);
 	}
 
@@ -151,29 +149,26 @@ private:
 			typename Self,
 			typename... Args,
 			usize... Is>
-	HEDLEY_ALWAYS_INLINE static constexpr auto call(
-			meta::index_sequence<Is...> /*iseq*/,
-			Self&& self,
-			Args&&... args) noexcept(NoExcept) -> Ret {
-		return (VEG_FWD(self).fn)(
-				static_cast<StoredArgs&&>(
-						internal::tup_::get_impl<Is>(self.stored_args))...,
-				VEG_FWD(args)...);
+	VEG_INLINE static constexpr auto
+	call(meta::index_sequence<Is...> /*iseq*/, Self&& self, Args&&... args)
+			VEG_NOEXCEPT_IF(NoExcept) -> Ret {
+		return (
+				VEG_FWD(self)
+						.fn)(static_cast<StoredArgs&&>(internal::tup_::get_impl<Is>(self.stored_args))..., VEG_FWD(args)...);
 	}
 
 	template <typename... Args, usize... Is, typename... Ts>
-	HEDLEY_ALWAYS_INLINE constexpr auto push_fwd_impl(
-			Args&&... args,
-			internal::tup_::IndexedTuple<meta::index_sequence<Is...>, Ts...>&&
-					stored) //
-			&& noexcept(
-					VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
-					VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
-					-> RCurried<Fn, Args..., StoredArgs...> {
+			VEG_INLINE constexpr auto push_fwd_impl(
+					Args&&... args,
+					internal::tup_::IndexedTuple<meta::index_sequence<Is...>, Ts...>&&
+							stored) //
+			&& VEG_NOEXCEPT_IF(
+						 VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
+						 VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
+						 -> RCurried<Fn, Args..., StoredArgs...> {
 		return {
 				VEG_FWD(fn),
-				{Cvt{},
-		     VEG_FWD(args)...,
+				{VEG_FWD(args)...,
 		     static_cast<Ts&&>(internal::tup_::get_impl<Is>(stored))...}};
 	}
 };
@@ -185,15 +180,15 @@ struct curry_fwd {
 			requires(
 					VEG_CONCEPT(move_constructible<Fn>) &&
 					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator(),
 			(fn, Fn&&),
 			(... args, Args&&))
-	const noexcept(
+	const VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
 			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
 			->Curried<Fn, Args...> {
-		return {VEG_FWD(fn), {Cvt{}, VEG_FWD(args)...}};
+		return {VEG_FWD(fn), {VEG_FWD(args)...}};
 	}
 };
 
@@ -203,22 +198,21 @@ struct rcurry_fwd {
 			requires(
 					VEG_CONCEPT(move_constructible<Fn>) &&
 					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator(),
 			(fn, Fn&&),
 			(... args, Args&&))
-	const noexcept(
+	const VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
 			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
 			->RCurried<Fn, Args...> {
-		return {VEG_FWD(fn), {Cvt{}, VEG_FWD(args)...}};
+		return {VEG_FWD(fn), {VEG_FWD(args)...}};
 	}
 };
 } // namespace nb
 VEG_NIEBLOID(curry_fwd);
 VEG_NIEBLOID(rcurry_fwd);
 } // namespace fn
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

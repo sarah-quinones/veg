@@ -9,7 +9,6 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace VEG_ABI {
 inline namespace tags {
 struct FromSlice {};
 VEG_INLINE_VAR(from_slice, FromSlice);
@@ -21,7 +20,7 @@ struct Vec;
 namespace internal {
 namespace vec_ {
 
-constexpr auto size_hint(i64 cap, i64 new_cap) noexcept -> i64 {
+constexpr auto size_hint(i64 cap, i64 new_cap) VEG_NOEXCEPT -> i64 {
 	return new_cap > (2 * cap) ? new_cap : 2 * cap;
 }
 
@@ -29,8 +28,8 @@ template <typename T>
 struct VecBase {
 
 private:
-	HEDLEY_ALWAYS_INLINE
-	auto _self() noexcept -> Vec<T>& { return static_cast<Vec<T>&>(*this); }
+	VEG_INLINE
+	auto _self() VEG_NOEXCEPT -> Vec<T>& { return static_cast<Vec<T>&>(*this); }
 
 public:
 	struct raw_parts {
@@ -40,9 +39,9 @@ public:
 	};
 	raw_parts self = {};
 
-	VEG_CPP14(constexpr) VecBase() noexcept = default;
+	VEG_CPP14(constexpr) VecBase() VEG_NOEXCEPT = default;
 
-	VecBase(FromSlice /*tag*/, Slice<T const> slice) noexcept(false)
+	VecBase(FromSlice /*tag*/, Slice<T const> slice) VEG_NOEXCEPT_IF(false)
 			: VecBase{
 						from_raw_parts,
 						raw_parts{
@@ -56,32 +55,32 @@ public:
 		self.len = nb::narrow<usize>{}(slice.size());
 	}
 
-	HEDLEY_ALWAYS_INLINE
-	VecBase(VecBase const& other) noexcept(false)
+	VEG_INLINE
+	VecBase(VecBase const& other) VEG_NOEXCEPT_IF(false)
 			: VecBase{
 						from_slice,
 						Slice<T const>{other.self.begin, i64(other.self.len), unsafe}} {}
 
-	HEDLEY_ALWAYS_INLINE
-	VecBase(VecBase&& other) noexcept : self{other.self} { other.self = {}; }
+	VEG_INLINE
+	VecBase(VecBase&& other) VEG_NOEXCEPT : self{other.self} { other.self = {}; }
 
-	HEDLEY_ALWAYS_INLINE
-	VecBase(FromRawParts /*tag*/, raw_parts parts, Unsafe /*tag*/) noexcept
+	VEG_INLINE
+	VecBase(FromRawParts /*tag*/, raw_parts parts, Unsafe /*tag*/) VEG_NOEXCEPT
 			: self{parts} {}
 
-	HEDLEY_ALWAYS_INLINE
+	VEG_INLINE
 	~VecBase() { this->_destroy(); }
 
-	HEDLEY_ALWAYS_INLINE
-	auto operator=(VecBase const& rhs) & noexcept(false) -> VecBase& {
+	VEG_INLINE
+	auto operator=(VecBase const& rhs) & VEG_NOEXCEPT_IF(false) -> VecBase& {
 		if (this == addressof(rhs)) {
 			return *this;
 		}
 		_self() = Slice<T const>{rhs.self.begin, i64(rhs.self.len), unsafe};
 		return *this;
 	}
-	HEDLEY_ALWAYS_INLINE
-	auto operator=(VecBase&& rhs) & noexcept -> VecBase& {
+	VEG_INLINE
+	auto operator=(VecBase&& rhs) & VEG_NOEXCEPT -> VecBase& {
 		this->_destroy();
 		self = rhs.self;
 		rhs.self = {};
@@ -89,8 +88,8 @@ public:
 	}
 
 private:
-	HEDLEY_ALWAYS_INLINE
-	void _destroy() noexcept {
+	VEG_INLINE
+	void _destroy() VEG_NOEXCEPT {
 		aligned_free(self.begin, alignof(T), nb::narrow<usize>{}(self.cap));
 	}
 };
@@ -118,34 +117,31 @@ private:
 	using internal::vec_::VecBase<T>::self;
 
 public:
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto into_raw_parts() && noexcept
-			-> raw_parts {
+	VEG_NODISCARD VEG_INLINE auto into_raw_parts() && VEG_NOEXCEPT -> raw_parts {
 		raw_parts copy = self;
 		self = {};
 		return copy;
 	}
 
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto data() noexcept -> T* {
+	VEG_NODISCARD VEG_INLINE auto data() VEG_NOEXCEPT -> T* { return self.begin; }
+	VEG_NODISCARD VEG_INLINE auto data() const VEG_NOEXCEPT -> T const* {
 		return self.begin;
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto data() const noexcept -> T const* {
-		return self.begin;
-	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto size() const noexcept -> i64 {
+	VEG_NODISCARD VEG_INLINE auto size() const VEG_NOEXCEPT -> i64 {
 		return i64(self.len);
 	}
-	VEG_NODISCARD HEDLEY_ALWAYS_INLINE auto capacity() const noexcept -> i64 {
+	VEG_NODISCARD VEG_INLINE auto capacity() const VEG_NOEXCEPT -> i64 {
 		return i64(self.cap);
 	}
 
-	HEDLEY_ALWAYS_INLINE
-	void resize_down(i64 new_size, Unsafe /*tag*/) noexcept {
+	VEG_INLINE
+	void resize_down(i64 new_size, Unsafe /*tag*/) VEG_NOEXCEPT {
 		backward_destroy_n(data() + new_size, size() - new_size);
 		self.len = usize(new_size);
 	}
-	HEDLEY_ALWAYS_INLINE
-	void resize_down(i64 new_size, Safe /*tag*/ = {}) noexcept {
-		VEG_ASSERT(new_size <= size());
+	VEG_INLINE
+	void resize_down(i64 new_size, Safe /*tag*/ = {}) VEG_NOEXCEPT {
+		VEG_INTERNAL_ASSERT_PRECONDITION(new_size <= size());
 		resize_down(new_size, unsafe);
 	}
 
@@ -156,7 +152,7 @@ public:
 			auto
 			operator=,
 			((rhs, Slice<T const>)),
-			& noexcept(false)->Vec&) {
+			&VEG_NOEXCEPT_IF(false)->Vec&) {
 		// FIXME: backward or forward copy
 		if (capacity() < rhs.size()) {
 			*this = Vec<T>(from_slice, rhs);
@@ -172,21 +168,21 @@ public:
 	VEG_TEMPLATE(
 			(typename... Args),
 			requires(VEG_CONCEPT(constructible<T, Args&&...>)),
-			HEDLEY_ALWAYS_INLINE auto emplace_back,
+			VEG_INLINE auto emplace_back,
 			(... args, Args&&))
-	noexcept(false) -> T& {
+	VEG_NOEXCEPT_IF(false)->T& {
 		_grow_to(capacity() + 1);
 		T& ref = *::new (data() + size()) T(VEG_FWD(args)...);
 		++self.len;
 		return ref;
 	}
 
-	HEDLEY_ALWAYS_INLINE auto push_back(T value) noexcept(false) {
+	VEG_INLINE auto push_back(T value) VEG_NOEXCEPT_IF(false) {
 		return emplace_back(VEG_FWD(value));
 	}
 
-	HEDLEY_ALWAYS_INLINE
-	void reserve(i64 new_capacity) noexcept(false) {
+	VEG_INLINE
+	void reserve(i64 new_capacity) VEG_NOEXCEPT_IF(false) {
 		if (new_capacity > capacity()) {
 			self.begin = internal::algo_::reallocate_memory(
 					data(), alignof(T), size(), capacity(), new_capacity);
@@ -195,7 +191,7 @@ public:
 	}
 
 private:
-	HEDLEY_ALWAYS_INLINE auto _grow_to(i64 n) noexcept(false) {
+	VEG_INLINE auto _grow_to(i64 n) VEG_NOEXCEPT_IF(false) {
 		if (n > capacity()) {
 			reserve(internal::vec_::size_hint(capacity(), n));
 		}
@@ -206,7 +202,6 @@ template <typename T>
 struct meta::is_trivially_relocatable<Vec<T>> : true_type {};
 template <typename T>
 struct meta::is_trivially_swappable<Vec<T>&> : true_type {};
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

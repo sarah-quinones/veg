@@ -1,8 +1,8 @@
-#include "assert_death.hpp"
+#define __VEG_DISABLE_NOEXCEPT
+
 #include "static_assert.hpp"
 #include <veg/fn_view.hpp>
 #include <veg/option.hpp>
-#include "assert_death.hpp"
 #include <doctest.h>
 #include "veg/internal/prologue.hpp"
 
@@ -31,7 +31,7 @@ TEST_CASE("function_view: no_args") {
 	};
 
 #if __cplusplus >= 201703L
-	FnView<void() noexcept> f{inc_lambda};
+	FnView<void()> f{inc_lambda};
 #else
 	FnView<void()> f{inc_lambda};
 #endif
@@ -102,18 +102,17 @@ auto baz(foo const& /*unused*/, foo /*unused*/, int /*unused*/) -> foo {
 TEST_CASE("function_view: null") {
 	{
 		veg::Option<FnView<void()>> f;
-		STATIC_ASSERT(sizeof(f) == sizeof(VEG_FWD(f).unwrap()));
 
 		CHECK(!f);
-		CHECK_DEATH({ void(f.as_ref().unwrap()); });
-		CHECK_DEATH({ void(VEG_MOV(f).unwrap()); });
+		CHECK_THROWS(void(f.as_ref().unwrap()));
+		CHECK_THROWS(void(VEG_MOV(f).unwrap()));
 
 		f = {veg::some, [] {}};
 		CHECK(f);
 	}
 	{
 		void (*null)() = nullptr;
-		CHECK_DEATH({ FnView<void()>{null}; });
+		CHECK_THROWS(FnView<void()>{null});
 	}
 }
 #include "veg/internal/epilogue.hpp"

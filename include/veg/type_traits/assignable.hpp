@@ -11,7 +11,6 @@
 #endif
 
 namespace veg {
-inline namespace VEG_ABI {
 namespace concepts {
 
 VEG_DEF_CONCEPT_FROM_BUILTIN_OR_STD((typename T, typename U), assignable, T, U);
@@ -41,7 +40,6 @@ VEG_DEF_CONCEPT(
 		VEG_CONCEPT(nothrow_assignable<T&, T const&>));
 
 } // namespace concepts
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

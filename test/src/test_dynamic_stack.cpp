@@ -1,5 +1,6 @@
+#define __VEG_DISABLE_NOEXCEPT
+
 #include "veg/memory/dynamic_stack.hpp"
-#include "assert_death.hpp"
 #include <doctest.h>
 
 #include <atomic>
@@ -70,17 +71,17 @@ TEST_CASE("dynamic stack: evil_reorder") {
 	unsigned char buf[4096];
 	DynStackView stack{slice(buf)};
 	auto good = [&] {
-		auto s1 = stack.make_new(Tag<int>{}, 30);
-		auto s2 = stack.make_new(Tag<double>{}, 20);
+		auto s1 = stack.make_new(Tag<int>{}, 30).unwrap();
+		auto s2 = stack.make_new(Tag<double>{}, 20).unwrap();
 		auto s3 = VEG_MOV(s2);
 	};
 	auto bad = [&] {
-		auto s1 = stack.make_new(Tag<int>{}, 30);
-		auto s2 = stack.make_new(Tag<double>{}, 20);
+		auto s1 = stack.make_new(Tag<int>{}, 30).unwrap();
+		auto s2 = stack.make_new(Tag<double>{}, 20).unwrap();
 		auto s3 = VEG_MOV(s1);
 	};
-	CHECK_NO_DEATH({ good(); });
-	CHECK_DEATH({ bad(); });
+	CHECK_NOTHROW(good());
+	CHECK_THROWS(bad());
 }
 
 TEST_CASE("dynamic stack: assign") {

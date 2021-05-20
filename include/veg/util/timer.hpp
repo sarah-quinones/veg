@@ -10,8 +10,9 @@ namespace veg {
 namespace abi {
 inline namespace VEG_ABI_VERSION {
 namespace time {
-auto monotonic_nanoseconds_since_epoch() noexcept -> i64;
-void log_elapsed_time(i64 duration, char const* msg, std::FILE* out) noexcept;
+auto monotonic_nanoseconds_since_epoch() VEG_ALWAYS_NOEXCEPT -> i64;
+void log_elapsed_time(i64 duration, char const* msg, std::FILE* out)
+		VEG_ALWAYS_NOEXCEPT;
 } // namespace time
 } // namespace VEG_ABI_VERSION
 } // namespace abi
@@ -25,10 +26,10 @@ struct raii_timer_wrapper {
 		Fn fn;
 	} self;
 
-	raii_timer_wrapper(Fn fn) noexcept
+	raii_timer_wrapper(Fn fn) VEG_NOEXCEPT
 			: self{abi::time::monotonic_nanoseconds_since_epoch(), VEG_FWD(fn)} {}
 
-	auto operator()() noexcept(noexcept(VEG_FWD(self).fn)) {
+	auto operator()() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn, i64>)) {
 		VEG_FWD(self.fn)
 		(i64(abi::time::monotonic_nanoseconds_since_epoch() - self.begin));
 	}
@@ -37,10 +38,9 @@ struct raii_timer_wrapper {
 } // namespace internal
 
 namespace time {
-inline namespace VEG_ABI {
 namespace nb {
 struct monotonic_nanoseconds_since_epoch {
-	auto operator()() const noexcept -> i64 {
+	auto operator()() const VEG_NOEXCEPT -> i64 {
 		return abi::time::monotonic_nanoseconds_since_epoch();
 	}
 };
@@ -48,14 +48,14 @@ struct monotonic_nanoseconds_since_epoch {
 VEG_NIEBLOID(monotonic_nanoseconds_since_epoch);
 
 struct log_elapsed_time {
-	explicit log_elapsed_time(
-			char const* _msg = "", std::FILE* _out = stdout) noexcept
-			: msg{_msg}, out{_out} {}
+	explicit log_elapsed_time(char const* _msg = "", std::FILE* _out = stdout)
+			VEG_ALWAYS_NOEXCEPT : msg{_msg},
+														out{_out} {}
 
 	char const* msg;
 	std::FILE* out;
 
-	void operator()(i64 duration) const noexcept {
+	void operator()(i64 duration) const VEG_ALWAYS_NOEXCEPT {
 		abi::time::log_elapsed_time(duration, msg, out);
 	}
 };
@@ -77,14 +77,13 @@ struct raii_timer {
 			auto
 			operator(),
 			(fn, Fn&&))
-	const noexcept(VEG_CONCEPT(nothrow_move_constructible<Fn>))
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<Fn>))
 			->time::RaiiTimer<Fn> {
 		return {VEG_FWD(fn)};
 	}
 };
 } // namespace nb
 VEG_NIEBLOID(raii_timer);
-} // namespace VEG_ABI
 } // namespace time
 } // namespace veg
 

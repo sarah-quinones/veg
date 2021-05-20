@@ -2,12 +2,9 @@
 #define VEG_TAGS_HPP_FYDE7Q6ZS
 
 #include "veg/type_traits/core.hpp"
-#include "veg/functional/into.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace VEG_ABI {
-
 namespace internal {
 template <typename T>
 struct make_unsafe;
@@ -30,13 +27,15 @@ struct SafetyTag<safety_e::unsafe>
 		: meta::constant<safety_e, safety_e::unsafe> {
 private:
 	SafetyTag() = default;
-	constexpr operator Safe() const noexcept { return {}; }
+	constexpr operator Safe() const VEG_ALWAYS_NOEXCEPT { return {}; }
 	friend struct meta::static_const<SafetyTag>;
 };
 
 template <typename T>
 struct Tag {};
 struct Cvt {};
+struct Direct {};
+struct Into {};
 struct InitList {};
 struct FromRawParts {};
 struct InPlace {};
@@ -44,14 +43,10 @@ struct InPlace {};
 VEG_INLINE_VAR_TEMPLATE(typename T, tag, Tag<T>);
 VEG_INLINE_VAR(init_list, InitList);
 VEG_INLINE_VAR(inplace, InPlace);
-VEG_INLINE_VAR(cvt, Cvt);
-VEG_INLINE_VAR(into, Into);
-VEG_INLINE_VAR(from_raw_parts, FromRawParts);
+VEG_INLINE_VAR(direct, Direct);
 VEG_INLINE_VAR(safe, Safe);
 VEG_INLINE_VAR(unsafe, Unsafe);
 } // namespace tags
-
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

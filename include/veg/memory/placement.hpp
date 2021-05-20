@@ -3,7 +3,6 @@
 
 #include "veg/type_traits/constructible.hpp"
 #include "veg/internal/std.hpp"
-#include "veg/internal/tuple_generic.hpp"
 #include "veg/type_traits/invocable.hpp"
 #include "veg/internal/prologue.hpp"
 #include <new>
@@ -34,51 +33,16 @@
 #endif
 
 namespace veg {
-inline namespace VEG_ABI {
-
-namespace internal {
-namespace mem_ {
-
-template <typename Fn, typename... Args>
-struct FromCallable {
-	Fn&& _fn;
-	internal::SimpleTuple<Args&&...> _args;
-
-	HEDLEY_ALWAYS_INLINE constexpr operator meta::invoke_result_t<Fn, Args&&...>()
-			const&& noexcept(VEG_CONCEPT(nothrow_invocable<Fn>)) {
-		return internal::tup_::unpack_args_impl(
-				meta::type_sequence<Args&&...>{}, VEG_FWD(_fn), _args);
-	}
-};
-} // namespace mem_
-} // namespace internal
-
-namespace nb {
-struct from_callable {
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
-			requires(VEG_CONCEPT(invocable<Fn, Args&&...>)),
-			constexpr auto
-			operator(),
-			(fn, Fn&&),
-			(... args, Args&&))
-	const noexcept->internal::mem_::FromCallable<Fn&&, Args&&...> {
-		return {VEG_FWD(fn), {Cvt{}, VEG_FWD(args)...}};
-	}
-};
-} // namespace nb
-VEG_NIEBLOID(from_callable);
-
 namespace mem {
 namespace nb {
 struct launder {
 	VEG_TEMPLATE(
 			typename T,
 			requires(VEG_CONCEPT(complete<T>)),
-			HEDLEY_ALWAYS_INLINE constexpr auto
+			VEG_INLINE constexpr auto
 			operator(),
 			(mem, T*))
-	const noexcept->T* { return VEG_LAUNDER(mem); }
+	const VEG_NOEXCEPT->T* { return VEG_LAUNDER(mem); }
 };
 #undef VEG_LAUNDER
 
@@ -87,12 +51,12 @@ struct construct_at {
 			(typename T, typename... Args),
 			requires(
 					!VEG_CONCEPT(const_type<T>) &&
-					VEG_CONCEPT(constructible<T, Args...>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) auto
+					VEG_CONCEPT(inplace_constructible<T, Args...>)),
+			VEG_INLINE VEG_CPP20(constexpr) auto
 			operator(),
 			(mem, T*),
 			(... args, Args&&))
-	const noexcept(VEG_CONCEPT(nothrow_constructible<T, Args...>))->T* {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_inplace_constructible<T, Args...>))->T* {
 #if __cplusplus >= 202002L
 		return ::std::construct_at(mem, VEG_FWD(args)...);
 #else
@@ -105,41 +69,40 @@ struct construct_with {
 	VEG_TEMPLATE(
 			(typename T, typename Fn, typename... Args),
 			requires(
-					!VEG_CONCEPT(const_type<T>) && VEG_CONCEPT(invocable<Fn, Args...>) &&
-					VEG_CONCEPT(same<T, meta::invoke_result_t<Fn, Args...>>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) auto
+					!VEG_CONCEPT(const_type<T>) && VEG_CONCEPT(invocable<Fn>) &&
+					VEG_CONCEPT(invocable_r<Fn, T>)),
+			VEG_INLINE VEG_CPP20(constexpr) auto
 			operator(),
 			(mem, T*),
-			(fn, Fn&&),
-			(... args, Args&&))
-	const noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args...>))->T* {
+			(fn, Fn&&))
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>))->T* {
 #if __cplusplus >= 202002L
+		struct Convertor {
+			Fn&& fn;
+			VEG_INLINE constexpr operator T() const&& VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_invocable<Fn, Args...>)) {
+				return VEG_FWD(fn)();
+			}
+		};
 
-		return ::std::construct_at(
-				mem,
-				internal::mem_::FromCallable<Fn&&>{
-						[&]() noexcept(VEG_CONCEPT(nothrow_invocable<Fn, Args...>)) -> T {
-							return VEG_FWD(fn)(VEG_FWD(args)...);
-						}}
-
-		);
+		return ::std::construct_at(mem, Convertor{VEG_FWD(fn)});
 #else
-		return ::new (mem) T(VEG_FWD(fn)(VEG_FWD(args)...));
+		return ::new (mem) T(VEG_FWD(fn)());
 #endif
 	}
 };
 
 struct destroy_at {
 	VEG_TEMPLATE(
-			(typename T, typename... Args),
-			requires(!VEG_CONCEPT(void_type<T>)),
-			HEDLEY_ALWAYS_INLINE VEG_CPP20(constexpr) void
+			(typename T),
+			requires(VEG_CONCEPT(complete<T>)),
+			VEG_INLINE VEG_CPP14(constexpr) void
 			operator(),
 			(mem, T*))
-	const noexcept { mem->~T(); }
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) { mem->~T(); }
 };
 struct align_next {
-	auto operator()(usize alignment, void* ptr) const noexcept -> void* {
+	auto operator()(usize alignment, void* ptr) const VEG_NOEXCEPT -> void* {
 		using byte_ptr = unsigned char*;
 		std::uintptr_t lo_mask = alignment - 1U;
 		std::uintptr_t hi_mask = ~lo_mask;
@@ -149,13 +112,13 @@ struct align_next {
 
 		return byteptr + offset;
 	}
-	auto operator()(usize alignment, void const* ptr) const noexcept
+	auto operator()(usize alignment, void const* ptr) const VEG_NOEXCEPT
 			-> void const* {
 		return this->operator()(alignment, const_cast<void*>(ptr));
 	}
 };
 struct align_prev {
-	auto operator()(usize alignment, void* ptr) const noexcept -> void* {
+	auto operator()(usize alignment, void* ptr) const VEG_NOEXCEPT -> void* {
 		using byte_ptr = unsigned char*;
 		std::uintptr_t lo_mask = alignment - 1U;
 		std::uintptr_t hi_mask = ~lo_mask;
@@ -165,7 +128,7 @@ struct align_prev {
 
 		return byteptr + offset;
 	}
-	auto operator()(usize alignment, void const* ptr) const noexcept
+	auto operator()(usize alignment, void const* ptr) const VEG_NOEXCEPT
 			-> void const* {
 		return this->operator()(alignment, const_cast<void*>(ptr));
 	}
@@ -178,8 +141,6 @@ VEG_NIEBLOID(construct_at);
 VEG_NIEBLOID(construct_with);
 VEG_NIEBLOID(destroy_at);
 } // namespace mem
-
-} // namespace VEG_ABI
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
