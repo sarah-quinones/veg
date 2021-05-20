@@ -45,7 +45,9 @@ union Uwunion_<false> {
 	template <usize J, typename Fn>                                              \
 	VEG_INLINE constexpr Uwunion_(UTag<I> /*unused*/, UTag<J>, Fn fn)            \
 			VEG_NOEXCEPT_LIKE(VEG_FWD(fn)(UTag<J>{}))                                \
-			: __VEG_PP_CAT(head, I){VEG_FWD(fn)(UTag<J>{})} {}
+			: __VEG_PP_CAT(head, I){                                                 \
+						static_cast<decltype(__VEG_PP_CAT(head, I).inner)>(                \
+								VEG_FWD(fn)(UTag<J>{}))} {}
 
 #define VEG_UWUNION_SPEC(Tuple)                                                \
 	template <bool _ __VEG_PP_TUPLE_FOR_EACH(VEG_TYPE_DECL, _, Tuple)>           \
@@ -231,10 +233,14 @@ struct TrivialTaggedImpl<meta::index_sequence<Is...>, Ts...> {
 			VEG_INLINE constexpr auto get_ref() const
 			& VEG_NOEXCEPT -> Ith<I> const& {
 		return (void)meta::unreachable_if(tag != I),
-					 UwunionGetImpl<I>::get(inner).inner;
+		       UwunionGetImpl<I>::get(inner).inner;
 	}
 
 	VEG_NODISCARD VEG_INLINE constexpr auto index() const -> usize { return tag; }
+	VEG_INLINE constexpr auto get_union_ref() const VEG_NOEXCEPT
+			-> Uwunion<Ts...> const& {
+		return this->inner;
+	}
 };
 
 template <typename Base, usize N, bool NoExcept, typename Fn>
@@ -271,7 +277,7 @@ struct TaggedDtorBase;
 						decltype(inner),                                                   \
 						sizeof...(Ts),                                                     \
 						VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>))>(          \
-						UwunionGetter<decltype(inner.inner)&&>{rhs.inner.inner},           \
+						UwunionGetter<decltype(inner.inner)&&, Ts...>{rhs.inner.inner},    \
 						rhs.inner.tag)} {}
 
 #define VEG_TAGGED_UWUNION_COPY_true(Class)                                    \
@@ -282,7 +288,8 @@ struct TaggedDtorBase;
 						decltype(inner),                                                   \
 						sizeof...(Ts),                                                     \
 						VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_constructible<Ts>))>(          \
-						UwunionGetter<decltype(inner.inner) const&>{rhs.inner.inner},      \
+						UwunionGetter<decltype(inner.inner) const&, Ts...>{                \
+								rhs.inner.inner},                                              \
 						rhs.inner.tag)} {}
 
 #else
@@ -292,7 +299,7 @@ struct TaggedDtorBase;
 	Class(Class&& rhs) /* NOLINT */                                              \
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>))) \
 			: inner{} {                                                              \
-		using Fn = UwunionGetter<decltype(inner.inner)&&>;                         \
+		using Fn = UwunionGetter<decltype(inner.inner)&&, Ts...>;                  \
 		inner.tag = rhs.inner.tag;                                                 \
 		internal::visit<                                                           \
 				void,                                                                  \
@@ -307,7 +314,7 @@ struct TaggedDtorBase;
 	Class(Class const& rhs)                                                      \
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_constructible<Ts>))) \
 			: inner{} {                                                              \
-		using Fn = UwunionGetter<decltype(inner.inner) const&>;                    \
+		using Fn = UwunionGetter<decltype(inner.inner) const&, Ts...>;             \
 		inner.tag = rhs.inner.tag;                                                 \
 		internal::visit<                                                           \
 				void,                                                                  \
@@ -348,7 +355,7 @@ struct TaggedDtorBase;
 				VEG_INLINE constexpr auto get_ref() const                              \
 				& VEG_NOEXCEPT -> ith<I, Ts...> const& {                               \
 			return (void)meta::unreachable_if(tag != I),                             \
-						 UwunionGetImpl<I>::get(inner).inner;                              \
+			       UwunionGetImpl<I>::get(inner).inner;                              \
 		}                                                                          \
 	}
 
@@ -419,7 +426,7 @@ struct NonTrivialCopyAssign {
 			VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_assignable<Storage<Ts>>)))
 			-> NonTrivialCopyAssign& {
 		using Inner = decltype(static_cast<Base*>(this)->inner.inner);
-		using Fn = UwunionGetter<Inner const&>;
+		using Fn = UwunionGetter<Inner const&, Ts...>;
 		auto& self = static_cast<Base&>(*this);
 		auto& rhs = static_cast<Base const&>(_rhs);
 
@@ -434,7 +441,7 @@ struct NonTrivialCopyAssign {
 			Base local{rhs};
 			self.inner.destroy();
 			self.inner.tag = rhs.inner.tag;
-			self.construct(UwunionGetter<Inner&&>{rhs.inner.inner});
+			self.construct(UwunionGetter<Inner&&, Ts...>{rhs.inner.inner});
 		}
 		return *this;
 	}
@@ -454,7 +461,7 @@ struct NonTrivialMoveAssign {
 			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_assignable<Storage<Ts>>)))
 			-> NonTrivialMoveAssign& {
 		using Inner = decltype(static_cast<Base*>(this)->inner.inner);
-		using Fn = UwunionGetter<Inner&&>;
+		using Fn = UwunionGetter<Inner&&, Ts...>;
 		auto& self = static_cast<Base&>(*this);
 		auto& rhs = static_cast<Base&>(_rhs);
 
@@ -468,7 +475,7 @@ struct NonTrivialMoveAssign {
 		} else {
 			self.inner.destroy();
 			self.inner.tag = rhs.inner.tag;
-			self.construct(UwunionGetter<Inner&&>{rhs.inner.inner});
+			self.construct(UwunionGetter<Inner&&, Ts...>{rhs.inner.inner});
 		}
 		return *this;
 	}
@@ -560,6 +567,11 @@ struct NonTrivialTaggedImpl<Kind, meta::index_sequence<Is...>, Ts...>
 	template <usize I>
 	using Ith = ith<I, Ts...>;
 
+	VEG_INLINE constexpr auto get_union_ref() const VEG_NOEXCEPT
+			-> Uwunion<Ts...> const& {
+		return this->inner.inner;
+	}
+
 	using Self = NonTrivialTaggedImpl;
 	using Base = NoOpCopyMove<
 			VEG_NEEDS_MOVE_ASSIGN,
@@ -601,7 +613,7 @@ struct NonTrivialTaggedImpl<Kind, meta::index_sequence<Is...>, Ts...>
 			VEG_INLINE constexpr auto get_ref() const
 			& VEG_NOEXCEPT -> ith<I, Ts...> const& {
 		return (void)meta::unreachable_if(this->inner.tag != I),
-					 UwunionGetImpl<I>::get(this->inner.inner).inner;
+		       UwunionGetImpl<I>::get(this->inner.inner).inner;
 	}
 	VEG_NODISCARD VEG_INLINE constexpr auto index() const -> usize {
 		return this->inner.tag;
@@ -632,7 +644,7 @@ struct DoubleStorageDtor { /* NOLINT */
 			: inner0{itag, itag, VEG_FWD(fn)}, tag_with_bit(TagType(2U * i)) {}
 
 	VEG_CPP20(constexpr)
-	void destroy(bool i0)
+	void destroy()
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_destructible<Ts>))) {
 		internal::visit14<
 				void,
@@ -642,11 +654,25 @@ struct DoubleStorageDtor { /* NOLINT */
 				DropFn<
 						VEG_ALL_OF(VEG_CONCEPT(nothrow_destructible<Ts>)),
 						decltype(inner0),
-						Ts...>{i0 ? inner0 : inner1});
+						Ts...>{tag_with_bit % 2U == 0 ? inner0 : inner1});
 	}
+	VEG_CPP20(constexpr)
+	void destroy_inactive(usize tag)
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_destructible<Ts>))) {
+		internal::visit14<
+				void,
+				VEG_ALL_OF(VEG_CONCEPT(nothrow_destructible<Ts>)),
+				sizeof...(Ts)>(
+				tag,
+				DropFn<
+						VEG_ALL_OF(VEG_CONCEPT(nothrow_destructible<Ts>)),
+						decltype(inner0),
+						Ts...>{tag_with_bit % 2U == 0 ? inner1 : inner0});
+	}
+
 	VEG_INLINE VEG_CPP20(constexpr) ~DoubleStorageDtor()
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_destructible<Ts>))) {
-		this->destroy(tag_with_bit % 2U == 0);
+		this->destroy();
 	}
 };
 
@@ -672,7 +698,7 @@ struct DoubleStorageCopyMove { /* NOLINT */
 						decltype(inner),
 						sizeof...(Ts),
 						VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>))>(
-						UwunionGetter<decltype(inner.inner)&&>{
+						UwunionGetter<decltype(inner.inner0)&&, Ts...>{
 								(rhs.inner.tag_with_bit % 2U == 0) ? rhs.inner.inner0
 																									 : rhs.inner.inner1},
 						rhs.inner.tag_with_bit / 2U)} {}
@@ -683,7 +709,7 @@ struct DoubleStorageCopyMove { /* NOLINT */
 						decltype(inner),
 						sizeof...(Ts),
 						VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_constructible<Ts>))>(
-						UwunionGetter<decltype(inner) const&>{
+						UwunionGetter<decltype(inner) const&, Ts...>{
 								(rhs.inner.tag_with_bit % 2U == 0) ? rhs.inner.inner0
 																									 : rhs.inner.inner1},
 						rhs.inner.tag_with_bit / 2U)} {}
@@ -693,7 +719,7 @@ struct DoubleStorageCopyMove { /* NOLINT */
 	DoubleStorageCopyMove(DoubleStorageCopyMove&& rhs)
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>)))
 			: inner{} {
-		using Fn = UwunionGetter<decltype(inner.inner0)&&>;
+		using Fn = UwunionGetter<decltype(inner.inner0)&&, Ts...>;
 		inner.tag_with_bit = rhs.inner.tag_with_bit / 2U * 2U;
 		internal::visit<
 				void,
@@ -711,7 +737,7 @@ struct DoubleStorageCopyMove { /* NOLINT */
 	DoubleStorageCopyMove(DoubleStorageCopyMove const& rhs)
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_constructible<Ts>)))
 			: inner{} {
-		using Fn = UwunionGetter<decltype(inner.inner0) const&>;
+		using Fn = UwunionGetter<decltype(inner.inner0) const&, Ts...>;
 		inner.tag_with_bit = rhs.inner.tag_with_bit / 2U * 2U;
 		internal::visit<
 				void,
@@ -725,9 +751,26 @@ struct DoubleStorageCopyMove { /* NOLINT */
 	}
 #endif
 
+	template <usize I, typename Fn>
+	VEG_INLINE VEG_CPP20(constexpr) void _emplace(Fn fn)
+			VEG_NOEXCEPT_LIKE(VEG_FWD(fn)(UTag<I>{})) {
+		auto& self_inner_inactive =
+				(inner.tag_with_bit % 2U == 0) ? inner.inner1 : inner.inner0;
+
+		mem::construct_at(
+				mem::addressof(self_inner_inactive), UTag<I>{}, UTag<I>{}, VEG_FWD(fn));
+
+		usize new_tag = I * 2U;
+		usize old_tag = inner.tag_with_bit / 2U;
+		usize old_low_bit = usize(inner.tag_with_bit % 2U == 1);
+		usize new_low_bit = 1U - old_low_bit;
+		inner.tag_with_bit = new_tag | new_low_bit;
+
+		inner.destroy_inactive(old_tag);
+	}
+
 	template <bool NoExcept, typename Fn>
-	VEG_INLINE
-	VEG_CPP14(constexpr) void assign(bool just_assign, usize fn_tag, Fn fn)
+	VEG_INLINE VEG_CPP14(constexpr) void assign(usize fn_tag, Fn fn)
 			VEG_NOEXCEPT_IF(NoExcept) {
 		auto& self_inner_inactive =
 				(inner.tag_with_bit % 2U == 0) ? inner.inner1 : inner.inner0;
@@ -737,7 +780,7 @@ struct DoubleStorageCopyMove { /* NOLINT */
 
 		usize self_tag = inner.tag_with_bit / 2U;
 
-		if (just_assign) {
+		if (self_tag == fn_tag) {
 			internal::visit<
 					void,
 					VEG_ALL_OF(VEG_CONCEPT(nothrow_move_assignable<Storage<Ts>>)),
@@ -754,11 +797,15 @@ struct DoubleStorageCopyMove { /* NOLINT */
 					CtorFn<decltype(inner.inner0), Fn>{self_inner_inactive, VEG_FWD(fn)});
 
 			// invalid state here: two active members
-			inner.tag_with_bit = ~(inner.tag_with_bit); // flip the active member
+			usize new_tag = fn_tag * 2U;
+			usize old_tag = self_tag;
+			usize old_low_bit = usize(inner.tag_with_bit % 2U == 1);
+			usize new_low_bit = 1U - old_low_bit;
+			inner.tag_with_bit = new_tag | new_low_bit;
 
 			// dtor ends the lifetime of the object regardless of whether it throws
 			// the call puts us in a valid state regardless of success (i hope)
-			inner.destroy(inner.tag_with_bit % 2U == 1);
+			inner.destroy_inactive(old_tag);
 
 			// defintely valid again, yay!
 		}
@@ -775,7 +822,7 @@ struct DoubleStorageCopyMove { /* NOLINT */
 		     VEG_CONCEPT(nothrow_move_constructible<Ts>)))>(
 				inner.tag_with_bit / 2U == rhs.inner.tag_with_bit / 2U,
 				rhs.inner.tag_with_bit / 2U,
-				UwunionGetter<decltype(inner.inner0)&&>{
+				UwunionGetter<decltype(inner.inner0)&&, Ts...>{
 						(rhs.inner.tag_with_bit % 2U == 0) ? rhs.inner.inner0
 																							 : rhs.inner.inner1});
 		return *this;
@@ -790,7 +837,7 @@ struct DoubleStorageCopyMove { /* NOLINT */
 		     VEG_CONCEPT(nothrow_copy_constructible<Ts>)))>(
 				inner.tag_with_bit / 2U == rhs.inner.tag_with_bit / 2U,
 				rhs.inner.tag_with_bit / 2U,
-				UwunionGetter<decltype(inner.inner0) const&>{
+				UwunionGetter<decltype(inner.inner0) const&, Ts...>{
 						(rhs.inner.tag_with_bit % 2U == 0) ? rhs.inner.inner0
 																							 : rhs.inner.inner1});
 		return *this;
@@ -798,6 +845,10 @@ struct DoubleStorageCopyMove { /* NOLINT */
 
 	VEG_INLINE constexpr auto index() const VEG_NOEXCEPT -> usize {
 		return inner.tag_with_bit / 2U;
+	}
+	VEG_INLINE constexpr auto get_union_ref() const VEG_NOEXCEPT
+			-> Uwunion<Ts...> const& {
+		return (inner.tag_with_bit % 2U == 0) ? inner.inner0 : inner.inner1;
 	}
 };
 
@@ -900,7 +951,9 @@ public:
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>))->ith<usize{I}, Ts...>& {
 		this->template _emplace<usize{I}>(
 				internal::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)});
-		return const_cast<ith<usize{I}, Ts...>&>(this->template get_ref<I>());
+		return const_cast<ith<usize{I}, Ts...>&>(
+				internal::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
+						.inner);
 	}
 
 	VEG_TEMPLATE(
@@ -925,7 +978,9 @@ public:
 					VEG_CONCEPT(nothrow_move_constructible<ith<usize{I}, Ts...>>))
 					-> ith<usize{I}, Ts...> {
 		meta::unreachable_if(usize{I} != usize(index()));
-		return const_cast<ith<usize{I}, Ts...>&&>(this->template get_ref<I>());
+		return const_cast<ith<usize{I}, Ts...>&&>(
+				internal::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
+						.inner);
 	}
 
 	using Base::index;
@@ -938,7 +993,12 @@ public:
 				usize(index()),
 				internal::_uwunion::EmplaceWrapper<
 						Uwunion<Ts&...>,
-						internal::_uwunion::UwunionGetter<Base&>>{{*this}, usize(index())});
+						internal::_uwunion::
+								UwunionGetter<internal::_uwunion::Uwunion<Ts...>&, Ts...>>{
+						{const_cast<internal::_uwunion::Uwunion<Ts...>&>(
+								this->get_union_ref())},
+						usize(index()),
+				});
 	}
 	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_ref() const & //
 			VEG_NOEXCEPT -> Uwunion<Ts const&...> {
@@ -946,8 +1006,12 @@ public:
 				usize(index()),
 				internal::_uwunion::EmplaceWrapper<
 						Uwunion<Ts const&...>,
-						internal::_uwunion::UwunionGetter<Base const&>>{
-						{*this}, usize(index())});
+						internal::_uwunion::
+								UwunionGetter<internal::_uwunion::Uwunion<Ts...>&, Ts...>>{
+						{const_cast<internal::_uwunion::Uwunion<Ts...>&>(
+								this->get_union_ref())},
+						usize(index()),
+				});
 	}
 	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_ref() && //
 			VEG_NOEXCEPT -> Uwunion<Ts&&...> {
@@ -955,8 +1019,12 @@ public:
 				usize(index()),
 				internal::_uwunion::EmplaceWrapper<
 						Uwunion<Ts&&...>,
-						internal::_uwunion::UwunionGetter<Base&&>>{
-						{*this}, usize(index())});
+						internal::_uwunion::
+								UwunionGetter<internal::_uwunion::Uwunion<Ts...>&, Ts...>>{
+						{const_cast<internal::_uwunion::Uwunion<Ts...>&>(
+								this->get_union_ref())},
+						usize(index()),
+				});
 	}
 };
 } // namespace veg
