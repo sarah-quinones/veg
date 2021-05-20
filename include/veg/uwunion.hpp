@@ -757,16 +757,23 @@ struct DoubleStorageCopyMove { /* NOLINT */
 		auto& self_inner_inactive =
 				(inner.tag_with_bit % 2U == 0) ? inner.inner1 : inner.inner0;
 
+		// if this throws, object is not yet constructed, and lifetime does not
+		// begin. we are still in a valid state
 		mem::construct_at(
 				mem::addressof(self_inner_inactive), UTag<I>{}, UTag<I>{}, VEG_FWD(fn));
 
+		// invalid state here: two active members
 		usize new_tag = I * 2U;
 		usize old_tag = inner.tag_with_bit / 2U;
 		usize old_low_bit = usize(inner.tag_with_bit % 2U == 1);
 		usize new_low_bit = 1U - old_low_bit;
 		inner.tag_with_bit = new_tag | new_low_bit;
 
+		// dtor ends the lifetime of the object regardless of whether it throws
+		// the call puts us in a valid state regardless of success (i hope)
 		inner.destroy_inactive(old_tag);
+
+		// defintely valid again, yay!
 	}
 
 	template <bool NoExcept, typename Fn>
@@ -781,6 +788,8 @@ struct DoubleStorageCopyMove { /* NOLINT */
 		usize self_tag = inner.tag_with_bit / 2U;
 
 		if (self_tag == fn_tag) {
+      // see above for justification
+
 			internal::visit<
 					void,
 					VEG_ALL_OF(VEG_CONCEPT(nothrow_move_assignable<Storage<Ts>>)),
@@ -788,7 +797,6 @@ struct DoubleStorageCopyMove { /* NOLINT */
 					self_tag,
 					AssignFn<decltype(inner.inner0), Fn, Ts...>{self_inner, VEG_FWD(fn)});
 		} else {
-			// if this throws, we are still in a valid state
 			internal::visit<
 					void,
 					VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>)),
@@ -796,18 +804,13 @@ struct DoubleStorageCopyMove { /* NOLINT */
 					fn_tag,
 					CtorFn<decltype(inner.inner0), Fn>{self_inner_inactive, VEG_FWD(fn)});
 
-			// invalid state here: two active members
 			usize new_tag = fn_tag * 2U;
 			usize old_tag = self_tag;
 			usize old_low_bit = usize(inner.tag_with_bit % 2U == 1);
 			usize new_low_bit = 1U - old_low_bit;
 			inner.tag_with_bit = new_tag | new_low_bit;
 
-			// dtor ends the lifetime of the object regardless of whether it throws
-			// the call puts us in a valid state regardless of success (i hope)
 			inner.destroy_inactive(old_tag);
-
-			// defintely valid again, yay!
 		}
 		return *this;
 	}
