@@ -489,14 +489,16 @@ public:
 	private:
 		template <typename... Tuples>
 		VEG_INLINE static constexpr auto
-		pre_apply(meta::true_type /*unused*/, Tuples&&... tups) VEG_NOEXCEPT {
+		pre_apply(meta::true_type /*unused*/, Tuples&&... tups) VEG_NOEXCEPT
+				-> Concat<Tuples...> {
 			return cat::apply(VEG_FWD(tups)...);
 		}
 
 		template <typename... Tuples>
 		VEG_INLINE static constexpr auto
 		pre_apply(meta::false_type /*unused*/, Tuples&&... tups) VEG_NOEXCEPT_IF(
-				VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Tuples>))) {
+				VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Tuples>)))
+				-> Concat<Tuples...> {
 			return cat::template from_ref_to_result(
 					Tag<meta::type_sequence_cat<Tuple, Tuples...>>{},
 					cat::apply(

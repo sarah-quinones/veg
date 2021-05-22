@@ -182,7 +182,7 @@
 			Tpl, Name, (__VA_ARGS__), ::veg::meta::bool_constant<__VA_ARGS__>);      \
 	VEG_TEMPLATE(                                                                \
 			Tpl, requires(__VA_ARGS__), constexpr auto check_##Name, (_ = 0, int))   \
-	VEG_NOEXCEPT->::veg::meta::true_type
+	noexcept->::veg::meta::true_type
 
 #define __VEG_IMPL_SFINAE(_, Param)                                            \
 	, ::veg::meta::enable_if_t<__VEG_PP_UNWRAP Param, int> = 0
@@ -192,7 +192,7 @@
 			__VEG_PP_REMOVE_PAREN(__VEG_PP_TAIL Name_Tpl),                           \
 			::veg::meta::enable_if_t<__VEG_PP_UNWRAP Param, int> = 0>                \
 	auto __VEG_PP_CAT(check_, __VEG_PP_HEAD Name_Tpl)()                          \
-			VEG_NOEXCEPT->::veg::meta::true_type;
+			noexcept->::veg::meta::true_type;
 
 #define VEG_DEF_CONCEPT_BOOL_CONJUNCTION_IMPL(Tpl, Name, Base, Seq)            \
 	__VEG_IMPL_DEF_CONCEPT(                                                      \
@@ -202,7 +202,7 @@
 			__VEG_PP_REMOVE_PAREN1(Base));                                           \
 	template <__VEG_PP_REMOVE_PAREN(Tpl)                                         \
 	              __VEG_PP_TUPLE_FOR_EACH(__VEG_IMPL_SFINAE, _, Seq)>            \
-	auto check_##Name() VEG_NOEXCEPT->::veg::meta::true_type
+	auto check_##Name() noexcept->::veg::meta::true_type
 #define VEG_DEF_CONCEPT_BOOL_DISJUNCTION_IMPL(Tpl, Name, Base, Seq)            \
 	__VEG_IMPL_DEF_CONCEPT(                                                      \
 			Tpl,                                                                     \
