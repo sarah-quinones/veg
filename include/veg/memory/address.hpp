@@ -42,10 +42,13 @@ struct builtin_addr : meta::true_type {
 	}
 };
 template <typename T>
-struct has_member_addr : meta::is_detected<member_addr::type, T&>,
-												 member_addr {};
+struct has_member_addr
+		: meta::bool_constant<VEG_CONCEPT(detected<member_addr::type, T&>)>,
+			member_addr {};
 template <typename T>
-struct has_adl_addr : meta::is_detected<adl_addr::type, T&>, adl_addr {};
+struct has_adl_addr
+		: meta::bool_constant<VEG_CONCEPT(detected<adl_addr::type, T&>)>,
+			adl_addr {};
 
 template <typename T>
 struct addr_impl

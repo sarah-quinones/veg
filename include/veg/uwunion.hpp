@@ -862,10 +862,29 @@ template <usize... Is, typename... Ts>
 struct NonTrivialUwunionImpl<
 		needs_double_storage,
 		meta::index_sequence<Is...>,
-		Ts...> : DoubleStorageCopyMove<Ts...> {
+		Ts...> : DoubleStorageCopyMove<Ts...>,
+						 meta::conditional_t<
+								 VEG_ALL_OF(VEG_CONCEPT(move_constructible<Ts>)),
+								 NoMoveCtor,
+								 EmptyI<1312>>,
+						 meta::conditional_t<
+								 VEG_ALL_OF(VEG_CONCEPT(copy_constructible<Ts>)),
+								 NoCopyCtor,
+								 EmptyI<1313>>,
+						 meta::conditional_t<
+								 VEG_ALL_OF(
+										 VEG_CONCEPT(move_constructible<Ts>) &&
+										 VEG_CONCEPT(move_assignable<Storage<Ts>>)),
+								 NoMoveAssign,
+								 EmptyI<1314>>,
+						 meta::conditional_t<
+								 VEG_ALL_OF(
+										 VEG_CONCEPT(copy_constructible<Ts>) &&
+										 VEG_CONCEPT(copy_assignable<Storage<Ts>>)),
+								 NoCopyAssign,
+								 EmptyI<1315>> {
 	using Base = DoubleStorageCopyMove<Ts...>;
 	using Base::Base;
-	using Base::index;
 };
 
 template <typename... Ts>
@@ -885,7 +904,6 @@ using UwunionImpl = typename meta::conditional_t<
 		VEG_ALL_OF(VEG_CONCEPT(trivially_copyable<Storage<Ts>>)),
 		meta::type_identity<TrivialUwunionImpl<Ts...>>,
 		NonTrivialUwunionImplSelector<Ts...>>::Type;
-;
 
 template <typename Fn>
 struct TaggedFn {

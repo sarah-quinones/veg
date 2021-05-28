@@ -77,9 +77,8 @@ using tuple_size =
 		decltype(internal::meta_::is_tuple_helper::size(VEG_DECLVAL(T*)));
 
 template <usize I, typename T>
-using tuple_element_t =
-		decltype(internal::meta_::is_tuple_helper::template element<I>(
-				VEG_DECLVAL(T*)));
+using tuple_element_t = decltype(
+		internal::meta_::is_tuple_helper::template element<I>(VEG_DECLVAL(T*)));
 
 template <typename T>
 using tuple_seq_t =
@@ -637,7 +636,7 @@ public:
 				->Tuple<meta::invoke_result_t<Fn, Fix<i64{Is}>, Ts&&>...> {
 			return {
 					InPlace{},
-					UnindexedFn<Is, Fn, Ts&&>{
+					UnindexedFn<i64{Is}, Fn, Ts&&>{
 							VEG_FWD(fn),
 							static_cast<Ts&&>(
 									static_cast<TupleLeaf<Is, Ts>&&>(args).leaf)}...,

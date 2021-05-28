@@ -19,7 +19,7 @@ void get() = delete;
 
 TEST_CASE("tuple: adl_get") {
 	veg::Tuple<int, float> t{};
-	get<0>(t);
+  veg::unused(get<0>(t));
 	STATIC_ASSERT(VEG_CONCEPT(same<decltype(get<0>(t)), int&>));
 	STATIC_ASSERT(VEG_CONCEPT(
 			same<

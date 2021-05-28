@@ -17,7 +17,11 @@
 namespace veg {
 namespace concepts {
 
+#if VEG_HAS_BUILTIN(__is_final) || __cplusplus >= 201402L
 VEG_DEF_CONCEPT_FROM_BUILTIN_OR_STD(typename T, final, T);
+#else
+VEG_DEF_CONCEPT(typename T, final, (sizeof(T) < 0));
+#endif
 VEG_DEF_CONCEPT_FROM_BUILTIN_OR_STD(typename T, empty, T);
 
 VEG_DEF_CONCEPT(
