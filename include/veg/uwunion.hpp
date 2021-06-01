@@ -233,7 +233,7 @@ struct TrivialUwunionImpl {
 			VEG_INLINE constexpr auto get_ref() const
 			& VEG_NOEXCEPT -> Ith<I> const& {
 		return (void)meta::unreachable_if(tag != I),
-					 UwunionGetImpl<I>::get(inner).inner;
+		       UwunionGetImpl<I>::get(inner).inner;
 	}
 
 	VEG_NODISCARD VEG_INLINE constexpr auto index() const -> usize { return tag; }
@@ -357,7 +357,7 @@ struct NonTrivialUwunionDtor;
 				VEG_INLINE constexpr auto get_ref() const                              \
 				& VEG_NOEXCEPT -> ith<I, Ts...> const& {                               \
 			return (void)meta::unreachable_if(tag != I),                             \
-						 UwunionGetImpl<I>::get(inner).inner;                              \
+			       UwunionGetImpl<I>::get(inner).inner;                              \
 		}                                                                          \
 	}
 
@@ -616,7 +616,7 @@ struct NonTrivialUwunionImpl<Kind, meta::index_sequence<Is...>, Ts...>
 			VEG_INLINE constexpr auto get_ref() const
 			& VEG_NOEXCEPT -> ith<I, Ts...> const& {
 		return (void)meta::unreachable_if(this->inner.tag != I),
-					 UwunionGetImpl<I>::get(this->inner.inner).inner;
+		       UwunionGetImpl<I>::get(this->inner.inner).inner;
 	}
 	VEG_NODISCARD VEG_INLINE constexpr auto index() const -> usize {
 		return this->inner.tag;
@@ -815,7 +815,6 @@ struct DoubleStorageCopyMove { /* NOLINT */
 
 			inner.destroy_inactive(old_tag);
 		}
-		return *this;
 	}
 
 	VEG_INLINE
@@ -873,14 +872,14 @@ struct NonTrivialUwunionImpl<
 								 EmptyI<1313>>,
 						 meta::conditional_t<
 								 VEG_ALL_OF(
-										 VEG_CONCEPT(move_constructible<Ts>) &&
-										 VEG_CONCEPT(move_assignable<Storage<Ts>>)),
+										 (VEG_CONCEPT(move_constructible<Ts>) &&
+                      VEG_CONCEPT(move_assignable<Storage<Ts>>))),
 								 NoMoveAssign,
 								 EmptyI<1314>>,
 						 meta::conditional_t<
 								 VEG_ALL_OF(
-										 VEG_CONCEPT(copy_constructible<Ts>) &&
-										 VEG_CONCEPT(copy_assignable<Storage<Ts>>)),
+										 (VEG_CONCEPT(copy_constructible<Ts>) &&
+                      VEG_CONCEPT(copy_assignable<Storage<Ts>>))),
 								 NoCopyAssign,
 								 EmptyI<1315>> {
 	using Base = DoubleStorageCopyMove<Ts...>;
@@ -889,7 +888,7 @@ struct NonTrivialUwunionImpl<
 
 template <typename... Ts>
 struct NonTrivialUwunionImplSelector {
-	using Type = NonTrivialUwunionImpl<
+	using type = NonTrivialUwunionImpl<
 			!(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>))) //
 					? needs_double_storage
 					: !(VEG_ALL_OF(VEG_CONCEPT(trivially_destructible<Ts>))) //
@@ -903,7 +902,7 @@ template <typename... Ts>
 using UwunionImpl = typename meta::conditional_t<
 		VEG_ALL_OF(VEG_CONCEPT(trivially_copyable<Storage<Ts>>)),
 		meta::type_identity<TrivialUwunionImpl<Ts...>>,
-		NonTrivialUwunionImplSelector<Ts...>>::Type;
+		NonTrivialUwunionImplSelector<Ts...>>::type;
 
 template <typename Fn>
 struct TaggedFn {
