@@ -294,11 +294,15 @@ struct pack_ith_elem {
 					HollowIndexedTuple<meta::make_index_sequence<sizeof...(Ts)>, Ts...>*>(
 					nullptr)));
 };
-
 } // namespace internal
 
+#if VEG_HAS_BUILTIN(__type_pack_element)
+template <usize I, typename... Ts>
+using ith = __type_pack_element<I, Ts...>;
+#else
 template <usize I, typename... Ts>
 using ith = typename internal::pack_ith_elem<I>::template Type<Ts...>;
+#endif
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
