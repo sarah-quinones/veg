@@ -27,21 +27,6 @@ struct RawParts<true, Ret, Args...> {
 	auto (*fn_ptr)(StatePtr, Args...) noexcept -> Ret;
 };
 
-template <typename T>
-struct is_fn_ptr : meta::false_type {};
-template <typename Ret, typename... Args>
-struct is_fn_ptr<Ret (*)(Args...)> : meta::true_type {};
-VEG_CPP17(
-template <typename Ret, typename... Args>
-struct is_fn_ptr<Ret (*)(Args...)noexcept> : meta::true_type {};
-)
-template <typename T>
-using unary_plus = decltype(+VEG_DECLVAL(T &&));
-
-template <typename T>
-struct is_convertible_to_fn_ptr_with_unary_plus
-		: is_fn_ptr<meta::detected_t<unary_plus, T>> {};
-
 template <typename Ret>
 struct discard_void {
 	// non void case
@@ -56,7 +41,7 @@ struct discard_void<void> {
 	template <typename Fn, typename... Args>
 	VEG_INLINE static auto apply(Fn&& fn, Args&&... args)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>)) -> void {
-		void(VEG_FWD(fn)(VEG_FWD(args)...));
+		static_cast<void>(VEG_FWD(fn)(VEG_FWD(args)...));
 	}
 };
 
@@ -66,11 +51,7 @@ enum struct fn_kind_e {
 };
 
 template <typename T>
-struct fn_kind : meta::constant<
-										 fn_kind_e,
-										 is_convertible_to_fn_ptr_with_unary_plus<T>::value
-												 ? fn_kind_e::fn_ptr
-												 : fn_kind_e::fn_obj> {};
+struct fn_kind : meta::constant<fn_kind_e, fn_kind_e::fn_obj> {};
 
 template <typename Ret, typename... Args>
 struct fn_kind<Ret (*)(Args...)>
@@ -89,10 +70,10 @@ template <>
 struct fn_view_impl<fn_kind_e::fn_obj> {
 	template <typename Fn>
 	VEG_INLINE static auto address(Fn& arg) VEG_NOEXCEPT -> StatePtr {
-		using char_ref = char&;
+		using char_ref = char const volatile&;
 		using vptr = void*;
 		using ptr = Fn*;
-		return {ptr(vptr(&char_ref(arg)))};
+		return {ptr(vptr(&reinterpret_cast<char_ref>(arg)))};
 	}
 
 	template <typename Fn, typename Ret, typename... Args>
@@ -142,7 +123,6 @@ struct function_ref_impl {
 	RawParts self = {};
 
 	constexpr function_ref_impl() = default;
-	// COMPAT: check if function_ref_impl is a base of Fn
 	template <typename Fn>
 	VEG_INLINE
 	function_ref_impl(char /*unused*/, char /*unused*/, Fn&& fn) VEG_NOEXCEPT
@@ -195,10 +175,9 @@ public:
 
 	VEG_TEMPLATE(
 			(typename Fn),
-			requires(
-					!VEG_CONCEPT(constructible<FnView*, meta::uncvref_t<Fn>*>) &&
-					VEG_CONCEPT(invocable_r<Fn&, Ret, Args&&...>)),
+			requires(VEG_CONCEPT(invocable_r<Fn&, Ret, Args&&...>)),
 			VEG_INLINE FnView, /* NOLINT */
+			(/*tag*/, AsRef),
 			(fn, Fn&&))
 	VEG_NOEXCEPT : base({}, {}, fn) {}
 
@@ -231,11 +210,9 @@ public:
 
 	VEG_TEMPLATE(
 			(typename Fn),
-			requires(
-					!VEG_CONCEPT(
-							constructible<FnOnceView*, meta::uncvref_t<Fn>*, FnOnceView>) &&
-					VEG_CONCEPT(invocable_r<Fn, Ret, Args&&...>)),
+			requires(VEG_CONCEPT(invocable_r<Fn, Ret, Args&&...>)),
 			VEG_INLINE FnOnceView, /* NOLINT */
+			(/*tag*/, AsRef),
 			(fn, Fn&&))
 	VEG_NOEXCEPT : base({}, {}, VEG_FWD(fn)) {}
 
@@ -271,10 +248,9 @@ public:
 
 	VEG_TEMPLATE(
 			(typename Fn),
-			requires(
-					!VEG_CONCEPT(constructible<FnView*, meta::uncvref_t<Fn>*>) &&
-					VEG_CONCEPT(nothrow_invocable_r<Fn&, Ret, Args&&...>)),
+			requires(VEG_CONCEPT(nothrow_invocable_r<Fn&, Ret, Args&&...>)),
 			VEG_INLINE FnView, /* NOLINT */
+			(/*tag*/, AsRef),
 			(fn, Fn&&))
 	VEG_NOEXCEPT : base({}, {}, fn) {}
 
@@ -301,11 +277,9 @@ public:
 
 	VEG_TEMPLATE(
 			(typename Fn),
-			requires(
-					!VEG_CONCEPT(
-							constructible<FnOnceView*, meta::uncvref_t<Fn>*, FnOnceView>) &&
-					VEG_CONCEPT(nothrow_invocable_r<Fn, Ret, Args&&...>)),
+			requires(VEG_CONCEPT(nothrow_invocable_r<Fn, Ret, Args&&...>)),
 			VEG_INLINE FnOnceView, /* NOLINT */
+			(/*tag*/, AsRef),
 			(fn, Fn&&))
 	VEG_NOEXCEPT : base({}, {}, VEG_FWD(fn)) {}
 

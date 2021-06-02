@@ -39,6 +39,7 @@ struct Into {};
 struct InitList {};
 struct FromRawParts {};
 struct InPlace {};
+struct AsRef {};
 
 VEG_INLINE_VAR_TEMPLATE(typename T, tag, Tag<T>);
 VEG_INLINE_VAR(init_list, InitList);
@@ -46,6 +47,7 @@ VEG_INLINE_VAR(inplace, InPlace);
 VEG_INLINE_VAR(direct, Direct);
 VEG_INLINE_VAR(safe, Safe);
 VEG_INLINE_VAR(unsafe, Unsafe);
+VEG_INLINE_VAR(as_ref, AsRef);
 } // namespace tags
 } // namespace veg
 

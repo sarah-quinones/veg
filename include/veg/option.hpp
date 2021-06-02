@@ -16,8 +16,9 @@ namespace veg {
 template <typename T>
 struct Option;
 
+namespace option {
 namespace nb {
-struct some {
+struct make {
 	VEG_TEMPLATE(
 			typename T,
 			requires(VEG_CONCEPT(move_constructible<T>)),
@@ -27,34 +28,37 @@ struct some {
 	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->Option<T> {
 		return {inplace, internal::ConvertingFn<T&&, T>{VEG_FWD(arg)}};
 	}
+};
+struct some : make {};
+struct fwd {
+	VEG_TEMPLATE(
+			typename T,
+			requires(VEG_CONCEPT(move_constructible<T>)),
+			VEG_NODISCARD VEG_INLINE constexpr auto
+			operator(),
+			(arg, T&&))
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->Option<T> {
+		return {inplace, internal::ConvertingFn<T&&, T>{VEG_FWD(arg)}};
+	}
+};
 
-	struct fwd {
-		VEG_TEMPLATE(
-				typename T,
-				requires(VEG_CONCEPT(move_constructible<T>)),
-				VEG_NODISCARD VEG_INLINE constexpr auto
-				operator(),
-				(arg, T&&))
-		const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))
-				->Option<T> {
-			return {inplace, internal::ConvertingFn<T&&, T>{VEG_FWD(arg)}};
-		}
-	} fwd;
-
-	struct ref {
-		template <typename T>
-		VEG_NODISCARD VEG_INLINE constexpr auto
-		operator()(T&& arg) const VEG_NOEXCEPT -> Option<T&&> {
-			return {some{}, VEG_FWD(arg)};
-		}
-	} ref;
+struct ref {
+	template <typename T>
+	VEG_NODISCARD VEG_INLINE constexpr auto operator()(T&& arg) const VEG_NOEXCEPT
+			-> Option<T&&> {
+		return {some{}, VEG_FWD(arg)};
+	}
 };
 } // namespace nb
+VEG_NIEBLOID(make);
 VEG_NIEBLOID(some);
+VEG_NIEBLOID(fwd);
+VEG_NIEBLOID(ref);
+} // namespace option
 
 inline namespace tags {
-using Some = veg::nb::some;
-using veg::some;
+using Some = veg::option::nb::some;
+using veg::option::some;
 
 struct None {
 	friend constexpr auto operator==(None /*lhs*/, None /*rhs*/) VEG_NOEXCEPT

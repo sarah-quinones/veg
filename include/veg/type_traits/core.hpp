@@ -99,6 +99,11 @@ template <typename T>
 struct decay_helper : meta::type_identity<T> {};
 template <typename Ret, typename... Args>
 struct decay_helper<Ret(Args...)> : meta::type_identity<Ret (*)(Args...)> {};
+#if __cplusplus >= 201703L
+template <typename Ret, typename... Args>
+struct decay_helper<Ret(Args...) noexcept>
+		: meta::type_identity<Ret (*)(Args...) noexcept> {};
+#endif
 template <typename T, usize N>
 struct decay_helper<T[N]> : meta::type_identity<T*> {};
 

@@ -1,3 +1,4 @@
+#include <iostream>
 #define __VEG_DISABLE_NOEXCEPT
 
 #include "static_assert.hpp"
@@ -7,6 +8,7 @@
 #include "veg/internal/prologue.hpp"
 
 using namespace veg::fn;
+using namespace veg;
 TEST_CASE("function_view: no_args") {
 	static int global = 0;
 	int i = 0;
@@ -30,11 +32,7 @@ TEST_CASE("function_view: no_args") {
 		return global;
 	};
 
-#if __cplusplus >= 201703L
-	FnView<void()> f{inc_lambda};
-#else
-	FnView<void()> f{inc_lambda};
-#endif
+	FnView<void()> f{as_ref, inc_lambda};
 	CHECK(i == 0);
 	f();
 	CHECK(i == 1);
@@ -56,25 +54,25 @@ TEST_CASE("function_view: no_args") {
 													FnOnceView<void() noexcept>,
 													FnView<void()>>::value);)
 
-	f = inc2_lambda;
+	f = {as_ref, inc2_lambda};
 	f();
 	CHECK(i == 6);
 
-	f = returns_lambda;
+	f = {as_ref, returns_lambda};
 	f();
 	CHECK(i == 9);
 
-	f = *inc_fn_ptr;
+	f = {as_ref, *inc_fn_ptr};
 	CHECK(global == 0);
 	f();
 	CHECK(global == 1);
 
-	f = inc2_global_lambda;
+	f = {as_ref, inc2_global_lambda};
 	f();
 	CHECK(global == 3);
 
-	f = +returns_fn_ptr;
-	f = *+returns_fn_ptr;
+	f = {as_ref, +returns_fn_ptr};
+	f = {as_ref, *+returns_fn_ptr};
 	f();
 	CHECK(global == 6);
 }
@@ -107,12 +105,13 @@ TEST_CASE("function_view: null") {
 		CHECK_THROWS(void(f.as_ref().unwrap()));
 		CHECK_THROWS(void(VEG_MOV(f).unwrap()));
 
-		f = {veg::some, [] {}};
+		auto l = [] {};
+		f = {some, {as_ref, l}};
 		CHECK(f);
 	}
 	{
 		void (*null)() = nullptr;
-		CHECK_THROWS(FnView<void()>{null});
+		CHECK_THROWS(FnView<void()>{as_ref, null});
 	}
 }
 #include "veg/internal/epilogue.hpp"

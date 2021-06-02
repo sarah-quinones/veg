@@ -19,7 +19,7 @@ void get() = delete;
 
 TEST_CASE("tuple: adl_get") {
 	veg::Tuple<int, float> t{};
-  veg::unused(get<0>(t));
+	veg::unused(get<0>(t));
 	STATIC_ASSERT(VEG_CONCEPT(same<decltype(get<0>(t)), int&>));
 	STATIC_ASSERT(VEG_CONCEPT(
 			same<
@@ -32,7 +32,7 @@ TEST_CASE("tuple: adl_get") {
 TEST_CASE("tuple: all") {
 	using namespace veg;
 
-	auto tup = tuple(1, 'c', true);
+	auto tup = tuple::make(1, 'c', true);
 	veg::Tuple<int, char&&, char, bool&, bool const&> tup_ref{
 			direct,
 			1,
@@ -91,11 +91,11 @@ TEST_CASE("tuple: all") {
 	}
 	{
 		using val_tup = veg::Tuple<int, bool>;
-		val_tup a = tuple(5, true);
-		val_tup b = tuple(3, false);
+		val_tup a = tuple::make(5, true);
+		val_tup b = tuple::make(3, false);
 
 		unused(Tuple<long, bool>{
-				tuple.map_i(
+				tuple::map_i(
 						val_tup{},
 						overload(
 								nb::indexed<0>{}(nb::convert<long>{}),
@@ -269,10 +269,10 @@ TEST_CASE("tuple: cmp") {
 			same<decltype(cmp_3way(tup_i{}, tup_i{})), cmp::strong_ordering>));
 
 	{
-		constexpr auto t1 = tuple(1, 2, 3);
-		constexpr auto t2 = tuple(1, 2, 3);
-		constexpr auto t3 = tuple(0, 2, 3);
-		constexpr auto t4 = tuple(1, 2, 4);
+		constexpr auto t1 = tuple::make(1, 2, 3);
+		constexpr auto t2 = tuple::make(1, 2, 3);
+		constexpr auto t3 = tuple::make(0, 2, 3);
+		constexpr auto t4 = tuple::make(1, 2, 4);
 
 		STATIC_ASSERT(three_way(t1, t2) == 0);
 		STATIC_ASSERT(three_way(t1, t3) > 0);
@@ -282,15 +282,15 @@ TEST_CASE("tuple: cmp") {
 		STATIC_ASSERT(three_way(t3, t4) < 0);
 	}
 	CHECK(
-			three_way(tuple(1, 1, nan), tuple(1, 1, 0)) ==
+			three_way(tuple::make(1, 1, nan), tuple::make(1, 1, 0)) ==
 			cmp::partial_ordering::unordered);
 
 	CHECK(
-			three_way(tuple(0, 1, nan), tuple(1, 1, 0)) ==
+			three_way(tuple::make(0, 1, nan), tuple::make(1, 1, 0)) ==
 			cmp::partial_ordering::less);
 
 	CHECK(
-			three_way(tuple(1, 2, nan), tuple(1, 1, 0)) ==
+			three_way(tuple::make(1, 2, nan), tuple::make(1, 1, 0)) ==
 			cmp::partial_ordering::greater);
 }
 
@@ -307,12 +307,12 @@ TEST_CASE("tuple: direct") {
 	using namespace veg;
 	Tuple<int, double> t1{direct, 1, 1.5};
 	Tuple<long, double> t2(direct, 3, 2.5);
-	Tuple<long, double> t3 = tuple.map_i(
+	Tuple<long, double> t3 = tuple::map_i(
 			FWD(t1),
 			overload(
 					nb::indexed<0>{}(nb::convert<long>{}),
 					nb::indexed<1>{}(nb::convert<double>{})));
-	Tuple<int, double> t4 = tuple.map_i(
+	Tuple<int, double> t4 = tuple::map_i(
 			FWD(t3),
 			overload(
 					nb::indexed<0>{}(nb::convert<int>{}),
@@ -337,60 +337,72 @@ TEST_CASE("tuple: *sparkles* functional programming *sparkles*") {
 	using veg::clone;
 
 	{
-		constexpr auto x = tuple(i64(1), i64(2), i64(3));
-		CHECK(tuple.map(x.as_ref(), [](i64 i) -> float {
-			return 2 * float(i);
-		}) == tuple(2.0F, 4.0F, 6.0F));
+		constexpr auto x = tuple::make(i64(1), i64(2), i64(3));
+		CHECK(tuple::map(x.as_ref(), [](i64 i) -> float {
+						return 2 * float(i);
+					}) == tuple::make(2.0F, 4.0F, 6.0F));
 		i64 acc = 0;
-		tuple.for_each(x.as_ref(), [&](i64 i) -> void { acc += i; });
+		tuple::for_each(x.as_ref(), [&](i64 i) -> void { acc += i; });
 		CHECK(acc == 1 + 2 + 3);
 	}
 
 	{
-		constexpr auto x = tuple(2.5, 3, tuple(&tuple, 10.0));
-		tuple.unpack(
-				clone(x), [](double d, int i, Tuple<decltype(&tuple), double> tup) {
+		constexpr auto x = tuple::make(2.5, 3, tuple::make(&tuple::make, 10.0));
+		tuple::unpack(
+				clone(x),
+				[](double d, int i, Tuple<decltype(&tuple::make), double> tup) {
 					CHECK(d == 2.5);
 					CHECK(i == i);
-					CHECK(tup == tuple(&tuple, 10.0));
-					CHECK(tup[0_c] == &tuple);
+					CHECK(tup == tuple::make(&tuple::make, 10.0));
+					CHECK(tup[0_c] == &tuple::make);
 					CHECK(tup[1_c] == 10.0);
 				});
 	}
 	{
-		unused(
-				Tuple<Tuple<int>>{tuple.map(tuple(tuple(2.0)), [](Tuple<double> inner) {
-					return tuple.map(FWD(inner), nb::convert<int>{});
+		unused(Tuple<Tuple<int>>{
+				tuple::map(tuple::make(tuple::make(2.0)), [](Tuple<double> inner) {
+					return tuple::map(FWD(inner), nb::convert<int>{});
 				})});
 	}
 
 	{
 		STATIC_ASSERT(
-				tuple.cat(tuple(1.0, 2), tuple(1, 4.0)) == tuple(1.0, 2, 1, 4.0));
+				tuple::cat(tuple::make(1.0, 2), tuple::make(1, 4.0)) ==
+				tuple::make(1.0, 2, 1, 4.0));
 	}
 
 	// sfinae test
-	STATIC_ASSERT(!VEG_CONCEPT(invocable<struct nb::tuple::zip, int>));
+	STATIC_ASSERT(!VEG_CONCEPT(invocable<struct tuple::nb::zip, int>));
 	STATIC_ASSERT(!VEG_CONCEPT(
-			invocable<struct nb::tuple::zip, Tuple<int>, Tuple<float, bool>>));
+			invocable<struct tuple::nb::zip, Tuple<int>, Tuple<float, bool>>));
 	{
-		STATIC_ASSERT(tuple.ref(1.0, 2) == tuple(1.0, 2));
-		STATIC_ASSERT(tuple.zip(tuple.ref(1.0, 2)) == tuple(tuple(1.0), tuple(2)));
-		STATIC_ASSERT(tuple.zip(tuple.ref(1.0), tuple(2)) == tuple(tuple(1.0, 2)));
+		STATIC_ASSERT(tuple::ref(1.0, 2) == tuple::make(1.0, 2));
+		STATIC_ASSERT(
+				tuple::zip(tuple::ref(1.0, 2)) ==
+				tuple::make(tuple::make(1.0), tuple::make(2)));
+		STATIC_ASSERT(
+				tuple::zip(tuple::ref(1.0), tuple::make(2)) ==
+				tuple::make(tuple::make(1.0, 2)));
 
 		constexpr void* p = nullptr;
 		STATIC_ASSERT(
-				tuple.zip(tuple.fwd(nullptr, 'c'), tuple.ref(1.0, 2), tuple(13, 4.0)) ==
-				tuple(tuple(p, 1.0, 13), tuple('c', 2, 4.0)));
+				tuple::zip(
+						tuple::fwd(nullptr, 'c'),
+						tuple::ref(1.0, 2),
+						tuple::make(13, 4.0)) ==
+				tuple::make(tuple::make(p, 1.0, 13), tuple::make('c', 2, 4.0)));
 	}
 
-	{ STATIC_ASSERT(tuple.zip(tuple.fwd(), tuple.ref(), tuple()) == tuple()); }
+	{
+		STATIC_ASSERT(
+				tuple::zip(tuple::fwd(), tuple::ref(), tuple::make()) == tuple::make());
+	}
 
 #if __cplusplus >= 201402L
 	{
-		constexpr auto x = tuple(i64(1), float(2.5), i64(3));
+		constexpr auto x = tuple::make(i64(1), float(2.5), i64(3));
 		float acc = 0;
-		tuple.for_each_i(
+		tuple::for_each_i(
 				x.as_ref(), [&](auto N, auto i) -> void { acc += float(i) * i64{N}; });
 		CHECK(acc == 1 * 0 + 2.5F * 1 + 3 * 2);
 	}

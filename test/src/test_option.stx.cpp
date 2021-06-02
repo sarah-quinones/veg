@@ -207,21 +207,21 @@ TEST_CASE("OptionTest: Equality") {
 	int const x = 909909;
 	int y = 909909;
 
-	CHECK(some.ref(x) == some(909909));
-	CHECK(some.ref(y) == some(909909));
+	CHECK(option::ref(x) == some(909909));
+	CHECK(option::ref(y) == some(909909));
 
-	CHECK(some(909909) == some.ref(y));
-	CHECK(some(909909) == some.ref(y));
+	CHECK(some(909909) == option::ref(y));
+	CHECK(some(909909) == option::ref(y));
 
-	CHECK(some(909909) == some.ref(x));
-	CHECK(some(909909) == some.ref(y));
-	CHECK(some(101101) != some.ref(x));
-	CHECK(some(101101) != some.ref(y));
+	CHECK(some(909909) == option::ref(x));
+	CHECK(some(909909) == option::ref(y));
+	CHECK(some(101101) != option::ref(x));
+	CHECK(some(101101) != option::ref(y));
 
-	CHECK(some.ref(x) == some(909909));
-	CHECK(some.ref(y) == some(909909));
-	CHECK(some.ref(x) != some(101101));
-	CHECK(some.ref(y) != some(101101));
+	CHECK(option::ref(x) == some(909909));
+	CHECK(option::ref(y) == some(909909));
+	CHECK(option::ref(x) != some(101101));
+	CHECK(option::ref(y) != some(101101));
 }
 
 TEST_CASE("OptionTest: Contains") {
