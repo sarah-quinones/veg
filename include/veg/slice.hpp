@@ -65,6 +65,7 @@ struct SliceCommon {
 										 FromRawParts{},
 										 static_cast<T*>(rng.data()),
 										 static_cast<i64>(rng.size()),
+										 unsafe,
 								 } {}
 
 	T* m_begin = nullptr;
