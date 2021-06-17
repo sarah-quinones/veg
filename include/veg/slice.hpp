@@ -7,160 +7,65 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
+template <typename T, usize N>
+using CArray = T[N];
 template <typename T, i64 N>
 struct Array {
 	static_assert(N > 0, ".");
-	T self[static_cast<usize>(N)];
-
-	VEG_NODISCARD VEG_INLINE auto data() VEG_NOEXCEPT -> T* { return self; }
-	VEG_NODISCARD VEG_INLINE auto data() const VEG_NOEXCEPT -> T const* {
-		return self;
-	}
-	VEG_NODISCARD VEG_INLINE auto size() const VEG_NOEXCEPT -> i64 { return N; }
-
-	VEG_NODISCARD VEG_INLINE auto operator[](i64 i) && VEG_NOEXCEPT
-			-> T&& = delete;
-	VEG_NODISCARD VEG_INLINE auto operator[](i64 i) & VEG_NOEXCEPT -> T& {
-		VEG_INTERNAL_ASSERT_PRECONDITIONS(i >= i64(0), i < N);
-		return self[i];
-	}
-	VEG_NODISCARD VEG_INLINE auto operator[](i64 i) const & VEG_NOEXCEPT
-																													-> T const& {
-		VEG_INTERNAL_ASSERT_PRECONDITIONS(i >= i64(0), i < N);
-		return self[i];
-	}
-
-	VEG_NODISCARD auto at(i64 i) && VEG_NOEXCEPT -> Option<T&&> = delete;
-	VEG_NODISCARD VEG_INLINE auto at(i64 i) & VEG_NOEXCEPT -> Option<T&> {
-		if (i >= 0 && i < N) {
-			return {some, self[i]};
-		}
-		return none;
-	}
-	VEG_NODISCARD VEG_INLINE auto at(i64 i) const & VEG_NOEXCEPT
-																									-> Option<T const&> {
-		if (i >= 0 && i < N) {
-			return {some, self[i]};
-		}
-		return none;
-	}
+	T _[static_cast<usize>(N)];
 };
 
 namespace internal {
+namespace _meta {
+template <typename Rng>
+using range_data_t = decltype(VEG_DECLVAL(Rng).data());
+template <typename Rng, typename T>
+using range_typed_data_t = decltype(static_cast<T* const*>(
+		static_cast<decltype(VEG_DECLVAL(Rng).data()) const*>(nullptr)));
+template <typename Rng>
+using range_size_t = decltype(i64(VEG_DECLVAL(Rng).size()));
+} // namespace _meta
+} // namespace internal
 
-struct member_fn_data_size {
-	template <typename R, typename T>
-	using dtype_r = decltype(void(static_cast<R* const*>(
-			static_cast<decltype(VEG_DECLVAL(T&).data()) const*>(nullptr))));
+namespace concepts {
+VEG_DEF_CONCEPT(
+		typename Rng,
+		contiguous_range,
+		(VEG_CONCEPT(detected<internal::_meta::range_data_t, Rng&&>) &&
+     VEG_CONCEPT(detected<internal::_meta::range_size_t, Rng&&>)));
+VEG_DEF_CONCEPT(
+		(typename Rng, typename T),
+		contiguous_range_r,
+		(VEG_CONCEPT(detected<internal::_meta::range_typed_data_t, Rng&&, T>) &&
+     VEG_CONCEPT(detected<internal::_meta::range_size_t, Rng&&>)));
+} // namespace concepts
 
-	template <typename T>
-	using dtype = decltype(void(VEG_DECLVAL(T&).data()));
-
-	template <typename T>
-	using stype = decltype(void(static_cast<i64>(VEG_DECLVAL(T&).size())));
-
-	template <typename T>
-	VEG_INLINE static constexpr auto d(T& arg) VEG_NOEXCEPT
-			-> decltype(arg.data()) {
-		return arg.data();
-	}
-	template <typename T>
-	VEG_INLINE static constexpr auto s(T& arg) VEG_NOEXCEPT -> i64 {
-		return i64(arg.size());
-	}
-};
-template <typename R, typename T>
-struct has_members_r : meta::conjunction<
-													 meta::bool_constant<VEG_CONCEPT(
-															 detected<member_fn_data_size::dtype_r, R, T&>)>,
-													 meta::bool_constant<VEG_CONCEPT(
-															 detected<member_fn_data_size::stype, T&>)>>,
-											 member_fn_data_size {};
-template <typename T>
-struct has_members : meta::conjunction<
-												 meta::bool_constant<VEG_CONCEPT(
-														 detected<member_fn_data_size::dtype, T&>)>,
-												 meta::bool_constant<VEG_CONCEPT(
-														 detected<member_fn_data_size::stype, T&>)>>,
-										 member_fn_data_size {};
-
-struct array_data_size {
-	template <typename T>
-	VEG_INLINE static constexpr auto d(T& arg) VEG_NOEXCEPT -> decltype(+arg) {
-		return +arg;
-	}
-	template <typename T, usize N>
-	VEG_INLINE static constexpr auto s(T (&/*arg*/)[N]) VEG_NOEXCEPT -> i64 {
-		return i64(N);
-	}
-};
-
-template <typename R, typename T>
-struct has_array_data2
-		: meta::bool_constant<VEG_CONCEPT(
-					convertible<
-							T&,
-							R (&)[sizeof(T) / sizeof(decltype(VEG_DECLVAL(T &&)[0]))]>)> {};
-
-template <typename R, typename T>
-struct has_array_data_r
-		: meta::conjunction<meta::is_bounded_array<T>, has_array_data2<R, T>>,
-			array_data_size {};
-
-template <typename T>
-struct has_array_data : meta::is_bounded_array<T>, array_data_size {};
-
-template <typename R, typename T>
-struct has_data_r
-		: meta::disjunction<has_members_r<R, T&>, has_array_data_r<R, T>> {};
-template <typename T>
-struct has_data : meta::disjunction<has_members<T&>, has_array_data<T>> {};
-
-// prevents forwarding ctor from hiding copy/move ctors
-// disables implicitly generated deduction guides
+namespace internal {
 template <typename T>
 struct SliceCommon {
 	SliceCommon() VEG_NOEXCEPT = default;
 
 	VEG_INLINE
-	constexpr SliceCommon(T* data, i64 count, Unsafe /* tag */) VEG_NOEXCEPT
+	constexpr SliceCommon(
+			FromRawParts /*tag*/, T* data, i64 count, Unsafe /* tag */) VEG_NOEXCEPT
 			: m_begin{data},
 				m_count{count} {}
 
-	VEG_INLINE
-	constexpr SliceCommon(T* data, i64 count, Safe /* tag */ = {}) VEG_NOEXCEPT :
-#if __cplusplus >= 201402L
-
-			m_begin{data},
-			m_count{count} {
-		VEG_INTERNAL_ASSERT_PRECONDITION(count >= i64(0));
-		if (count > 0) {
-			VEG_INTERNAL_ASSERT_PRECONDITION(data);
-		}
-	}
-
-#else
-
-			m_begin{
-					(VEG_INTERNAL_ASSERT_PRECONDITION(count >= i64(0)),
-	         (count > 0 ? VEG_INTERNAL_ASSERT_PRECONDITION(data) : void(0)),
-	         data)},
-			m_count{count} {
-	}
-
-#endif
-
-	// COMPAT: check if slice_ctor_common is a base of Rng
+	template <usize N>
+	constexpr SliceCommon(AsRef /*tag*/, CArray<T, N>& rng) VEG_NOEXCEPT
+			: m_begin{static_cast<T*>(rng)},
+				m_count{N} {}
 	VEG_TEMPLATE(
 			(typename Rng),
-			requires(internal::has_data_r<T, meta::uncvref_t<Rng>>::value),
+			requires(VEG_CONCEPT(contiguous_range_r<Rng, T>)),
 			VEG_INLINE constexpr SliceCommon,
+			(/*tag*/, AsRef),
 			(rng, Rng&&))
-	VEG_NOEXCEPT
-			: SliceCommon(
-						static_cast<T*>(
-								internal::has_data_r<T, meta::uncvref_t<Rng>>::d(rng)),
-						static_cast<i64>(has_data_r<T, meta::uncvref_t<Rng>>::s(rng))) {}
+	VEG_NOEXCEPT : SliceCommon{
+										 FromRawParts{},
+										 static_cast<T*>(rng.data()),
+										 static_cast<i64>(rng.size()),
+								 } {}
 
 	T* m_begin = nullptr;
 	i64 m_count = 0;
@@ -203,7 +108,7 @@ struct Slice : private internal::SliceCtor<T> {
 	}
 	VEG_NODISCARD
 	VEG_INLINE
-	VEG_CPP14(constexpr) auto at(i64 i) const VEG_NOEXCEPT -> Option<T&> {
+	VEG_CPP14(constexpr) auto get(i64 i) const VEG_NOEXCEPT -> Option<T&> {
 		if (i > 0 || i <= size()) {
 			return {some, *(data() + i)};
 		}
@@ -222,9 +127,12 @@ struct Slice<void> : Slice<unsigned char> {
 					VEG_CONCEPT(trivially_copyable<T>)),
 			VEG_INLINE Slice,
 			(s, Slice<T>))
-	VEG_NOEXCEPT : Slice(
+	VEG_NOEXCEPT : Slice{
+										 FromRawParts{},
 										 reinterpret_cast<unsigned char*>(s.data()),
-										 s.size() * static_cast<i64>(sizeof(T))) {}
+										 s.size() * static_cast<i64>(sizeof(T)),
+										 unsafe,
+								 } {}
 };
 template <>
 struct Slice<void const> : Slice<unsigned char const> {
@@ -239,26 +147,40 @@ struct Slice<void const> : Slice<unsigned char const> {
 										 s.size() * static_cast<i64>(sizeof(T))} {}
 };
 
+namespace slice {
 namespace nb {
-struct slice {
+struct from_range {
 	VEG_TEMPLATE(
 			(typename Rng),
-			requires(
-					VEG_CONCEPT(constructible< //
-											veg::Slice<meta::unptr_t<
-													decltype(internal::has_data<meta::uncvref_t<Rng>>::d(
-															VEG_DECLVAL(Rng&)))>>,
-											Rng&&>)),
+			requires(VEG_CONCEPT(contiguous_range<Rng>)),
 			VEG_INLINE auto
 			operator(),
 			(rng, Rng&&))
-	const VEG_NOEXCEPT->veg::Slice<meta::unptr_t<
-			decltype(internal::has_data<meta::uncvref_t<Rng>>::d(rng))>> {
-		return {VEG_FWD(rng)};
+	const VEG_NOEXCEPT->veg::Slice<meta::unptr_t<decltype(rng.data())>> {
+		return {
+				FromRawParts{},
+				rng.data(),
+				i64(rng.size()),
+				unsafe,
+		};
+	}
+};
+struct from_array {
+	template <typename T, usize N>
+	VEG_INLINE auto operator()(CArray<T, N>& rng) const VEG_NOEXCEPT
+			-> veg::Slice<T> {
+		return {
+				FromRawParts{},
+				static_cast<T*>(rng),
+				i64{N},
+				unsafe,
+		};
 	}
 };
 } // namespace nb
-VEG_NIEBLOID(slice);
+VEG_NIEBLOID(from_range);
+VEG_NIEBLOID(from_array);
+} // namespace slice
 
 namespace cpo {
 template <typename T>

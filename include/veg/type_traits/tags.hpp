@@ -48,6 +48,7 @@ VEG_INLINE_VAR(direct, Direct);
 VEG_INLINE_VAR(safe, Safe);
 VEG_INLINE_VAR(unsafe, Unsafe);
 VEG_INLINE_VAR(as_ref, AsRef);
+VEG_INLINE_VAR(from_raw_parts, FromRawParts);
 } // namespace tags
 } // namespace veg
 

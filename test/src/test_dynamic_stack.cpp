@@ -28,7 +28,7 @@ public:
 TEST_CASE("dynamic stack: raii") {
 	unsigned char buf[4096];
 
-	DynStackView stack{Slice<void>(buf)};
+	DynStackView stack{Slice<void>(as_ref, buf)};
 
 	{
 		auto s1 = stack.make_new(Tag<S>{}, 3).unwrap();
@@ -69,7 +69,7 @@ TEST_CASE("dynamic stack: raii") {
 
 TEST_CASE("dynamic stack: evil_reorder") {
 	unsigned char buf[4096];
-	DynStackView stack{slice(buf)};
+	DynStackView stack{slice::from_array(buf)};
 	auto good = [&] {
 		auto s1 = stack.make_new(Tag<int>{}, 30).unwrap();
 		auto s2 = stack.make_new(Tag<double>{}, 20).unwrap();
@@ -86,7 +86,7 @@ TEST_CASE("dynamic stack: evil_reorder") {
 
 TEST_CASE("dynamic stack: assign") {
 	alignas(double) unsigned char buf[100];
-	DynStackView stack{slice(buf)};
+	DynStackView stack{slice::from_array(buf)};
 
 	{
 		auto s1 = stack.make_new(Tag<char>{}, 30);
@@ -104,7 +104,7 @@ TEST_CASE("dynamic stack: assign") {
 
 TEST_CASE("dynamic stack: return") {
 	unsigned char buf[4096];
-	DynStackView stack(slice(buf));
+	DynStackView stack(slice::from_array(buf));
 
 	auto s = [&] {
 		auto s1 = stack.make_new(Tag<S>{}, 3).unwrap();
@@ -124,7 +124,7 @@ TEST_CASE("dynamic stack: return") {
 
 TEST_CASE("dynamic stack: manual_lifetimes") {
 	unsigned char buf[4096];
-	DynStackView stack(slice(buf));
+	DynStackView stack({as_ref, buf});
 
 	{
 		auto s = stack.make_alloc(Tag<S>{}, 3).unwrap();
@@ -159,7 +159,7 @@ struct T : S {
 
 TEST_CASE("dynamic stack: alignment") {
 	alignas(T) unsigned char buffer[4096 + 1];
-	DynStackView stack{{buffer + 1, 4096}};
+	DynStackView stack{{from_raw_parts, buffer + 1, 4096, unsafe}};
 	CHECK(stack.remaining_bytes() == 4096);
 	CHECK(T::n_instances() == 0);
 	{
@@ -197,7 +197,7 @@ public:
 
 TEST_CASE("dynamic stack: throwing") {
 	unsigned char buf[4096];
-	DynStackView stack{Slice<void>(buf)};
+	DynStackView stack{Slice<void>{as_ref, buf}};
 
 	CHECK(throwing::n_instances() == 0);
 	auto s1 = stack.make_new(Tag<throwing>{}, 3);
