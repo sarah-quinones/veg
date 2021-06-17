@@ -80,8 +80,13 @@ template <typename T>
 struct SliceCtor<T const> : SliceCommon<T const> {
 	using SliceCommon<T const>::SliceCommon;
 
-	constexpr SliceCtor(std::initializer_list<T> lst) VEG_NOEXCEPT
-			: SliceCommon<T const>{lst.begin(), static_cast<i64>(lst.size())} {}
+	constexpr SliceCtor(AsRef /*tag*/, std::initializer_list<T> lst) VEG_NOEXCEPT
+			: SliceCommon<T const>{
+						FromRawParts{},
+						lst.begin(),
+						static_cast<i64>(lst.size()),
+						unsafe,
+				} {}
 };
 } // namespace internal
 
