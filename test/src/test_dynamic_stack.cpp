@@ -46,7 +46,7 @@ TEST_CASE("dynamic stack: raii") {
 
 			{
 				auto i3 = stack.make_new(Tag<int>{}, 30000);
-				CHECK(!i3);
+				CHECK(i3.is_none());
 				CHECK(stack.remaining_bytes() == 4089);
 				{
 					auto i4 = stack.make_new(Tag<int>{}, 300).unwrap();

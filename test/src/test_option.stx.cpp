@@ -172,7 +172,7 @@ TEST_CASE("OptionTest: ObjectForwardingTest") {
 
 	g = none;
 
-	CHECK(!g);
+	CHECK(g.is_none());
 
 	g = {some, vector<int>{1, 2, 3, 4, 5}};
 
@@ -180,29 +180,29 @@ TEST_CASE("OptionTest: ObjectForwardingTest") {
 
 	g = none;
 
-	CHECK(!g);
+	CHECK(g.is_none());
 }
 
 TEST_CASE("OptionTest: Equality") {
-	CHECK(some(0));
+	CHECK(some(0).is_some());
 	CHECK(some(90) == some(90));
 	CHECK(some(90) != some(70));
-	CHECK((Option<Option<int>>{some, none}));
+	CHECK((Option<Option<int>>{some, none}).is_some());
 	CHECK(none == none);
 	CHECK(some(90) == some(90));
 	CHECK(some(90) != some(70));
 	CHECK(some(90) == some(90));
 	CHECK(some(90) != some(20));
-	CHECK(some(90));
-	CHECK(!Option<int>{none});
-	CHECK((Option<Option<int>>{some, Option<int>(none)}));
+	CHECK(some(90).is_some());
+	CHECK(Option<int>{none}.is_none());
+	CHECK((Option<Option<int>>{some, Option<int>(none)}).is_some());
 
-	CHECK((Option<Option<int>>{some, Option<int>{none}}));
+	CHECK((Option<Option<int>>{some, Option<int>{none}}).is_some());
 	CHECK(some(90) == some(90));
 	CHECK(some(70) != some(90));
-	CHECK(some(90));
-	CHECK(!Option<int>(none));
-	CHECK(Option<Option<int>>({some, Option<int>(none)}));
+	CHECK(some(90).is_some());
+	CHECK(Option<int>(none).is_none());
+	CHECK(Option<Option<int>>({some, Option<int>(none)}).is_some());
 
 	int const x = 909909;
 	int y = 909909;
@@ -244,11 +244,11 @@ TEST_CASE("OptionTest: Exists") {
 		return std::all_of(x.begin(), x.end(), even);
 	};
 
-	CHECK(some(8).filter(even));
-	CHECK(!some(81).filter(even));
+	CHECK(some(8).filter(even).is_some());
+	CHECK(some(81).filter(even).is_none());
 
-	CHECK(some(vector<int>{2, 4, 6, 8, 10}).filter(all_even));
-	CHECK(!some(vector<int>{2, 4, 6, 9, 10}).filter(all_even));
+	CHECK(some(vector<int>{2, 4, 6, 8, 10}).filter(all_even).is_some());
+	CHECK(some(vector<int>{2, 4, 6, 9, 10}).filter(all_even).is_none());
 }
 
 TEST_CASE("OptionTest: AsConstRef") {
@@ -256,13 +256,13 @@ TEST_CASE("OptionTest: AsConstRef") {
 	CHECK(a.as_cref().unwrap() == 68);
 
 	Option<int> const b = none;
-	CHECK(!b.as_cref());
+	CHECK(b.as_cref().is_none());
 
 	auto const c = some(vector<int>{1, 2, 3, 4});
 	CHECK(c.as_cref().unwrap() == vector<int>{1, 2, 3, 4});
 
 	Option<vector<int>> const d = none;
-	CHECK(!d.as_cref());
+	CHECK(d.as_cref().is_none());
 }
 
 TEST_CASE("OptionTest: AsRef") {
@@ -271,14 +271,14 @@ TEST_CASE("OptionTest: AsRef") {
 	CHECK(a == some(99));
 
 	Option<int> b = none;
-	CHECK(!b.as_ref());
+	CHECK(b.as_ref().is_none());
 
 	auto c = some(vector<int>{1, 2, 3, 4});
 	c.as_ref().unwrap() = vector<int>{5, 6, 7, 8, 9, 10};
 	CHECK(c == some(vector<int>{5, 6, 7, 8, 9, 10}));
 
 	auto d = Option<vector<int>>(none);
-	CHECK(!d.as_ref());
+	CHECK(d.as_ref().is_none());
 }
 
 TEST_CASE("OptionLifeTimeTest: AsRef") {
@@ -467,20 +467,18 @@ TEST_CASE("OptionTest: Filter") {
 	CHECK(some(90).filter(is_even).unwrap() == 90);
 	CHECK(some(99).filter(is_odd).unwrap() == 99);
 
-	CHECK(!Option<int>(none).filter(is_even));
-	CHECK(!Option<int>(none).filter(is_even));
+	CHECK(Option<int>(none).filter(is_even).is_none());
 
 	auto all_odd = [&](vector<int> const& vec) {
 		return all_of(vec.begin(), vec.end(), is_odd);
 	};
 
-	CHECK(!some(vector<int>{1, 3, 5, 7, 2, 4, 6, 8}).filter(all_odd));
+	CHECK(some(vector<int>{1, 3, 5, 7, 2, 4, 6, 8}).filter(all_odd).is_none());
 	CHECK(
 			some(vector<int>{1, 3, 5, 7}).filter(all_odd).unwrap() ==
 			vector<int>{1, 3, 5, 7});
 
-	CHECK(!Option<vector<int>>(none).filter(all_odd));
-	CHECK(!Option<vector<int>>(none).filter(all_odd));
+	CHECK(Option<vector<int>>(none).filter(all_odd).is_none());
 }
 
 // TEST_CASE("OptionTest: FilterNot") {
@@ -557,20 +555,20 @@ TEST_CASE("OptionTest: Filter") {
 TEST_CASE("OptionTest: Take") {
 	auto a = some(9);
 	CHECK(a.take().unwrap() == 9);
-	CHECK(!a);
+	CHECK(a.is_none());
 
 	auto b = Option<int>(none);
-	CHECK(!b.take());
-	CHECK(!b);
+	CHECK(b.take().is_none());
+	CHECK(b.is_none());
 
 	auto c = some(vector<int>{-1, -2, -4, -8, -16});
 	auto ca = c.take();
 	CHECK(ca == some(vector<int>{-1, -2, -4, -8, -16}));
-	CHECK(!c);
+	CHECK(c.is_none());
 
 	auto d = Option<vector<int>>(none);
-	CHECK(!d.take());
-	CHECK(!d);
+	CHECK(d.take().is_none());
+	CHECK(d.is_none());
 }
 
 // TEST_CASE("OptionTest: Replace") {
@@ -614,7 +612,7 @@ TEST_CASE("OptionTest: OrElse") {
 	CHECK(VEG_FWD(b).unwrap() == 0.5F);
 
 	auto&& c = Option<float>(none).or_else([]() { return Option<float>(none); });
-	CHECK(!c);
+	CHECK(c.is_none());
 	//
 	//
 	auto&& d = some(vector<int>{1, 2, 3, 4, 5}).or_else([]() {
@@ -629,6 +627,6 @@ TEST_CASE("OptionTest: OrElse") {
 
 	auto&& f = Option<vector<int>>(none).or_else(
 			[]() { return Option<vector<int>>(none); });
-	CHECK(!f);
+	CHECK(f.is_none());
 }
 #include "veg/internal/epilogue.hpp"

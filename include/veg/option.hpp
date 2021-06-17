@@ -437,14 +437,14 @@ VEG_TEMPLATE(
 		(lhs, Option<T> const&),
 		(rhs, Option<U> const&))
 VEG_NOEXCEPT->bool {
-	if (lhs) {
-		if (rhs) {
+	if (lhs.is_some()) {
+		if (rhs.is_some()) {
 			return static_cast<bool>(
 					lhs.as_cref().unwrap_unchecked(unsafe) ==
 					rhs.as_cref().unwrap_unchecked(unsafe));
 		}
 	}
-	return (static_cast<bool>(lhs) == static_cast<bool>(rhs));
+	return (lhs.is_some() == rhs.is_some());
 }
 
 VEG_TEMPLATE(
@@ -535,7 +535,7 @@ public:
 	VEG_CPP14(constexpr)
 	auto operator=(None /*arg*/)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) -> Option& {
-		if (*this) {
+		if (is_some()) {
 			this->_destroy();
 		}
 		return *this;
@@ -571,7 +571,7 @@ public:
 			VEG_NODISCARD VEG_CPP14(constexpr) auto unwrap_unchecked,
 			((/*tag*/, Unsafe)),
 			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T) {
-		meta::unreachable_if(!bool(*this));
+		meta::unreachable_if(!this->is_engaged());
 		return static_cast<T&&>(this->_get());
 	}
 
@@ -580,7 +580,7 @@ public:
 			VEG_NODISCARD VEG_CPP14(constexpr) auto unwrap,
 			((/*tag*/ = {}, Safe)),
 			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T) {
-		VEG_INTERNAL_ASSERT_PRECONDITION(*this);
+		VEG_INTERNAL_ASSERT_PRECONDITION(is_some());
 		return static_cast<T&&>(this->_get());
 	}
 
@@ -596,7 +596,7 @@ public:
 					(VEG_CONCEPT(nothrow_invocable<Fn&&, meta::uncvref_t<T> const&>) &&
 	         VEG_CONCEPT(nothrow_move_constructible<T>))) -> Option<T> {
 		auto&& self = static_cast<Option<T>&&>(*this);
-		if (self) {
+		if (self.is_some()) {
 			if (VEG_FWD(fn)(self.as_cref().unwrap_unchecked(unsafe))) {
 				return {
 						inplace,
@@ -624,7 +624,7 @@ public:
 			VEG_NOEXCEPT_IF(
 					VEG_CONCEPT(nothrow_destructible<T>) &&
 					VEG_CONCEPT(nothrow_invocable<Fn>)) -> T& {
-		if (*this) {
+		if (is_some()) {
 			this->_destroy();
 		}
 		this->_emplace(VEG_FWD(fn));
@@ -639,7 +639,7 @@ public:
 
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn, T&&>))
 					-> Option<meta::invoke_result_t<Fn, T>> {
-		if (*this) {
+		if (is_some()) {
 			return Option<meta::invoke_result_t<Fn, T>>{
 					inplace,
 					internal::WithArg<Fn&&, T&&>{
@@ -659,7 +659,7 @@ public:
 
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn, T&&>))
 					-> meta::invoke_result_t<Fn, T> {
-		if (*this) {
+		if (is_some()) {
 			return VEG_FWD(fn)(static_cast<T&&>(this->_get()));
 		}
 		return none;
@@ -678,7 +678,7 @@ public:
 
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>))
 					-> meta::invoke_result_t<Fn, T> {
-		if (*this) {
+		if (is_some()) {
 			return VEG_FWD(fn)(
 					static_cast<Option&&>(*this).as_ref().unwrap_unchecked(unsafe));
 		}
@@ -698,7 +698,7 @@ public:
 					VEG_CONCEPT(nothrow_invocable<Fn, T&&>) &&
 					VEG_CONCEPT(nothrow_move_constructible<meta::invoke_result_t<Fn, T>>))
 					-> meta::invoke_result_t<Fn, T> {
-		if (!*this) {
+		if (is_none()) {
 			return VEG_FWD(d);
 		}
 		return VEG_FWD(fn)(
@@ -716,7 +716,7 @@ public:
 			VEG_NOEXCEPT_IF(
 					(VEG_CONCEPT(nothrow_invocable<Fn>) &&
 	         VEG_CONCEPT(nothrow_copy_constructible<T>))) -> Option<T> {
-		if (*this) {
+		if (is_some()) {
 			return {
 					inplace,
 					internal::ConvertingFn<T&&, T>{static_cast<T&&>(this->_get())},
@@ -725,14 +725,16 @@ public:
 		return VEG_FWD(fn)();
 	}
 
-	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) explicit
-	operator bool() const VEG_NOEXCEPT {
+	VEG_NODISCARD VEG_INLINE constexpr auto is_some() const VEG_NOEXCEPT -> bool {
 		return this->is_engaged();
+	}
+	VEG_NODISCARD VEG_INLINE constexpr auto is_none() const VEG_NOEXCEPT -> bool {
+		return !this->is_engaged();
 	}
 
 	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_cref() const
 			VEG_NOEXCEPT -> Option<meta::uncvref_t<T> const&> {
-		if (*this) {
+		if (is_some()) {
 			return {some, this->_get()};
 		}
 		return {};

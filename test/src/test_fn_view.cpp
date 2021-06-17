@@ -101,13 +101,13 @@ TEST_CASE("function_view: null") {
 	{
 		veg::Option<FnView<void()>> f;
 
-		CHECK(!f);
+		CHECK(f.is_none());
 		CHECK_THROWS(void(f.as_ref().unwrap()));
 		CHECK_THROWS(void(VEG_MOV(f).unwrap()));
 
 		auto l = [] {};
 		f = {some, {as_ref, l}};
-		CHECK(f);
+		CHECK(f.is_some());
 	}
 	{
 		void (*null)() = nullptr;

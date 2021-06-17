@@ -44,9 +44,9 @@ TEST_CASE("option: all") {
 
 	constexpr Option<int> i = {some, 3};
 	constexpr Option<int> j = none;
-	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}));
+	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).is_some());
 	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).unwrap() == 1000. / 3);
-	STATIC_ASSERT_IF_17(Option<int>{inplace, [&] { return 0; }});
+	STATIC_ASSERT_IF_17(Option<int>{inplace, [&] { return 0; }}.is_some());
 	STATIC_ASSERT_IF_14(i.as_ref().map(B{}).unwrap() == 2000. / 3);
 
 	STATIC_ASSERT_IF_14(i.as_ref().map_or_else(B{}, C{}) == 2000. / 3);
@@ -56,11 +56,11 @@ TEST_CASE("option: all") {
 	STATIC_ASSERT_IF_17(
 			i.as_ref().map([](int k) { return 2.0 * k; }) == some(6.0));
 
-	STATIC_ASSERT_IF_14(!Option<int>{some, 0}.and_then(A{}));
+	STATIC_ASSERT_IF_14(Option<int>{some, 0}.and_then(A{}).is_none());
 	STATIC_ASSERT_IF_14(Option<int>{some, 3}.and_then(A{}).unwrap() == 1000. / 3);
 	STATIC_ASSERT_IF_14(Option<int>{some, 42}.take().unwrap() == 42);
-	STATIC_ASSERT_IF_14(!Option<int>{none}.take());
-	STATIC_ASSERT_IF_14(!j.as_ref().and_then(A{}));
+	STATIC_ASSERT_IF_14(Option<int>{none}.take().is_none());
+	STATIC_ASSERT_IF_14(j.as_ref().and_then(A{}).is_none());
 
 	STATIC_ASSERT_IF_14(Option<int>{i}.or_else(A{}).unwrap() == 3);
 	STATIC_ASSERT_IF_14(Option<int>{j}.or_else(A{}).unwrap() == 13);
@@ -86,10 +86,10 @@ TEST_CASE("option: all") {
 						.unwrap() == 3);
 		STATIC_ASSERT_IF_14(clone(opt).unwrap().unwrap().unwrap() == 3);
 		STATIC_ASSERT_IF_14(clone(opt).flatten().flatten().unwrap() == 3);
-		STATIC_ASSERT_IF_14(!clone(opt2).unwrap().unwrap());
-		STATIC_ASSERT_IF_14(!clone(opt2).flatten().flatten());
-		STATIC_ASSERT_IF_14(clone(opt2).flatten());
-		STATIC_ASSERT_IF_14(clone(opt2).flatten());
+		STATIC_ASSERT_IF_14(clone(opt2).unwrap().unwrap().is_none());
+		STATIC_ASSERT_IF_14(clone(opt2).flatten().flatten().is_none());
+		STATIC_ASSERT_IF_14(clone(opt2).flatten().is_some());
+		STATIC_ASSERT_IF_14(clone(opt2).flatten().is_some());
 	}
 
 	{
@@ -102,7 +102,7 @@ TEST_CASE("option: all") {
 				[&] {
 					flag = {some, false};
 				});
-		CHECK(flag);
+		CHECK(flag.is_some());
 		CHECK(!flag.as_ref().unwrap());
 
 		opt = {some, 3};
@@ -114,7 +114,7 @@ TEST_CASE("option: all") {
 				[&] {
 					flag = {some, false};
 				});
-		CHECK(flag);
+		CHECK(flag.is_some());
 		CHECK(flag.as_ref().unwrap());
 	}
 	{
