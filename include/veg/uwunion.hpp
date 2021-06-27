@@ -926,7 +926,7 @@ struct TaggedFn {
 } // namespace internal
 
 template <typename... Ts>
-struct Uwunion : internal::_uwunion::UwunionImpl<Ts...> {
+struct Uwunion : private internal::_uwunion::UwunionImpl<Ts...> {
 private:
 	template <typename... Us>
 	friend struct veg::Uwunion;

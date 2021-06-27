@@ -4,8 +4,24 @@
 #include "veg/type_traits/constructible.hpp"
 #include "veg/internal/std.hpp"
 #include "veg/type_traits/invocable.hpp"
+#include "veg/memory/address.hpp"
 #include "veg/internal/prologue.hpp"
 #include <new>
+
+#if __cplusplus >= 202002L && !VEG_HAS_BUILTIN(__builtin_bit_cast)
+#include <bit>
+#define VEG_HAS_BITCAST 1
+#define VEG_BITCAST(T, x) ::std::bit_cast<T>(x)
+#define VEG_BITCAST_CONSTEXPR constexpr
+#elif VEG_HAS_BUILTIN(__builtin_bit_cast)
+#define VEG_HAS_BITCAST 1
+#define VEG_BITCAST(T, x) __builtin_bit_cast(T, x)
+#define VEG_BITCAST_CONSTEXPR constexpr
+#else
+#include <cstring>
+#define VEG_HAS_BITCAST 0
+#define VEG_BITCAST_CONSTEXPR
+#endif
 
 // construct_at
 #if __cplusplus >= 202002L
@@ -56,7 +72,8 @@ struct construct_at {
 			operator(),
 			(mem, T*),
 			(... args, Args&&))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_inplace_constructible<T, Args...>))->T* {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_inplace_constructible<T, Args...>))
+			->T* {
 #if __cplusplus >= 202002L
 		return ::std::construct_at(mem, VEG_FWD(args)...);
 #else
@@ -140,6 +157,31 @@ VEG_NIEBLOID(launder);
 VEG_NIEBLOID(construct_at);
 VEG_NIEBLOID(construct_with);
 VEG_NIEBLOID(destroy_at);
+
+namespace nb {
+template <typename To>
+struct bit_cast {
+	VEG_TEMPLATE(
+			typename From,
+			requires((
+					VEG_CONCEPT(trivially_copyable<From>) &&
+					VEG_CONCEPT(trivially_copyable<To>) && (sizeof(From) == sizeof(To)))),
+			VEG_INLINE VEG_BITCAST_CONSTEXPR auto
+			operator(),
+			(from, From const&))
+	VEG_NOEXCEPT->To {
+#if VEG_HAS_BITCAST
+		return VEG_BITCAST(To, from);
+#else
+		alignas(To) unsigned char buf[sizeof(To)];
+		To* ptr = reinterpret_cast<To*>(static_cast<unsigned char*>(buf));
+		::std::memcpy(ptr, nb::addressof{}(from), sizeof(To));
+		return nb::launder{}(ptr);
+#endif
+	}
+};
+} // namespace nb
+VEG_NIEBLOID_TEMPLATE(typename To, bit_cast, To);
 } // namespace mem
 } // namespace veg
 

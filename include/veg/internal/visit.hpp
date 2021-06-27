@@ -133,7 +133,7 @@ struct visit_impl {
 			__VEG_PP_TUPLE_FOR_EACH(VEG_CASE_Is, _, VEG_TUPLE)
 
 		default:
-			visit_impl<N - __VEG_PP_TUPLE_SIZE(VEG_TUPLE)>::
+			return visit_impl<N - __VEG_PP_TUPLE_SIZE(VEG_TUPLE)>::
 					template apply<R, NoExcept>(
 							meta::index_sequence<Is...>{}, i, VEG_FWD(fn));
 		}
