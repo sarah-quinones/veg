@@ -163,9 +163,11 @@ template <typename To>
 struct bit_cast {
 	VEG_TEMPLATE(
 			typename From,
-			requires((
-					VEG_CONCEPT(trivially_copyable<From>) &&
-					VEG_CONCEPT(trivially_copyable<To>) && (sizeof(From) == sizeof(To)))),
+			requires(
+					(VEG_CONCEPT(trivially_copyable<From>) && //
+	         VEG_CONCEPT(trivially_copyable<To>) &&   //
+	         VEG_CONCEPT(move_constructible<To>) &&   //
+	         (sizeof(From) == sizeof(To)))),
 			VEG_INLINE VEG_BITCAST_CONSTEXPR auto
 			operator(),
 			(from, From const&))
