@@ -44,6 +44,7 @@ TEST_CASE("option: all") {
 
 	constexpr Option<int> i = {some, 3};
 	constexpr Option<int> j = none;
+	STATIC_ASSERT_IF_14(i.as_ref().unwrap() == 3);
 	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).is_some());
 	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).unwrap() == 1000. / 3);
 	STATIC_ASSERT_IF_17(Option<int>{inplace, [&] { return 0; }}.is_some());
@@ -54,7 +55,7 @@ TEST_CASE("option: all") {
 	STATIC_ASSERT_IF_14(j.as_ref().map_or(B{}, 2000.) == 2000.);
 	STATIC_ASSERT_IF_14(i.as_ref().map_or(B{}, 2000.) == 2000. / 3);
 	STATIC_ASSERT_IF_17(
-			i.as_ref().map([](int k) { return 2.0 * k; }) == some(6.0));
+			bool(i.as_ref().map([](int k) { return 2.0 * k; }) == some(6.0)));
 
 	STATIC_ASSERT_IF_14(Option<int>{some, 0}.and_then(A{}).is_none());
 	STATIC_ASSERT_IF_14(Option<int>{some, 3}.and_then(A{}).unwrap() == 1000. / 3);

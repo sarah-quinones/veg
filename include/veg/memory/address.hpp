@@ -63,10 +63,7 @@ namespace mem {
 namespace nb {
 struct addressof {
 	template <typename T>
-	constexpr void operator()(T const&& var) const VEG_NOEXCEPT = delete;
-
-	template <typename T>
-	VEG_INLINE constexpr auto operator()(T& var) const VEG_NOEXCEPT -> T* {
+	VEG_INLINE constexpr auto operator()(T&& var) const VEG_NOEXCEPT -> meta::unref_t<T>* {
 #if VEG_HAS_BUILTIN(__builtin_addressof)
 		return __builtin_addressof(var);
 #elif __cplusplus >= 201703L

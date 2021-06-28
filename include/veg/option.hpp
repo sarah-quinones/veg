@@ -9,6 +9,7 @@
 #include "veg/type_traits/constructible.hpp"
 #include "veg/util/compare.hpp"
 #include "veg/internal/delete_special_members.hpp"
+#include "veg/uwunion.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
@@ -114,312 +115,6 @@ struct WithArg {
 
 namespace option_ {
 
-struct hidden_tag {};
-
-enum triviality_e { reference, all_empty_nonfinal, all, copyable, no };
-
-template <typename T, triviality_e Kind>
-struct OptionStorage;
-
-template <typename T>
-struct OptionStorage<T, triviality_e::reference>
-		: NoCopyAssign,
-			NoMoveAssign,
-			meta::conditional_t<VEG_CONCEPT(rvalue_reference<T>), NoCopyCtor, Empty> {
-	using Pointer = meta::unref_t<T>*;
-
-	Pointer inner = nullptr;
-
-	OptionStorage() = default;
-	VEG_INLINE constexpr OptionStorage(T val) VEG_NOEXCEPT
-			: inner(mem::addressof(val)) {}
-
-	template <typename Fn>
-	VEG_INLINE constexpr OptionStorage(Fn fn)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>))
-			: OptionStorage(VEG_FWD(fn)()) {}
-
-	VEG_NODISCARD VEG_INLINE constexpr auto is_engaged() const VEG_NOEXCEPT
-			-> bool {
-		return inner != nullptr;
-	}
-
-	VEG_INLINE
-	VEG_CPP14(constexpr) void _destroy() VEG_NOEXCEPT {
-		meta::unreachable_if(!is_engaged());
-		inner = nullptr;
-	}
-
-	template <typename Fn>
-	VEG_INLINE VEG_CPP14(constexpr) void _emplace(Fn fn)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>)) {
-		meta::unreachable_if(is_engaged());
-		T a = VEG_FWD(fn)();
-		inner = mem::addressof(a);
-	}
-
-	constexpr auto _get() const noexcept -> T& { return *inner; }
-};
-
-template <bool Assignable>
-struct emplace_fn;
-
-template <>
-struct emplace_fn<true> {
-	template <typename T>
-	VEG_INLINE VEG_CPP14(constexpr) void
-	operator()(T& lhs, T&& rhs) VEG_NOEXCEPT {
-		lhs = VEG_FWD(rhs);
-	}
-};
-template <>
-struct emplace_fn<false> {
-	template <typename T>
-	VEG_INLINE VEG_CPP20(constexpr) void
-	operator()(T& lhs, T&& rhs) VEG_NOEXCEPT {
-		mem::construct_at(mem::addressof(lhs), VEG_FWD(rhs));
-	}
-};
-
-template <typename T>
-struct OptionStorage<T, triviality_e::all_empty_nonfinal> {
-	struct Inner : T {
-		bool engaged = false;
-
-		Inner() = default;
-
-		template <typename Fn>
-		VEG_INLINE constexpr Inner(Fn fn)
-				VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>))
-				: T(VEG_FWD(fn)()), engaged{true} {}
-	} inner;
-
-	OptionStorage() = default;
-
-	template <typename Fn>
-	VEG_INLINE constexpr OptionStorage(Fn fn)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>))
-			: inner(VEG_FWD(fn)) {}
-
-	VEG_NODISCARD VEG_INLINE constexpr auto is_engaged() const VEG_NOEXCEPT
-			-> bool {
-		return inner.engaged;
-	}
-
-	VEG_INLINE
-	VEG_CPP14(constexpr) void _destroy() VEG_NOEXCEPT {
-		meta::unreachable_if(!is_engaged());
-		inner.engaged = false;
-	}
-
-	template <typename Fn>
-	VEG_INLINE VEG_CPP14(constexpr) void _emplace(Fn fn)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>)) {
-		meta::unreachable_if(is_engaged());
-		emplace_fn<VEG_CONCEPT(assignable<T&, T&&>)>{}(
-				static_cast<T&>(inner), VEG_FWD(fn)());
-		inner.engaged = true;
-	}
-
-	constexpr auto _get() const noexcept -> T& { return const_cast<T&>(inner); }
-};
-
-template <typename T>
-struct OptionStorage<T, triviality_e::all> {
-	T inner{};
-	bool engaged = false;
-
-	OptionStorage() = default;
-
-	template <typename Fn>
-	VEG_INLINE constexpr OptionStorage(Fn fn)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>))
-			: inner(VEG_FWD(fn)()), engaged{true} {}
-
-	VEG_NODISCARD VEG_INLINE constexpr auto is_engaged() const VEG_NOEXCEPT
-			-> bool {
-		return engaged;
-	}
-
-	VEG_INLINE
-	VEG_CPP14(constexpr) void _destroy() VEG_NOEXCEPT {
-		meta::unreachable_if(!is_engaged());
-		engaged = false;
-	}
-
-	template <typename Fn>
-	VEG_INLINE VEG_CPP14(constexpr) void _emplace(Fn fn)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>)) {
-		meta::unreachable_if(is_engaged());
-		emplace_fn<VEG_CONCEPT(assignable<T&, T&&>)>{}(inner, VEG_FWD(fn)());
-		engaged = true;
-	}
-
-	constexpr auto _get() const noexcept -> T& { return const_cast<T&>(inner); }
-};
-
-template <typename T>
-struct OptionStorage<T, triviality_e::copyable> {
-	union {
-		Empty e{};
-		T inner;
-	};
-	bool engaged = false;
-
-	constexpr OptionStorage /* NOLINT */ () VEG_NOEXCEPT{};
-
-	template <typename Fn>
-	VEG_INLINE constexpr OptionStorage(Fn fn)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>))
-			: inner(VEG_FWD(fn)()), engaged{true} {}
-
-	VEG_NODISCARD VEG_INLINE constexpr auto is_engaged() const VEG_NOEXCEPT
-			-> bool {
-		return engaged;
-	}
-
-	VEG_INLINE
-	VEG_CPP14(constexpr) void _destroy() VEG_NOEXCEPT {
-		meta::unreachable_if(!is_engaged());
-		engaged = false;
-	}
-
-	template <typename Fn>
-	VEG_INLINE VEG_CPP14(constexpr) void _emplace(Fn fn)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>)) {
-		meta::unreachable_if(is_engaged());
-		emplace_fn<VEG_CONCEPT(assignable<T&, T&&>)>{}(inner, VEG_FWD(fn)());
-		engaged = true;
-	}
-
-	constexpr auto _get() const noexcept -> T& { return const_cast<T&>(inner); }
-};
-
-#define VEG_CONSTEXPR VEG_CPP20(constexpr)
-template <typename T>
-struct OptionStorageBase {
-	union {
-		Empty e{};
-		T inner;
-	};
-	bool engaged = false;
-
-	VEG_CONSTEXPR OptionStorageBase /* NOLINT */ () VEG_NOEXCEPT{};
-
-	template <typename Fn>
-	VEG_INLINE VEG_CONSTEXPR OptionStorageBase(Fn fn)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>))
-			: inner(VEG_FWD(fn)()), engaged{true} {}
-
-	VEG_CONSTEXPR
-	~OptionStorageBase() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
-		if (engaged) {
-			_destroy();
-		}
-	}
-
-	VEG_CONSTEXPR
-	OptionStorageBase(OptionStorageBase&& rhs)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>)) {
-		if (rhs.engaged) {
-			_emplace(ConvertingFn<T&&, T>{VEG_FWD(rhs.inner)});
-		}
-	}
-	VEG_CONSTEXPR
-	OptionStorageBase(OptionStorageBase const& rhs)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_copy_constructible<T>)) {
-		if (rhs.engaged) {
-			_emplace(ConvertingFn<T const&, T>{rhs.inner});
-		}
-	}
-
-	VEG_CONSTEXPR
-	auto operator=(OptionStorageBase&& rhs) VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_move_constructible<T>) &&
-			VEG_CONCEPT(nothrow_move_assignable<T>)) -> OptionStorageBase& {
-		if (engaged) {
-			if (rhs.engaged) {
-				inner = VEG_FWD(rhs.inner);
-			} else {
-				_destroy();
-			}
-		} else {
-			if (rhs.engaged) {
-				_emplace(ConvertingFn<T&&, T>{VEG_FWD(rhs.inner)});
-			}
-		}
-		return *this;
-	}
-	VEG_CONSTEXPR
-	auto operator=(OptionStorageBase const& rhs) VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_copy_constructible<T>) &&
-			VEG_CONCEPT(nothrow_copy_assignable<T>)) -> OptionStorageBase& {
-		if (engaged) {
-			if (rhs.engaged) {
-				inner = rhs.inner;
-			} else {
-				_destroy();
-			}
-		} else {
-			if (rhs.engaged) {
-				_emplace(ConvertingFn<T const&, T>{rhs.inner});
-			}
-		}
-		return *this;
-	}
-
-	VEG_NODISCARD VEG_INLINE VEG_CONSTEXPR auto is_engaged() const VEG_NOEXCEPT
-			-> bool {
-		return engaged;
-	}
-
-	VEG_INLINE
-	VEG_CONSTEXPR
-	void _destroy() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
-		meta::unreachable_if(!is_engaged());
-		engaged = false;
-		mem::destroy_at(mem::addressof(inner));
-	}
-
-	template <typename Fn>
-	VEG_INLINE VEG_CONSTEXPR void _emplace(Fn fn)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>)) {
-		meta::unreachable_if(is_engaged());
-		mem::construct_with(mem::addressof(inner), VEG_FWD(fn));
-		engaged = true;
-	}
-
-	VEG_CONSTEXPR auto _get() const noexcept -> T& {
-		return const_cast<T&>(inner);
-	}
-};
-#undef VEG_CONSTEXPR
-
-template <typename T>
-struct OptionStorage<T, triviality_e::no>
-		: OptionStorageBase<T>,
-
-			meta::conditional_t<
-					VEG_CONCEPT(move_constructible<T>),
-					EmptyI<0>,
-					NoMoveCtor>,
-			meta::conditional_t<
-					VEG_CONCEPT(copy_constructible<T>),
-					EmptyI<1>,
-					NoCopyCtor>,
-			meta::conditional_t<
-					VEG_CONCEPT(move_constructible<T>) && VEG_CONCEPT(move_assignable<T>),
-					EmptyI<2>,
-					NoMoveAssign>,
-			meta::conditional_t<
-					VEG_CONCEPT(copy_constructible<T>) && VEG_CONCEPT(copy_assignable<T>),
-					EmptyI<3>,
-					NoCopyAssign>
-
-{
-	using OptionStorageBase<T>::OptionStorageBase;
-};
-
 template <typename To>
 struct into_fn {
 	template <typename T>
@@ -429,6 +124,8 @@ struct into_fn {
 	}
 };
 
+namespace adl {
+struct adl_base {};
 VEG_TEMPLATE(
 		(typename T, typename U),
 		requires(VEG_CONCEPT(equality_comparable_with<T const&, U const&>)),
@@ -457,6 +154,7 @@ VEG_TEMPLATE(
 VEG_NOEXCEPT->bool {
 	return !(a == b);
 }
+} // namespace adl
 
 template <typename T>
 struct ret_none {
@@ -474,43 +172,26 @@ struct cmp_with_fn {
 		return veg::cmp::equal(lhs, rhs);
 	}
 };
-
-template <typename T>
-struct choose_base_impl {
-	using Type = OptionStorage<
-			T,
-			!VEG_CONCEPT(trivially_copyable<T>)                           //
-					? triviality_e::no                                        //
-					: !cpo::is_trivially_constructible<T>::value              //
-								? triviality_e::copyable                            //
-								: !(VEG_CONCEPT(empty<T>) && VEG_CONCEPT(final<T>)) //
-											? triviality_e::all                           //
-											: triviality_e::all_empty_nonfinal            //
-			>;
-};
-
-template <typename T>
-struct choose_base_impl<T&> {
-	using Type = OptionStorage<T&, triviality_e::reference>;
-};
-template <typename T>
-struct choose_base_impl<T&&> {
-	using Type = OptionStorage<T&&, triviality_e::reference>;
-};
-
-template <typename T>
-using choose_base = typename choose_base_impl<T>::Type;
-
 } // namespace option_
 } // namespace internal
 
 template <typename T>
-struct VEG_NODISCARD Option : private internal::option_::choose_base<T> {
+struct VEG_NODISCARD Option
+		: private internal::_uwunion::UwunionImpl<internal::Empty, T>,
+			private internal::option_::adl::adl_base {
 private:
-	using Base = internal::option_::choose_base<T>;
+	using Base = internal::_uwunion::UwunionImpl<internal::Empty, T>;
 
 public:
-	Option() = default;
+	constexpr Option() VEG_NOEXCEPT
+			: Base{
+						internal::_uwunion::EmplaceTag{},
+						internal::UTag<usize{0}>{},
+						internal::_uwunion::
+								IdxConvertingFn<internal::Empty&&, internal::Empty>{
+										internal::Empty{}},
+						usize{0},
+				} {}
 	VEG_DEFAULT_CTOR_ASSIGN(Option);
 
 	constexpr Option // NOLINT(hicpp-explicit-conversions)
@@ -521,7 +202,12 @@ public:
 			VEG_INLINE constexpr Option,
 			((/*tag*/, Some), (value, T)),
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>)))
-			: Base(internal::ConvertingFn<T&&, T>{VEG_FWD(value)}) {}
+			: Base{
+						internal::_uwunion::EmplaceTag{},
+						internal::UTag<usize{1}>{},
+						internal::_uwunion::IdxConvertingFn<T&&, T>{VEG_FWD(value)},
+						usize{1},
+				} {}
 
 	VEG_TEMPLATE(
 			(typename Fn),
@@ -530,14 +216,26 @@ public:
 			(/*tag*/, InPlace),
 			(fn, Fn))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>))
-			: internal::option_::choose_base<T>(VEG_FWD(fn)) {}
+			: Base{
+						internal::_uwunion::EmplaceTag{},
+						internal::UTag<usize{1}>{},
+						internal::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)},
+						usize{1},
+				} {}
+
+	VEG_CPP14(constexpr)
+	void reset() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+		if (is_some()) {
+			this->template _emplace<usize{0}>(internal::_uwunion::IdxConvertingFn<
+																				internal::Empty&&,
+																				internal::Empty>{internal::Empty{}});
+		}
+	}
 
 	VEG_CPP14(constexpr)
 	auto operator=(None /*arg*/)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) -> Option& {
-		if (is_some()) {
-			this->_destroy();
-		}
+		reset();
 		return *this;
 	}
 
@@ -550,17 +248,23 @@ public:
 				internal::option_::into_fn<T>{}, internal::option_::ret_none<T>{});
 	}
 
+private:
+	VEG_CPP14(constexpr) auto _get() const VEG_NOEXCEPT -> T& {
+		return const_cast<T&>(Base::template get_ref<1>());
+	}
+
+public:
 	VEG_CONSTRAINED_MEMBER_FN(
 			requires(VEG_CONCEPT(move_constructible<T>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto take,
 			((/*tag*/ = {}, Safe)),
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->Option<T>) {
-		if (this->is_engaged()) {
+		if (is_some()) {
 			Option<T> val{
 					inplace,
 					internal::ConvertingFn<T&&, T>{static_cast<T&&>(this->_get())},
 			};
-			*this = none;
+			reset();
 			return val;
 		}
 		return none;
@@ -571,7 +275,7 @@ public:
 			VEG_NODISCARD VEG_CPP14(constexpr) auto unwrap_unchecked,
 			((/*tag*/, Unsafe)),
 			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T) {
-		meta::unreachable_if(!this->is_engaged());
+		meta::unreachable_if(is_none());
 		return static_cast<T&&>(this->_get());
 	}
 
@@ -624,10 +328,8 @@ public:
 			VEG_NOEXCEPT_IF(
 					VEG_CONCEPT(nothrow_destructible<T>) &&
 					VEG_CONCEPT(nothrow_invocable<Fn>)) -> T& {
-		if (is_some()) {
-			this->_destroy();
-		}
-		this->_emplace(VEG_FWD(fn));
+		this->template _emplace<usize{1}>(
+				internal::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)});
 		return this->_get();
 	}
 
@@ -726,10 +428,10 @@ public:
 	}
 
 	VEG_NODISCARD VEG_INLINE constexpr auto is_some() const VEG_NOEXCEPT -> bool {
-		return this->is_engaged();
+		return usize(Base::index()) != 0;
 	}
 	VEG_NODISCARD VEG_INLINE constexpr auto is_none() const VEG_NOEXCEPT -> bool {
-		return !this->is_engaged();
+		return !is_some();
 	}
 
 	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_cref() const
@@ -742,21 +444,21 @@ public:
 
 	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_ref() & VEG_NOEXCEPT
 																																-> Option<T&> {
-		if (this->is_engaged()) {
+		if (is_some()) {
 			return {some, this->_get()};
 		}
 		return {};
 	}
 	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_ref() const
 			& VEG_NOEXCEPT -> Option<T const&> {
-		if (this->is_engaged()) {
+		if (is_some()) {
 			return {some, this->_get()};
 		}
 		return {};
 	}
 	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_ref() &&
 			VEG_NOEXCEPT -> Option<T&&> {
-		if (this->is_engaged()) {
+		if (is_some()) {
 			return {some, static_cast<T&&>(this->_get())};
 		}
 		return {};
