@@ -6,6 +6,7 @@
 #include <doctest.h>
 #include "veg/memory/placement.hpp"
 #include "veg/functional/utils.hpp"
+#include "veg/functional/copy_fn.hpp"
 #include "veg/internal/prologue.hpp"
 
 #define FWD VEG_FWD
@@ -97,9 +98,9 @@ TEST_CASE("tuple: all") {
 		unused(Tuple<long, bool>{
 				tuple::map_i(
 						val_tup{},
-						overload(
+						fn::copy_fn(overload(
 								nb::indexed<0>{}(nb::convert<long>{}),
-								nb::indexed<1>{}(nb::convert<bool>{}))),
+								nb::indexed<1>{}(nb::convert<bool>{})))),
 		});
 
 		veg::swap(a, b);
@@ -309,14 +310,14 @@ TEST_CASE("tuple: direct") {
 	Tuple<long, double> t2(direct, 3, 2.5);
 	Tuple<long, double> t3 = tuple::map_i(
 			FWD(t1),
-			overload(
+			fn::copy_fn(overload(
 					nb::indexed<0>{}(nb::convert<long>{}),
-					nb::indexed<1>{}(nb::convert<double>{})));
+					nb::indexed<1>{}(nb::convert<double>{}))));
 	Tuple<int, double> t4 = tuple::map_i(
 			FWD(t3),
-			overload(
+			fn::copy_fn(overload(
 					nb::indexed<0>{}(nb::convert<int>{}),
-					nb::indexed<1>{}(nb::convert<double>{})));
+					nb::indexed<1>{}(nb::convert<double>{}))));
 
 	STATIC_ASSERT(sizeof(t2) == sizeof(long) + sizeof(double));
 
@@ -361,7 +362,7 @@ TEST_CASE("tuple: *sparkles* functional programming *sparkles*") {
 	{
 		unused(Tuple<Tuple<int>>{
 				tuple::map(tuple::make(tuple::make(2.0)), [](Tuple<double> inner) {
-					return tuple::map(FWD(inner), nb::convert<int>{});
+					return tuple::map(FWD(inner), fn::copy_fn(nb::convert<int>{}));
 				})});
 	}
 

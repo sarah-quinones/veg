@@ -169,7 +169,7 @@ struct bit_cast {
 			VEG_INLINE VEG_BITCAST_CONSTEXPR auto
 			operator(),
 			(from, From const&))
-	VEG_NOEXCEPT->To {
+	const VEG_NOEXCEPT->To {
 #if VEG_HAS_BITCAST
 		return VEG_BITCAST(To, from);
 #else

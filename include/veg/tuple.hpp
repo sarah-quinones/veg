@@ -622,19 +622,20 @@ struct map_i {
 
 	VEG_TEMPLATE(
 			(typename Fn, typename... Ts, usize... Is),
-			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn, Fix<i64{Is}>, Ts&&>))),
+			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Fix<i64{Is}>, Ts&&>))),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
 			operator(),
 			(args, IndexedTuple<meta::index_sequence<Is...>, Ts...>),
 			(fn, Fn))
 	const VEG_NOEXCEPT_IF(
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn, Fix<i64{Is}>, Ts&&>)))
-			->Tuple<meta::invoke_result_t<Fn, Fix<i64{Is}>, Ts&&>...> {
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Fix<i64{Is}>, Ts&&>)))
+			->Tuple<meta::invoke_result_t<Fn&, Fix<i64{Is}>, Ts&&>...> {
 		return {
 				InPlace{},
-				UnindexedFn<i64{Is}, Fn, Ts&&>{
-						VEG_FWD(fn),
-						static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(args).leaf)}...,
+				UnindexedFn<i64{Is}, Fn&, Ts&&>{
+						fn,
+						static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(args).leaf),
+				}...,
 		};
 	}
 };
@@ -643,18 +644,19 @@ struct map {
 
 	VEG_TEMPLATE(
 			(typename Fn, typename... Ts, usize... Is),
-			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn, Ts&&>))),
+			requires(VEG_ALL_OF(VEG_CONCEPT(invocable<Fn&, Ts&&>))),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
 			operator(),
 			(args, IndexedTuple<meta::index_sequence<Is...>, Ts...>),
 			(fn, Fn))
-	const VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn, Ts&&>)))
-			->Tuple<meta::invoke_result_t<Fn, Ts&&>...> {
+	const VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Fn&, Ts&&>)))
+			->Tuple<meta::invoke_result_t<Fn&, Ts&&>...> {
 		return {
 				InPlace{},
-				map_i::CurriedFn<Fn, Ts&&>{
-						VEG_FWD(fn),
-						static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(args).leaf)}...,
+				map_i::CurriedFn<Fn&, Ts&&>{
+						fn,
+						static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(args).leaf),
+				}...,
 		};
 	}
 };
