@@ -176,7 +176,7 @@ struct bit_cast {
 		alignas(To) unsigned char buf[sizeof(To)];
 		To* ptr = reinterpret_cast<To*>(static_cast<unsigned char*>(buf));
 		::std::memcpy(ptr, nb::addressof{}(from), sizeof(To));
-		return nb::launder{}(ptr);
+		return static_cast<To&&>(*nb::launder{}(ptr));
 #endif
 	}
 };
