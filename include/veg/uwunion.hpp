@@ -24,16 +24,19 @@ struct Storage {
 struct TrivialTag;
 struct NonTrivialTag;
 
-template <bool _, typename... Ts>
+template <bool _, bool TrivialDtor, typename... Ts>
 union RawUwunionImpl;
 
 template <typename... Ts>
-using RawUwunion = RawUwunionImpl<false, Ts...>;
+using RawUwunion = RawUwunionImpl<
+		false,
+		VEG_ALL_OF(VEG_CONCEPT(trivially_destructible<Ts>)),
+		Ts...>;
 template <usize I>
 struct UwunionGetImpl;
 
-template <>
-union RawUwunionImpl<false> {
+template <bool TrivialDtor>
+union RawUwunionImpl<false, TrivialDtor> {
 	Empty _{};
 };
 
@@ -51,9 +54,19 @@ union RawUwunionImpl<false> {
 
 #define VEG_UWUNION_SPEC(Tuple)                                                \
 	template <bool _ __VEG_PP_TUPLE_FOR_EACH(VEG_TYPE_DECL, _, Tuple)>           \
-	union RawUwunionImpl<_ __VEG_PP_TUPLE_FOR_EACH(VEG_TYPE_PUT, _, Tuple)> {    \
+	union RawUwunionImpl<                                                        \
+			_,                                                                       \
+			true __VEG_PP_TUPLE_FOR_EACH(VEG_TYPE_PUT, _, Tuple)> {                  \
 		__VEG_PP_TUPLE_FOR_EACH(VEG_UWUNION_HEAD, _, Tuple)                        \
 		__VEG_PP_TUPLE_FOR_EACH(VEG_UWUNION_HEAD_CTOR, _, Tuple)                   \
+	};                                                                           \
+	template <bool _ __VEG_PP_TUPLE_FOR_EACH(VEG_TYPE_DECL, _, Tuple)>           \
+	union RawUwunionImpl<                                                        \
+			_,                                                                       \
+			false __VEG_PP_TUPLE_FOR_EACH(VEG_TYPE_PUT, _, Tuple)> {                 \
+		__VEG_PP_TUPLE_FOR_EACH(VEG_UWUNION_HEAD, _, Tuple)                        \
+		__VEG_PP_TUPLE_FOR_EACH(VEG_UWUNION_HEAD_CTOR, _, Tuple)                   \
+		VEG_CPP20(constexpr) ~RawUwunionImpl() noexcept {}                         \
 	};                                                                           \
 	template <>                                                                  \
 	struct UwunionGetImpl<__VEG_PP_TUPLE_SIZE(Tuple)> {                          \
@@ -97,7 +110,8 @@ template <
 		bool _ __VEG_PP_TUPLE_FOR_EACH(VEG_TYPE_DECL, _, VEG_TUPLE),
 		typename... Ts>
 union RawUwunionImpl<
-		_ __VEG_PP_TUPLE_FOR_EACH(VEG_TYPE_PUT, _, VEG_TUPLE),
+		_,
+		true __VEG_PP_TUPLE_FOR_EACH(VEG_TYPE_PUT, _, VEG_TUPLE),
 		Ts...> {
 	RawUwunion<Ts...> tail;
 	__VEG_PP_TUPLE_FOR_EACH(VEG_UWUNION_HEAD, _, VEG_TUPLE)
@@ -107,6 +121,23 @@ union RawUwunionImpl<
 			VEG_NOEXCEPT_LIKE(VEG_FWD(fn)(UTag<J>{}))
 			: tail{UTag<I - __VEG_PP_TUPLE_SIZE(VEG_TUPLE)>{}, itag, VEG_FWD(fn)} {}
 };
+template <
+		bool _ __VEG_PP_TUPLE_FOR_EACH(VEG_TYPE_DECL, _, VEG_TUPLE),
+		typename... Ts>
+union RawUwunionImpl<
+		_,
+		false __VEG_PP_TUPLE_FOR_EACH(VEG_TYPE_PUT, _, VEG_TUPLE),
+		Ts...> {
+	RawUwunion<Ts...> tail;
+	__VEG_PP_TUPLE_FOR_EACH(VEG_UWUNION_HEAD, _, VEG_TUPLE)
+	__VEG_PP_TUPLE_FOR_EACH(VEG_UWUNION_HEAD_CTOR, _, VEG_TUPLE)
+	template <usize I, usize J, typename Fn>
+	VEG_INLINE constexpr RawUwunionImpl(UTag<I> /*unused*/, UTag<J> itag, Fn fn)
+			VEG_NOEXCEPT_LIKE(VEG_FWD(fn)(UTag<J>{}))
+			: tail{UTag<I - __VEG_PP_TUPLE_SIZE(VEG_TUPLE)>{}, itag, VEG_FWD(fn)} {}
+	VEG_CPP20(constexpr) ~RawUwunionImpl() noexcept {}
+};
+
 template <usize I>
 struct UwunionGetImpl {
 	template <typename... Ts>
@@ -187,7 +218,7 @@ struct CtorFn {
 			VEG_INLINE VEG_CPP20(constexpr) void operator()(UTag<I> itag) &&
 			VEG_NOEXCEPT_LIKE(VEG_FWD(fn)(itag)) {
 		mem::construct_at(mem::addressof(self), itag, itag, VEG_FWD(fn));
-	};
+	}
 };
 
 template <typename U, typename Fn, typename... Ts>
@@ -200,7 +231,7 @@ struct AssignFn {
 			VEG_NOEXCEPT_LIKE(VEG_FWD(fn)(UTag<I>{})) {
 		const_cast<ith<I, Ts...>&>(UwunionGetImpl<I>::get(self).inner) =
 				VEG_FWD(fn)(itag);
-	};
+	}
 };
 
 template <bool NoExcept, typename U, typename... Ts>
@@ -212,7 +243,7 @@ struct DropFn {
 	operator()(UTag<I> /*itag*/) const noexcept {
 		mem::destroy_at(mem::addressof(
 				const_cast<Storage<ith<I, Ts...>>&>(UwunionGetImpl<I>::get(self))));
-	};
+	}
 };
 
 template <typename T>
@@ -1091,7 +1122,7 @@ public:
 
 	VEG_TEMPLATE(
 			(i64 I, typename Fn),
-			requires(VEG_CONCEPT(invocable_r<Fn, ith<I, Ts...>>)),
+			requires(VEG_CONCEPT(invocable_r<Fn, ith<usize{I}, Ts...>>)),
 			VEG_INLINE constexpr Uwunion,
 			(/*inplace*/, InPlace),
 			(/*itag*/, Fix<I>),

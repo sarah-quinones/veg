@@ -239,11 +239,11 @@ public:
 		return *this;
 	}
 
-	VEG_CONSTRAINED_MEMBER_FN(
+	VEG_CONSTRAINED_MEMBER_FN_NO_PARAM(
 			requires(VEG_CONCEPT(option<T>)),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto flatten,
-			((/*tag*/ = {}, Safe)),
-			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T) {
+			T,
+			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))) {
 		return static_cast<Option<T>&&>(*this).map_or_else(
 				internal::option_::into_fn<T>{}, internal::option_::ret_none<T>{});
 	}
@@ -254,11 +254,11 @@ private:
 	}
 
 public:
-	VEG_CONSTRAINED_MEMBER_FN(
+	VEG_CONSTRAINED_MEMBER_FN_NO_PARAM(
 			requires(VEG_CONCEPT(move_constructible<T>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto take,
-			((/*tag*/ = {}, Safe)),
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->Option<T>) {
+			Option<T>,
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))) {
 		if (is_some()) {
 			Option<T> val{
 					inplace,
@@ -279,11 +279,11 @@ public:
 		return static_cast<T&&>(this->_get());
 	}
 
-	VEG_CONSTRAINED_MEMBER_FN(
+	VEG_CONSTRAINED_MEMBER_FN_NO_PARAM(
 			requires(VEG_CONCEPT(move_constructible<T>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto unwrap,
-			((/*tag*/ = {}, Safe)),
-			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T) {
+			T,
+			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))) {
 		VEG_INTERNAL_ASSERT_PRECONDITION(is_some());
 		return static_cast<T&&>(this->_get());
 	}

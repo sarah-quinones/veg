@@ -191,8 +191,8 @@
 	template <                                                                   \
 			__VEG_PP_REMOVE_PAREN(__VEG_PP_TAIL Name_Tpl),                           \
 			::veg::meta::enable_if_t<__VEG_PP_UNWRAP Param, int> = 0>                \
-	auto __VEG_PP_CAT(check_, __VEG_PP_HEAD Name_Tpl)()                          \
-			noexcept->::veg::meta::true_type;
+	auto __VEG_PP_CAT(                                                           \
+			check_, __VEG_PP_HEAD Name_Tpl)() noexcept->::veg::meta::true_type;
 
 #define VEG_DEF_CONCEPT_BOOL_CONJUNCTION_IMPL(Tpl, Name, Base, Seq)            \
 	__VEG_IMPL_DEF_CONCEPT(                                                      \
@@ -249,6 +249,10 @@
 	Attr_Name __VEG_PP_TUPLE_TRANSFORM_I(__VEG_IMPL_PARAM_EXPAND, _, Params)     \
 			__VA_ARGS__ requires __VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint)
 
+#define VEG_CONSTRAINED_MEMBER_FN_NO_PARAM(Constraint, Attr_Name, Ret, ...)    \
+	Attr_Name() __VA_ARGS__->__VEG_PP_REMOVE_PAREN(Ret) requires __VEG_PP_CAT2(  \
+			__VEG_IMPL_PREFIX_, Constraint)
+
 #define VEG_TEMPLATE_CVT(TParams, Constraint, Attr, ...)                       \
 	template <__VEG_PP_REMOVE_PAREN(TParams)>                                    \
 	Constraint Attr operator __VA_ARGS__()
@@ -262,6 +266,14 @@
 			Attr_Name,                                                               \
 			__VEG_PP_REMOVE_PAREN(Params))                                           \
 	__VA_ARGS__
+
+#define VEG_CONSTRAINED_MEMBER_FN_NO_PARAM(Constraint, Attr_Name, Ret, ...)    \
+	template <int _ = 0>                                                         \
+	Attr_Name() __VA_ARGS__->::veg::internal::meta_::discard_1st<                \
+			::veg::meta::enable_if_t<(                                               \
+					__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint) &&                     \
+					::veg::meta::bool_constant<(_ == 0)>::value)>,                       \
+			__VEG_PP_REMOVE_PAREN(Ret)>
 
 #define VEG_TEMPLATE_CVT(TParams, Constraint, Attr, ...)                       \
 	template <__VEG_PP_REMOVE_PAREN(TParams)>                                    \
