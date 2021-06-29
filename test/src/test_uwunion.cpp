@@ -28,20 +28,26 @@ TEST_CASE("trivial") {
 	STATIC_ASSERT_IF_14(u2.as_ref().visit(visitor) == 3);
 }
 
+#if defined(__clang__)
+#define CONSTEXPR VEG_CPP20(constexpr)
+#else
+#define CONSTEXPR
+#endif
+
 TEST_CASE("non trivial") {
 
 	struct S { // NOLINT
-		VEG_CPP20(constexpr) S() { (void)this; }
-		VEG_CPP20(constexpr) S(S&& /*rhs*/) {}
-		VEG_CPP20(constexpr) ~S() { (void)this; }
+		CONSTEXPR S() { (void)this; }
+		CONSTEXPR S(S&& /*rhs*/) {}
+		CONSTEXPR ~S() { (void)this; }
 		int inner = 111;
 	};
 
-	VEG_CPP20(constexpr) auto u1 = Uwunion<int, int, S>{0_c, 2624};
-	VEG_CPP20(constexpr) auto u2 = Uwunion<int, int, S>{1_c, 13};
-	VEG_CPP20(constexpr) auto u3 = Uwunion<int, int, S>{2_c, {}};
+	CONSTEXPR auto u1 = Uwunion<int, int, S>{0_c, 2624};
+	CONSTEXPR auto u2 = Uwunion<int, int, S>{1_c, 13};
+	CONSTEXPR auto u3 = Uwunion<int, int, S>{2_c, {}};
 
-	VEG_CPP20(constexpr)
+	CONSTEXPR
 	auto fn_idx = overload(
 			[](Fix<0> /*tag*/, int i) -> double { return double(i) / 2.0; },
 			[](Fix<1> /*tag*/, int i) -> int { return 4 * i; },
@@ -51,7 +57,7 @@ TEST_CASE("non trivial") {
 	STATIC_ASSERT_IF_20(u2.as_ref().map_i(fn_idx).unwrap(1_c) == 52);
 	STATIC_ASSERT_IF_20(u3.as_ref().map_i(fn_idx).unwrap(2_c) == 111);
 
-	VEG_CPP20(constexpr)
+	CONSTEXPR
 	auto visitor_idx = overload(
 			[](Fix<0> /*tag*/, int i) -> int { return i / 2; },
 			[](Fix<1> /*tag*/, int f) -> int { return 16 * f; },

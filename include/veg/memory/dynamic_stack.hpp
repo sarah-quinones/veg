@@ -60,13 +60,13 @@ struct DynStackAlloc;
 struct DynStackView {
 public:
 	DynStackView /* NOLINT(hicpp-explicit-conversions) */ (Slice<void> s)
-			VEG_NOEXCEPT : stack_data(s.data()),
-										 stack_bytes(s.size()) {}
+			VEG_NOEXCEPT : stack_data(s.as_ptr()),
+										 stack_bytes(s.len()) {}
 
 	VEG_NODISCARD
 	auto remaining_bytes() const VEG_NOEXCEPT -> i64 { return stack_bytes; }
 	VEG_NODISCARD
-	auto data() const VEG_NOEXCEPT -> void* { return stack_data; }
+	auto as_ptr() const VEG_NOEXCEPT -> void* { return stack_data; }
 
 	VEG_TEMPLATE(
 			(typename T),
@@ -78,7 +78,7 @@ public:
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T>))
 			->Option<DynStackArray<T>> {
 		DynStackArray<T> get{*this, len, align, internal::dynstack::zero_init_fn{}};
-		if (get.data() == nullptr) {
+		if (get.as_ptr() == nullptr) {
 			return none;
 		}
 		return {some, VEG_FWD(get)};
@@ -96,7 +96,7 @@ public:
 			->Option<DynStackArray<T>> {
 		DynStackArray<T> get{
 				*this, len, align, internal::dynstack::default_init_fn{}};
-		if (get.data() == nullptr) {
+		if (get.as_ptr() == nullptr) {
 			return none;
 		}
 		return {some, VEG_FWD(get)};
@@ -107,7 +107,7 @@ public:
 	make_alloc(Tag<T> /*unused*/, i64 len, i64 align = alignof(T)) VEG_NOEXCEPT
 			-> Option<DynStackAlloc<T>> {
 		DynStackAlloc<T> get{*this, len, align, internal::dynstack::no_init_fn{}};
-		if (get.data() == nullptr) {
+		if (get.as_ptr() == nullptr) {
 			return none;
 		}
 		return {some, VEG_FWD(get)};
@@ -173,29 +173,34 @@ struct DynAllocBase {
 template <typename T>
 struct DynStackAlloc : internal::dynstack::DynAllocBase {
 private:
-	using base = internal::dynstack::DynAllocBase;
+	using Base = internal::dynstack::DynAllocBase;
 
 public:
-	~DynStackAlloc() VEG_NOEXCEPT { base::destroy(data() + base::len); }
+	~DynStackAlloc() VEG_NOEXCEPT { Base::destroy(as_mut_ptr() + Base::len); }
 
 	DynStackAlloc(DynStackAlloc const&) = delete;
-	DynStackAlloc(DynStackAlloc&& other) VEG_NOEXCEPT : base{base(other)} {
-		other.base::len = 0;
-		other.base::data = nullptr;
+	DynStackAlloc(DynStackAlloc&& other) VEG_NOEXCEPT : Base{Base(other)} {
+		other.Base::len = 0;
+		other.Base::data = nullptr;
 	};
 
 	auto operator=(DynStackAlloc const&) -> DynStackAlloc& = delete;
 	auto operator=(DynStackAlloc&& rhs) VEG_NOEXCEPT -> DynStackAlloc& {
-		base::destroy(data() + base::len);
-		static_cast<base&>(*this) = static_cast<base&>(rhs);
-		static_cast<base&>(rhs) = {};
+		Base tmp_rhs = static_cast<Base>(rhs);
+		static_cast<Base&>(rhs) = {};
+
+		DynStackAlloc tmp_lhs = static_cast<DynStackAlloc&&>(*this);
+		static_cast<Base&>(*this) = tmp_rhs;
 		return *this;
 	}
 
-	VEG_NODISCARD auto data() const VEG_NOEXCEPT -> T* {
-		return static_cast<T*>(const_cast<void*>(base::data));
+	VEG_NODISCARD auto as_mut_ptr() VEG_NOEXCEPT -> T* {
+		return static_cast<T*>(const_cast<void*>(Base::data));
 	}
-	VEG_NODISCARD auto size() const VEG_NOEXCEPT -> i64 { return base::len; }
+	VEG_NODISCARD auto as_ptr() const VEG_NOEXCEPT -> T const* {
+		return static_cast<T const*>(const_cast<void const*>(Base::data));
+	}
+	VEG_NODISCARD auto len() const VEG_NOEXCEPT -> i64 { return Base::len; }
 
 private:
 	friend struct DynStackArray<T>;
@@ -204,25 +209,30 @@ private:
 	template <typename Fn>
 	DynStackAlloc(DynStackView& parent_ref, i64 alloc_size, i64 align, Fn fn)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T>))
-			: base{&parent_ref, parent_ref.stack_data, nullptr, 0} {
+			: Base{
+						&parent_ref,
+						parent_ref.stack_data,
+						nullptr,
+						0,
+				} {
 
 		void* const parent_data = parent_ref.stack_data;
 		i64 const parent_bytes = parent_ref.stack_bytes;
 
-		void* const data = abi::internal::align_next(
+		void* const ptr = abi::internal::align_next(
 				align,
 				alloc_size * i64{sizeof(T)},
 				parent_ref.stack_data,
 				parent_ref.stack_bytes);
 
-		if (data != nullptr) {
+		if (ptr != nullptr) {
 			bool success = false;
 			auto&& cleanup = defer(internal::dynstack::cleanup{
 					success, *parent, parent_data, parent_bytes});
 			(void)cleanup;
 
-			base::len = alloc_size;
-			base::data = fn.template make<T>(data, alloc_size);
+			Base::len = alloc_size;
+			Base::data = fn.template make<T>(ptr, alloc_size);
 
 			success = true;
 		}
@@ -232,29 +242,29 @@ private:
 template <typename T>
 struct DynStackArray : private DynStackAlloc<T> {
 private:
-	using base = internal::dynstack::DynAllocBase;
+	using Base = internal::dynstack::DynAllocBase;
 
 public:
-	using DynStackAlloc<T>::data;
-	using DynStackAlloc<T>::size;
+	using DynStackAlloc<T>::as_ptr;
+	using DynStackAlloc<T>::as_mut_ptr;
+	using DynStackAlloc<T>::len;
 
 	DynStackArray(DynStackArray const&) = delete;
 	DynStackArray(DynStackArray&&) VEG_NOEXCEPT = default;
 	auto operator=(DynStackArray const&) -> DynStackArray& = delete;
 
 	auto operator=(DynStackArray&& rhs) VEG_NOEXCEPT -> DynStackArray& {
-		for (i64 i = this->DynStackAlloc<T>::base::len - 1; i >= 0; --i) {
-			mem::destroy_at(this->data() + i);
-		}
-		base::destroy(data() + base::len);
-		static_cast<base&>(*this) = static_cast<base&>(rhs);
-		static_cast<base&>(rhs) = {};
+		Base tmp_rhs = static_cast<Base>(rhs);
+		static_cast<Base&>(rhs) = {};
+
+		DynStackArray tmp_lhs = static_cast<DynStackArray&&>(*this);
+		static_cast<Base&>(*this) = tmp_rhs;
 		return *this;
 	}
 
 	~DynStackArray() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
 		internal::algo_::backward_destroy_n_may_throw<T>(
-				this->data(), this->DynStackAlloc<T>::base::len);
+				as_mut_ptr(), this->DynStackAlloc<T>::Base::len);
 	}
 
 private:

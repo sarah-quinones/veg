@@ -32,15 +32,15 @@ TEST_CASE("dynamic stack: raii") {
 
 	{
 		auto s1 = stack.make_new(Tag<S>{}, 3).unwrap();
-		CHECK(s1.data() != nullptr);
-		CHECK(s1.size() == 3);
+		CHECK(s1.as_ptr() != nullptr);
+		CHECK(s1.len() == 3);
 		CHECK(stack.remaining_bytes() == 4093);
 		CHECK(S::n_instances() == 3);
 
 		{
 			auto s2 = stack.make_new(Tag<S>{}, 4).unwrap();
-			CHECK(s2.data() != nullptr);
-			CHECK(s2.size() == 4);
+			CHECK(s2.as_ptr() != nullptr);
+			CHECK(s2.len() == 4);
 			CHECK(stack.remaining_bytes() == 4089);
 			CHECK(S::n_instances() == 7);
 
@@ -50,8 +50,8 @@ TEST_CASE("dynamic stack: raii") {
 				CHECK(stack.remaining_bytes() == 4089);
 				{
 					auto i4 = stack.make_new(Tag<int>{}, 300).unwrap();
-					CHECK(i4.data() != nullptr);
-					CHECK(i4.size() == 300);
+					CHECK(i4.as_ptr() != nullptr);
+					CHECK(i4.len() == 300);
 					CHECK(stack.remaining_bytes() < 4089 - 300 * sizeof(int));
 				}
 			}
@@ -118,8 +118,8 @@ TEST_CASE("dynamic stack: return") {
 	CHECK(stack.remaining_bytes() == 4093);
 	CHECK(S::n_instances() == 3);
 
-	CHECK(s.data() != nullptr);
-	CHECK(s.size() == 3);
+	CHECK(s.as_ptr() != nullptr);
+	CHECK(s.len() == 3);
 }
 
 TEST_CASE("dynamic stack: manual_lifetimes") {
@@ -128,23 +128,23 @@ TEST_CASE("dynamic stack: manual_lifetimes") {
 
 	{
 		auto s = stack.make_alloc(Tag<S>{}, 3).unwrap();
-		CHECK(s.data() != nullptr);
-		CHECK(s.size() == 3);
+		CHECK(s.as_ptr() != nullptr);
+		CHECK(s.len() == 3);
 		CHECK(S::n_instances() == 0);
 
 		{
-			new (s.data() + 0) S{};
+			new (s.as_mut_ptr() + 0) S{};
 			CHECK(S::n_instances() == 1);
-			new (s.data() + 1) S{};
+			new (s.as_mut_ptr() + 1) S{};
 			CHECK(S::n_instances() == 2);
-			new (s.data() + 2) S{};
+			new (s.as_mut_ptr() + 2) S{};
 			CHECK(S::n_instances() == 3);
 
-			(s.data() + 2)->~S();
+			(s.as_ptr() + 2)->~S();
 			CHECK(S::n_instances() == 2);
-			(s.data() + 1)->~S();
+			(s.as_ptr() + 1)->~S();
 			CHECK(S::n_instances() == 1);
-			(s.data() + 0)->~S();
+			(s.as_ptr() + 0)->~S();
 			CHECK(S::n_instances() == 0);
 		}
 		CHECK(S::n_instances() == 0);

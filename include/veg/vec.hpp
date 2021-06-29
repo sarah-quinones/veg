@@ -52,21 +52,40 @@ public:
 								static_cast<T*>(mem::aligned_alloc(
 										alignof(T), static_cast<i64>(sizeof(T)) * slice.size())),
 								0,
-								slice.size()},
+								slice.size(),
+						},
 						unsafe,
 				} {
 		uninitialized_copy_n(_self().data(), slice.data(), slice.size());
 		raw.len = nb::narrow<usize>{}(slice.size());
 	}
 
-	VEG_INLINE
-	VecBase(VecBase const& other) VEG_NOEXCEPT_IF(false)
-			: VecBase{
-						from_slice,
-						Slice<T const>{other.raw.begin, i64(other.raw.len), unsafe}} {}
+	VEG_INLINE auto as_slice() const VEG_NOEXCEPT -> Slice<T const> {
+		return {
+				FromRawParts{},
+				raw.begin,
+				i64(raw.len),
+				unsafe,
+		};
+	}
+	VEG_INLINE auto as_mut_slice() VEG_NOEXCEPT -> Slice<T> {
+		return {
+				FromRawParts{},
+				raw.begin,
+				i64(raw.len),
+				unsafe,
+		};
+	}
 
 	VEG_INLINE
-	VecBase(VecBase&& other) VEG_NOEXCEPT : raw{other.raw} { other.raw = {}; }
+	VecBase(VecBase const& rhs) VEG_NOEXCEPT_IF(false)
+			: VecBase{
+						from_slice,
+						rhs.as_slice(),
+				} {}
+
+	VEG_INLINE
+	VecBase(VecBase&& rhs) VEG_NOEXCEPT : raw{rhs.raw} { rhs.raw = {}; }
 
 	VEG_INLINE
 	VecBase(FromRawParts /*tag*/, RawParts parts, Unsafe /*tag*/) VEG_NOEXCEPT
@@ -74,7 +93,10 @@ public:
 
 	VEG_INLINE
 	~VecBase() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
-		this->_destroy();
+		auto&& cleanup = defer([&]() noexcept {
+			mem::aligned_free(raw.begin, alignof(T), nb::narrow<usize>{}(raw.cap));
+		});
+		internal::algo_::backward_destroy_n_may_throw<T>(raw.begin, raw.len);
 	}
 
 	VEG_INLINE
@@ -82,7 +104,7 @@ public:
 		if (this == addressof(rhs)) {
 			return *this;
 		}
-		_self() = Slice<T const>{rhs.raw.begin, i64(rhs.raw.len), unsafe};
+		_self().copy_from_slice(rhs.as_slice());
 		return *this;
 	}
 	VEG_INLINE
@@ -94,13 +116,6 @@ public:
 		VecBase tmp_lhs = static_cast<VecBase&&>(*this);
 		raw = tmp_rhs.raw;
 		return *this;
-	}
-
-private:
-	VEG_INLINE
-	void _destroy() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
-		internal::algo_::backward_destroy_n_may_throw<T>(raw.begin, raw.len);
-		mem::aligned_free(raw.begin, alignof(T), nb::narrow<usize>{}(raw.cap));
 	}
 };
 
@@ -133,8 +148,10 @@ public:
 		return copy;
 	}
 
-	VEG_NODISCARD VEG_INLINE auto data() VEG_NOEXCEPT -> T* { return raw.begin; }
-	VEG_NODISCARD VEG_INLINE auto data() const VEG_NOEXCEPT -> T const* {
+	VEG_NODISCARD VEG_INLINE auto as_mut_ptr() VEG_NOEXCEPT -> T* {
+		return raw.begin;
+	}
+	VEG_NODISCARD VEG_INLINE auto as_ptr() const VEG_NOEXCEPT -> T const* {
 		return raw.begin;
 	}
 	VEG_NODISCARD VEG_INLINE auto size() const VEG_NOEXCEPT -> i64 {
@@ -145,33 +162,26 @@ public:
 	}
 
 	VEG_INLINE
-	void resize_down_unchecked(i64 new_size, Unsafe /*tag*/)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
-		backward_destroy_n(data() + new_size, size() - new_size);
-		raw.len = usize(new_size);
-	}
-	VEG_INLINE
 	void resize_down(i64 new_size)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
-		VEG_INTERNAL_ASSERT_PRECONDITION(new_size <= size());
-		resize_down(new_size, unsafe);
+		VEG_INTERNAL_ASSERT_PRECONDITIONS(new_size >= 0, new_size <= size());
+		backward_destroy_n(as_mut_ptr() + new_size, size() - new_size);
+		raw.len = usize(new_size);
 	}
 
 	VEG_CONSTRAINED_MEMBER_FN(
 			requires(
 					VEG_CONCEPT(copy_constructible<T>) &&
 					VEG_CONCEPT(copy_assignable<T>)),
-			auto
-			operator=,
+			void copy_from_slice,
 			((rhs, Slice<T const>)),
-			&VEG_NOEXCEPT_IF(false)->Vec&) {
-		// FIXME: backward or forward copy
+			&VEG_NOEXCEPT_IF(false)) {
 		if (capacity() < rhs.size()) {
 			*this = Vec<T>(from_slice, rhs);
 			return *this;
 		}
 
-		mixed_init_copy_n(data(), rhs.data(), rhs.size(), size());
+		mixed_init_copy_n(as_mut_ptr(), rhs.data(), rhs.size(), size());
 		raw.len = rhs.size();
 
 		return *this;
@@ -184,7 +194,7 @@ public:
 			(fn, Fn))
 	VEG_NOEXCEPT_IF(false)->T& {
 		_grow_to(size() + 1);
-		T& ref = *mem::construct_with(data() + size(), VEG_FWD(fn));
+		T& ref = *mem::construct_with(as_mut_ptr() + size(), VEG_FWD(fn));
 		++raw.len;
 		return ref;
 	}
@@ -196,17 +206,15 @@ public:
 	VEG_INLINE
 	void reserve(i64 new_capacity) VEG_NOEXCEPT_IF(false) {
 		if (new_capacity > capacity()) {
-			raw.begin = internal::algo_::reallocate_memory(
-					data(), alignof(T), size(), capacity(), new_capacity);
-			raw.cap = nb::narrow<usize>{}(new_capacity);
+			_grow_to_unchecked(new_capacity);
 		}
 	}
 
 private:
 	VEG_NO_INLINE void _grow_to_unchecked(i64 new_capacity)
 			VEG_NOEXCEPT_IF(false) {
-		raw.begin = internal::algo_::reallocate_memory(
-				data(), alignof(T), size(), capacity(), new_capacity);
+		raw.begin = internal::algo_::reallocate_memory<T*>(
+				as_mut_ptr(), alignof(T), size(), capacity(), new_capacity);
 		raw.cap = nb::narrow<usize>{}(new_capacity);
 	}
 

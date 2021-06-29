@@ -34,11 +34,7 @@ union RawUwunionImpl;
 template <typename... Ts>
 using RawUwunion = RawUwunionImpl<
 		false,
-#ifdef __clang__
-		true,
-#else
 		VEG_ALL_OF(VEG_CONCEPT(trivially_destructible<Ts>)),
-#endif
 		Ts...>;
 template <usize I>
 struct UwunionGetImpl;
