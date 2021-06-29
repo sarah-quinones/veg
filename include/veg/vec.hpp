@@ -10,8 +10,7 @@
 
 namespace veg {
 inline namespace tags {
-struct FromSlice {};
-VEG_INLINE_VAR(from_slice, FromSlice);
+VEG_TAG(from_slice, FromSlice);
 } // namespace tags
 
 template <typename T>

@@ -72,7 +72,7 @@ struct Boolean {
 	VEG_INLINE constexpr Boolean(Boolean<maybe> /*b*/, Unsafe /*tag*/)
 			VEG_NOEXCEPT;
 	VEG_INLINE constexpr Boolean // NOLINT(hicpp-explicit-conversions)
-			(Boolean<maybe> b, Safe /*tag*/ = {}) VEG_NOEXCEPT;
+			(Boolean<maybe> b) VEG_NOEXCEPT;
 
 	VEG_NODISCARD VEG_INLINE constexpr friend auto
 	operator!(Boolean /*arg*/) VEG_NOEXCEPT -> Boolean<T == yes ? no : yes> {
@@ -98,7 +98,7 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 	constexpr Fix() VEG_NOEXCEPT = default;
 	VEG_INLINE constexpr Fix(Dyn /*arg*/, Unsafe /*tag*/) VEG_NOEXCEPT;
 	VEG_INLINE constexpr Fix // NOLINT(hicpp-explicit-conversions)
-			(Dyn arg, Safe /*tag*/ = {}) VEG_NOEXCEPT;
+			(Dyn arg) VEG_NOEXCEPT;
 	VEG_TEMPLATE((i64 M), requires((M != N)), constexpr Fix, (/*arg*/, Fix<M>)) =
 			delete;
 

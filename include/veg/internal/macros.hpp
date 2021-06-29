@@ -403,6 +403,19 @@
 #define VEG_NIEBLOID_TEMPLATE(Tpl, Name, ...)                                  \
 	VEG_INLINE_VAR_TEMPLATE(Tpl, Name, nb::Name<__VA_ARGS__>) // NOLINT
 
+#define VEG_TAG(Name, Type)                                                    \
+	struct Type {                                                                \
+		explicit Type() = default;                                                 \
+	};                                                                           \
+	VEG_INLINE_VAR(Name, Type);
+
+#define VEG_TAG_TEMPLATE(Tpl, Name, Type, ...)                                 \
+	template <__VEG_PP_REMOVE_PAREN(Tpl)>                                        \
+	struct Type {                                                                \
+		explicit Type() = default;                                                 \
+	};                                                                           \
+	VEG_INLINE_VAR_TEMPLATE(Tpl, Name, Type<__VA_ARGS__>)
+
 #define VEG_FWD(X) static_cast<decltype(X)&&>(X)
 
 // disallows moving const rvalues

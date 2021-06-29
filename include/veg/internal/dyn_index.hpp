@@ -20,7 +20,7 @@ struct Boolean<maybe> {
 	template <ternary_e T>
 	VEG_INLINE constexpr Boolean /* NOLINT(hicpp-explicit-conversions)
 	                              */
-			(Boolean<T> /*arg*/, Safe /*tag*/ = {}) VEG_NOEXCEPT : val(T == yes) {}
+			(Boolean<T> /*arg*/) VEG_NOEXCEPT : val(T == yes) {}
 
 	VEG_NODISCARD VEG_INLINE constexpr friend auto
 	operator!(Boolean arg) VEG_NOEXCEPT -> Boolean {
@@ -126,7 +126,7 @@ VEG_INLINE constexpr Boolean<T>::Boolean(Boolean<maybe> /*b*/, Unsafe /*tag*/)
 		VEG_NOEXCEPT {}
 template <ternary_e T>
 VEG_INLINE constexpr Boolean<T>::Boolean // NOLINT(hicpp-explicit-conversions)
-		(Boolean<maybe> b, Safe /*tag*/) VEG_NOEXCEPT
+		(Boolean<maybe> b) VEG_NOEXCEPT
 		: Boolean(
 					((void)VEG_INTERNAL_ASSERT_PRECONDITION(b.val == (T == yes)), b),
 					unsafe) {}
@@ -135,7 +135,7 @@ template <i64 N>
 VEG_INLINE constexpr Fix<N>::Fix(Dyn /*arg*/, Unsafe /*tag*/) VEG_NOEXCEPT {}
 template <i64 N>
 VEG_INLINE constexpr Fix<N>::Fix // NOLINT(hicpp-explicit-conversions)
-		(Dyn arg, Safe /*tag*/) VEG_NOEXCEPT
+		(Dyn arg) VEG_NOEXCEPT
 		: Fix((VEG_INTERNAL_ASSERT_PRECONDITION(i64(arg) == N), arg), unsafe) {}
 
 namespace internal {

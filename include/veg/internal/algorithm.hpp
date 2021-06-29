@@ -148,7 +148,7 @@ struct reloc_impl<which::throw_move> {
 } // namespace algo_
 } // namespace internal
 
-namespace fn {
+namespace nb {
 
 struct backward_destroy_n {
 	VEG_TEMPLATE(
@@ -289,13 +289,13 @@ struct mixed_init_copy_n {
 	}
 };
 
-} // namespace fn
-VEG_INLINE_VAR(backward_destroy_n, fn::backward_destroy_n);
-VEG_INLINE_VAR(relocate_n, fn::relocate_n);
-VEG_INLINE_VAR(uninitialized_move_n, fn::uninitialized_move_n);
-VEG_INLINE_VAR(uninitialized_copy_n, fn::uninitialized_copy_n);
-VEG_INLINE_VAR(copy_n, fn::copy_n);
-VEG_INLINE_VAR(mixed_init_copy_n, fn::mixed_init_copy_n);
+} // namespace nb
+VEG_NIEBLOID(backward_destroy_n);
+VEG_NIEBLOID(relocate_n);
+VEG_NIEBLOID(uninitialized_move_n);
+VEG_NIEBLOID(uninitialized_copy_n);
+VEG_NIEBLOID(copy_n);
+VEG_NIEBLOID(mixed_init_copy_n);
 
 namespace internal {
 namespace algo_ {
