@@ -57,6 +57,7 @@
 
 #ifndef VEG_INLINE
 #define VEG_INLINE HEDLEY_ALWAYS_INLINE
+#define VEG_NO_INLINE HEDLEY_NEVER_INLINE
 #endif
 
 #define VEG_DECLVAL(...) (static_cast<__VA_ARGS__ (*)()>(nullptr)())

@@ -20,8 +20,12 @@ struct Vec;
 namespace internal {
 namespace vec_ {
 
+constexpr auto size_hint_2(i64 hint, i64 new_cap) VEG_NOEXCEPT -> i64 {
+	return new_cap > hint ? new_cap : hint;
+}
+
 constexpr auto size_hint(i64 cap, i64 new_cap) VEG_NOEXCEPT -> i64 {
-	return new_cap > (2 * cap) ? new_cap : 2 * cap;
+	return vec_::size_hint_2(cap + cap / 2 + 1, new_cap);
 }
 
 template <typename T>
@@ -32,19 +36,19 @@ private:
 	auto _self() VEG_NOEXCEPT -> Vec<T>& { return static_cast<Vec<T>&>(*this); }
 
 public:
-	struct raw_parts {
+	struct RawParts {
 		T* begin;
 		usize len;
 		usize cap;
 	};
-	raw_parts self = {};
+	RawParts raw = {};
 
 	VEG_CPP14(constexpr) VecBase() VEG_NOEXCEPT = default;
 
 	VecBase(FromSlice /*tag*/, Slice<T const> slice) VEG_NOEXCEPT_IF(false)
 			: VecBase{
 						from_raw_parts,
-						raw_parts{
+						RawParts{
 								static_cast<T*>(mem::aligned_alloc(
 										alignof(T), static_cast<i64>(sizeof(T)) * slice.size())),
 								0,
@@ -52,45 +56,51 @@ public:
 						unsafe,
 				} {
 		uninitialized_copy_n(_self().data(), slice.data(), slice.size());
-		self.len = nb::narrow<usize>{}(slice.size());
+		raw.len = nb::narrow<usize>{}(slice.size());
 	}
 
 	VEG_INLINE
 	VecBase(VecBase const& other) VEG_NOEXCEPT_IF(false)
 			: VecBase{
 						from_slice,
-						Slice<T const>{other.self.begin, i64(other.self.len), unsafe}} {}
+						Slice<T const>{other.raw.begin, i64(other.raw.len), unsafe}} {}
 
 	VEG_INLINE
-	VecBase(VecBase&& other) VEG_NOEXCEPT : self{other.self} { other.self = {}; }
+	VecBase(VecBase&& other) VEG_NOEXCEPT : raw{other.raw} { other.raw = {}; }
 
 	VEG_INLINE
-	VecBase(FromRawParts /*tag*/, raw_parts parts, Unsafe /*tag*/) VEG_NOEXCEPT
-			: self{parts} {}
+	VecBase(FromRawParts /*tag*/, RawParts parts, Unsafe /*tag*/) VEG_NOEXCEPT
+			: raw{parts} {}
 
 	VEG_INLINE
-	~VecBase() { this->_destroy(); }
+	~VecBase() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+		this->_destroy();
+	}
 
 	VEG_INLINE
 	auto operator=(VecBase const& rhs) & VEG_NOEXCEPT_IF(false) -> VecBase& {
 		if (this == addressof(rhs)) {
 			return *this;
 		}
-		_self() = Slice<T const>{rhs.self.begin, i64(rhs.self.len), unsafe};
+		_self() = Slice<T const>{rhs.raw.begin, i64(rhs.raw.len), unsafe};
 		return *this;
 	}
 	VEG_INLINE
-	auto operator=(VecBase&& rhs) & VEG_NOEXCEPT -> VecBase& {
-		this->_destroy();
-		self = rhs.self;
-		rhs.self = {};
+	auto operator=(VecBase&& rhs) &
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) -> VecBase& {
+		RawParts tmp_rhs = rhs.raw;
+		rhs.raw = RawParts{};
+
+		VecBase tmp_lhs = static_cast<VecBase&&>(*this);
+		raw = tmp_rhs.raw;
 		return *this;
 	}
 
 private:
 	VEG_INLINE
-	void _destroy() VEG_NOEXCEPT {
-		aligned_free(self.begin, alignof(T), nb::narrow<usize>{}(self.cap));
+	void _destroy() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+		internal::algo_::backward_destroy_n_may_throw<T>(raw.begin, raw.len);
+		mem::aligned_free(raw.begin, alignof(T), nb::narrow<usize>{}(raw.cap));
 	}
 };
 
@@ -110,37 +120,39 @@ struct Vec : internal::vec_::VecBase<T>,
 								 internal::EmptyI<1>,
 								 internal::NoCopyAssign> {
 
-	using typename internal::vec_::VecBase<T>::raw_parts;
+	using typename internal::vec_::VecBase<T>::RawParts;
 	using internal::vec_::VecBase<T>::VecBase;
 
 private:
-	using internal::vec_::VecBase<T>::self;
+	using internal::vec_::VecBase<T>::raw;
 
 public:
-	VEG_NODISCARD VEG_INLINE auto into_raw_parts() && VEG_NOEXCEPT -> raw_parts {
-		raw_parts copy = self;
-		self = {};
+	VEG_NODISCARD VEG_INLINE auto into_raw_parts() && VEG_NOEXCEPT -> RawParts {
+		RawParts copy = raw;
+		raw = {};
 		return copy;
 	}
 
-	VEG_NODISCARD VEG_INLINE auto data() VEG_NOEXCEPT -> T* { return self.begin; }
+	VEG_NODISCARD VEG_INLINE auto data() VEG_NOEXCEPT -> T* { return raw.begin; }
 	VEG_NODISCARD VEG_INLINE auto data() const VEG_NOEXCEPT -> T const* {
-		return self.begin;
+		return raw.begin;
 	}
 	VEG_NODISCARD VEG_INLINE auto size() const VEG_NOEXCEPT -> i64 {
-		return i64(self.len);
+		return i64(raw.len);
 	}
 	VEG_NODISCARD VEG_INLINE auto capacity() const VEG_NOEXCEPT -> i64 {
-		return i64(self.cap);
+		return i64(raw.cap);
 	}
 
 	VEG_INLINE
-	void resize_down(i64 new_size, Unsafe /*tag*/) VEG_NOEXCEPT {
+	void resize_down_unchecked(i64 new_size, Unsafe /*tag*/)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
 		backward_destroy_n(data() + new_size, size() - new_size);
-		self.len = usize(new_size);
+		raw.len = usize(new_size);
 	}
 	VEG_INLINE
-	void resize_down(i64 new_size, Safe /*tag*/ = {}) VEG_NOEXCEPT {
+	void resize_down(i64 new_size)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
 		VEG_INTERNAL_ASSERT_PRECONDITION(new_size <= size());
 		resize_down(new_size, unsafe);
 	}
@@ -160,48 +172,55 @@ public:
 		}
 
 		mixed_init_copy_n(data(), rhs.data(), rhs.size(), size());
-		self.len = rhs.size();
+		raw.len = rhs.size();
 
 		return *this;
 	}
 
 	VEG_TEMPLATE(
-			(typename... Args),
-			requires(VEG_CONCEPT(constructible<T, Args&&...>)),
-			VEG_INLINE auto emplace_back,
-			(... args, Args&&))
+			(typename Fn),
+			requires(VEG_CONCEPT(invocable_r<Fn, T>)),
+			VEG_INLINE auto push_back_with,
+			(fn, Fn))
 	VEG_NOEXCEPT_IF(false)->T& {
-		_grow_to(capacity() + 1);
-		T& ref = *::new (data() + size()) T(VEG_FWD(args)...);
-		++self.len;
+		_grow_to(size() + 1);
+		T& ref = *mem::construct_with(data() + size(), VEG_FWD(fn));
+		++raw.len;
 		return ref;
 	}
 
-	VEG_INLINE auto push_back(T value) VEG_NOEXCEPT_IF(false) {
-		return emplace_back(VEG_FWD(value));
+	VEG_INLINE auto push_back(T value) VEG_NOEXCEPT_IF(false) -> T& {
+		return push_back_with(internal::ConvertingFn<T&&, T>{VEG_FWD(value)});
 	}
 
 	VEG_INLINE
 	void reserve(i64 new_capacity) VEG_NOEXCEPT_IF(false) {
 		if (new_capacity > capacity()) {
-			self.begin = internal::algo_::reallocate_memory(
+			raw.begin = internal::algo_::reallocate_memory(
 					data(), alignof(T), size(), capacity(), new_capacity);
-			self.cap = nb::narrow<usize>{}(new_capacity);
+			raw.cap = nb::narrow<usize>{}(new_capacity);
 		}
 	}
 
 private:
+	VEG_NO_INLINE void _grow_to_unchecked(i64 new_capacity)
+			VEG_NOEXCEPT_IF(false) {
+		raw.begin = internal::algo_::reallocate_memory(
+				data(), alignof(T), size(), capacity(), new_capacity);
+		raw.cap = nb::narrow<usize>{}(new_capacity);
+	}
+
 	VEG_INLINE auto _grow_to(i64 n) VEG_NOEXCEPT_IF(false) {
 		if (n > capacity()) {
-			reserve(internal::vec_::size_hint(capacity(), n));
+			_grow_to_unchecked(internal::vec_::size_hint(capacity(), n));
 		}
 	}
 };
 
 template <typename T>
-struct meta::is_trivially_relocatable<Vec<T>> : true_type {};
+struct cpo::is_trivially_relocatable<Vec<T>> : meta::true_type {};
 template <typename T>
-struct meta::is_trivially_swappable<Vec<T>&> : true_type {};
+struct cpo::is_trivially_swappable<Vec<T>> : meta::true_type {};
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

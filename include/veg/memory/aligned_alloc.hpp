@@ -9,8 +9,8 @@ namespace veg {
 namespace abi {
 inline namespace VEG_ABI_VERSION {
 namespace internal {
-auto opaque_memmove(void* dest, void const* src, usize nbytes)
-		VEG_ALWAYS_NOEXCEPT -> void*;
+auto opaque_memmove(void* dest, void const* src, usize nbytes) noexcept
+		-> void*;
 } // namespace internal
 
 namespace mem {

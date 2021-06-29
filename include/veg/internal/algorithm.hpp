@@ -6,15 +6,16 @@
 #include "veg/memory/address.hpp"
 #include "veg/memory/placement.hpp"
 #include "veg/memory/aligned_alloc.hpp"
+#include "veg/type_traits/assignable.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
 namespace internal {
 namespace algo_ {
 
-template <typename T, typename... Args>
-VEG_INLINE
-VEG_CPP20(constexpr) void backward_destroy_n(T* ptr, i64 n) VEG_NOEXCEPT {
+template <typename T>
+VEG_INLINE VEG_CPP20(constexpr) void backward_destroy_n_direct(T* ptr, i64 n)
+		VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
 	if (n == 0) {
 		return;
 	}
@@ -34,10 +35,25 @@ struct destroy_range_fn {
 	i64 const& size;
 
 	VEG_CPP20(constexpr)
-	void operator()() const VEG_NOEXCEPT {
-		algo_::backward_destroy_n(cleanup_ptr, size);
+	VEG_INLINE void operator()() const VEG_NOEXCEPT {
+		algo_::backward_destroy_n_direct<T>(cleanup_ptr, size);
 	}
 };
+
+template <typename T>
+VEG_INLINE VEG_CPP20(constexpr) void backward_destroy_n_may_throw(T* ptr, i64 n)
+		VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+	if (n == 0) {
+		return;
+	}
+	i64 i = n - 1;
+	auto&& cleanup = defer(destroy_range_fn<T>{ptr, i});
+
+	for (; i >= 0; --i) {
+		mem::destroy_at(ptr + i);
+	}
+	i = 0;
+}
 
 template <typename Cast, typename T, typename... Args>
 VEG_CPP20(constexpr)
@@ -82,7 +98,7 @@ struct reloc_impl<which::nothrow_move> {
 		T* end = dest + n;
 		for (; dest < end; ++dest, ++src) {
 			mem::construct_at(dest, static_cast<T&&>(*src));
-			mem::destroy_at(*src);
+			mem::destroy_at(src);
 		}
 	}
 };
@@ -141,17 +157,8 @@ struct backward_destroy_n {
 			operator(),
 			(ptr, T*),
 			(n, i64))
-	const VEG_NOEXCEPT {
-		if (n == 0) {
-			return;
-		}
-		for (T* p = ptr + n - 1;; --p) {
-			mem::destroy_at(p);
-
-			if (p == ptr) {
-				break;
-			}
-		}
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+		internal::algo_::backward_destroy_n_may_throw<T>(ptr, n);
 	}
 };
 
@@ -172,7 +179,7 @@ struct relocate_n {
 
 		namespace impl = internal::algo_;
 		impl::reloc_impl<
-				VEG_CONCEPT(trivially_relocatable<T>)            //
+				cpo::is_trivially_relocatable<T>::value          //
 						? impl::which::trivial                       //
 						: VEG_CONCEPT(nothrow_move_constructible<T>) //
 									? impl::which::nothrow_move            //
@@ -302,7 +309,7 @@ struct free_cleanup {
 };
 
 template <typename T>
-VEG_INLINE auto
+VEG_NO_INLINE auto
 reallocate_memory(T* src, usize align, i64 size, i64 cap, i64 new_cap)
 		VEG_NOEXCEPT_IF(false) -> T* {
 

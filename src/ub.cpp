@@ -1,4 +1,5 @@
 #include <cstring>
+#include "veg/internal/prologue.hpp"
 
 namespace veg {
 namespace abi {
@@ -16,3 +17,4 @@ auto opaque_memmove(void* dest, void const* src, usize nbytes) noexcept
 } // namespace VEG_ABI_VERSION
 } // namespace abi
 } // namespace veg
+#include "veg/internal/epilogue.hpp"

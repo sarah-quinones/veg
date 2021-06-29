@@ -1,3 +1,5 @@
+1. Vec throwing dtor exception recovery
+
 3. option print
 
 4. result<T, E>
