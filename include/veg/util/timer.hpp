@@ -20,16 +20,16 @@ void log_elapsed_time(i64 duration, char const* msg, std::FILE* out)
 namespace internal {
 namespace time_ {
 template <typename Fn>
-struct raii_timer_wrapper {
+struct RaiiTimerWrapper {
 	struct raw_parts {
 		i64 begin;
 		Fn fn;
 	} self;
 
-	raii_timer_wrapper(Fn fn) VEG_NOEXCEPT
+	RaiiTimerWrapper(Fn fn) VEG_NOEXCEPT
 			: self{abi::time::monotonic_nanoseconds_since_epoch(), VEG_FWD(fn)} {}
 
-	auto operator()() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn, i64>)) {
+	void operator()() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn, i64>)) {
 		VEG_FWD(self.fn)
 		(i64(abi::time::monotonic_nanoseconds_since_epoch() - self.begin));
 	}
@@ -47,8 +47,8 @@ struct monotonic_nanoseconds_since_epoch {
 } // namespace nb
 VEG_NIEBLOID(monotonic_nanoseconds_since_epoch);
 
-struct log_elapsed_time {
-	explicit log_elapsed_time(char const* _msg = "", std::FILE* _out = stdout)
+struct LogElapsedTime {
+	explicit LogElapsedTime(char const* _msg = "", std::FILE* _out = stdout)
 			VEG_ALWAYS_NOEXCEPT : msg{_msg},
 														out{_out} {}
 
@@ -61,10 +61,10 @@ struct log_elapsed_time {
 };
 
 template <typename Fn>
-struct RaiiTimer : Defer<internal::time_::raii_timer_wrapper<Fn>> {
+struct RaiiTimer : Defer<internal::time_::RaiiTimerWrapper<Fn>> {
 	VEG_CHECK_CONCEPT(invocable<Fn, i64>);
-	using Defer<internal::time_::raii_timer_wrapper<Fn>>::Defer;
-	using Defer<internal::time_::raii_timer_wrapper<Fn>>::fn;
+	using Defer<internal::time_::RaiiTimerWrapper<Fn>>::Defer;
+	using Defer<internal::time_::RaiiTimerWrapper<Fn>>::fn;
 };
 
 namespace nb {
