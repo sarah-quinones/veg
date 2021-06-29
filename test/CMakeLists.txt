@@ -75,6 +75,7 @@ macro(add_all_tests_std_version std_version)
   add_test_std_version(${std_version} dynstack src/test_dynamic_stack.cpp)
   add_test_std_version(${std_version} tuple src/test_tuple.cpp)
   add_test_std_version(${std_version} option src/test_option.cpp)
+  add_test_std_version(${std_version} uwunion src/test_uwunion.cpp)
   add_test_std_version(${std_version} option.stx src/test_option.stx.cpp)
 
   add_custom_target(
