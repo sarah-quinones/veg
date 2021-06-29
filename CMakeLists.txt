@@ -20,6 +20,7 @@ add_library(
 )
 target_link_libraries(veg PRIVATE _veg_ub)
 target_include_directories(veg PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(_veg_ub PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 option(VEG_ENABLE_TESTING "enable tests" ${VEG_TOP_LEVEL})
 

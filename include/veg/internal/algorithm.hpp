@@ -48,6 +48,7 @@ VEG_INLINE VEG_CPP20(constexpr) void backward_destroy_n_may_throw(T* ptr, i64 n)
 	}
 	i64 i = n - 1;
 	auto&& cleanup = defer(destroy_range_fn<T>{ptr, i});
+	(void)cleanup;
 
 	for (; i >= 0; --i) {
 		mem::destroy_at(ptr + i);
@@ -58,7 +59,7 @@ VEG_INLINE VEG_CPP20(constexpr) void backward_destroy_n_may_throw(T* ptr, i64 n)
 template <typename Cast, typename T, typename... Args>
 VEG_CPP20(constexpr)
 void uninit_emplace_n(T* dest, T const* src, i64 n)
-		VEG_NOEXCEPT(VEG_CONCEPT(nothrow_constructible<T, Cast>)) {
+		VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T, Cast>)) {
 
 	i64 i = 0;
 	auto&& cleanup = defer(internal::algo_::destroy_range_fn<T>{dest, i});
@@ -303,7 +304,7 @@ struct free_cleanup {
 	void* ptr;
 	usize align;
 	i64 cap_bytes;
-	auto operator()() const VEG_NOEXCEPT {
+	void operator()() const VEG_NOEXCEPT {
 		mem::aligned_free(ptr, align, cap_bytes);
 	}
 };

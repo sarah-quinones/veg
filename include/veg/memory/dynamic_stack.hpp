@@ -8,6 +8,7 @@
 #include "veg/memory/address.hpp"
 #include "veg/option.hpp"
 #include "veg/internal/narrow.hpp"
+#include "veg/internal/algorithm.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
@@ -175,13 +176,7 @@ private:
 	using base = internal::dynstack::DynAllocBase;
 
 public:
-	~DynStackAlloc()
-#ifdef __VEG_DISABLE_NOEXCEPT
-			noexcept(false)
-#endif
-	{
-		base::destroy(data() + base::len);
-	}
+	~DynStackAlloc() VEG_NOEXCEPT { base::destroy(data() + base::len); }
 
 	DynStackAlloc(DynStackAlloc const&) = delete;
 	DynStackAlloc(DynStackAlloc&& other) VEG_NOEXCEPT : base{base(other)} {
@@ -257,14 +252,9 @@ public:
 		return *this;
 	}
 
-	~DynStackArray()
-#ifdef __VEG_DISABLE_NOEXCEPT
-			noexcept(false)
-#endif
-	{
-		for (i64 i = this->DynStackAlloc<T>::base::len - 1; i >= 0; --i) {
-			mem::destroy_at(this->data() + i);
-		}
+	~DynStackArray() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+		internal::algo_::backward_destroy_n_may_throw<T>(
+				this->data(), this->DynStackAlloc<T>::base::len);
 	}
 
 private:

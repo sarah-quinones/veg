@@ -6,11 +6,11 @@
 #define VEG_ALWAYS_NOEXCEPT noexcept
 
 #ifdef __VEG_DISABLE_NOEXCEPT
-#define VEG_NOEXCEPT
+#define VEG_NOEXCEPT noexcept(false)
 #define VEG_NOEXCEPT_IF(Cond) noexcept(false)
 #define VEG_IS_NOEXCEPT(Expr) noexcept(Expr)
 #else
-#define VEG_NOEXCEPT noexcept
+#define VEG_NOEXCEPT noexcept(true)
 #define VEG_NOEXCEPT_IF(Cond) noexcept(Cond)
 #define VEG_IS_NOEXCEPT(Expr) noexcept(Expr)
 #endif
