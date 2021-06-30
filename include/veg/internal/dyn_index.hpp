@@ -15,6 +15,7 @@ template <>
 struct Boolean<maybe> {
 	using type = maybe_c;
 
+	constexpr Boolean() = default;
 	constexpr Boolean /* NOLINT(hicpp-explicit-conversions) */ (bool _val = false)
 			VEG_NOEXCEPT : val{_val} {}
 	template <ternary_e T>
@@ -32,10 +33,11 @@ struct Boolean<maybe> {
 	}
 
 private:
-	bool val;
+	bool val = false;
 };
 
 struct Dyn {
+	constexpr Dyn() = default;
 	constexpr Dyn /* NOLINT(hicpp-explicit-conversions) */ (i64 val = 0)
 			VEG_NOEXCEPT : m_val(val) {}
 	template <i64 N>
@@ -118,7 +120,7 @@ struct Dyn {
 
 #undef VEG_CMP
 private:
-	i64 m_val;
+	i64 m_val = 0;
 };
 
 template <ternary_e T>
