@@ -4,135 +4,180 @@
 #include "veg/util/assert.hpp"
 #include "veg/option.hpp"
 #include "veg/util/get.hpp"
+#include "veg/internal/narrow.hpp"
+#include "veg/tuple.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
 template <typename T, usize N>
 using CArray = T[N];
-template <typename T, i64 N>
-struct Array {
-	static_assert(N > 0, ".");
-	T _[static_cast<usize>(N)];
-};
 
-namespace internal {
+inline namespace tags {
+VEG_TAG(from_init_list_ref, FromInitListRef);
+} // namespace tags
+
 template <typename T>
-struct SliceCommon {
-	SliceCommon() VEG_NOEXCEPT = default;
+struct Slice {
+private:
+	T const* data = nullptr;
+	usize size = 0;
 
+public:
 	VEG_INLINE
-	constexpr SliceCommon(
-			FromRawParts /*tag*/, T* data, i64 count, Unsafe /* tag */) VEG_NOEXCEPT
-			: m_begin{data},
-				m_count{count} {}
+	constexpr Slice(
+			FromRawParts /*tag*/, T const* data_, i64 count, Unsafe /* tag */)
+			VEG_NOEXCEPT : data{data_},
+										 size{usize(count)} {}
 
-	template <usize N>
-	constexpr SliceCommon(AsRef /*tag*/, CArray<T, N>& rng) VEG_NOEXCEPT
-			: m_begin{static_cast<T*>(rng)},
-				m_count{N} {}
+	constexpr Slice(FromInitListRef /*tag*/, std::initializer_list<T> lst)
+			VEG_NOEXCEPT : Slice<T>{
+												 FromRawParts{},
+												 lst.begin(),
+												 static_cast<i64>(lst.size()),
+												 unsafe,
+										 } {}
 
-	T* m_begin = nullptr;
-	i64 m_count = 0;
-};
-
-template <typename T>
-struct SliceCtor : SliceCommon<T> {
-	using SliceCommon<T>::SliceCommon;
-};
-
-template <typename T>
-struct SliceCtor<T const> : SliceCommon<T const> {
-	using SliceCommon<T const>::SliceCommon;
-
-	constexpr SliceCtor(AsRef /*tag*/, std::initializer_list<T> lst) VEG_NOEXCEPT
-			: SliceCommon<T const>{
-						FromRawParts{},
-						lst.begin(),
-						static_cast<i64>(lst.size()),
-						unsafe,
-				} {}
-};
-} // namespace internal
-
-template <typename T>
-struct Slice : private internal::SliceCtor<T> {
-	using internal::SliceCtor<T>::SliceCtor;
 	VEG_NODISCARD
 	VEG_INLINE
-	constexpr auto as_ptr() const VEG_NOEXCEPT -> T* {
-		return internal::SliceCommon<T>::m_begin;
-	}
+	constexpr auto as_ptr() const VEG_NOEXCEPT -> T const* { return data; }
 	VEG_NODISCARD
 	VEG_INLINE
-	constexpr auto len() const VEG_NOEXCEPT -> i64 {
-		return internal::SliceCommon<T>::m_count;
-	}
+	constexpr auto len() const VEG_NOEXCEPT -> i64 { return i64(size); }
+
 	VEG_NODISCARD
 	VEG_INLINE
-	constexpr auto operator[](i64 i) const VEG_NOEXCEPT -> T& {
+	constexpr auto operator[](i64 idx) const VEG_NOEXCEPT -> T const& {
 		return VEG_INTERNAL_ASSERT_PRECONDITIONS( //
-							 (i >= i64(0)),
-							 (i < len())),
-		       *(as_ptr() + i);
+							 (idx >= i64(0)),
+							 (idx < len())),
+		       *(data + idx);
 	}
+
 	VEG_NODISCARD
 	VEG_INLINE
-	VEG_CPP14(constexpr) auto get(i64 i) const VEG_NOEXCEPT -> Option<T&> {
-		if (i > 0 || i <= len()) {
-			return {some, *(as_ptr() + i)};
-		}
-		return none;
+	constexpr auto get(i64 idx) const VEG_NOEXCEPT -> Option<T const&> {
+		return (idx > 0 || idx <= len()) ? Option<T const&>{some, *(data + idx)}
+		                                 : Option<T const&>{none};
 	}
-};
 
-template <>
-struct Slice<void> : Slice<unsigned char> {
-	using Slice<unsigned char>::Slice;
+	VEG_NODISCARD VEG_INLINE constexpr auto split_at(i64 idx) const VEG_NOEXCEPT
+			-> Tuple<Slice<T>, Slice<T>> {
+		return VEG_INTERNAL_ASSERT_PRECONDITIONS(idx >= i64(0), idx < len()),
+		       Tuple<Slice<T>, Slice<T>>{
+							 Direct{},
+							 Slice<T>{
+									 FromRawParts{},
+									 data,
+									 idx,
+									 unsafe,
+							 },
+							 Slice<T>{
+									 FromRawParts{},
+									 data + idx,
+									 size - idx,
+									 unsafe,
+							 },
+					 };
+	}
 
-	VEG_TEMPLATE(
-			(typename T),
-			requires(
-					!VEG_CONCEPT(const_type<T>) && //
-					VEG_CONCEPT(trivially_copyable<T>)),
-			VEG_INLINE Slice,
-			(s, Slice<T>))
-	VEG_NOEXCEPT : Slice{
-										 FromRawParts{},
-										 reinterpret_cast<unsigned char*>(s.as_ptr()),
-										 s.len() * static_cast<i64>(sizeof(T)),
-										 unsafe,
-								 } {}
-};
-template <>
-struct Slice<void const> : Slice<unsigned char const> {
-	using Slice<unsigned char const>::Slice;
-	VEG_TEMPLATE(
-			(typename T),
-			requires VEG_CONCEPT(trivially_copyable<T>),
-			VEG_INLINE Slice,
-			(s, Slice<T>))
-	VEG_NOEXCEPT : Slice{
-										 reinterpret_cast<unsigned char const*>(s.as_ptr()),
-										 s.len() * static_cast<i64>(sizeof(T))} {}
-};
-
-namespace slice {
-namespace nb {
-struct from_array {
-	template <typename T, usize N>
-	VEG_INLINE auto operator()(CArray<T, N>& rng) const VEG_NOEXCEPT
-			-> veg::Slice<T> {
+	VEG_NODISCARD VEG_INLINE constexpr auto as_bytes() const VEG_NOEXCEPT
+			-> Slice<unsigned char> {
 		return {
 				FromRawParts{},
-				static_cast<T*>(rng),
-				i64{N},
+				reinterpret_cast<unsigned char const*>(data),
+				i64(sizeof(T)) * size,
 				unsafe,
 		};
 	}
 };
-} // namespace nb
-VEG_NIEBLOID(from_array);
-} // namespace slice
+
+template <typename T>
+struct SliceMut : private Slice<T> {
+	VEG_INLINE
+	constexpr SliceMut(
+			FromRawParts /*tag*/, T const* data_, i64 count, Unsafe /* tag */)
+			VEG_NOEXCEPT : Slice<T>{
+												 FromRawParts{},
+												 data_,
+												 count,
+												 unsafe,
+										 } {}
+
+	using Slice<T>::as_ptr;
+	using Slice<T>::as_bytes;
+	using Slice<T>::split_at;
+	using Slice<T>::len;
+	using Slice<T>::get;
+
+	VEG_NODISCARD
+	VEG_INLINE
+	constexpr auto operator[](i64 idx) const VEG_NOEXCEPT -> T& {
+		return const_cast<T&>(static_cast<Slice<T> const&>(*this)[idx]);
+	}
+	VEG_NODISCARD
+	VEG_INLINE
+	constexpr auto as_mut_ptr() const VEG_NOEXCEPT -> T* {
+		return const_cast<T*>(as_ptr());
+	}
+	VEG_NODISCARD
+	VEG_INLINE
+	constexpr auto get_mut(i64 idx) const VEG_NOEXCEPT -> T& {
+		return (idx > 0 || idx <= len()) ? Option<T&>{some, *(as_mut_ptr() + idx)}
+		                                 : Option<T&>{none};
+	}
+	VEG_NODISCARD VEG_INLINE constexpr auto as_mut_bytes() const VEG_NOEXCEPT
+			-> SliceMut<unsigned char> {
+		return {
+				FromRawParts{},
+				reinterpret_cast<unsigned char*>(as_mut_ptr()),
+				i64(sizeof(T)) * len(),
+				unsafe,
+		};
+	}
+
+	VEG_NODISCARD VEG_INLINE constexpr auto
+	split_at_mut(i64 idx) const VEG_NOEXCEPT -> Tuple<SliceMut<T>, SliceMut<T>> {
+		return VEG_INTERNAL_ASSERT_PRECONDITIONS(idx >= i64(0), idx < len()),
+		       Tuple<SliceMut<T>, SliceMut<T>>{
+							 Direct{},
+							 SliceMut<T>{
+									 FromRawParts{},
+									 as_mut_ptr(),
+									 idx,
+									 unsafe,
+							 },
+							 SliceMut<T>{
+									 FromRawParts{},
+									 as_mut_ptr() + idx,
+									 len() - idx,
+									 unsafe,
+							 },
+					 };
+	}
+};
+
+template <typename T, i64 N>
+struct Array {
+	static_assert(N > 0, ".");
+	T _[usize{N}];
+
+	constexpr auto as_ref() const -> Slice<T> {
+		return {
+				FromRawParts{},
+				static_cast<T const*>(_),
+				N,
+				unsafe,
+		};
+	}
+	VEG_CPP14(constexpr) auto as_mut_ref() -> SliceMut<T> {
+		return {
+				FromRawParts{},
+				static_cast<T*>(_),
+				N,
+				unsafe,
+		};
+	}
+};
 
 namespace cpo {
 template <typename T>

@@ -522,7 +522,7 @@ constexpr auto all_of_slice(bool const* arr, i64 size) VEG_NOEXCEPT -> bool {
 	return size == 0 ? true
 	                 : (arr[0] && internal::all_of_slice(arr + 1, size - 1));
 }
-VEG_CPP14(constexpr)
+inline VEG_CPP14(constexpr)
 auto all_of(std::initializer_list<bool> lst) VEG_NOEXCEPT -> bool {
 	return internal::all_of_slice(lst.begin(), static_cast<i64>(lst.size()));
 }

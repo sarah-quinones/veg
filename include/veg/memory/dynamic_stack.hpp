@@ -59,14 +59,16 @@ struct DynStackAlloc;
 
 struct DynStackView {
 public:
-	DynStackView /* NOLINT(hicpp-explicit-conversions) */ (Slice<void> s)
-			VEG_NOEXCEPT : stack_data(s.as_ptr()),
-										 stack_bytes(s.len()) {}
+	DynStackView(SliceMut<unsigned char> s) VEG_NOEXCEPT
+			: stack_data(s.as_mut_ptr()),
+				stack_bytes(s.len()) {}
 
 	VEG_NODISCARD
 	auto remaining_bytes() const VEG_NOEXCEPT -> i64 { return stack_bytes; }
 	VEG_NODISCARD
-	auto as_ptr() const VEG_NOEXCEPT -> void* { return stack_data; }
+	auto as_mut_ptr() const VEG_NOEXCEPT -> void* { return stack_data; }
+	VEG_NODISCARD
+	auto as_ptr() const VEG_NOEXCEPT -> void const* { return stack_data; }
 
 	VEG_TEMPLATE(
 			(typename T),
