@@ -38,8 +38,8 @@ private:
 
 struct Dyn {
 	constexpr Dyn() = default;
-	constexpr Dyn /* NOLINT(hicpp-explicit-conversions) */ (i64 val = 0)
-			VEG_NOEXCEPT : m_val(val) {}
+	constexpr Dyn /* NOLINT(hicpp-explicit-conversions) */ (i64 val) VEG_NOEXCEPT
+			: m_val(val) {}
 	template <i64 N>
 	constexpr Dyn /* NOLINT(hicpp-explicit-conversions) */ (Fix<N> /*arg*/)
 			VEG_NOEXCEPT : m_val(N) {}
