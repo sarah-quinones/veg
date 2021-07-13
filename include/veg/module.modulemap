@@ -114,12 +114,34 @@ module veg {
   }
 
   module type_traits {
-    header "type_traits/core.hpp"
-    header "type_traits/assignable.hpp"
-    header "type_traits/constructible.hpp"
-    header "type_traits/invocable.hpp"
-    header "type_traits/primitives.hpp"
-    header "type_traits/tags.hpp"
-    export *
+    module core {
+      header "type_traits/core.hpp"
+      export *
+    }
+
+    module assignable {
+      header "type_traits/assignable.hpp"
+      export *
+    }
+
+    module constructible {
+      header "type_traits/constructible.hpp"
+      export *
+    }
+
+    module invocable {
+      header "type_traits/invocable.hpp"
+      export *
+    }
+
+    module primitives {
+      header "type_traits/primitives.hpp"
+      export *
+    }
+
+    module tags {
+      header "type_traits/tags.hpp"
+      export *
+    }
   }
 }
