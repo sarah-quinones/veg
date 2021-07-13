@@ -2,7 +2,6 @@
 #define VEG_TUPLE_GENERIC_HPP_DUSBI7AJS
 
 #include "veg/internal/integer_seq.hpp"
-#include "veg/type_traits/value_category.hpp"
 #include "veg/internal/fix_index.hpp"
 #include "veg/util/swap.hpp"
 #include "veg/util/compare.hpp"

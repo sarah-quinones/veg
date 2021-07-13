@@ -4,6 +4,7 @@
 #include "veg/type_traits/tags.hpp"
 #include "veg/internal/std.hpp"
 #include "veg/internal/fmt.hpp"
+#include "veg/util/compare.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
@@ -48,26 +49,26 @@ VEG_DEF_CONCEPT(
 		VEG_CONCEPT(same<T, Dyn>) || internal::meta_::is_fix<T>::value);
 } // namespace concepts
 
-enum struct ternary_e : unsigned char {
+enum struct Ternary : unsigned char {
 	no,
 	maybe,
 	yes,
 };
 
-constexpr auto no = ternary_e::no;
-constexpr auto maybe = ternary_e::maybe;
-constexpr auto yes = ternary_e::yes;
-using no_c = meta::constant<ternary_e, ternary_e::no>;
-using maybe_c = meta::constant<ternary_e, ternary_e::maybe>;
-using yes_c = meta::constant<ternary_e, ternary_e::yes>;
+constexpr auto no = Ternary::no;
+constexpr auto maybe = Ternary::maybe;
+constexpr auto yes = Ternary::yes;
+using no_c = meta::constant<Ternary, Ternary::no>;
+using maybe_c = meta::constant<Ternary, Ternary::maybe>;
+using yes_c = meta::constant<Ternary, Ternary::yes>;
 
-template <ternary_e T>
+template <Ternary T>
 struct Boolean;
 
-template <ternary_e T>
+template <Ternary T>
 struct Boolean {
 	constexpr Boolean() VEG_NOEXCEPT = default;
-	using type = meta::constant<ternary_e, T>;
+	using type = meta::constant<Ternary, T>;
 
 	VEG_INLINE constexpr Boolean(Boolean<maybe> /*b*/, Unsafe /*tag*/)
 			VEG_NOEXCEPT;
@@ -302,29 +303,40 @@ operator"" _c() VEG_NOEXCEPT -> Fix<internal::parse_int(
 }
 } // namespace literals
 
-namespace fmt {
 template <>
-struct Debug<Boolean<yes>> {
+struct fmt::Debug<Boolean<yes>> {
 	static void to_string(fmt::Buffer& out, Ref<Boolean<yes>> /*val*/) {
 		out.insert(out.size(), "yes", 3);
 	}
 };
 template <>
-struct Debug<Boolean<no>> {
+struct fmt::Debug<Boolean<no>> {
 	static void to_string(fmt::Buffer& out, Ref<Boolean<no>> /*val*/) {
 		out.insert(out.size(), "no", 2);
 	}
 };
 
 template <i64 N>
-struct Debug<Fix<N>> {
+struct fmt::Debug<Fix<N>> {
 	static void to_string(fmt::Buffer& out, Ref<Fix<N>> /*val*/) {
 		out.insert(out.size(), "Fix[", 4);
 		Debug<i64>::to_string(out, ref(N));
 		out.insert(out.size(), "]", 1);
 	}
 };
-} // namespace fmt
+
+template <i64 N>
+struct cmp::is_eq<Fix<N>> : meta::true_type {};
+template <i64 N>
+struct cmp::is_ord<Fix<N>> : meta::true_type {};
+template <>
+struct cmp::is_eq<Boolean<yes>> : meta::true_type {};
+template <>
+struct cmp::is_ord<Boolean<yes>> : meta::true_type {};
+template <>
+struct cmp::is_eq<Boolean<no>> : meta::true_type {};
+template <>
+struct cmp::is_ord<Boolean<no>> : meta::true_type {};
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

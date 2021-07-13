@@ -4,11 +4,12 @@
 #include "veg/util/assert.hpp"
 #include "veg/internal/fix_index.hpp"
 #include "veg/internal/narrow.hpp"
+#include "veg/util/compare.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
 
-template <ternary_e T>
+template <Ternary T>
 struct Boolean;
 
 template <>
@@ -18,7 +19,7 @@ struct Boolean<maybe> {
 	constexpr Boolean() = default;
 	constexpr Boolean /* NOLINT(hicpp-explicit-conversions) */ (bool _val)
 			VEG_NOEXCEPT : val{_val} {}
-	template <ternary_e T>
+	template <Ternary T>
 	VEG_INLINE constexpr Boolean /* NOLINT(hicpp-explicit-conversions)
 	                              */
 			(Boolean<T> /*arg*/) VEG_NOEXCEPT : val(T == yes) {}
@@ -123,10 +124,10 @@ private:
 	i64 m_val = 0;
 };
 
-template <ternary_e T>
+template <Ternary T>
 VEG_INLINE constexpr Boolean<T>::Boolean(Boolean<maybe> /*b*/, Unsafe /*tag*/)
 		VEG_NOEXCEPT {}
-template <ternary_e T>
+template <Ternary T>
 VEG_INLINE constexpr Boolean<T>::Boolean // NOLINT(hicpp-explicit-conversions)
 		(Boolean<maybe> b) VEG_NOEXCEPT
 		: Boolean(
@@ -228,9 +229,8 @@ VEG_INLINE constexpr auto operator"" _v(unsigned long long n) VEG_NOEXCEPT
 }
 } // namespace literals
 
-namespace fmt {
 template <>
-struct Debug<Boolean<maybe>> {
+struct fmt::Debug<Boolean<maybe>> {
 	static void to_string(fmt::Buffer& out, Ref<Boolean<maybe>> val) {
 		out.insert(out.size(), "maybe[", 6);
 		Debug<bool>::to_string(out, ref(bool(val.get())));
@@ -239,14 +239,26 @@ struct Debug<Boolean<maybe>> {
 };
 
 template <>
-struct Debug<Dyn> {
+struct fmt::Debug<Dyn> {
 	static void to_string(fmt::Buffer& out, Ref<Dyn> val) {
 		out.insert(out.size(), "Dyn[", 4);
 		Debug<i64>::to_string(out, ref(i64(val.get())));
 		out.insert(out.size(), "]", 1);
 	}
 };
-} // namespace fmt
+
+template <>
+struct cmp::is_eq<Dyn> : meta::true_type {};
+template <>
+struct cmp::is_ord<Dyn> : meta::true_type {};
+template <>
+struct cmp::is_eq<Boolean<maybe>> : meta::true_type {};
+template <>
+struct cmp::is_ord<Boolean<maybe>> : meta::true_type {};
+template <>
+struct cpo::is_trivially_constructible<Dyn> : meta::true_type {};
+template <>
+struct cpo::is_trivially_constructible<Boolean<maybe>> : meta::true_type {};
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

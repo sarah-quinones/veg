@@ -265,14 +265,11 @@ public:
 			VEG_NOEXCEPT_IF(
 					(VEG_CONCEPT(nothrow_fn_once<Fn, bool, Ref<T>>) &&
 	         VEG_CONCEPT(nothrow_move_constructible<T>))) -> Option<T> {
-		auto&& self = static_cast<Option<T>&&>(*this);
-		if (self.is_some()) {
-			if (VEG_FWD(fn)(Ref<T>{AsRef{}, this->_get()})) {
-				return {
-						inplace,
-						internal::ConvertingFn<T&&, T>{static_cast<T&&>(this->_get())},
-				};
-			}
+		if (is_some() && VEG_FWD(fn)(Ref<T>{AsRef{}, this->_get()})) {
+			return {
+					inplace,
+					internal::ConvertingFn<T&&, T>{static_cast<T&&>(this->_get())},
+			};
 		}
 		return none;
 	}

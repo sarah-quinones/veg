@@ -491,6 +491,8 @@ TEST_CASE("OptionTest: Filter") {
 				fn::compose(is_odd, ref));
 	};
 
+	VEG_ASSERT(
+			some(vector<int>{1, 3, 5, 7, 2, 4, 6, 8}).filter(all_odd).is_none());
 	CHECK(some(vector<int>{1, 3, 5, 7, 2, 4, 6, 8}).filter(all_odd).is_none());
 	CHECK(
 			some(vector<int>{1, 3, 5, 7}).filter(all_odd).unwrap() ==

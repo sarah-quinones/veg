@@ -24,12 +24,14 @@ struct Compose;
 
 template <>
 struct ComposeOnce<> {
+
+	// a forwarding reference is used to allow composing with `ref, mut`
 	VEG_TEMPLATE(
 			typename T,
 			requires(VEG_CONCEPT(move_constructible<T>)),
-			VEG_INLINE constexpr auto
+			VEG_INLINE VEG_CPP14(constexpr) auto
 			operator(),
-			(arg, T))
+			(arg, T&&))
 	&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T {
 		return VEG_FWD(arg);
 	}
@@ -39,9 +41,9 @@ struct ComposeMut<> {
 	VEG_TEMPLATE(
 			typename T,
 			requires(VEG_CONCEPT(move_constructible<T>)),
-			VEG_INLINE constexpr auto
+			VEG_INLINE VEG_CPP14(constexpr) auto
 			operator(),
-			(arg, T))
+			(arg, T&&))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T {
 		return VEG_FWD(arg);
 	}
@@ -53,7 +55,7 @@ struct Compose<> {
 			requires(VEG_CONCEPT(move_constructible<T>)),
 			VEG_INLINE constexpr auto
 			operator(),
-			(arg, T))
+			(arg, T&&))
 	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T {
 		return VEG_FWD(arg);
 	}
@@ -72,9 +74,9 @@ struct ComposeOnce<First, RestElems...> {
 			requires(
 					VEG_CONCEPT(fn_once<Rest, RetTail, Args...>) &&
 					VEG_CONCEPT(fn_once<First, Ret, RetTail>)),
-			constexpr auto
+			VEG_CPP14(constexpr) auto
 			operator(),
-			(... args, Args)) &&
+			(... args, Args&&)) &&
 			VEG_NOEXCEPT_IF(
 					VEG_CONCEPT(nothrow_fn_once<Rest, RetTail, Args...>) &&
 					VEG_CONCEPT(nothrow_fn_once<First, Ret, RetTail>)) -> Ret {
@@ -94,9 +96,9 @@ struct ComposeMut<First, RestElems...> {
 			requires(
 					VEG_CONCEPT(fn_mut<Rest, RetTail, Args...>) &&
 					VEG_CONCEPT(fn_mut<First, Ret, RetTail>)),
-			constexpr auto
+			VEG_CPP14(constexpr) auto
 			operator(),
-			(... args, Args))
+			(... args, Args&&))
 	VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_fn_mut<Rest, RetTail, Args...>) &&
 			VEG_CONCEPT(nothrow_fn_mut<First, Ret, RetTail>))
@@ -119,7 +121,7 @@ struct Compose<First, RestElems...> {
 					VEG_CONCEPT(fn<First, Ret, RetTail>)),
 			constexpr auto
 			operator(),
-			(... args, Args))
+			(... args, Args&&))
 	const VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_fn<Rest, RetTail, Args...>) &&
 			VEG_CONCEPT(nothrow_fn<First, Ret, RetTail>))

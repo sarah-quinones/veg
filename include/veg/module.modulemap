@@ -1,7 +1,12 @@
 module veg {
-  module assert {
-    textual header "util/assert.hpp"
-    header "internal/assert_impl.hpp"
+
+  module ref {
+    header "ref.hpp"
+    export *
+  }
+
+  module slice {
+    header "slice.hpp"
     export *
   }
 
@@ -17,6 +22,104 @@ module veg {
 
   module option {
     header "option.hpp"
+    export *
+  }
+
+  module memory {
+    module address {
+      header "memory/address.hpp"
+      export *
+    }
+
+    module dynamic_stack {
+      header "memory/dynamic_stack.hpp"
+      export *
+    }
+
+    module placement {
+      header "memory/placement.hpp"
+      export *
+    }
+
+    module aligned_alloc {
+      header "memory/aligned_alloc.hpp"
+      export *
+    }
+  }
+
+  module util {
+    module assert {
+      textual header "util/assert.hpp"
+      header "internal/assert_impl.hpp"
+      export *
+    }
+
+    module index {
+      header "util/index.hpp"
+      export *
+    }
+
+    module compare {
+      header "util/compare.hpp"
+      export *
+    }
+
+    module defer {
+      header "util/defer.hpp"
+      export *
+    }
+
+    module get {
+      header "util/get.hpp"
+      export *
+    }
+
+    module swap {
+      header "util/swap.hpp"
+      export *
+    }
+
+    module timer {
+      header "util/timer.hpp"
+      export *
+    }
+
+    module unreachable {
+      header "util/unreachable.hpp"
+      export *
+    }
+  }
+
+  module functional {
+    module overload {
+      header "functional/overload.hpp"
+      export *
+    }
+    module compose {
+      header "functional/compose.hpp"
+      export *
+    }
+    module indexed {
+      header "functional/indexed.hpp"
+      export *
+    }
+    module copy_fn {
+      header "functional/copy_fn.hpp"
+      export *
+    }
+    module curry {
+      header "functional/curry.hpp"
+      export *
+    }
+  }
+
+  module type_traits {
+    header "type_traits/core.hpp"
+    header "type_traits/assignable.hpp"
+    header "type_traits/constructible.hpp"
+    header "type_traits/invocable.hpp"
+    header "type_traits/primitives.hpp"
+    header "type_traits/tags.hpp"
     export *
   }
 }
