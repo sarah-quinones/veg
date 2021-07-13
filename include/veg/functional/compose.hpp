@@ -32,7 +32,7 @@ struct ComposeOnce<> {
 			VEG_INLINE VEG_CPP14(constexpr) auto
 			operator(),
 			(arg, T&&))
-	&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T {
+	&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T&& {
 		return VEG_FWD(arg);
 	}
 };
@@ -44,7 +44,7 @@ struct ComposeMut<> {
 			VEG_INLINE VEG_CPP14(constexpr) auto
 			operator(),
 			(arg, T&&))
-	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T {
+	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T&& {
 		return VEG_FWD(arg);
 	}
 };
@@ -56,7 +56,7 @@ struct Compose<> {
 			VEG_INLINE constexpr auto
 			operator(),
 			(arg, T&&))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T&& {
 		return VEG_FWD(arg);
 	}
 };
