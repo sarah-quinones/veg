@@ -21,11 +21,6 @@ using invoke_result_t =
 namespace concepts {
 
 namespace aux {
-VEG_DEF_CONCEPT_DISJUNCTION(
-		(typename T, typename U),
-		matches_if_not_void,
-		((concepts::, same<void, U>), (concepts::, same<T, U>)));
-
 VEG_DEF_CONCEPT(
 		(typename Fn, typename... Args),
 		nothrow_invocable_pre,
@@ -36,13 +31,27 @@ VEG_DEF_CONCEPT(
 #if __cplusplus >= 202002L
 
 template <typename Fn, typename... Args>
-concept invocable = requires(Fn&& fn, Args&&... args) {
-	static_cast<Fn&&>(fn)(static_cast<Args&&>(args)...);
+concept invocable =
+		requires(Fn && (&make_fn)() noexcept, Args && (&... make_args)() noexcept) {
+	make_fn()(make_args()...);
 };
 template <typename Fn, typename... Args>
-concept nothrow_invocable = requires(Fn&& fn, Args&&... args) {
-	{ static_cast<Fn&&>(fn)(static_cast<Args&&>(args)...) }
+concept nothrow_invocable =
+		requires(Fn && (&make_fn)() noexcept, Args && (&... make_args)() noexcept) {
+	{ make_fn()(make_args()...) }
 	noexcept;
+};
+
+template <typename Fn, typename Ret, typename... Args>
+concept invocable_r =
+		requires(Fn && (&make_fn)() noexcept, Args && (&... make_args)() noexcept) {
+	{ make_fn()(make_args()...) } -> same<Ret>;
+};
+template <typename Fn, typename Ret, typename... Args>
+concept nothrow_invocable_r =
+		requires(Fn && (&make_fn)() noexcept, Args && (&... make_args)() noexcept) {
+	{ make_fn()(make_args()...) }
+	noexcept->same<Ret>;
 };
 
 #else
@@ -56,32 +65,50 @@ VEG_DEF_CONCEPT_CONJUNCTION(
 		nothrow_invocable,
 		((, invocable<Fn, Args&&...>),
      (aux::, nothrow_invocable_pre<Fn, Args&&...>)));
-#endif
 
-#if __cplusplus >= 201703L
-VEG_DEF_CONCEPT_CONJUNCTION(
+VEG_DEF_CONCEPT(
 		(typename Fn, typename Ret, typename... Args),
 		invocable_r,
-		((, invocable<Fn, Args&&...>),
-     (aux::, matches_if_not_void<meta::invoke_result_t<Fn, Args&&...>, Ret>)));
-#else
-VEG_DEF_CONCEPT_CONJUNCTION(
-		(typename Fn, typename Ret, typename... Args),
-		invocable_r,
-		((, invocable<Fn, Args&&...>),
-     (aux::, matches_if_not_void<meta::invoke_result_t<Fn, Args&&...>, Ret>),
-     (concepts::,
-      move_constructible<meta::conditional_t<
-					VEG_CONCEPT(same<meta::invoke_result_t<Fn, Args&&...>, void>),
-					decltype(nullptr),
-					meta::invoke_result_t<Fn, Args&&...>>>)));
-#endif
+		(VEG_CONCEPT(invocable<Fn, Args&&...>) &&
+     VEG_CONCEPT(same<Ret, meta::invoke_result_t<Fn, Args&&...>>)));
 
-VEG_DEF_CONCEPT_CONJUNCTION(
+VEG_DEF_CONCEPT(
 		(typename Fn, typename Ret, typename... Args),
 		nothrow_invocable_r,
-		((, invocable_r<Fn, Ret, Args&&...>),
-     (, nothrow_invocable<Fn, Args&&...>)));
+		(VEG_CONCEPT(nothrow_invocable<Fn, Args...>) &&
+     VEG_CONCEPT(invocable_r<Fn, Ret, Args...>)));
+
+#endif
+
+VEG_DEF_CONCEPT(
+		(typename Fn, typename Ret, typename... Args),
+		fn,
+		VEG_CONCEPT(invocable_r<Fn const&, Ret, Args...>));
+
+VEG_DEF_CONCEPT(
+		(typename Fn, typename Ret, typename... Args),
+		nothrow_fn,
+		VEG_CONCEPT(nothrow_invocable_r<Fn const&, Ret, Args...>));
+
+VEG_DEF_CONCEPT(
+		(typename Fn, typename Ret, typename... Args),
+		fn_mut,
+		VEG_CONCEPT(invocable_r<Fn&, Ret, Args...>));
+
+VEG_DEF_CONCEPT(
+		(typename Fn, typename Ret, typename... Args),
+		nothrow_fn_mut,
+		VEG_CONCEPT(nothrow_invocable_r<Fn&, Ret, Args...>));
+
+VEG_DEF_CONCEPT(
+		(typename Fn, typename Ret, typename... Args),
+		fn_once,
+		VEG_CONCEPT(invocable_r<Fn, Ret, Args...>));
+
+VEG_DEF_CONCEPT(
+		(typename Fn, typename Ret, typename... Args),
+		nothrow_fn_once,
+		VEG_CONCEPT(nothrow_invocable_r<Fn, Ret, Args...>));
 
 } // namespace concepts
 } // namespace veg

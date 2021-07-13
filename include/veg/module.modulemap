@@ -1,0 +1,22 @@
+module veg {
+  module assert {
+    textual header "util/assert.hpp"
+    header "internal/assert_impl.hpp"
+    export *
+  }
+
+  module tuple {
+    header "tuple.hpp"
+    export *
+  }
+
+  module uwunion {
+    header "uwunion.hpp"
+    export *
+  }
+
+  module option {
+    header "option.hpp"
+    export *
+  }
+}

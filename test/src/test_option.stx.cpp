@@ -31,7 +31,7 @@
 
 #include "static_assert.hpp"
 #include "veg/option.hpp"
-#include "veg/functional/utils.hpp"
+#include "veg/functional/compose.hpp"
 
 #include <memory>
 #include <numeric>
@@ -86,12 +86,11 @@ auto make_mv() -> MoveOnly<id> {
 struct NotEq {};
 
 STATIC_ASSERT(VEG_CONCEPT(swappable<MoveOnly<0>&, MoveOnly<0>&>));
-STATIC_ASSERT(VEG_CONCEPT(equality_comparable_with<MoveOnly<0>, MoveOnly<0>>));
-STATIC_ASSERT(VEG_CONCEPT(
-		equality_comparable_with<Option<MoveOnly<0>>, Option<MoveOnly<0>>>));
-STATIC_ASSERT(!VEG_CONCEPT(equality_comparable_with<NotEq, NotEq>));
+STATIC_ASSERT(VEG_CONCEPT(partial_eq<MoveOnly<0>, MoveOnly<0>>));
 STATIC_ASSERT(
-		!VEG_CONCEPT(equality_comparable_with<Option<NotEq>, Option<NotEq>>));
+		VEG_CONCEPT(partial_eq<Option<MoveOnly<0>>, Option<MoveOnly<0>>>));
+STATIC_ASSERT(!VEG_CONCEPT(partial_eq<NotEq, NotEq>));
+STATIC_ASSERT(!VEG_CONCEPT(partial_eq<Option<NotEq>, Option<NotEq>>));
 
 struct FnMut {
 	int call_times{};
@@ -207,41 +206,46 @@ TEST_CASE("OptionTest: Equality") {
 	int const x = 909909;
 	int y = 909909;
 
-	CHECK(option::ref(x) == some(909909));
-	CHECK(option::ref(y) == some(909909));
+	CHECK(option::some(x) == some(909909));
+	CHECK(option::some(y) == some(909909));
 
-	CHECK(some(909909) == option::ref(y));
-	CHECK(some(909909) == option::ref(y));
+	CHECK(some(909909) == option::some(y));
+	CHECK(some(909909) == option::some(y));
 
-	CHECK(some(909909) == option::ref(x));
-	CHECK(some(909909) == option::ref(y));
-	CHECK(some(101101) != option::ref(x));
-	CHECK(some(101101) != option::ref(y));
+	CHECK(some(909909) == option::some(x));
+	CHECK(some(909909) == option::some(y));
+	CHECK(some(101101) != option::some(x));
+	CHECK(some(101101) != option::some(y));
 
-	CHECK(option::ref(x) == some(909909));
-	CHECK(option::ref(y) == some(909909));
-	CHECK(option::ref(x) != some(101101));
-	CHECK(option::ref(y) != some(101101));
+	CHECK(option::some(x) == some(909909));
+	CHECK(option::some(y) == some(909909));
+	CHECK(option::some(x) != some(101101));
+	CHECK(option::some(y) != some(101101));
 }
 
-TEST_CASE("OptionTest: Contains") {
-	CHECK(some(vector<int>{1, 2, 3, 4}).contains(vector<int>{1, 2, 3, 4}));
-	CHECK(!some(vector<int>{1, 2, 3, 4}).contains(vector<int>{1, 2, 3, 4, 5}));
+void foo(Option<vector<int>>);
 
-	CHECK(some(8).contains(8));
-	CHECK(!some(8).contains(88));
+TEST_CASE("OptionTest: Contains") {
+	CHECK(some(vector<int>{1, 2, 3, 4}).contains({as_ref, {1, 2, 3, 4}}));
+	CHECK(!some(vector<int>{1, 2, 3, 4}).contains({as_ref, {1, 2, 3, 4, 5}}));
+
+	CHECK(some(8).contains({as_ref, 8}));
+	CHECK(!some(8).contains({as_ref, 88}));
 }
 
 TEST_CASE("OptionLifetimeTest: Contains") {
 	CHECK_NOTHROW((void)some(make_mv<0>()));
-	CHECK_NOTHROW((void)Option<MoveOnly<1>>{none}.contains(make_mv<1>()));
+	CHECK_NOTHROW((void)Option<MoveOnly<1>>{none}.contains(ref(make_mv<1>())));
 }
 
 TEST_CASE("OptionTest: Exists") {
-	auto const even = [](int const& x) { return x % 2 == 0; };
+	auto const even = [](Ref<int> x) { return *x % 2 == 0; };
 
-	auto const all_even = [&](vector<int> const& x) {
-		return std::all_of(x.begin(), x.end(), even);
+	auto const all_even = [&](Ref<vector<int>> x) {
+		return std::all_of( //
+				x->begin(),
+				x->end(),
+				fn::compose(even, ref));
 	};
 
 	CHECK(some(8).filter(even).is_some());
@@ -267,14 +271,14 @@ TEST_CASE("OptionTest: AsConstRef") {
 
 TEST_CASE("OptionTest: AsRef") {
 	auto a = some(68);
-	a.as_ref().unwrap() = 99;
+	*a.as_mut().unwrap() = 99;
 	CHECK(a == some(99));
 
 	Option<int> b = none;
 	CHECK(b.as_ref().is_none());
 
 	auto c = some(vector<int>{1, 2, 3, 4});
-	c.as_ref().unwrap() = vector<int>{5, 6, 7, 8, 9, 10};
+	*c.as_mut().unwrap() = vector<int>{5, 6, 7, 8, 9, 10};
 	CHECK(c == some(vector<int>{5, 6, 7, 8, 9, 10}));
 
 	auto d = Option<vector<int>>(none);
@@ -283,10 +287,10 @@ TEST_CASE("OptionTest: AsRef") {
 
 TEST_CASE("OptionLifeTimeTest: AsRef") {
 	auto a = some(make_mv<0>());
-	CHECK_NOTHROW((void)a.as_ref().unwrap().done());
+	CHECK_NOTHROW((void)a.as_ref().unwrap()->done());
 
 	auto b = Option<MoveOnly<1>>(none);
-	CHECK_NOTHROW((void)a.as_ref().unwrap().done());
+	CHECK_NOTHROW((void)a.as_ref().unwrap()->done());
 	CHECK_NOTHROW([&] {
 		auto b_ = b.as_ref();
 		(void)b_;
@@ -383,20 +387,31 @@ TEST_CASE("OptionLifetimeTest: Map") {
 
 TEST_CASE("OptionTest: FnMutMap") {
 	auto fnmut_a = FnMut();
-	auto a1_ = some(90).map(fnmut_a);
-	auto a2_ = some(90).map(fnmut_a);
+	{
+		auto a1_ = some(90).map([&](int i) { return fnmut_a(VEG_FWD(i)); });
+		auto a2_ = some(90).map([&](int i) { return fnmut_a(VEG_FWD(i)); });
+		unused(a1_, a2_);
+	}
+
+	CHECK(fnmut_a.call_times == 2);
+
+	{
+		auto a1_ = some(90).map(fnmut_a);
+		auto a2_ = some(90).map(fnmut_a);
+		unused(a1_, a2_);
+	}
 
 	CHECK(fnmut_a.call_times == 2);
 
 	auto const fnmut_b = FnMut();
-	auto b1_ = some(90).map(fnmut_b);
-	auto b2_ = some(90).map(fnmut_b);
+	auto b1_ = some(90).map([&](int i) { return fnmut_b(VEG_FWD(i)); });
+	auto b2_ = some(90).map([&](int i) { return fnmut_b(VEG_FWD(i)); });
 	CHECK(fnmut_b.call_times == 0);
 
 	auto fnconst = FnConst();
 	auto c = some(90).map(fnconst);
 
-	(void)a1_, (void)a2_, (void)b1_, (void)b2_, (void)c;
+	unused(b1_, b2_, c);
 }
 
 TEST_CASE("OptionTest: MapOrElse") {
@@ -411,7 +426,7 @@ TEST_CASE("OptionTest: MapOrElse") {
 
 TEST_CASE("OptionLifetimeTest: MapOrElse") {
 	auto a = some(make_mv<0>());
-	auto fn = [](MoveOnly<0>) { return make_mv<0>(); };
+	auto fn = [](MoveOnly<0>&& /*unused*/) { return make_mv<0>(); };
 	auto fn_b = []() { return make_mv<0>(); };
 	CHECK_NOTHROW(VEG_FWD(a).map_or_else(fn, fn_b).done());
 }
@@ -461,16 +476,19 @@ TEST_CASE("OptionLifetimeTest: MapOrElse") {
 //}
 
 TEST_CASE("OptionTest: Filter") {
-	auto is_even = [](int const& num) { return num % 2 == 0; };
-	auto is_odd = [&](int const& num) { return !(is_even(num)); };
+	auto is_even = [](Ref<int> num) { return *num % 2 == 0; };
+	auto is_odd = [&](Ref<int> num) { return !(is_even(num)); };
 
 	CHECK(some(90).filter(is_even).unwrap() == 90);
 	CHECK(some(99).filter(is_odd).unwrap() == 99);
 
 	CHECK(Option<int>(none).filter(is_even).is_none());
 
-	auto all_odd = [&](vector<int> const& vec) {
-		return all_of(vec.begin(), vec.end(), is_odd);
+	auto all_odd = [&](Ref<vector<int>> vec) {
+		return std::all_of( //
+				vec->begin(),
+				vec->end(),
+				fn::compose(is_odd, ref));
 	};
 
 	CHECK(some(vector<int>{1, 3, 5, 7, 2, 4, 6, 8}).filter(all_odd).is_none());

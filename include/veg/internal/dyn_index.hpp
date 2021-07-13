@@ -16,7 +16,7 @@ struct Boolean<maybe> {
 	using type = maybe_c;
 
 	constexpr Boolean() = default;
-	constexpr Boolean /* NOLINT(hicpp-explicit-conversions) */ (bool _val = false)
+	constexpr Boolean /* NOLINT(hicpp-explicit-conversions) */ (bool _val)
 			VEG_NOEXCEPT : val{_val} {}
 	template <ternary_e T>
 	VEG_INLINE constexpr Boolean /* NOLINT(hicpp-explicit-conversions)
@@ -231,18 +231,18 @@ VEG_INLINE constexpr auto operator"" _v(unsigned long long n) VEG_NOEXCEPT
 namespace fmt {
 template <>
 struct Debug<Boolean<maybe>> {
-	static void to_string(fmt::Buffer& out, Boolean<maybe> val) {
+	static void to_string(fmt::Buffer& out, Ref<Boolean<maybe>> val) {
 		out.insert(out.size(), "maybe[", 6);
-		Debug<bool>::to_string(out, bool(val));
+		Debug<bool>::to_string(out, ref(bool(val.get())));
 		out.insert(out.size(), "]", 1);
 	}
 };
 
 template <>
 struct Debug<Dyn> {
-	static void to_string(fmt::Buffer& out, Dyn val) {
+	static void to_string(fmt::Buffer& out, Ref<Dyn> val) {
 		out.insert(out.size(), "Dyn[", 4);
-		Debug<i64>::to_string(out, i64(val));
+		Debug<i64>::to_string(out, ref(i64(val.get())));
 		out.insert(out.size(), "]", 1);
 	}
 };

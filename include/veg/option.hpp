@@ -19,7 +19,7 @@ struct Option;
 
 namespace option {
 namespace nb {
-struct make {
+struct some {
 	VEG_TEMPLATE(
 			typename T,
 			requires(VEG_CONCEPT(move_constructible<T>)),
@@ -30,31 +30,8 @@ struct make {
 		return {inplace, internal::ConvertingFn<T&&, T>{VEG_FWD(arg)}};
 	}
 };
-struct some : make {};
-struct fwd {
-	VEG_TEMPLATE(
-			typename T,
-			requires(VEG_CONCEPT(move_constructible<T>)),
-			VEG_NODISCARD VEG_INLINE constexpr auto
-			operator(),
-			(arg, T&&))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->Option<T> {
-		return {inplace, internal::ConvertingFn<T&&, T>{VEG_FWD(arg)}};
-	}
-};
-
-struct ref {
-	template <typename T>
-	VEG_NODISCARD VEG_INLINE constexpr auto operator()(T&& arg) const VEG_NOEXCEPT
-			-> Option<T&&> {
-		return {some{}, VEG_FWD(arg)};
-	}
-};
 } // namespace nb
-VEG_NIEBLOID(make);
 VEG_NIEBLOID(some);
-VEG_NIEBLOID(fwd);
-VEG_NIEBLOID(ref);
 } // namespace option
 
 inline namespace tags {
@@ -128,31 +105,29 @@ namespace adl {
 struct adl_base {};
 VEG_TEMPLATE(
 		(typename T, typename U),
-		requires(VEG_CONCEPT(equality_comparable_with<T const&, U const&>)),
+		requires(VEG_CONCEPT(partial_eq<T, U>)),
 		VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
 		operator==,
 		(lhs, Option<T> const&),
 		(rhs, Option<U> const&))
 VEG_NOEXCEPT->bool {
-	if (lhs.is_some()) {
-		if (rhs.is_some()) {
-			return static_cast<bool>(
-					lhs.as_cref().unwrap_unchecked(unsafe) ==
-					rhs.as_cref().unwrap_unchecked(unsafe));
-		}
+	if (lhs.is_some() && rhs.is_some()) {
+		return cmp::eq(
+				lhs.as_ref().unwrap_unchecked(unsafe),
+				rhs.as_ref().unwrap_unchecked(unsafe));
 	}
 	return (lhs.is_some() == rhs.is_some());
 }
 
 VEG_TEMPLATE(
 		(typename T, typename U),
-		requires(VEG_CONCEPT(equality_comparable_with<T const&, U const&>)),
+		requires(VEG_CONCEPT(partial_eq<T, U>)),
 		VEG_INLINE VEG_CPP14(constexpr) auto
 		operator!=,
 		(a, Option<T> const&),
 		(b, Option<U> const&))
 VEG_NOEXCEPT->bool {
-	return !(a == b);
+	return !adl::operator==(a, b);
 }
 } // namespace adl
 
@@ -163,15 +138,6 @@ struct ret_none {
 	}
 };
 
-template <typename U>
-struct cmp_with_fn {
-	U const& rhs;
-	template <typename T>
-	VEG_INLINE constexpr auto operator()(T const& lhs) const VEG_NOEXCEPT
-			-> bool {
-		return veg::cmp::equal(lhs, rhs);
-	}
-};
 } // namespace option_
 } // namespace internal
 
@@ -211,11 +177,11 @@ public:
 
 	VEG_TEMPLATE(
 			(typename Fn),
-			requires(VEG_CONCEPT(invocable_r<Fn, T>)),
+			requires(VEG_CONCEPT(fn_once<Fn, T>)),
 			VEG_INLINE constexpr Option,
 			(/*tag*/, InPlace),
 			(fn, Fn))
-	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>))
+	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, T>))
 			: Base{
 						internal::_uwunion::EmplaceTag{},
 						internal::UTag<usize{1}>{},
@@ -292,16 +258,16 @@ public:
 			(typename Fn),
 			requires(
 					VEG_CONCEPT(move_constructible<T>) &&
-					VEG_CONCEPT(invocable_r<Fn, bool, meta::uncvref_t<T> const&>)),
+					VEG_CONCEPT(fn_once<Fn, bool, Ref<T>>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto filter,
-			(fn, Fn&&)) &&
+			(fn, Fn)) &&
 
 			VEG_NOEXCEPT_IF(
-					(VEG_CONCEPT(nothrow_invocable<Fn&&, meta::uncvref_t<T> const&>) &&
+					(VEG_CONCEPT(nothrow_fn_once<Fn, bool, Ref<T>>) &&
 	         VEG_CONCEPT(nothrow_move_constructible<T>))) -> Option<T> {
 		auto&& self = static_cast<Option<T>&&>(*this);
 		if (self.is_some()) {
-			if (VEG_FWD(fn)(self.as_cref().unwrap_unchecked(unsafe))) {
+			if (VEG_FWD(fn)(Ref<T>{AsRef{}, this->_get()})) {
 				return {
 						inplace,
 						internal::ConvertingFn<T&&, T>{static_cast<T&&>(this->_get())},
@@ -312,37 +278,39 @@ public:
 	}
 
 	VEG_TEMPLATE(
-			typename U,
-			requires(VEG_CONCEPT(equality_comparable_with<T const&, U const&>)),
+			(typename U = T),
+			requires(VEG_CONCEPT(partial_eq<T, U>)),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto contains,
-			(val, U const&))
+			(val, Ref<U>))
 	const VEG_NOEXCEPT->bool {
-		return as_ref().map_or(internal::option_::cmp_with_fn<U>{val}, false);
+		if (is_none()) {
+			return false;
+		}
+		return cmp::eq(Ref<T>{AsRef{}, _get()}, val);
 	}
 
 	VEG_TEMPLATE(
 			typename Fn,
-			requires(VEG_CONCEPT(invocable_r<Fn, T>)),
+			requires(VEG_CONCEPT(fn_once<Fn, T>)),
 			VEG_CPP14(constexpr) auto emplace,
 			(fn, Fn)) &
 			VEG_NOEXCEPT_IF(
 					VEG_CONCEPT(nothrow_destructible<T>) &&
-					VEG_CONCEPT(nothrow_invocable<Fn>)) -> T& {
+					VEG_CONCEPT(nothrow_fn_once<Fn, T>)) -> T& {
 		this->template _emplace<usize{1}>(
 				internal::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)});
 		return this->_get();
 	}
 
 	VEG_TEMPLATE(
-			(typename Fn),
-			requires(VEG_CONCEPT(invocable<Fn, T&&>)),
+			(typename Fn, typename Ret = meta::invoke_result_t<Fn, T>),
+			requires(VEG_CONCEPT(fn_once<Fn, Ret, T>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto map,
-			(fn, Fn&&)) &&
+			(fn, Fn)) &&
 
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn, T&&>))
-					-> Option<meta::invoke_result_t<Fn, T>> {
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, Ret, T>)) -> Option<Ret> {
 		if (is_some()) {
-			return Option<meta::invoke_result_t<Fn, T>>{
+			return Option<Ret>{
 					inplace,
 					internal::WithArg<Fn&&, T&&>{
 							VEG_FWD(fn), static_cast<T&&>(this->_get())},
@@ -352,15 +320,14 @@ public:
 	}
 
 	VEG_TEMPLATE(
-			(typename Fn),
+			(typename Fn, typename Ret = meta::invoke_result_t<Fn, T>),
 			requires(
-					VEG_CONCEPT(invocable<Fn, T&&>) &&
-					VEG_CONCEPT(option<meta::invoke_result_t<Fn, T>>)),
+					VEG_CONCEPT(fn_once<Fn, Ret, T>) && //
+					VEG_CONCEPT(option<Ret>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto and_then,
-			(fn, Fn&&)) &&
+			(fn, Fn)) &&
 
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn, T&&>))
-					-> meta::invoke_result_t<Fn, T> {
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, Ret, T>)) -> Ret {
 		if (is_some()) {
 			return VEG_FWD(fn)(static_cast<T&&>(this->_get()));
 		}
@@ -368,56 +335,50 @@ public:
 	}
 
 	VEG_TEMPLATE(
-			(typename Fn, typename D),
+			(typename Fn, typename D, typename Ret = meta::invoke_result_t<Fn, T>),
 			requires(
-					(VEG_CONCEPT(invocable<Fn, T&&>) && //
-	         VEG_CONCEPT(invocable<D>) &&       //
-	         VEG_CONCEPT(
-							 same<meta::invoke_result_t<Fn, T>, meta::invoke_result_t<D>>))),
+					VEG_CONCEPT(fn_once<Fn, Ret, T>) && //
+					VEG_CONCEPT(fn_once<D, Ret>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto map_or_else,
-			(fn, Fn&&),
-			(d, D&&)) &&
+			(fn, Fn),
+			(d, D)) &&
 
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>))
-					-> meta::invoke_result_t<Fn, T> {
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, Ret>)) -> Ret {
 		if (is_some()) {
-			return VEG_FWD(fn)(
-					static_cast<Option&&>(*this).as_ref().unwrap_unchecked(unsafe));
+			return VEG_FWD(fn)(static_cast<T&&>(this->_get()));
 		}
 		return VEG_FWD(d)();
 	}
 
 	VEG_TEMPLATE(
-			(typename Fn),
+			(typename Fn, typename Ret = meta::invoke_result_t<Fn, T>),
 			requires(
-					VEG_CONCEPT(invocable<Fn, T&&>) &&
-					VEG_CONCEPT(move_constructible<meta::invoke_result_t<Fn, T>>)),
+					VEG_CONCEPT(fn_once<Fn, Ret, T>) &&
+					VEG_CONCEPT(move_constructible<Ret>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto map_or,
-			(fn, Fn&&),
-			(d, meta::invoke_result_t<Fn, T>)) &&
+			(fn, Fn),
+			(d, Ret)) &&
 
 			VEG_NOEXCEPT_IF(
-					VEG_CONCEPT(nothrow_invocable<Fn, T&&>) &&
-					VEG_CONCEPT(nothrow_move_constructible<meta::invoke_result_t<Fn, T>>))
-					-> meta::invoke_result_t<Fn, T> {
+					VEG_CONCEPT(nothrow_fn_once<Fn, Ret, T>) &&
+					VEG_CONCEPT(nothrow_move_constructible<Ret>)) -> Ret {
 		if (is_none()) {
 			return VEG_FWD(d);
 		}
-		return VEG_FWD(fn)(
-				static_cast<Option&&>(*this).as_ref().unwrap_unchecked(unsafe));
+		return VEG_FWD(fn)(static_cast<T&&>(this->_get()));
 	}
 
 	VEG_TEMPLATE(
 			(typename Fn),
 			requires(
-					VEG_CONCEPT(invocable<Fn>) &&
-					VEG_CONCEPT(same<veg::Option<T>, meta::invoke_result_t<Fn>>)),
+					VEG_CONCEPT(fn_once<Fn, Option<T>>) &&
+					VEG_CONCEPT(move_constructible<T>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto or_else,
-			(fn, Fn&&)) &&
+			(fn, Fn)) &&
 
 			VEG_NOEXCEPT_IF(
-					(VEG_CONCEPT(nothrow_invocable<Fn>) &&
-	         VEG_CONCEPT(nothrow_copy_constructible<T>))) -> Option<T> {
+					(VEG_CONCEPT(nothrow_fn_once<Fn, Option<T>>) &&
+	         VEG_CONCEPT(nothrow_move_constructible<T>))) -> Option<T> {
 		if (is_some()) {
 			return {
 					inplace,
@@ -442,24 +403,17 @@ public:
 		return {};
 	}
 
-	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_ref() & VEG_NOEXCEPT
-																																-> Option<T&> {
+	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_mut() VEG_NOEXCEPT
+			-> Option<RefMut<T>> {
 		if (is_some()) {
-			return {some, this->_get()};
+			return {some, veg::mut(this->_get())};
 		}
 		return {};
 	}
 	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_ref() const
-			& VEG_NOEXCEPT -> Option<T const&> {
+			& VEG_NOEXCEPT -> Option<Ref<T>> {
 		if (is_some()) {
-			return {some, this->_get()};
-		}
-		return {};
-	}
-	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_ref() &&
-			VEG_NOEXCEPT -> Option<T&&> {
-		if (is_some()) {
-			return {some, static_cast<T&&>(this->_get())};
+			return {some, ref(this->_get())};
 		}
 		return {};
 	}

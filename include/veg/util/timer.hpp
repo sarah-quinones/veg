@@ -2,7 +2,8 @@
 #define VEG_TIMER_HPP_2SVNQDV6S
 
 #include "veg/internal/typedefs.hpp"
-#include "veg/fn_view.hpp"
+#include "veg/type_traits/invocable.hpp"
+#include "veg/util/defer.hpp"
 #include <cstdio>
 #include "veg/internal/prologue.hpp"
 
@@ -29,9 +30,11 @@ struct RaiiTimerWrapper {
 	RaiiTimerWrapper(Fn fn) VEG_NOEXCEPT
 			: self{abi::time::monotonic_nanoseconds_since_epoch(), VEG_FWD(fn)} {}
 
-	void operator()() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn, i64>)) {
-		VEG_FWD(self.fn)
-		(i64(abi::time::monotonic_nanoseconds_since_epoch() - self.begin));
+	void operator()()
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, void, i64>)) {
+		i64 time_delta =
+				i64(abi::time::monotonic_nanoseconds_since_epoch() - self.begin);
+		VEG_FWD(self.fn)(time_delta);
 	}
 };
 } // namespace time_
@@ -62,7 +65,7 @@ struct LogElapsedTime {
 
 template <typename Fn>
 struct RaiiTimer : Defer<internal::time_::RaiiTimerWrapper<Fn>> {
-	VEG_CHECK_CONCEPT(invocable<Fn, i64>);
+	VEG_CHECK_CONCEPT(fn_once<Fn, void, i64>);
 	using Defer<internal::time_::RaiiTimerWrapper<Fn>>::Defer;
 	using Defer<internal::time_::RaiiTimerWrapper<Fn>>::fn;
 };
@@ -72,7 +75,7 @@ struct raii_timer {
 	VEG_TEMPLATE(
 			typename Fn,
 			requires(
-					VEG_CONCEPT(invocable<Fn, i64>) &&
+					VEG_CONCEPT(fn_once<Fn, void, i64>) &&
 					VEG_CONCEPT(move_constructible<Fn>)),
 			auto
 			operator(),

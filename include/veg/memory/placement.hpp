@@ -84,20 +84,18 @@ struct construct_at {
 
 struct construct_with {
 	VEG_TEMPLATE(
-			(typename T, typename Fn, typename... Args),
-			requires(
-					!VEG_CONCEPT(const_type<T>) && VEG_CONCEPT(invocable<Fn>) &&
-					VEG_CONCEPT(invocable_r<Fn, T>)),
+			(typename T, typename Fn),
+			requires(!VEG_CONCEPT(const_type<T>) && VEG_CONCEPT(fn_once<Fn, T>)),
 			VEG_INLINE VEG_CPP20(constexpr) auto
 			operator(),
 			(mem, T*),
 			(fn, Fn&&))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>))->T* {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, T>))->T* {
 #if __cplusplus >= 202002L
 		struct Convertor {
 			Fn&& fn;
 			VEG_INLINE constexpr operator T() const&& VEG_NOEXCEPT_IF(
-					VEG_CONCEPT(nothrow_invocable<Fn, Args...>)) {
+					VEG_CONCEPT(nothrow_fn_once<Fn, T>)) {
 				return VEG_FWD(fn)();
 			}
 		};

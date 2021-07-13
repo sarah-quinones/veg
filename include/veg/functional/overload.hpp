@@ -1,12 +1,11 @@
-#ifndef VEG_HELPERS_HPP_6TYDENKMS
-#define VEG_HELPERS_HPP_6TYDENKMS
+#ifndef VEG_OVERLOAD_HPP_SRDHJT6LS
+#define VEG_OVERLOAD_HPP_SRDHJT6LS
 
 #include "veg/type_traits/constructible.hpp"
-#include "veg/type_traits/invocable.hpp"
-#include "veg/internal/fix_index.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
+namespace fn {
 template <typename... Fns>
 struct Overload;
 
@@ -97,54 +96,7 @@ VEG_OVERLOAD_GENERIC((0, 1, 2, 3, 4, 5, 6, 7));
 #undef VEG_OVERLOAD_IMPL
 #endif
 
-template <i64 I, typename Fn>
-struct IndexedFn {
-	Fn fn;
-
-	VEG_TEMPLATE(
-			typename... Ts,
-			requires(VEG_CONCEPT(invocable<Fn, Ts...>)),
-			VEG_INLINE VEG_CPP14(constexpr) auto
-			operator(),
-			(/*tag*/, Fix<I>),
-			(... args, Ts&&)) &&
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn, Ts...>))
-					-> meta::invoke_result_t<Fn, Ts...> {
-		return VEG_FWD(fn)(VEG_FWD(args)...);
-	}
-};
-
 namespace nb {
-template <typename To>
-struct convert {
-	VEG_TEMPLATE(
-			typename... Ts,
-			requires(VEG_CONCEPT(constructible<To, Ts...>)),
-			VEG_INLINE VEG_CPP14(constexpr) auto
-			operator(),
-			(... args, Ts&&)) &&
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<To, Ts...>)) -> To {
-		return To(VEG_FWD(args)...);
-	}
-};
-struct clone {
-	VEG_TEMPLATE(
-			typename T,
-			requires(VEG_CONCEPT(constructible<meta::decay_t<T>, T>)),
-			VEG_INLINE constexpr auto
-			operator(),
-			(arg, T&&))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<meta::decay_t<T>, T>))
-			->meta::decay_t<T> {
-		return meta::decay_t<T>(VEG_FWD(arg));
-	}
-};
-struct ref {
-	template <typename T>
-	VEG_INLINE constexpr auto operator()(T&& arg) const VEG_NOEXCEPT -> T&& {
-		return VEG_FWD(arg);
-	}
-};
 struct overload {
 	VEG_TEMPLATE(
 			typename... Fns,
@@ -158,26 +110,11 @@ struct overload {
 		return {internal::ConvertingFn<Fns, Fns&&>{VEG_FWD(fns)}...};
 	}
 };
-template <i64 I>
-struct indexed {
-	VEG_TEMPLATE(
-			typename Fn,
-			requires(VEG_CONCEPT(move_constructible<Fn>)),
-			VEG_INLINE constexpr auto
-			operator(),
-			(fn, Fn))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<Fn>))
-			->IndexedFn<I, Fn> {
-		return {VEG_FWD(fn)};
-	}
-};
 } // namespace nb
-VEG_NIEBLOID(clone);
 VEG_NIEBLOID(overload);
-VEG_NIEBLOID(ref);
-VEG_NIEBLOID_TEMPLATE(i64 I, indexed, I);
-VEG_NIEBLOID_TEMPLATE(typename To, convert, To);
+} // namespace fn
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
-#endif /* end of include guard VEG_HELPERS_HPP_6TYDENKMS */
+
+#endif /* end of include guard VEG_OVERLOAD_HPP_SRDHJT6LS */

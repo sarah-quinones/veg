@@ -46,6 +46,13 @@
 	auto operator=(Class&&)&->Class& = default;                                  \
 	auto operator=(Class const&)&->Class& = default
 
+#define VEG_NO_COPY(Class)                                                     \
+	~Class() = default; /**/                                                     \
+	Class(Class&&) = default;                                                    \
+	Class(Class const&) = delete;                                                \
+	auto operator=(Class&&)&->Class& = default;                                  \
+	auto operator=(Class const&)&->Class& = delete
+
 #if __cplusplus >= 201402L
 #define VEG_CPP14(...) __VA_ARGS__
 #else

@@ -86,13 +86,15 @@ void decr_counter() VEG_ALWAYS_NOEXCEPT {
 	--counter;
 }
 
-auto ByteStringView::starts_with(ByteStringView other) const VEG_ALWAYS_NOEXCEPT -> bool {
+auto ByteStringView::starts_with(ByteStringView other) const VEG_ALWAYS_NOEXCEPT
+		-> bool {
 	return size() >= other.size() &&
-				 std::memcmp(data(), other.data(), other.size()) == 0;
+	       std::memcmp(data(), other.data(), other.size()) == 0;
 }
-auto ByteStringView::operator==(ByteStringView other) const VEG_ALWAYS_NOEXCEPT -> bool {
+auto ByteStringView::operator==(ByteStringView other) const VEG_ALWAYS_NOEXCEPT
+		-> bool {
 	return size() == other.size() &&
-				 std::memcmp(data(), other.data(), other.size()) == 0;
+	       std::memcmp(data(), other.data(), other.size()) == 0;
 }
 ByteStringView::ByteStringView(char const* str) VEG_ALWAYS_NOEXCEPT
 		: ByteStringView{str, static_cast<i64>(std::strlen(str))} {}
@@ -883,8 +885,8 @@ void set_assert_params2(       //
 //
 // otherwise, if there is not enough space for aligning or advancing the
 // pointer, returns nullptr and the values are left unmodified
-auto align_next(i64 alignment, i64 size, void*& ptr, i64& space) VEG_ALWAYS_NOEXCEPT
-		-> void* {
+auto align_next(i64 alignment, i64 size, void*& ptr, i64& space)
+		VEG_ALWAYS_NOEXCEPT -> void* {
 	static_assert(
 			sizeof(std::uintptr_t) >= sizeof(void*),
 			"std::uintptr_t can't hold a pointer value");
@@ -892,8 +894,9 @@ auto align_next(i64 alignment, i64 size, void*& ptr, i64& space) VEG_ALWAYS_NOEX
 	using byte_ptr = unsigned char*;
 
 	// assert alignment is power of two
-	VEG_ASSERT_ALL_OF(
-			(alignment > 0), ((u64(alignment) & (u64(alignment) - 1)) == 0));
+	VEG_ASSERT_ALL_OF( //
+			(alignment > i64(0)),
+			((u64(alignment) & (u64(alignment) - 1)) == u64(0)));
 
 	if (space < size) {
 		return nullptr;

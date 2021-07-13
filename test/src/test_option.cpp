@@ -1,6 +1,5 @@
 #include "veg/option.hpp"
-#include "veg/fn_view.hpp"
-#include "veg/functional/utils.hpp"
+#include "veg/fn_ref.hpp"
 #include <doctest.h>
 #include <vector>
 #include "static_assert.hpp"
@@ -22,20 +21,20 @@ TEST_CASE("option: all") {
 		VEG_CPP14(constexpr) auto operator()() const -> Option<int> {
 			return {some, 13};
 		}
-		VEG_CPP14(constexpr) auto operator()(int i) const -> Option<double> {
-			if (i == 0) {
+		VEG_CPP14(constexpr) auto operator()(Ref<int> i) const -> Option<double> {
+			if (*i == 0) {
 				return none;
 			}
-			return {some, 1000. / i};
+			return {some, 1000. / *i};
 		}
 	};
 
 	struct B {
-		VEG_CPP14(constexpr) auto operator()(int i) const -> double {
-			if (i == 0) {
+		VEG_CPP14(constexpr) auto operator()(Ref<int> i) const -> double {
+			if (*i == 0) {
 				return 1.0;
 			}
-			return 2000. / i;
+			return 2000. / *i;
 		}
 	};
 	struct C {
@@ -44,7 +43,7 @@ TEST_CASE("option: all") {
 
 	constexpr Option<int> i = {some, 3};
 	constexpr Option<int> j = none;
-	STATIC_ASSERT_IF_14(i.as_ref().unwrap() == 3);
+	STATIC_ASSERT_IF_14(i.as_ref().unwrap().get() == 3);
 	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).is_some());
 	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).unwrap() == 1000. / 3);
 	STATIC_ASSERT_IF_17(Option<int>{inplace, [&] { return 0; }}.is_some());
@@ -55,10 +54,11 @@ TEST_CASE("option: all") {
 	STATIC_ASSERT_IF_14(j.as_ref().map_or(B{}, 2000.) == 2000.);
 	STATIC_ASSERT_IF_14(i.as_ref().map_or(B{}, 2000.) == 2000. / 3);
 	STATIC_ASSERT_IF_17(
-			bool(i.as_ref().map([](int k) { return 2.0 * k; }) == some(6.0)));
+			bool(i.as_ref().map([](Ref<int> k) { return 2.0 * *k; }) == some(6.0)));
 
-	STATIC_ASSERT_IF_14(Option<int>{some, 0}.and_then(A{}).is_none());
-	STATIC_ASSERT_IF_14(Option<int>{some, 3}.and_then(A{}).unwrap() == 1000. / 3);
+	STATIC_ASSERT_IF_14(Option<int>{some, 0}.as_ref().and_then(A{}).is_none());
+	STATIC_ASSERT_IF_14(
+			Option<int>{some, 3}.as_ref().and_then(A{}).unwrap() == 1000. / 3);
 	STATIC_ASSERT_IF_14(Option<int>{some, 42}.take().unwrap() == 42);
 	STATIC_ASSERT_IF_14(Option<int>{none}.take().is_none());
 	STATIC_ASSERT_IF_14(j.as_ref().and_then(A{}).is_none());
@@ -78,13 +78,13 @@ TEST_CASE("option: all") {
 		Option<Option<Option<int>>> opt2 = some(some(Option<int>(none)));
 		STATIC_ASSERT_IF_14(opt == opt_also);
 		STATIC_ASSERT_IF_14(
-				opt //
-						.as_ref()
-						.unwrap()
-						.as_ref()
-						.unwrap()
-						.as_ref()
-						.unwrap() == 3);
+				*opt //
+						 .as_ref()
+						 .unwrap()
+						 ->as_ref()
+						 .unwrap()
+						 ->as_ref()
+						 .unwrap() == 3);
 		STATIC_ASSERT_IF_14(clone(opt).unwrap().unwrap().unwrap() == 3);
 		STATIC_ASSERT_IF_14(clone(opt).flatten().flatten().unwrap() == 3);
 		STATIC_ASSERT_IF_14(clone(opt2).unwrap().unwrap().is_none());
@@ -97,26 +97,26 @@ TEST_CASE("option: all") {
 		Option<bool> flag;
 		Option<int> opt;
 		opt.as_ref().map_or_else(
-				[&](int /*unused*/) {
+				[&](Ref<int> /*unused*/) {
 					flag = {some, true};
 				},
 				[&] {
 					flag = {some, false};
 				});
 		CHECK(flag.is_some());
-		CHECK(!flag.as_ref().unwrap());
+		CHECK(!*flag.as_ref().unwrap());
 
 		opt = {some, 3};
 		flag = none;
 		opt.as_ref().map_or_else(
-				[&](int /*unused*/) {
+				[&](Ref<int> /*unused*/) {
 					flag = {some, true};
 				},
 				[&] {
 					flag = {some, false};
 				});
 		CHECK(flag.is_some());
-		CHECK(flag.as_ref().unwrap());
+		CHECK(*flag.as_ref().unwrap());
 	}
 	{
 		VEG_CPP17(constexpr)

@@ -3,7 +3,6 @@
 
 #include "veg/type_traits/constructible.hpp"
 #include "veg/type_traits/invocable.hpp"
-#include "veg/functional/utils.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
@@ -14,15 +13,15 @@ struct CopyFn {
 
 	Fn fn;
 	VEG_TEMPLATE(
-			typename... Args,
-			requires(VEG_CONCEPT(invocable<Fn, Args&&...>)),
+			(typename... Args, typename Ret = meta::invoke_result_t<Fn, Args&&...>),
+			requires(VEG_CONCEPT(fn_once<Fn, Ret, Args&&...>)),
 			VEG_INLINE constexpr auto
 			operator(),
 			(... args, Args&&))
 	const VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_copy_constructible<Fn>) &&
-			VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>))
-			->meta::invoke_result_t<Fn, Args&&...> {
+			VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Args&&...>))
+			->Ret {
 		return Fn(fn)(VEG_FWD(args)...);
 	}
 };

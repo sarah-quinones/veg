@@ -18,7 +18,7 @@ struct VEG_NODISCARD Defer {
 	auto operator=(Defer&&) VEG_NOEXCEPT -> Defer& = delete;
 	VEG_CPP20(constexpr)
 	VEG_INLINE ~Defer()
-			VEG_NOEXCEPT_IF(VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn>))) {
+			VEG_NOEXCEPT_IF(VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, void>))) {
 		VEG_FWD(fn)();
 	}
 };
@@ -33,7 +33,8 @@ struct defer {
 	VEG_TEMPLATE(
 			typename Fn,
 			requires(
-					VEG_CONCEPT(move_constructible<Fn>) && VEG_CONCEPT(invocable<Fn>)),
+					VEG_CONCEPT(move_constructible<Fn>) &&
+					VEG_CONCEPT(fn_once<Fn, void>)),
 			VEG_INLINE VEG_CPP20(constexpr) auto
 			operator(),
 			(fn, Fn&&))

@@ -2,7 +2,7 @@
 #define __VEG_DISABLE_NOEXCEPT
 
 #include "static_assert.hpp"
-#include <veg/fn_view.hpp>
+#include <veg/fn_ref.hpp>
 #include <veg/option.hpp>
 #include <doctest.h>
 #include "veg/internal/prologue.hpp"
@@ -14,65 +14,52 @@ TEST_CASE("function_view: no_args") {
 	int i = 0;
 	auto inc_lambda = [&i]() noexcept { ++i; };
 	auto inc2_lambda = [&i]() noexcept { i += 2; };
-	auto returns_lambda = [&i]() noexcept {
-		i += 3;
-		return i;
-	};
-
-	void (*p)(){};
-	using T = decltype(p);
-
-	STATIC_ASSERT(noexcept(p == nullptr));
-	STATIC_ASSERT(VEG_CONCEPT(equality_comparable_with<T, std::nullptr_t>));
+	auto returns_lambda = [&i]() noexcept { i += 3; };
 
 	void (*inc_fn_ptr)() noexcept = +[]() noexcept { ++global; };
 	auto inc2_global_lambda = []() noexcept { global += 2; };
-	auto returns_fn_ptr = +[]() noexcept {
-		global += 3;
-		return global;
-	};
+	auto returns_fn_ptr = +[]() noexcept { global += 3; };
 
-	FnView<void()> f{as_ref, inc_lambda};
+	FnRef<void()> f{ref(inc_lambda)};
 	CHECK(i == 0);
 	f();
 	CHECK(i == 1);
 	f();
 	CHECK(i == 2);
-	FnView<void()>{f}();
+	FnRef<void()>{f}();
 	CHECK(i == 3);
-	FnOnceView<void()>{f}();
+	FnRefOnce<void()>{f}();
 	CHECK(i == 4);
 
 	STATIC_ASSERT(
-			!std::is_constructible<FnView<void()>, FnOnceView<void()>>::value);
+			!std::is_constructible<FnRef<void()>, FnRefOnce<void()>>::value);
 	STATIC_ASSERT(
-			std::is_constructible<FnOnceView<void()>, FnOnceView<void()>>::value);
+			std::is_constructible<FnRefOnce<void()>, FnRefOnce<void()>>::value);
 	STATIC_ASSERT(
-			std::is_constructible<FnOnceView<void()>, FnView<void() noexcept>>::
-					value);
+			std::is_constructible<FnRefOnce<void()>, NothrowFnRef<void()>>::value);
 	VEG_CPP17(STATIC_ASSERT(!std::is_constructible<
-													FnOnceView<void() noexcept>,
-													FnView<void()>>::value);)
+													NothrowFnRefOnce<void()>,
+													FnRef<void()>>::value);)
 
-	f = {as_ref, inc2_lambda};
+	f = ref(inc2_lambda);
 	f();
 	CHECK(i == 6);
 
-	f = {as_ref, returns_lambda};
+	f = ref(returns_lambda);
 	f();
 	CHECK(i == 9);
 
-	f = {as_ref, *inc_fn_ptr};
+	f = ref(*inc_fn_ptr);
 	CHECK(global == 0);
 	f();
 	CHECK(global == 1);
 
-	f = {as_ref, inc2_global_lambda};
+	f = ref(inc2_global_lambda);
 	f();
 	CHECK(global == 3);
 
-	f = {as_ref, +returns_fn_ptr};
-	f = {as_ref, *+returns_fn_ptr};
+	f = ref(+returns_fn_ptr);
+	f = ref(*+returns_fn_ptr);
 	f();
 	CHECK(global == 6);
 }
@@ -99,19 +86,19 @@ auto baz(foo const& /*unused*/, foo /*unused*/, int /*unused*/) -> foo {
 
 TEST_CASE("function_view: null") {
 	{
-		veg::Option<FnView<void()>> f;
+		veg::Option<FnRef<void()>> f;
 
 		CHECK(f.is_none());
 		CHECK_THROWS(void(f.as_ref().unwrap()));
 		CHECK_THROWS(void(VEG_MOV(f).unwrap()));
 
 		auto l = [] {};
-		f = {some, {as_ref, l}};
+		f = {some, ref(l)};
 		CHECK(f.is_some());
 	}
 	{
 		void (*null)() = nullptr;
-		CHECK_THROWS(FnView<void()>{as_ref, null});
+		CHECK_THROWS(FnRef<void()>{ref(null)});
 	}
 }
 #include "veg/internal/epilogue.hpp"

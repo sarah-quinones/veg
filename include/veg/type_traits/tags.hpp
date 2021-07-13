@@ -16,6 +16,8 @@ VEG_TAG(direct, Direct);
 VEG_TAG(from_raw_parts, FromRawParts);
 VEG_TAG(inplace, InPlace);
 VEG_TAG(as_ref, AsRef);
+VEG_TAG(as_mut, AsMut);
+VEG_TAG(as_ref_once, AsRefOnce);
 
 VEG_TAG(safe, Safe);
 VEG_TAG(unsafe, Unsafe);

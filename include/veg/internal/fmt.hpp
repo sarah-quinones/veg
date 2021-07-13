@@ -3,6 +3,7 @@
 
 #include "veg/type_traits/primitives.hpp"
 #include "veg/type_traits/constructible.hpp"
+#include "veg/ref.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
@@ -45,47 +46,48 @@ inline void to_string_impl(Buffer& out, char const* fmt, void* arg) {
 
 struct dbg_i {
 	template <typename T>
-	static void to_string(Buffer& out, T arg) {
-		auto _ = static_cast<long long signed>(arg);
+	static void to_string(Buffer& out, Ref<T> arg) {
+		auto _ = static_cast<long long signed>(arg.get());
 		fmt::to_string_impl(out, "%lld", &_);
 	}
 };
 struct dbg_u {
 	template <typename T>
-	static void to_string(Buffer& out, T arg) {
-		auto _ = static_cast<long long unsigned>(arg);
+	static void to_string(Buffer& out, Ref<T> arg) {
+		auto _ = static_cast<long long unsigned>(arg.get());
 		fmt::to_string_impl(out, "%llu", &_);
 	}
 };
 struct dbg_f {
 	template <typename T>
-	static void to_string(Buffer& out, T arg) {
-		auto _ = static_cast<long double>(arg);
+	static void to_string(Buffer& out, Ref<T> arg) {
+		auto _ = static_cast<long double>(arg.get());
 		fmt::to_string_impl(out, "%Lf", &_);
 	}
 };
 struct dbg_b {
 	template <typename T>
-	static void to_string(Buffer& out, T const& arg) {
-		out.insert(out.size(), arg ? "true" : "false", arg ? 4 : 5);
+	static void to_string(Buffer& out, Ref<T> arg) {
+		out.insert(out.size(), arg.get() ? "true" : "false", arg.get() ? 4 : 5);
 	}
 };
 struct dbg_p {
-	static void to_string(Buffer& out, void const volatile* arg) {
-		auto* _ = const_cast<void*>(arg);
+	template <typename T>
+	static void to_string(Buffer& out, Ref<T*> arg) {
+		auto* _ = const_cast<void*>(arg.get());
 		fmt::to_string_impl(out, "%p", &_);
 	}
 };
 struct dbg_pf {
 	template <typename Ret, typename... Args>
-	static void to_string(Buffer& out, Ret (*arg)(Args...)) {
-		auto* _ = reinterpret_cast<void*>(arg);
+	static void to_string(Buffer& out, Ref<Ret (*)(Args...)> arg) {
+		auto* _ = reinterpret_cast<void*>(arg.get());
 		fmt::to_string_impl(out, "%p", &_);
 	}
 };
 struct dbg_g {
 	template <typename T>
-	static void to_string(Buffer& out, T const& /*arg*/) {
+	static void to_string(Buffer& out, Ref<T> /*arg*/) {
 		out.insert(out.size(), "{?}", 3);
 	}
 };
@@ -164,12 +166,11 @@ struct String final : fmt::Buffer {
 namespace nb {
 struct dbg {
 	template <typename T>
-	auto operator()(T&& arg) const -> T&& {
+	auto operator()(T arg) const -> T {
 		abi::internal::String out;
-		auto const& arg_c = arg;
-		fmt::Debug<meta::uncvref_t<T>>::to_string(out, arg_c);
+		fmt::Debug<meta::uncvref_t<T>>::to_string(out, ref(arg));
 		out.eprint();
-		return VEG_FWD(arg);
+		return T(VEG_FWD(arg));
 	}
 };
 } // namespace nb

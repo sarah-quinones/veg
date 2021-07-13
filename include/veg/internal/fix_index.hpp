@@ -305,22 +305,22 @@ operator"" _c() VEG_NOEXCEPT -> Fix<internal::parse_int(
 namespace fmt {
 template <>
 struct Debug<Boolean<yes>> {
-	static void to_string(fmt::Buffer& out, Boolean<yes> /*val*/) {
+	static void to_string(fmt::Buffer& out, Ref<Boolean<yes>> /*val*/) {
 		out.insert(out.size(), "yes", 3);
 	}
 };
 template <>
 struct Debug<Boolean<no>> {
-	static void to_string(fmt::Buffer& out, Boolean<no> /*val*/) {
+	static void to_string(fmt::Buffer& out, Ref<Boolean<no>> /*val*/) {
 		out.insert(out.size(), "no", 2);
 	}
 };
 
 template <i64 N>
 struct Debug<Fix<N>> {
-	static void to_string(fmt::Buffer& out, Fix<N> val) {
+	static void to_string(fmt::Buffer& out, Ref<Fix<N>> /*val*/) {
 		out.insert(out.size(), "Fix[", 4);
-		Debug<i64>::to_string(out, i64(val));
+		Debug<i64>::to_string(out, ref(N));
 		out.insert(out.size(), "]", 1);
 	}
 };

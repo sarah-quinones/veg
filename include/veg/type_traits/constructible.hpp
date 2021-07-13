@@ -120,6 +120,21 @@ struct ConvertingFn {
 	}
 };
 } // namespace internal
+namespace nb {
+struct clone {
+	VEG_TEMPLATE(
+			typename T,
+			requires(VEG_CONCEPT(constructible<meta::decay_t<T>, T>)),
+			VEG_INLINE constexpr auto
+			operator(),
+			(arg, T&&))
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<meta::decay_t<T>, T>))
+			->meta::decay_t<T> {
+		return meta::decay_t<T>(VEG_FWD(arg));
+	}
+};
+} // namespace nb
+VEG_NIEBLOID(clone);
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
