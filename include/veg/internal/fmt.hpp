@@ -74,7 +74,7 @@ struct dbg_b {
 struct dbg_p {
 	template <typename T>
 	static void to_string(Buffer& out, Ref<T*> arg) {
-		auto* _ = const_cast<void*>(arg.get());
+		auto* _ = const_cast<void*>(static_cast<void const volatile*>(arg.get()));
 		fmt::to_string_impl(out, "%p", &_);
 	}
 };
