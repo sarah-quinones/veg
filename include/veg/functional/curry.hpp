@@ -144,7 +144,7 @@ struct CurriedOnce {
 			requires(VEG_CONCEPT(fn_once<Fn, Ret, Args..., StoredArgs...>)),
 			VEG_INLINE constexpr auto
 			operator(),
-			(... args, Args)) &&
+			(... args, Args&&)) &&
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(
 					nothrow_fn_once<Fn, Ret, Args..., StoredArgs...>)) -> Ret {
 		return internal::_fn::call_curried_once(
@@ -163,7 +163,7 @@ struct RCurriedOnce {
 			requires(VEG_CONCEPT(fn_once<Fn, Ret, StoredArgs..., Args...>)),
 			VEG_INLINE constexpr auto
 			operator(),
-			(... args, Args)) &&
+			(... args, Args&&)) &&
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(
 					nothrow_fn_once<Fn, Ret, StoredArgs..., Args...>)) -> Ret {
 		return internal::_fn::call_rcurried_once(
@@ -183,7 +183,7 @@ struct CurriedMut {
 			requires(VEG_CONCEPT(fn_mut<Fn, Ret, Args..., RefMut<StoredArgs>...>)),
 			VEG_INLINE constexpr auto
 			operator(),
-			(... args, Args))
+			(... args, Args&&))
 	VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_fn_mut<Fn, Ret, Args..., RefMut<StoredArgs>...>))
 			->Ret {
@@ -203,7 +203,7 @@ struct RCurriedMut {
 			requires(VEG_CONCEPT(fn_mut<Fn, Ret, RefMut<StoredArgs>..., Args...>)),
 			VEG_INLINE constexpr auto
 			operator(),
-			(... args, Args))
+			(... args, Args&&))
 	VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_fn_mut<Fn, Ret, RefMut<StoredArgs>..., Args...>))
 			->Ret {
@@ -223,7 +223,7 @@ struct Curried {
 			requires(VEG_CONCEPT(fn<Fn, Ret, Args..., Ref<StoredArgs>...>)),
 			VEG_INLINE constexpr auto
 			operator(),
-			(... args, Args))
+			(... args, Args&&))
 	const VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_fn<Fn, Ret, Args..., Ref<StoredArgs>...>))
 			->Ret {
@@ -243,7 +243,7 @@ struct RCurried {
 			requires(VEG_CONCEPT(fn<Fn, Ret, Ref<StoredArgs>..., Args...>)),
 			VEG_INLINE constexpr auto
 			operator(),
-			(... args, Args))
+			(... args, Args&&))
 	const VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_fn<Fn, Ret, Ref<StoredArgs>..., Args...>))
 			->Ret {
