@@ -24,6 +24,9 @@ private:
 
 public:
 	VEG_INLINE
+	constexpr Slice() = default;
+
+	VEG_INLINE
 	constexpr Slice(
 			FromRawParts /*tag*/, T const* data_, i64 count, Unsafe /* tag */)
 			VEG_NOEXCEPT : data{data_},
@@ -93,6 +96,9 @@ public:
 
 template <typename T>
 struct SliceMut : private Slice<T> {
+	VEG_INLINE
+	constexpr SliceMut() = default;
+
 	VEG_INLINE
 	constexpr SliceMut(
 			FromRawParts /*tag*/, T const* data_, i64 count, Unsafe /* tag */)

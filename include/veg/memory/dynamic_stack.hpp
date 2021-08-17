@@ -196,6 +196,24 @@ public:
 		return *this;
 	}
 
+	VEG_NODISCARD auto as_mut() VEG_NOEXCEPT -> SliceMut<T> {
+		return {
+				FromRawParts{},
+				as_mut_ptr(),
+				len(),
+				unsafe,
+		};
+	}
+
+	VEG_NODISCARD auto as_ref() const VEG_NOEXCEPT -> Slice<T> {
+		return {
+				FromRawParts{},
+				as_ptr(),
+				len(),
+				unsafe,
+		};
+	}
+
 	VEG_NODISCARD auto as_mut_ptr() VEG_NOEXCEPT -> T* {
 		return static_cast<T*>(const_cast<void*>(Base::data));
 	}
@@ -247,6 +265,8 @@ private:
 	using Base = internal::dynstack::DynAllocBase;
 
 public:
+	using DynStackAlloc<T>::as_ref;
+	using DynStackAlloc<T>::as_mut;
 	using DynStackAlloc<T>::as_ptr;
 	using DynStackAlloc<T>::as_mut_ptr;
 	using DynStackAlloc<T>::len;

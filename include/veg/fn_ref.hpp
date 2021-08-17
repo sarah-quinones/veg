@@ -59,8 +59,8 @@ struct fn_view_impl<fn_kind_e::fn_obj> {
 	}
 
 	template <typename Fn, typename Ret, typename... Args>
-	VEG_INLINE static auto call(StatePtr state, Args... args)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>)) -> Ret {
+	VEG_INLINE static auto call(StatePtr state, Args... args) noexcept(
+			VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>)) -> Ret {
 		return static_cast<Fn&&>(*static_cast<meta::uncvref_t<Fn>*>(state.ptr))(
 				VEG_FWD(args)...);
 	}

@@ -20,7 +20,7 @@ TEST_CASE("function_view: no_args") {
 	auto inc2_global_lambda = []() noexcept { global += 2; };
 	auto returns_fn_ptr = +[]() noexcept { global += 3; };
 
-	FnRef<void()> f{ref(inc_lambda)};
+	FnRef<void()> f{NothrowFnRef<void()>{ref(inc_lambda)}};
 	CHECK(i == 0);
 	f();
 	CHECK(i == 1);

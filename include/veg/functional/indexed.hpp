@@ -19,7 +19,7 @@ struct IndexedFn {
 			VEG_INLINE VEG_CPP14(constexpr) auto
 			operator(),
 			(/*tag*/, Fix<I>),
-			(... args, Ts))
+			(... args, Ts&&))
 	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn<Fn, Ret, Ts...>))->Ret {
 		return fn(VEG_FWD(args)...);
 	}
@@ -35,7 +35,7 @@ struct IndexedFnMut {
 			VEG_INLINE VEG_CPP14(constexpr) auto
 			operator(),
 			(/*tag*/, Fix<I>),
-			(... args, Ts))
+			(... args, Ts&&))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_mut<Fn, Ret, Ts...>))->Ret {
 		return fn(VEG_FWD(args)...);
 	}
@@ -51,7 +51,7 @@ struct IndexedFnOnce {
 			VEG_INLINE VEG_CPP14(constexpr) auto
 			operator(),
 			(/*tag*/, Fix<I>),
-			(... args, Ts)) &&
+			(... args, Ts&&)) &&
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Ts...>)) -> Ret {
 		return VEG_FWD(fn)(VEG_FWD(args)...);
 	}
