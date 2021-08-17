@@ -38,7 +38,7 @@ TEST_CASE("tuple: all") {
 	veg::Tuple<int, char&&, char, bool&, bool const&> tup_ref{
 			direct,
 			1,
-			FWD(tup).ith_ref_fwd(1_c),
+			static_cast<char&&>(tup[1_c]),
 			'c',
 			nb::get<2>{}(tup),
 			nb::get<2>{}(tup)};
@@ -53,7 +53,7 @@ TEST_CASE("tuple: all") {
 
 		STATIC_ASSERT(!VEG_CONCEPT(copy_assignable<decltype(tup_ref)>));
 		STATIC_ASSERT(!VEG_CONCEPT(move_assignable<decltype(tup_ref)>));
-		STATIC_ASSERT(!VEG_CONCEPT(copy_constructible<decltype(tup_ref)>));
+		STATIC_ASSERT(!VEG_CONCEPT(copyable<decltype(tup_ref)>));
 		STATIC_ASSERT(VEG_CONCEPT(trivially_move_constructible<decltype(tup_ref)>));
 		STATIC_ASSERT(!std::is_copy_constructible<decltype(tup_ref)>::value);
 		using val_tup = veg::Tuple<int, bool>;
@@ -117,7 +117,7 @@ TEST_CASE("tuple: all") {
 
 	{
 		auto&& ref1 = FWD(tup)[2_c];
-		auto&& ref2 = FWD(tup).ith_ref_fwd(2_c);
+		auto&& ref2 = tup[2_c];
 		CHECK(&ref1 != &tup[2_c]);
 		CHECK(&ref2 == &tup[2_c]);
 	}
@@ -141,7 +141,6 @@ TEST_CASE("tuple: all") {
 	ASSERT_SAME(decltype(tup[0_c]), decltype(tup[0_c]));
 	ASSERT_SAME(decltype(FWD(tup)[0_c]), decltype(FWD(tup)[0_c]));
 	ASSERT_SAME(decltype(FWD(tup)[0_c]), int);
-	ASSERT_SAME(decltype(FWD(tup).ith_ref_fwd(0_c)), int&&);
 
 	ASSERT_SAME(
 			decltype(tup.as_ref()), veg::Tuple<Ref<int>, Ref<char>, Ref<bool>>);
@@ -156,13 +155,11 @@ TEST_CASE("tuple: all") {
 	ASSERT_SAME(decltype((g)), bool&);
 
 	ASSERT_SAME(decltype(tup_ref[0_c]), int&);
-	ASSERT_SAME(decltype(FWD(tup_ref).ith_ref_fwd(0_c)), int&&);
 
 	ASSERT_SAME(decltype(tup_ref[1_c]), char&);
 	ASSERT_SAME(decltype(tup_ref[2_c]), char&);
 	ASSERT_SAME(decltype(FWD(tup_ref)[1_c]), char&&);
 	ASSERT_SAME(decltype(FWD(tup_ref)[2_c]), char);
-	ASSERT_SAME(decltype(FWD(tup_ref).ith_ref_fwd(2_c)), char&&);
 
 	ASSERT_SAME(decltype(tup_ref[3_c]), bool&);
 	ASSERT_SAME(decltype(tup_ref[4_c]), bool const&);

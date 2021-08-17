@@ -34,9 +34,25 @@ struct CurriedFn {
 
 namespace tuple {
 
+template <
+		usize I,
+		typename T,
+		bool = (VEG_CONCEPT(empty<T>) && !VEG_CONCEPT(final<T>))>
+struct TupleLeaf;
+
 template <usize I, typename T>
-struct TupleLeaf {
+struct TupleLeaf<I, T, true> : T {
+	VEG_INLINE constexpr auto leaf_get() const VEG_NOEXCEPT -> T& {
+		return const_cast<T&>(*this);
+	}
+};
+
+template <usize I, typename T>
+struct TupleLeaf<I, T, false> {
 	T leaf;
+	VEG_INLINE constexpr auto leaf_get() const VEG_NOEXCEPT -> T& {
+		return const_cast<T&>(leaf);
+	}
 };
 
 template <typename ISeq, typename... Ts>
@@ -47,8 +63,11 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 
 	IndexedTuple() = default;
 
-	VEG_INLINE constexpr IndexedTuple(Direct /*tag*/, Ts... args)
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>)))
+	VEG_CONSTRAINED_MEMBER_FN(
+			requires(VEG_ALL_OF(VEG_CONCEPT(movable<Ts>))),
+			VEG_INLINE constexpr IndexedTuple,
+			((/*tag*/, Direct), (... args, Ts)),
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>))))
 			: TupleLeaf<Is, Ts>{VEG_FWD(args)}... {};
 
 	VEG_TEMPLATE(
@@ -69,7 +88,8 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 				Direct{},
 				Ref<Ts>{
 						AsRef{},
-						static_cast<TupleLeaf<Is, Ts> const&>(*this).leaf,
+						static_cast<Ts const&>(
+								static_cast<TupleLeaf<Is, Ts> const&>(*this).leaf_get()),
 				}...,
 		};
 	}
@@ -80,7 +100,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 				Direct{},
 				RefMut<Ts>{
 						AsMut{},
-						static_cast<TupleLeaf<Is, Ts>&>(*this).leaf,
+						static_cast<TupleLeaf<Is, Ts>&>(*this).leaf_get(),
 				}...,
 		};
 	}
@@ -90,25 +110,16 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 
 	VEG_TEMPLATE(
 			(i64 I),
-			requires(I < sizeof...(Ts) && (I >= 0)),
-			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto ith_ref_fwd,
-			(/*arg*/, Fix<I>)) &&
-			VEG_NOEXCEPT -> ith<usize{I}, Ts...>&& {
-		return static_cast<ith<usize{I}, Ts...>&&>(
-				static_cast<TupleLeaf<usize{I}, ith<usize{I}, Ts...>>&&>(*this).leaf);
-	}
-
-	VEG_TEMPLATE(
-			(i64 I),
 			requires(
 					I < sizeof...(Ts) && (I >= 0) &&
-					VEG_CONCEPT(move_constructible<ith<usize{I}, Ts...>>)),
+					VEG_CONCEPT(movable<ith<usize{I}, Ts...>>)),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
 			operator[],
 			(/*arg*/, Fix<I>)) &&
 			VEG_NOEXCEPT -> ith<usize{I}, Ts...> {
 		return static_cast<ith<usize{I}, Ts...>&&>(
-				static_cast<TupleLeaf<usize{I}, ith<usize{I}, Ts...>>&&>(*this).leaf);
+				static_cast<TupleLeaf<usize{I}, ith<usize{I}, Ts...>>&&>(*this)
+						.leaf_get());
 	}
 
 	VEG_TEMPLATE(
@@ -118,7 +129,8 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 			operator[],
 			(/*arg*/, Fix<I>)) &
 			VEG_NOEXCEPT -> ith<usize{I}, Ts...>& {
-		return static_cast<TupleLeaf<usize{I}, ith<usize{I}, Ts...>>&>(*this).leaf;
+		return static_cast<TupleLeaf<usize{I}, ith<usize{I}, Ts...>>&>(*this)
+		    .leaf_get();
 	}
 
 	/// returns a const reference to the ith element
@@ -130,7 +142,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 			(/*arg*/, Fix<I>))
 	const & VEG_NOEXCEPT->ith<usize{I}, Ts...> const& {
 		return static_cast<TupleLeaf<usize{I}, ith<usize{I}, Ts...>> const&>(*this)
-		    .leaf;
+		    .leaf_get();
 	}
 
 	VEG_TEMPLATE(
@@ -139,8 +151,8 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 			VEG_INLINE VEG_CPP14(constexpr) auto unpack,
 			(fn, Fn))
 	&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Ts...>))->Ret {
-		return VEG_FWD(fn)(
-				static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf)...);
+		return VEG_FWD(fn)(static_cast<Ts&&>(
+				static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf_get())...);
 	}
 
 	VEG_TEMPLATE(
@@ -149,8 +161,8 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 			VEG_INLINE VEG_CPP14(constexpr) void for_each,
 			(fn, Fn))
 	&&VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_mut<Fn, void, Ts>))) {
-		VEG_EVAL_ALL(
-				fn(static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf)));
+		VEG_EVAL_ALL(fn(
+				static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf_get())));
 	}
 
 	VEG_TEMPLATE(
@@ -160,9 +172,9 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 			(fn, Fn))
 	&&VEG_NOEXCEPT_IF(
 			VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_mut<Fn, void, Fix<i64{Is}>, Ts>))) {
-		VEG_EVAL_ALL(
-				fn(Fix<i64{Is}>{},
-		       static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf)));
+		VEG_EVAL_ALL(fn(
+				Fix<i64{Is}>{},
+				static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf_get())));
 	}
 
 	VEG_TEMPLATE(
@@ -186,7 +198,8 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 				InPlace{},
 				internal::UnindexedFn<i64{Is}, Fn&, Ts&&>{
 						fn,
-						static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf),
+						static_cast<Ts&&>(
+								static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf_get()),
 				}...,
 		};
 	}
@@ -205,7 +218,8 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 				InPlace{},
 				internal::CurriedFn<Fn&, Ts&&>{
 						fn,
-						static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf),
+						static_cast<Ts&&>(
+								static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf_get()),
 				}...,
 		};
 	}
@@ -231,7 +245,8 @@ struct TupleInterface<meta::index_sequence<Is...>, RefMut<Ts>...> {
 						static_cast<Ts const&>(
 								(static_cast<tuple::TupleLeaf<Is, RefMut<Ts>>&>(
 										 static_cast<Tuple<RefMut<Ts>>&>(*this)))
-										.leaf.get()),
+										.leaf_get()
+										.get()),
 				}...,
 		};
 	}
@@ -313,11 +328,13 @@ struct cmp_impl {
 		return CmpImpl<Ts...>::eq(
 				Ref<Ts>{
 						as_ref,
-						static_cast<tuple::TupleLeaf<Is, Ts> const&>(lhs).leaf,
+						static_cast<Ts const&>(
+								static_cast<tuple::TupleLeaf<Is, Ts> const&>(lhs).leaf_get()),
 				}...,
 				Ref<Us>{
 						as_ref,
-						static_cast<tuple::TupleLeaf<Is, Us> const&>(rhs).leaf,
+						static_cast<Ts const&>(
+								static_cast<tuple::TupleLeaf<Is, Us> const&>(rhs).leaf_get()),
 				}...);
 	}
 
@@ -329,11 +346,13 @@ struct cmp_impl {
 		return CmpImpl<Ts...>::tway(
 				Ref<Ts>{
 						as_ref,
-						static_cast<tuple::TupleLeaf<Is, Ts> const&>(lhs).leaf,
+						static_cast<Ts const&>(
+								static_cast<tuple::TupleLeaf<Is, Ts> const&>(lhs).leaf_get()),
 				}...,
 				Ref<Us>{
 						as_ref,
-						static_cast<tuple::TupleLeaf<Is, Us> const&>(rhs).leaf,
+						static_cast<Us const&>(
+								static_cast<tuple::TupleLeaf<Is, Us> const&>(rhs).leaf_get()),
 				}...);
 	}
 };
@@ -356,15 +375,13 @@ struct SwapImpl<false> {
 			tuple::IndexedTuple<meta::index_sequence<Is...>, Us...>& rhs)
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_swappable<Ts&, Us&>))) {
 		VEG_ALL_OF(veg::swap( //
-				static_cast<Ts&>(static_cast<tuple::TupleLeaf<Is, Ts>&>(lhs).leaf),
-				static_cast<Us&>(static_cast<tuple::TupleLeaf<Is, Us>&>(rhs).leaf)));
+				static_cast<Ts&>(
+						static_cast<tuple::TupleLeaf<Is, Ts>&>(lhs).leaf_get()),
+				static_cast<Us&>(
+						static_cast<tuple::TupleLeaf<Is, Us>&>(rhs).leaf_get())));
 	}
 };
 
-namespace adl {
-template <typename... Ts>
-struct TupleAdlBase {};
-} // namespace adl
 } // namespace tup_
 } // namespace internal
 } // namespace veg

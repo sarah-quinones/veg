@@ -62,12 +62,11 @@ template <i64 I>
 struct indexed {
 	VEG_TEMPLATE(
 			typename Fn,
-			requires(VEG_CONCEPT(move_constructible<Fn>)),
+			requires(VEG_CONCEPT(movable<Fn>)),
 			VEG_INLINE constexpr auto
 			operator(),
 			(fn, Fn))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<Fn>))
-			->IndexedFn<I, Fn> {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<Fn>))->IndexedFn<I, Fn> {
 		return {Fn(VEG_FWD(fn))};
 	}
 };
@@ -75,12 +74,11 @@ template <i64 I>
 struct indexed_mut {
 	VEG_TEMPLATE(
 			typename Fn,
-			requires(VEG_CONCEPT(move_constructible<Fn>)),
+			requires(VEG_CONCEPT(movable<Fn>)),
 			VEG_INLINE constexpr auto
 			operator(),
 			(fn, Fn))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<Fn>))
-			->IndexedFnMut<I, Fn> {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<Fn>))->IndexedFnMut<I, Fn> {
 		return {Fn(VEG_FWD(fn))};
 	}
 };
@@ -88,11 +86,11 @@ template <i64 I>
 struct indexed_once {
 	VEG_TEMPLATE(
 			typename Fn,
-			requires(VEG_CONCEPT(move_constructible<Fn>)),
+			requires(VEG_CONCEPT(movable<Fn>)),
 			VEG_INLINE constexpr auto
 			operator(),
 			(fn, Fn))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<Fn>))
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<Fn>))
 			->IndexedFnOnce<I, Fn> {
 		return {Fn(VEG_FWD(fn))};
 	}

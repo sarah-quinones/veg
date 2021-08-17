@@ -100,12 +100,11 @@ namespace nb {
 struct overload {
 	VEG_TEMPLATE(
 			typename... Fns,
-			requires(VEG_ALL_OF(VEG_CONCEPT(move_constructible<Fns>))),
+			requires(VEG_ALL_OF(VEG_CONCEPT(movable<Fns>))),
 			VEG_INLINE constexpr auto
 			operator(),
 			(... fns, Fns))
-	const VEG_NOEXCEPT_IF(
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Fns>)))
+	const VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
 			->Overload<Fns...> {
 		return {internal::ConvertingFn<Fns, Fns&&>{VEG_FWD(fns)}...};
 	}

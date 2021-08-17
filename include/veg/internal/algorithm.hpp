@@ -109,8 +109,7 @@ struct reloc_impl<which::trivial> {
 	template <typename T>
 	static VEG_CPP20(constexpr) void apply(T* dest, T* src, i64 n) VEG_NOEXCEPT {
 		static_assert(
-				VEG_CONCEPT(nothrow_move_constructible<T>),
-				"is T really trivially relocatable?");
+				VEG_CONCEPT(nothrow_movable<T>), "is T really trivially relocatable?");
 
 		VEG_CPP20(
 
@@ -167,26 +166,26 @@ struct relocate_n {
 	VEG_TEMPLATE(
 			(typename T),
 			requires(
-					!VEG_CONCEPT(const_type<T>) && (VEG_CONCEPT(move_constructible<T>) ||
-	                                        VEG_CONCEPT(copy_constructible<T>))),
+					!VEG_CONCEPT(const_type<T>) &&
+					(VEG_CONCEPT(movable<T>) || VEG_CONCEPT(copyable<T>))),
 			VEG_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T*),
 			(n, i64))
 	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_move_constructible<T>) ||
+			VEG_CONCEPT(nothrow_movable<T>) ||
 			VEG_CONCEPT(nothrow_constructible<T, T const&>)) {
 
 		namespace impl = internal::algo_;
 		impl::reloc_impl<
-				cpo::is_trivially_relocatable<T>::value          //
-						? impl::which::trivial                       //
-						: VEG_CONCEPT(nothrow_move_constructible<T>) //
-									? impl::which::nothrow_move            //
-									: VEG_CONCEPT(copy_constructible<T>)   //
-												? impl::which::copy              //
-												: impl::which::throw_move        //
+				cpo::is_trivially_relocatable<T>::value   //
+						? impl::which::trivial                //
+						: VEG_CONCEPT(nothrow_movable<T>)     //
+									? impl::which::nothrow_move     //
+									: VEG_CONCEPT(copyable<T>)      //
+												? impl::which::copy       //
+												: impl::which::throw_move //
 				>::apply(dest, src, n);
 	}
 };
@@ -194,13 +193,13 @@ struct relocate_n {
 struct uninitialized_move_n {
 	VEG_TEMPLATE(
 			(typename T),
-			requires(VEG_CONCEPT(move_constructible<T>)),
+			requires(VEG_CONCEPT(movable<T>)),
 			VEG_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T*),
 			(n, i64))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>)) {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) {
 		internal::algo_::uninit_emplace_n<T&&>(dest, src, n);
 	}
 };
@@ -208,28 +207,24 @@ struct uninitialized_move_n {
 struct uninitialized_copy_n {
 	VEG_TEMPLATE(
 			(typename T, int = 0),
-			requires(
-					VEG_CONCEPT(trivially_copyable<T>) &&
-					VEG_CONCEPT(copy_constructible<T>)),
+			requires(VEG_CONCEPT(trivially_copyable<T>) && VEG_CONCEPT(copyable<T>)),
 			VEG_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T const*),
 			(n, i64))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_copy_constructible<T>)) {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_copyable<T>)) {
 		abi::internal::opaque_memmove(dest, src, sizeof(T) * static_cast<usize>(n));
 	}
 	VEG_TEMPLATE(
 			(typename T),
-			requires(
-					!VEG_CONCEPT(trivially_copyable<T>) &&
-					VEG_CONCEPT(copy_constructible<T>)),
+			requires(!VEG_CONCEPT(trivially_copyable<T>) && VEG_CONCEPT(copyable<T>)),
 			VEG_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
 			(src, T const*),
 			(n, i64))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_copy_constructible<T>)) {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_copyable<T>)) {
 		internal::algo_::uninit_emplace_n<T const&>(dest, src, n);
 	}
 };
@@ -255,8 +250,7 @@ struct mixed_init_copy_n {
 			(typename T, int = 0),
 			requires(
 					VEG_CONCEPT(trivially_copyable<T>) &&
-					VEG_CONCEPT(copy_assignable<T>) &&
-					VEG_CONCEPT(copy_constructible<T>)),
+					VEG_CONCEPT(copy_assignable<T>) && VEG_CONCEPT(copyable<T>)),
 			VEG_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
@@ -272,8 +266,7 @@ struct mixed_init_copy_n {
 			(typename T),
 			requires(
 					!VEG_CONCEPT(trivially_copyable<T>) &&
-					VEG_CONCEPT(copy_assignable<T>) &&
-					VEG_CONCEPT(copy_constructible<T>)),
+					VEG_CONCEPT(copy_assignable<T>) && VEG_CONCEPT(copyable<T>)),
 			VEG_INLINE VEG_CPP20(constexpr) void
 			operator(),
 			(dest, T*),
@@ -281,8 +274,7 @@ struct mixed_init_copy_n {
 			(n, i64),
 			(n_init, i64))
 	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_copy_assignable<T>) &&
-			VEG_CONCEPT(copy_constructible<T>)) {
+			VEG_CONCEPT(nothrow_copy_assignable<T>) && VEG_CONCEPT(copyable<T>)) {
 		n_init = n < n_init ? n : n_init;
 		copy_n{}(dest, src, n_init);
 		uninitialized_copy_n{}(dest + n_init, src + n_init, n - n_init);

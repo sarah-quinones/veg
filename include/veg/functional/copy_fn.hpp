@@ -9,7 +9,7 @@ namespace veg {
 namespace fn {
 template <typename Fn>
 struct CopyFn {
-	VEG_CHECK_CONCEPT(copy_constructible<Fn>);
+	VEG_CHECK_CONCEPT(copyable<Fn>);
 
 	Fn fn;
 	VEG_TEMPLATE(
@@ -19,7 +19,7 @@ struct CopyFn {
 			operator(),
 			(... args, Args&&))
 	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_copy_constructible<Fn>) &&
+			VEG_CONCEPT(nothrow_copyable<Fn>) &&
 			VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Args&&...>))
 			->Ret {
 		return Fn(fn)(VEG_FWD(args)...);
@@ -30,13 +30,11 @@ struct copy_fn {
 	VEG_TEMPLATE(
 			typename Fn,
 			requires(
-					VEG_CONCEPT(constructible<Fn, Fn&&>) &&
-					VEG_CONCEPT(copy_constructible<Fn>)),
+					VEG_CONCEPT(constructible<Fn, Fn&&>) && VEG_CONCEPT(movable<Fn>)),
 			VEG_INLINE constexpr auto
 			operator(),
 			(fn, Fn&&))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<Fn>))
-			->CopyFn<Fn> {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<Fn>))->CopyFn<Fn> {
 		return {Fn(VEG_FWD(fn))};
 	}
 };

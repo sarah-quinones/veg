@@ -39,10 +39,9 @@ struct has_adl_swap
 template <typename U, typename V>
 struct has_mov_swap : meta::false_type {};
 template <typename U>
-struct has_mov_swap<U&, U&> : bool_constant<
-																	VEG_CONCEPT(move_constructible<U>) &&
-																	VEG_CONCEPT(move_assignable<U>)>,
-															mov_fn_swap {};
+struct has_mov_swap<U&, U&>
+		: bool_constant<VEG_CONCEPT(movable<U>) && VEG_CONCEPT(move_assignable<U>)>,
+			mov_fn_swap {};
 
 template <typename U, typename V>
 struct swap_impl : meta::disjunction<has_adl_swap<U, V>, has_mov_swap<U, V>> {};
@@ -67,7 +66,7 @@ VEG_DEF_CONCEPT_CONJUNCTION(
 		move_swappable,
 		((, same<U, V>),
      (, lvalue_reference<U>),
-     (, move_constructible<meta::unref_t<U>>),
+     (, movable<meta::unref_t<U>>),
      (, move_assignable<meta::unref_t<U>>)));
 
 VEG_DEF_CONCEPT_DISJUNCTION(

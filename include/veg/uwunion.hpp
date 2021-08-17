@@ -539,22 +539,22 @@ struct NonTrivialUwunionDtor;
 	constexpr Class(                                                             \
 			__VEG_PP_REMOVE_PAREN(Class) &&                                          \
 			rhs) /* silence warning about unparenthesized macro argument */          \
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>))) \
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>)))            \
 			: inner{_uwunion::make<                                                  \
 						decltype(inner),                                                   \
 						sizeof...(Ts),                                                     \
-						VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>))>(          \
+						VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>))>(                     \
 						UwunionGetter<decltype(inner.inner)&&, Ts...>{rhs.inner.inner},    \
 						rhs.inner.tag)} {}
 
 #define VEG_TAGGED_UWUNION_COPY_true(Class)                                    \
 	VEG_INLINE                                                                   \
 	constexpr Class(Class const& rhs)                                            \
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_constructible<Ts>))) \
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_copyable<Ts>)))           \
 			: inner{_uwunion::make<                                                  \
 						decltype(inner),                                                   \
 						sizeof...(Ts),                                                     \
-						VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_constructible<Ts>))>(          \
+						VEG_ALL_OF(VEG_CONCEPT(nothrow_copyable<Ts>))>(                    \
 						UwunionGetter<decltype(inner.inner) const&, Ts...>{                \
 								rhs.inner.inner},                                              \
 						rhs.inner.tag)} {}
@@ -564,13 +564,13 @@ struct NonTrivialUwunionDtor;
 #define VEG_TAGGED_UWUNION_MOVE_true(Class)                                    \
 	VEG_INLINE                                                                   \
 	Class(Class&& rhs) /* NOLINT */                                              \
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>))) \
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>)))            \
 			: inner{} {                                                              \
 		using Fn = UwunionGetter<decltype(inner.inner)&&, Ts...>;                  \
 		inner.tag = rhs.inner.tag;                                                 \
 		internal::visit<                                                           \
 				void,                                                                  \
-				VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>)),               \
+				VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>)),                          \
 				sizeof...(Ts)>(                                                        \
 				this->inner.tag,                                                       \
 				CtorFn<decltype(inner.inner), Fn>{inner.inner, Fn{rhs.inner.inner}});  \
@@ -579,13 +579,13 @@ struct NonTrivialUwunionDtor;
 #define VEG_TAGGED_UWUNION_COPY_true(Class)                                    \
 	VEG_INLINE                                                                   \
 	Class(Class const& rhs)                                                      \
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_constructible<Ts>))) \
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_copyable<Ts>)))           \
 			: inner{} {                                                              \
 		using Fn = UwunionGetter<decltype(inner.inner) const&, Ts...>;             \
 		inner.tag = rhs.inner.tag;                                                 \
 		internal::visit<                                                           \
 				void,                                                                  \
-				VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_constructible<Ts>)),               \
+				VEG_ALL_OF(VEG_CONCEPT(nothrow_copyable<Ts>)),                         \
 				sizeof...(Ts)>(                                                        \
 				this->inner.tag,                                                       \
 				CtorFn<decltype(inner.inner), Fn>{inner.inner, Fn{rhs.inner.inner}});  \
@@ -690,7 +690,7 @@ struct NonTrivialCopyAssign {
 	VEG_INLINE
 	VEG_CPP14(constexpr)
 	auto operator=(NonTrivialCopyAssign const& _rhs) /* NOLINT */ VEG_NOEXCEPT_IF(
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_constructible<Ts>)) &&
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_copyable<Ts>)) &&
 			VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_assignable<Storage<Ts>>)))
 			-> NonTrivialCopyAssign& {
 		using Inner = decltype(static_cast<Base*>(this)->inner.inner);
@@ -729,7 +729,7 @@ struct NonTrivialMoveAssign {
 	VEG_INLINE
 	VEG_CPP14(constexpr)
 	auto operator=(NonTrivialMoveAssign&& _rhs) VEG_NOEXCEPT_IF(
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>)) &&
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>)) &&
 			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_assignable<Storage<Ts>>)))
 			-> NonTrivialMoveAssign& {
 		using Inner = decltype(static_cast<Base*>(this)->inner.inner);
@@ -806,23 +806,23 @@ struct NoOpCopyMove<true, true, T> : T { /* NOLINT */
 };
 
 #define VEG_NEEDS_MOVE                                                         \
-	(VEG_ALL_OF(VEG_CONCEPT(move_constructible<Ts>)) &&                          \
+	(VEG_ALL_OF(VEG_CONCEPT(movable<Ts>)) &&                                     \
 	 !VEG_ALL_OF(VEG_CONCEPT(trivially_move_constructible<Ts>)))
 
 #define VEG_NEEDS_COPY                                                         \
-	(VEG_ALL_OF(VEG_CONCEPT(copy_constructible<Ts>)) &&                          \
+	(VEG_ALL_OF(VEG_CONCEPT(copyable<Ts>)) &&                                    \
 	 !VEG_ALL_OF(VEG_CONCEPT(trivially_copy_constructible<Ts>)))
 
 #define VEG_NEEDS_MOVE_ASSIGN                                                  \
 	(!VEG_ALL_OF(VEG_CONCEPT(trivially_move_assignable<Storage<Ts>>)) &&         \
 	 VEG_ALL_OF(                                                                 \
-			 (VEG_CONCEPT(move_constructible<Ts>) &&                                 \
+			 (VEG_CONCEPT(movable<Ts>) &&                                            \
 	      VEG_CONCEPT(move_assignable<Storage<Ts>>))))
 
 #define VEG_NEEDS_COPY_ASSIGN                                                  \
 	(!VEG_ALL_OF(VEG_CONCEPT(trivially_copy_assignable<Storage<Ts>>)) &&         \
 	 VEG_ALL_OF(                                                                 \
-			 (VEG_CONCEPT(copy_constructible<Ts>) &&                                 \
+			 (VEG_CONCEPT(copyable<Ts>) &&                                           \
 	      VEG_CONCEPT(copy_assignable<Storage<Ts>>))))
 
 // TODO double storage uwunion
@@ -969,22 +969,22 @@ struct DoubleStorageCopyMove { /* NOLINT */
 
 #if __cplusplus >= 201703L
 	VEG_INLINE constexpr DoubleStorageCopyMove(DoubleStorageCopyMove&& rhs)
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>)))
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>)))
 			: inner{_uwunion::make<
 						decltype(inner),
 						sizeof...(Ts),
-						VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>))>(
+						VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>))>(
 						UwunionGetter<decltype(inner.inner0)&&, Ts...>{
 								(rhs.inner.tag_with_bit % 2U == 0) ? rhs.inner.inner0
 																									 : rhs.inner.inner1},
 						rhs.inner.tag_with_bit / 2U)} {}
 
 	VEG_INLINE constexpr DoubleStorageCopyMove(DoubleStorageCopyMove const& rhs)
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_constructible<Ts>)))
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_copyable<Ts>)))
 			: inner{_uwunion::make<
 						decltype(inner),
 						sizeof...(Ts),
-						VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_constructible<Ts>))>(
+						VEG_ALL_OF(VEG_CONCEPT(nothrow_copyable<Ts>))>(
 						UwunionGetter<decltype(inner) const&, Ts...>{
 								(rhs.inner.tag_with_bit % 2U == 0) ? rhs.inner.inner0
 																									 : rhs.inner.inner1,
@@ -994,13 +994,13 @@ struct DoubleStorageCopyMove { /* NOLINT */
 	VEG_INLINE
 	VEG_CPP20(constexpr)
 	DoubleStorageCopyMove(DoubleStorageCopyMove&& rhs)
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>)))
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>)))
 			: inner{} {
 		using Fn = UwunionGetter<decltype(inner.inner0)&&, Ts...>;
 		inner.tag_with_bit = rhs.inner.tag_with_bit / 2U * 2U;
 		internal::visit<
 				void,
-				VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>)),
+				VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>)),
 				sizeof...(Ts)>(
 				inner.tag_with_bit / 2U,
 				CtorFn<decltype(inner.inner0), Fn>{
@@ -1012,13 +1012,13 @@ struct DoubleStorageCopyMove { /* NOLINT */
 	VEG_INLINE
 	VEG_CPP20(constexpr)
 	DoubleStorageCopyMove(DoubleStorageCopyMove const& rhs)
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_constructible<Ts>)))
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_copyable<Ts>)))
 			: inner{} {
 		using Fn = UwunionGetter<decltype(inner.inner0) const&, Ts...>;
 		inner.tag_with_bit = rhs.inner.tag_with_bit / 2U * 2U;
 		internal::visit<
 				void,
-				VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_constructible<Ts>)),
+				VEG_ALL_OF(VEG_CONCEPT(nothrow_copyable<Ts>)),
 				sizeof...(Ts)>(
 				inner.tag_with_bit / 2U,
 				CtorFn<decltype(inner.inner0), Fn>{
@@ -1076,7 +1076,7 @@ struct DoubleStorageCopyMove { /* NOLINT */
 		} else {
 			internal::visit<
 					void,
-					VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>)),
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>)),
 					sizeof...(Ts)>(
 					fn_tag,
 					CtorFn<decltype(inner.inner0), Fn>{self_inner_inactive, VEG_FWD(fn)});
@@ -1093,12 +1093,12 @@ struct DoubleStorageCopyMove { /* NOLINT */
 
 	VEG_INLINE
 	VEG_CPP14(constexpr)
-	auto operator=(DoubleStorageCopyMove&& rhs) VEG_NOEXCEPT_IF(VEG_ALL_OF((
-			VEG_CONCEPT(nothrow_move_assignable<Storage<Ts>>) &&
-			VEG_CONCEPT(nothrow_move_constructible<Ts>)))) -> DoubleStorageCopyMove& {
+	auto operator=(DoubleStorageCopyMove&& rhs) VEG_NOEXCEPT_IF(VEG_ALL_OF(
+			(VEG_CONCEPT(nothrow_move_assignable<Storage<Ts>>) &&
+	     VEG_CONCEPT(nothrow_movable<Ts>)))) -> DoubleStorageCopyMove& {
 		this->template assign<VEG_ALL_OF(
 				(VEG_CONCEPT(nothrow_move_assignable<Storage<Ts>>) &&
-		     VEG_CONCEPT(nothrow_move_constructible<Ts>)))>(
+		     VEG_CONCEPT(nothrow_movable<Ts>)))>(
 				rhs.inner.tag_with_bit / 2U,
 				UwunionGetter<decltype(inner.inner0)&&, Ts...>{
 						(rhs.inner.tag_with_bit % 2U == 0) ? rhs.inner.inner0
@@ -1107,12 +1107,12 @@ struct DoubleStorageCopyMove { /* NOLINT */
 	}
 	VEG_INLINE
 	VEG_CPP14(constexpr)
-	auto operator=(DoubleStorageCopyMove const& rhs) VEG_NOEXCEPT_IF(VEG_ALL_OF((
-			VEG_CONCEPT(nothrow_copy_assignable<Storage<Ts>>) &&
-			VEG_CONCEPT(nothrow_copy_constructible<Ts>)))) -> DoubleStorageCopyMove& {
+	auto operator=(DoubleStorageCopyMove const& rhs) VEG_NOEXCEPT_IF(VEG_ALL_OF(
+			(VEG_CONCEPT(nothrow_copy_assignable<Storage<Ts>>) &&
+	     VEG_CONCEPT(nothrow_copyable<Ts>)))) -> DoubleStorageCopyMove& {
 		this->template assign<VEG_ALL_OF(
 				(VEG_CONCEPT(nothrow_copy_assignable<Storage<Ts>>) &&
-		     VEG_CONCEPT(nothrow_copy_constructible<Ts>)))>(
+		     VEG_CONCEPT(nothrow_copyable<Ts>)))>(
 				rhs.inner.tag_with_bit / 2U,
 				UwunionGetter<decltype(inner.inner0) const&, Ts...>{
 						(rhs.inner.tag_with_bit % 2U == 0) ? rhs.inner.inner0
@@ -1140,22 +1140,22 @@ struct NonTrivialUwunionImpl<
 		meta::index_sequence<Is...>,
 		Ts...> : DoubleStorageCopyMove<Ts...>,
 						 meta::conditional_t<
-								 VEG_ALL_OF(VEG_CONCEPT(move_constructible<Ts>)),
+								 VEG_ALL_OF(VEG_CONCEPT(movable<Ts>)),
 								 EmptyI<1312>,
 								 NoMoveCtor>,
 						 meta::conditional_t<
-								 VEG_ALL_OF(VEG_CONCEPT(copy_constructible<Ts>)),
+								 VEG_ALL_OF(VEG_CONCEPT(copyable<Ts>)),
 								 EmptyI<1313>,
 								 NoCopyCtor>,
 						 meta::conditional_t<
 								 VEG_ALL_OF(
-										 (VEG_CONCEPT(move_constructible<Ts>) &&
+										 (VEG_CONCEPT(movable<Ts>) &&
                       VEG_CONCEPT(move_assignable<Storage<Ts>>))),
 								 EmptyI<1314>,
 								 NoMoveAssign>,
 						 meta::conditional_t<
 								 VEG_ALL_OF(
-										 (VEG_CONCEPT(copy_constructible<Ts>) &&
+										 (VEG_CONCEPT(copyable<Ts>) &&
                       VEG_CONCEPT(copy_assignable<Storage<Ts>>))),
 								 EmptyI<1315>,
 								 NoCopyAssign> {
@@ -1166,7 +1166,7 @@ struct NonTrivialUwunionImpl<
 template <typename... Ts>
 struct NonTrivialUwunionImplSelector {
 	using type = NonTrivialUwunionImpl<
-			!(VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Ts>))) //
+			!(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>))) //
 					? needs_double_storage
 					: !(VEG_ALL_OF(VEG_CONCEPT(trivially_destructible<Ts>))) //
 								? needs_dtor
@@ -1323,11 +1323,11 @@ public:
 
 	VEG_TEMPLATE(
 			(i64 I),
-			requires(VEG_CONCEPT(move_constructible<ith<usize{I}, Ts...>>)),
+			requires(VEG_CONCEPT(movable<ith<usize{I}, Ts...>>)),
 			VEG_INLINE constexpr Uwunion,
 			(/*itag*/, Fix<I>),
 			(arg, ith<usize{I}, Ts...>))
-	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<ith<usize{I}, Ts...>>))
+	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<ith<usize{I}, Ts...>>))
 			: Base{
 						internal::_uwunion::EmplaceTag{},
 						internal::UTag<usize{I}>{},
@@ -1397,8 +1397,7 @@ public:
 			requires(usize{I} < sizeof...(Ts)),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto unwrap,
 			(/*itag*/, Fix<I>)) &&
-			VEG_NOEXCEPT_IF(
-					VEG_CONCEPT(nothrow_move_constructible<ith<usize{I}, Ts...>>))
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<ith<usize{I}, Ts...>>))
 					-> ith<usize{I}, Ts...> {
 		VEG_INTERNAL_ASSERT_PRECONDITION(I == index());
 		return static_cast<Uwunion&&>(*this).unwrap_unchecked(Fix<I>{}, unsafe);
@@ -1410,8 +1409,7 @@ public:
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto unwrap_unchecked,
 			(/*itag*/, Fix<I>),
 			(/*unsafe_tag*/, Unsafe)) &&
-			VEG_NOEXCEPT_IF(
-					VEG_CONCEPT(nothrow_move_constructible<ith<usize{I}, Ts...>>))
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<ith<usize{I}, Ts...>>))
 					-> ith<usize{I}, Ts...> {
 		meta::unreachable_if(I != index());
 		return const_cast<ith<usize{I}, Ts...>&&>(

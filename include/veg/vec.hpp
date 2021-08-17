@@ -124,13 +124,12 @@ public:
 template <typename T>
 struct Vec : internal::vec_::VecBase<T>,
 						 meta::conditional_t<
-								 VEG_CONCEPT(copy_constructible<T>),
+								 VEG_CONCEPT(copyable<T>),
 								 internal::EmptyI<0>,
 								 internal::NoCopyCtor>,
 						 meta::conditional_t<
 								 VEG_CONCEPT(copy_assignable<T>) &&
-										 (VEG_CONCEPT(move_constructible<T>) ||
-                      VEG_CONCEPT(copy_constructible<T>)),
+										 (VEG_CONCEPT(movable<T>) || VEG_CONCEPT(copyable<T>)),
 								 internal::EmptyI<1>,
 								 internal::NoCopyAssign> {
 
@@ -163,15 +162,13 @@ public:
 	VEG_INLINE
 	void resize_down(i64 new_size)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
-		VEG_INTERNAL_ASSERT_PRECONDITIONS(new_size >= 0, new_size <= size());
+		VEG_INTERNAL_ASSERT_PRECONDITIONS(new_size >= i64(0), new_size <= size());
 		backward_destroy_n(as_mut_ptr() + new_size, size() - new_size);
 		raw.len = usize(new_size);
 	}
 
 	VEG_CONSTRAINED_MEMBER_FN(
-			requires(
-					VEG_CONCEPT(copy_constructible<T>) &&
-					VEG_CONCEPT(copy_assignable<T>)),
+			requires(VEG_CONCEPT(copyable<T>) && VEG_CONCEPT(copy_assignable<T>)),
 			void copy_from_slice,
 			((rhs, Slice<T const>)),
 			&VEG_NOEXCEPT_IF(false)) {

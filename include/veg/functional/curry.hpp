@@ -256,15 +256,14 @@ struct curry_once {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Args),
 			requires(
-					VEG_CONCEPT(move_constructible<Fn>) &&
-					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
+					VEG_CONCEPT(movable<Fn>) && VEG_ALL_OF(VEG_CONCEPT(movable<Args>))),
 			VEG_INLINE constexpr auto
 			operator(),
 			(fn, Fn),
 			(... args, Args))
 	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
+			VEG_CONCEPT(nothrow_movable<Fn>) &&
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
 			->CurriedOnce<Fn, Args...> {
 		return {
 				VEG_FWD(fn),
@@ -279,15 +278,14 @@ struct rcurry_once {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Args),
 			requires(
-					VEG_CONCEPT(move_constructible<Fn>) &&
-					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
+					VEG_CONCEPT(movable<Fn>) && VEG_ALL_OF(VEG_CONCEPT(movable<Args>))),
 			VEG_INLINE constexpr auto
 			operator(),
 			(fn, Fn),
 			(... args, Args))
 	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
+			VEG_CONCEPT(nothrow_movable<Fn>) &&
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
 			->RCurriedOnce<Fn, Args...> {
 		return {
 				VEG_FWD(fn),
@@ -303,15 +301,14 @@ struct curry_mut {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Args),
 			requires(
-					VEG_CONCEPT(move_constructible<Fn>) &&
-					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
+					VEG_CONCEPT(movable<Fn>) && VEG_ALL_OF(VEG_CONCEPT(movable<Args>))),
 			VEG_INLINE constexpr auto
 			operator(),
 			(fn, Fn),
 			(... args, Args))
 	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
+			VEG_CONCEPT(nothrow_movable<Fn>) &&
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
 			->CurriedMut<Fn, Args...> {
 		return {
 				VEG_FWD(fn),
@@ -326,15 +323,14 @@ struct rcurry_mut {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Args),
 			requires(
-					VEG_CONCEPT(move_constructible<Fn>) &&
-					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
+					VEG_CONCEPT(movable<Fn>) && VEG_ALL_OF(VEG_CONCEPT(movable<Args>))),
 			VEG_INLINE constexpr auto
 			operator(),
 			(fn, Fn),
 			(... args, Args))
 	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
+			VEG_CONCEPT(nothrow_movable<Fn>) &&
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
 			->RCurriedMut<Fn, Args...> {
 		return {
 				VEG_FWD(fn),
@@ -350,15 +346,14 @@ struct curry {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Args),
 			requires(
-					VEG_CONCEPT(move_constructible<Fn>) &&
-					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
+					VEG_CONCEPT(movable<Fn>) && VEG_ALL_OF(VEG_CONCEPT(movable<Args>))),
 			VEG_INLINE constexpr auto
 			operator(),
 			(fn, Fn),
 			(... args, Args))
 	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
+			VEG_CONCEPT(nothrow_movable<Fn>) &&
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
 			->Curried<Fn, Args...> {
 		return {
 				VEG_FWD(fn),
@@ -373,15 +368,14 @@ struct rcurry {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Args),
 			requires(
-					VEG_CONCEPT(move_constructible<Fn>) &&
-					VEG_ALL_OF(VEG_CONCEPT(move_constructible<Args>))),
+					VEG_CONCEPT(movable<Fn>) && VEG_ALL_OF(VEG_CONCEPT(movable<Args>))),
 			VEG_INLINE constexpr auto
 			operator(),
 			(fn, Fn),
 			(... args, Args))
 	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_move_constructible<Fn>) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Args>)))
+			VEG_CONCEPT(nothrow_movable<Fn>) &&
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
 			->RCurried<Fn, Args...> {
 		return {
 				VEG_FWD(fn),

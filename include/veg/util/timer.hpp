@@ -74,14 +74,11 @@ namespace nb {
 struct raii_timer {
 	VEG_TEMPLATE(
 			typename Fn,
-			requires(
-					VEG_CONCEPT(fn_once<Fn, void, i64>) &&
-					VEG_CONCEPT(move_constructible<Fn>)),
+			requires(VEG_CONCEPT(fn_once<Fn, void, i64>) && VEG_CONCEPT(movable<Fn>)),
 			auto
 			operator(),
 			(fn, Fn&&))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<Fn>))
-			->time::RaiiTimer<Fn> {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<Fn>))->time::RaiiTimer<Fn> {
 		return {VEG_FWD(fn)};
 	}
 };

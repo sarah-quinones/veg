@@ -9,8 +9,7 @@ namespace veg {
 template <typename Fn>
 struct VEG_NODISCARD Defer {
 	Fn fn;
-	constexpr Defer(Fn _fn)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<Fn>))
+	constexpr Defer(Fn _fn) VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<Fn>))
 			: fn(VEG_FWD(_fn)) {}
 	Defer(Defer const&) = delete;
 	Defer(Defer&&) VEG_NOEXCEPT = delete;
@@ -32,14 +31,11 @@ namespace nb {
 struct defer {
 	VEG_TEMPLATE(
 			typename Fn,
-			requires(
-					VEG_CONCEPT(move_constructible<Fn>) &&
-					VEG_CONCEPT(fn_once<Fn, void>)),
+			requires(VEG_CONCEPT(movable<Fn>) && VEG_CONCEPT(fn_once<Fn, void>)),
 			VEG_INLINE VEG_CPP20(constexpr) auto
 			operator(),
 			(fn, Fn&&))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<Fn>))
-			->veg::Defer<Fn> {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<Fn>))->veg::Defer<Fn> {
 		return {VEG_FWD(fn)};
 	}
 };

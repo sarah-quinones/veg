@@ -28,11 +28,11 @@ struct ComposeOnce<> {
 	// a forwarding reference is used to allow composing with `ref, mut`
 	VEG_TEMPLATE(
 			typename T,
-			requires(VEG_CONCEPT(move_constructible<T>)),
+			requires(VEG_CONCEPT(movable<T>)),
 			VEG_INLINE VEG_CPP14(constexpr) auto
 			operator(),
 			(arg, T&&))
-	&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T&& {
+	&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))->T&& {
 		return VEG_FWD(arg);
 	}
 };
@@ -40,23 +40,21 @@ template <>
 struct ComposeMut<> {
 	VEG_TEMPLATE(
 			typename T,
-			requires(VEG_CONCEPT(move_constructible<T>)),
+			requires(VEG_CONCEPT(movable<T>)),
 			VEG_INLINE VEG_CPP14(constexpr) auto
 			operator(),
 			(arg, T&&))
-	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T&& {
-		return VEG_FWD(arg);
-	}
+	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))->T&& { return VEG_FWD(arg); }
 };
 template <>
 struct Compose<> {
 	VEG_TEMPLATE(
 			typename T,
-			requires(VEG_CONCEPT(move_constructible<T>)),
+			requires(VEG_CONCEPT(movable<T>)),
 			VEG_INLINE constexpr auto
 			operator(),
 			(arg, T&&))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T&& {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))->T&& {
 		return VEG_FWD(arg);
 	}
 };
@@ -139,12 +137,11 @@ namespace nb {
 struct compose_once {
 	VEG_TEMPLATE(
 			typename... Fns,
-			requires(VEG_ALL_OF(VEG_CONCEPT(move_constructible<Fns>))),
+			requires(VEG_ALL_OF(VEG_CONCEPT(movable<Fns>))),
 			constexpr auto
 			operator(),
 			(... fns, Fns))
-	const VEG_NOEXCEPT_IF(
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Fns>)))
+	const VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
 			->ComposeOnce<Fns...> {
 
 		/* https://eel.is/c++draft/dcl.init.aggr#15
@@ -163,12 +160,11 @@ struct compose_once {
 struct compose_mut {
 	VEG_TEMPLATE(
 			typename... Fns,
-			requires(VEG_ALL_OF(VEG_CONCEPT(move_constructible<Fns>))),
+			requires(VEG_ALL_OF(VEG_CONCEPT(movable<Fns>))),
 			constexpr auto
 			operator(),
 			(... fns, Fns))
-	const VEG_NOEXCEPT_IF(
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Fns>)))
+	const VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
 			->ComposeMut<Fns...> {
 		return {internal::Wrapper<Fns>{Fns(VEG_FWD(fns))}..., {}};
 	}
@@ -176,12 +172,11 @@ struct compose_mut {
 struct compose {
 	VEG_TEMPLATE(
 			typename... Fns,
-			requires(VEG_ALL_OF(VEG_CONCEPT(move_constructible<Fns>))),
+			requires(VEG_ALL_OF(VEG_CONCEPT(movable<Fns>))),
 			constexpr auto
 			operator(),
 			(... fns, Fns))
-	const VEG_NOEXCEPT_IF(
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_constructible<Fns>)))
+	const VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
 			->Compose<Fns...> {
 		return {internal::Wrapper<Fns>{Fns(VEG_FWD(fns))}..., {}};
 	}

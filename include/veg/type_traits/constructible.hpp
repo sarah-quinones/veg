@@ -82,17 +82,17 @@ VEG_DEF_CONCEPT(
 		VEG_CONCEPT(convertible<U&&, T>));
 
 VEG_DEF_CONCEPT(
-		typename T, move_constructible, VEG_CONCEPT(constructible<T, T&&>));
+		typename T, movable, VEG_CONCEPT(constructible<T, T&&>));
 VEG_DEF_CONCEPT(
 		typename T,
-		nothrow_move_constructible,
+		nothrow_movable,
 		VEG_CONCEPT(nothrow_constructible<T, T&&>));
 
 VEG_DEF_CONCEPT(
-		typename T, copy_constructible, VEG_CONCEPT(constructible<T, T const&>));
+		typename T, copyable, VEG_CONCEPT(constructible<T, T const&>));
 VEG_DEF_CONCEPT(
 		typename T,
-		nothrow_copy_constructible,
+		nothrow_copyable,
 		VEG_CONCEPT(nothrow_constructible<T, T const&>));
 
 } // namespace concepts

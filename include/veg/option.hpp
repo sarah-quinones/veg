@@ -22,11 +22,11 @@ namespace nb {
 struct some {
 	VEG_TEMPLATE(
 			typename T,
-			requires(VEG_CONCEPT(move_constructible<T>)),
+			requires(VEG_CONCEPT(movable<T>)),
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator(),
 			(arg, T))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->Option<T> {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))->Option<T> {
 		return {inplace, internal::ConvertingFn<T&&, T>{VEG_FWD(arg)}};
 	}
 };
@@ -164,10 +164,10 @@ public:
 			(None /*tag*/) VEG_NOEXCEPT : Option{} {}
 
 	VEG_CONSTRAINED_MEMBER_FN(
-			requires(VEG_CONCEPT(move_constructible<T>)),
+			requires(VEG_CONCEPT(movable<T>)),
 			VEG_INLINE constexpr Option,
 			((/*tag*/, Some), (value, T)),
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>)))
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)))
 			: Base{
 						internal::_uwunion::EmplaceTag{},
 						internal::UTag<usize{1}>{},
@@ -209,7 +209,7 @@ public:
 			requires(VEG_CONCEPT(option<T>)),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto flatten,
 			T,
-			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))) {
+			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))) {
 		return static_cast<Option<T>&&>(*this).map_or_else(
 				internal::option_::into_fn<T>{}, internal::option_::ret_none<T>{});
 	}
@@ -221,10 +221,10 @@ private:
 
 public:
 	VEG_CONSTRAINED_MEMBER_FN_NO_PARAM(
-			requires(VEG_CONCEPT(move_constructible<T>)),
+			requires(VEG_CONCEPT(movable<T>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto take,
 			Option<T>,
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))) {
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))) {
 		if (is_some()) {
 			Option<T> val{
 					inplace,
@@ -237,19 +237,19 @@ public:
 	}
 
 	VEG_CONSTRAINED_MEMBER_FN(
-			requires(VEG_CONCEPT(move_constructible<T>)),
+			requires(VEG_CONCEPT(movable<T>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto unwrap_unchecked,
 			((/*tag*/, Unsafe)),
-			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))->T) {
+			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))->T) {
 		meta::unreachable_if(is_none());
 		return static_cast<T&&>(this->_get());
 	}
 
 	VEG_CONSTRAINED_MEMBER_FN_NO_PARAM(
-			requires(VEG_CONCEPT(move_constructible<T>)),
+			requires(VEG_CONCEPT(movable<T>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto unwrap,
 			T,
-			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_move_constructible<T>))) {
+			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))) {
 		VEG_INTERNAL_ASSERT_PRECONDITION(is_some());
 		return static_cast<T&&>(this->_get());
 	}
@@ -257,14 +257,13 @@ public:
 	VEG_TEMPLATE(
 			(typename Fn),
 			requires(
-					VEG_CONCEPT(move_constructible<T>) &&
-					VEG_CONCEPT(fn_once<Fn, bool, Ref<T>>)),
+					VEG_CONCEPT(movable<T>) && VEG_CONCEPT(fn_once<Fn, bool, Ref<T>>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto filter,
 			(fn, Fn)) &&
 
 			VEG_NOEXCEPT_IF(
 					(VEG_CONCEPT(nothrow_fn_once<Fn, bool, Ref<T>>) &&
-	         VEG_CONCEPT(nothrow_move_constructible<T>))) -> Option<T> {
+	         VEG_CONCEPT(nothrow_movable<T>))) -> Option<T> {
 		if (is_some() && VEG_FWD(fn)(Ref<T>{AsRef{}, this->_get()})) {
 			return {
 					inplace,
@@ -349,16 +348,14 @@ public:
 
 	VEG_TEMPLATE(
 			(typename Fn, typename Ret = meta::invoke_result_t<Fn, T>),
-			requires(
-					VEG_CONCEPT(fn_once<Fn, Ret, T>) &&
-					VEG_CONCEPT(move_constructible<Ret>)),
+			requires(VEG_CONCEPT(fn_once<Fn, Ret, T>) && VEG_CONCEPT(movable<Ret>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto map_or,
 			(fn, Fn),
 			(d, Ret)) &&
 
 			VEG_NOEXCEPT_IF(
 					VEG_CONCEPT(nothrow_fn_once<Fn, Ret, T>) &&
-					VEG_CONCEPT(nothrow_move_constructible<Ret>)) -> Ret {
+					VEG_CONCEPT(nothrow_movable<Ret>)) -> Ret {
 		if (is_none()) {
 			return VEG_FWD(d);
 		}
@@ -367,15 +364,13 @@ public:
 
 	VEG_TEMPLATE(
 			(typename Fn),
-			requires(
-					VEG_CONCEPT(fn_once<Fn, Option<T>>) &&
-					VEG_CONCEPT(move_constructible<T>)),
+			requires(VEG_CONCEPT(fn_once<Fn, Option<T>>) && VEG_CONCEPT(movable<T>)),
 			VEG_NODISCARD VEG_CPP14(constexpr) auto or_else,
 			(fn, Fn)) &&
 
 			VEG_NOEXCEPT_IF(
 					(VEG_CONCEPT(nothrow_fn_once<Fn, Option<T>>) &&
-	         VEG_CONCEPT(nothrow_move_constructible<T>))) -> Option<T> {
+	         VEG_CONCEPT(nothrow_movable<T>))) -> Option<T> {
 		if (is_some()) {
 			return {
 					inplace,

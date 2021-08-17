@@ -164,7 +164,7 @@ struct bit_cast {
 			requires(
 					(VEG_CONCEPT(trivially_copyable<From>) && //
 	         VEG_CONCEPT(trivially_copyable<To>) &&   //
-	         VEG_CONCEPT(move_constructible<To>) &&   //
+	         VEG_CONCEPT(movable<To>) &&              //
 	         (sizeof(From) == sizeof(To)))),
 			VEG_INLINE VEG_BITCAST_CONSTEXPR auto
 			operator(),
