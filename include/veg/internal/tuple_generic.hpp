@@ -42,6 +42,12 @@ struct TupleLeaf;
 
 template <usize I, typename T>
 struct TupleLeaf<I, T, true> : T {
+	template <typename Fn>
+	VEG_INLINE constexpr TupleLeaf(InPlace /*tag*/, Fn fn)
+			VEG_NOEXCEPT_LIKE(VEG_FWD(fn)())
+			: T{VEG_FWD(fn)()} {}
+	TupleLeaf() = default;
+
 	VEG_INLINE constexpr auto leaf_get() const VEG_NOEXCEPT -> T& {
 		return const_cast<T&>(*this);
 	}
@@ -50,6 +56,13 @@ struct TupleLeaf<I, T, true> : T {
 template <usize I, typename T>
 struct TupleLeaf<I, T, false> {
 	T leaf;
+
+	template <typename Fn>
+	VEG_INLINE constexpr TupleLeaf(InPlace /*tag*/, Fn fn)
+			VEG_NOEXCEPT_LIKE(VEG_FWD(fn)())
+			: leaf{VEG_FWD(fn)()} {}
+	TupleLeaf() = default;
+
 	VEG_INLINE constexpr auto leaf_get() const VEG_NOEXCEPT -> T& {
 		return const_cast<T&>(leaf);
 	}
@@ -68,7 +81,10 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 			VEG_INLINE constexpr IndexedTuple,
 			((/*tag*/, Direct), (... args, Ts)),
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>))))
-			: TupleLeaf<Is, Ts>{VEG_FWD(args)}... {};
+			: TupleLeaf<Is, Ts>{
+						InPlace{},
+						internal::ConvertingFn<Ts&&, Ts>{VEG_FWD(args)},
+				}... {};
 
 	VEG_TEMPLATE(
 			typename... Fns,
@@ -77,7 +93,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 			(/*tag*/, InPlace),
 			(... fns, Fns))
 	VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_invocable<Ts>)))
-			: TupleLeaf<Is, Ts>{VEG_FWD(fns)()}... {}
+			: TupleLeaf<Is, Ts>{InPlace{}, VEG_FWD(fns)}... {}
 
 	VEG_EXPLICIT_COPY(IndexedTuple);
 
