@@ -34,11 +34,126 @@ struct CurriedFn {
 
 namespace tuple {
 
+template <typename ISeq, typename... Ts>
+struct IndexedTuple;
+
 template <
 		usize I,
 		typename T,
 		bool = (VEG_CONCEPT(empty<T>) && !VEG_CONCEPT(final<T>))>
 struct TupleLeaf;
+
+namespace nb {
+
+struct unpack {
+	VEG_TEMPLATE(
+			(typename Fn, typename... Ts, usize... Is),
+			requires(VEG_CONCEPT(
+					fn_once<Fn, veg::meta::invoke_result_t<Fn, Ts&&...>, Ts&&...>)),
+			VEG_INLINE constexpr auto
+			operator(),
+			(args, IndexedTuple<veg::meta::index_sequence<Is...>, Ts...>),
+			(fn, Fn))
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<
+																		Fn,
+																		veg::meta::invoke_result_t<Fn, Ts&&...>,
+																		Ts&&...>))
+			->veg::meta::invoke_result_t<Fn, Ts&&...> {
+
+		return VEG_FWD(fn)(static_cast<Ts&&>(
+				static_cast<TupleLeaf<Is, Ts>&&>(args).leaf_get())...);
+	}
+};
+
+struct for_each_i {
+	VEG_TEMPLATE(
+			(typename Fn, typename... Ts, usize... Is),
+			requires(VEG_ALL_OF(VEG_CONCEPT(fn_mut<Fn, void, Fix<i64{Is}>, Ts&&>))),
+			VEG_INLINE VEG_CPP14(constexpr) void
+			operator(),
+			(args, IndexedTuple<veg::meta::index_sequence<Is...>, Ts...>),
+			(fn, Fn))
+	const VEG_NOEXCEPT_IF(
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_mut<Fn, void, Fix<i64{Is}>, Ts&&>))) {
+		VEG_EVAL_ALL(fn(
+				Fix<i64{Is}>{},
+				static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(args).leaf_get())));
+	}
+};
+
+struct for_each {
+	VEG_TEMPLATE(
+			(typename Fn, typename... Ts, usize... Is),
+			requires(VEG_ALL_OF(VEG_CONCEPT(fn_mut<Fn, void, Ts&&>))),
+			VEG_INLINE VEG_CPP14(constexpr) void
+			operator(),
+			(args, IndexedTuple<veg::meta::index_sequence<Is...>, Ts...>),
+			(fn, Fn))
+	const VEG_NOEXCEPT_IF(
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_mut<Fn, void, Ts&&>))) {
+		VEG_EVAL_ALL(fn(
+				static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(args).leaf_get())));
+	}
+};
+
+struct map_i {
+	VEG_TEMPLATE(
+			(typename Fn, typename... Ts, usize... Is),
+			requires(VEG_ALL_OF(
+					VEG_CONCEPT(fn_mut<
+											Fn,
+											veg::meta::invoke_result_t<Fn&, Fix<i64{Is}>, Ts&&>,
+											Fix<i64{Is}>,
+											Ts&&>))),
+			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
+			operator(),
+			(args, IndexedTuple<veg::meta::index_sequence<Is...>, Ts...>),
+			(fn, Fn))
+	const VEG_NOEXCEPT_IF(
+			VEG_ALL_OF(
+					VEG_CONCEPT(nothrow_fn_mut<
+											Fn,
+											veg::meta::invoke_result_t<Fn&, Fix<i64{Is}>, Ts&&>,
+											Fix<i64{Is}>,
+											Ts&&>)))
+			->Tuple<veg::meta::invoke_result_t<Fn&, Fix<i64{Is}>, Ts&&>...> {
+		return {
+				InPlace{},
+				internal::UnindexedFn<i64{Is}, Fn&, Ts&&>{
+						fn,
+						static_cast<Ts&&>(
+								static_cast<TupleLeaf<Is, Ts>&&>(args).leaf_get()),
+				}...,
+		};
+	}
+};
+
+struct map {
+
+	VEG_TEMPLATE(
+			(typename Fn, typename... Ts, usize... Is),
+			requires(VEG_ALL_OF(VEG_CONCEPT(
+					fn_mut<Fn, veg::meta::invoke_result_t<Fn&, Ts&&>, Ts&&>))),
+			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
+			operator(),
+			(args, IndexedTuple<veg::meta::index_sequence<Is...>, Ts...>),
+			(fn, Fn))
+	const VEG_NOEXCEPT_IF(
+			VEG_ALL_OF(VEG_CONCEPT(
+					nothrow_fn_mut<Fn, veg::meta::invoke_result_t<Fn&, Ts&&>, Ts&&>)))
+			->Tuple<veg::meta::invoke_result_t<Fn&, Ts&&>...> {
+		return {
+				InPlace{},
+				internal::CurriedFn<Fn&, Ts&&>{
+						fn,
+						static_cast<Ts&&>(
+								static_cast<TupleLeaf<Is, Ts>&&>(args).leaf_get()),
+				}...,
+		};
+	}
+};
+
+} // namespace nb
 
 template <usize I, typename T>
 struct TupleLeaf<I, T, true> : T {
@@ -67,9 +182,6 @@ struct TupleLeaf<I, T, false> {
 		return const_cast<T&>(leaf);
 	}
 };
-
-template <typename ISeq, typename... Ts>
-struct IndexedTuple;
 
 template <usize... Is, typename... Ts>
 struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
@@ -167,8 +279,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 			VEG_INLINE VEG_CPP14(constexpr) auto unpack,
 			(fn, Fn))
 	&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Ts...>))->Ret {
-		return VEG_FWD(fn)(static_cast<Ts&&>(
-				static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf_get())...);
+		return nb::unpack{}(static_cast<IndexedTuple&&>(*this), VEG_FWD(fn));
 	}
 
 	VEG_TEMPLATE(
@@ -177,8 +288,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 			VEG_INLINE VEG_CPP14(constexpr) void for_each,
 			(fn, Fn))
 	&&VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_mut<Fn, void, Ts>))) {
-		VEG_EVAL_ALL(fn(
-				static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf_get())));
+		nb::for_each{}(static_cast<IndexedTuple&&>(*this), VEG_FWD(fn));
 	}
 
 	VEG_TEMPLATE(
@@ -188,9 +298,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 			(fn, Fn))
 	&&VEG_NOEXCEPT_IF(
 			VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_mut<Fn, void, Fix<i64{Is}>, Ts>))) {
-		VEG_EVAL_ALL(fn(
-				Fix<i64{Is}>{},
-				static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf_get())));
+		nb::for_each_i{}(static_cast<IndexedTuple&&>(*this), VEG_FWD(fn));
 	}
 
 	VEG_TEMPLATE(
@@ -210,14 +318,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 															 Fix<i64{Is}>,
 															 Ts&&>)))
 				->Tuple<meta::invoke_result_t<Fn&, Fix<i64{Is}>, Ts>...> {
-		return {
-				InPlace{},
-				internal::UnindexedFn<i64{Is}, Fn&, Ts&&>{
-						fn,
-						static_cast<Ts&&>(
-								static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf_get()),
-				}...,
-		};
+		return nb::map_i{}(static_cast<IndexedTuple&&>(*this), VEG_FWD(fn));
 	}
 
 	VEG_TEMPLATE(
@@ -230,14 +331,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 				VEG_ALL_OF(VEG_CONCEPT(
 						nothrow_fn_mut<Fn, meta::invoke_result_t<Fn&, Ts>, Ts>)))
 				->Tuple<meta::invoke_result_t<Fn&, Ts>...> {
-		return {
-				InPlace{},
-				internal::CurriedFn<Fn&, Ts&&>{
-						fn,
-						static_cast<Ts&&>(
-								static_cast<TupleLeaf<Is, Ts>&&>(*this).leaf_get()),
-				}...,
-		};
+		return nb::map{}(static_cast<IndexedTuple&&>(*this), VEG_FWD(fn));
 	}
 };
 
