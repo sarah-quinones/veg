@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(veg CXX)
 
 get_directory_property(has_parent PARENT_DIRECTORY)
+
 if(has_parent)
   set(VEG_TOP_LEVEL FALSE)
 else()
@@ -9,6 +10,11 @@ else()
 endif()
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+
+if(VEG_DOCS)
+  add_subdirectory(docs)
+  return()
+endif()
 
 add_library(_veg_ub ${CMAKE_CURRENT_SOURCE_DIR}/src/ub.cpp)
 set_property(TARGET _veg_ub PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)

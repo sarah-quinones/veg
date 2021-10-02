@@ -8,5 +8,6 @@ small c++ utility library
    assert
    utility
    tuple
+   concepts
 
 :ref:`genindex`

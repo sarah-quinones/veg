@@ -1,270 +1,134 @@
-tuple
+Tuple
 =====
 
 #include <veg/tuple.hpp>
 
-``constexpr`` support is provided starting from c++14
+.. role:: ccode(code)
+   :language: cpp
 
 .. cpp:namespace:: veg
-.. cpp:class:: template <typename... Ts> tuple
 
-  .. cpp:function:: constexpr tuple(tuple const&) = default;
-  .. cpp:function:: constexpr tuple(tuple&&) = default;
-  .. cpp:function:: constexpr tuple() noexcept(conditionally)
+.. cpp:class:: template <typename... Ts> Tuple
 
-    | default constructor: each member is default or value initialized
-    | viable if
-      `default_constructible<Ti> <https://en.cppreference.com/w/cpp/types/is_default_constructible>`__
-      for all ``i``
-    | ``noexcept`` if `nothrow_default_constructible<Ti>
-      <https://en.cppreference.com/w/cpp/types/is_default_constructible>`__
+   inherits from :code:`IndexedTuple<meta::make_index_sequence<sizeof...(Ts)>, Ts...>`,
+   and inherits its constructors
 
-  .. cpp:function:: template <typename... Us> constexpr tuple(elems_t, Us&&... args) noexcept(conditionally)
+.. cpp:namespace:: veg::tuple
+
+.. cpp:class:: template <usize... Is, typename... Ts> IndexedTuple<meta::index_sequence<Is...>,Ts...>
+
+  .. cpp:function:: IndexedTuple() = default;
+
+  .. cpp:function:: explicit constexpr IndexedTuple(IndexedTuple const&) = default;
+
+  .. cpp:function:: constexpr IndexedTuple(IndexedTuple&&) = default;
+
+  .. cpp:function:: constexpr IndexedTuple(Direct, Ts... args) noexcept(see_below)
 
     | direct constructor: each member is constructed by forwarding the
-      corresponding parameter ``Ti(FWD(args_i))``
-    | viable if `constructible<Ti, Ui&&>
-      <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for all
-      ``i``
-    | ``noexcept`` if `nothrow_constructible<Ti, Ui&&>
-      <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for
-      all ``i``
+      corresponding parameter :code:`Ts[I](FWD(args_i))`
+    | viable if :cpp:concept:`movable\<Ts[I]\><veg::concepts::movable>` for all
+      ``I``
+    | ``noexcept`` if :cpp:concept:`nothrow_movable\<T[I]\><veg::concepts::movable>` for
+      all ``I``
 
-  .. cpp:function:: template<typename... Fn> constexpr tuple(inplace_t, Fn&&... fn) noexcept(conditionally)
+  .. cpp:function:: template <typename... Fns> constexpr IndexedTuple(InPlace, Fns... fns) noexcept(see_below)
 
-    | inplace constructor: each member is initialized from the result of
-      invoking the corresponding parameter ``Ti(FWD(fn_i)())``
-    | viable if `invocable<Ti>
-      <https://en.cppreference.com/w/cpp/types/is_invocable>`__ and
-      `invoke_result_t<Fn_i> == Ti
-        <https://en.cppreference.com/w/cpp/types/result_of>`__ for all ``i``
-    | ``noexcept`` if `nothrow_invocable<Ti>
-      <https://en.cppreference.com/w/cpp/types/is_invocable>`__ for all ``i``
+    | in place constructor: each member is initialized from the result of
+      invoking the corresponding parameter :code:`Ts[I](FWD(fn_i)())`
+    | viable if `fn_once<Fn_i, Ts[I]>
+      <https://en.cppreference.com/w/cpp/types/is_invocable>`__ for all ``I``
+    | ``noexcept`` if `nothrow_fn_once<Fn_i, Ts[I]>
+      <https://en.cppreference.com/w/cpp/types/is_invocable>`__ for all ``I``
 
-  .. centered:: converting constructors
+  .. cpp:function:: constexpr auto as_ref() const & noexcept -> Tuple<Ref<Ts>...>
 
-  .. tabs::
+    | returns a tuple containing :code:`ref(elems[Is])...`
 
-    .. tab:: copy
+  .. cpp:function:: constexpr auto as_mut() const & noexcept -> Tuple<RefMut<Ts>...>
 
-      .. cpp:function:: template <typename... Us>\
-                        constexpr tuple(tuple<Us...> const& tup) noexcept(conditionally);
+    | returns a tuple containing :code:`mut(elems[Is])...`
 
-        | converting copy constructor: each member is initialized from the
-          corresponding member of the tuple parameter
-          ``Ti(tup.elem_i)``
-        | viable if `constructible<Ti, Ui const&>
-          <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for all
-          ``i``
-        | ``explicit`` if `convertible_to<Ui const&, Ti>
-          <https://en.cppreference.com/w/cpp/types/is_convertible>`__ is
-          ``false`` for at least one ``i``
-        | ``noexcept`` if `nothrow_constructible<Ti, Ui const&>
-          <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for
-          all ``i``
+  .. cpp:function:: constexpr auto as_const()&& noexcept -> Tuple<Ref<Us>...>
 
-    .. tab:: lvalue
+    | viable if ``Ts[I] := RefMut<Us[I]>`` for all ``I`` returns a tuple containing :code:`elem[Is].as_const()...`
 
-      .. cpp:function:: template <typename... Us>\
-                        constexpr tuple(tuple<Us...>& tup) noexcept(conditionally);
 
-        | converting lvalue constructor: each member is initialized from the
-          corresponding member of the tuple parameter
-          ``Ti(tup.elem_i)``
-        | viable if `constructible<Ti, Ui&>
-          <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for all
-          ``i``
+  .. cpp:function:: template <i64 I> constexpr operator[](Fix<I>) const& noexcept -> ith<I, Ts...> const&
+  .. cpp:function:: template <i64 I> constexpr operator[](Fix<I>)& noexcept -> ith<I, Ts...> &
+  .. cpp:function:: template <i64 I> constexpr operator[](Fix<I>)&& noexcept(see_below) -> ith<I, Ts...>
 
-        .. warning::
-          when ``Ti == Ui`` for all ``i``, this is shadowed by the copy constructor
+    | returns the ith element
+    | the rvalue qualified overload is viable if
+      :cpp:concept:`movable\<Ts[I]\><veg::concepts::movable>` for all ``I``
+    | the rvalue qualified overload is  ``noexcept`` if
+      :cpp:concept:`nothrow_movable\<Ts[I]\><veg::concepts::movable>` for all ``I``
 
-        | ``explicit`` if `convertible_to<Ui&, Ti>
-          <https://en.cppreference.com/w/cpp/types/is_convertible>`__ is
-          ``false`` for at least one ``i``
-        | ``noexcept`` if `nothrow_constructible<Ti, Ui&>
-          <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for
-          all ``i``
+  .. cpp:function:: template <typename Fn, typename Ret = meta::invoke_result_t<Fn, Ts...>> constexpr auto unpack(Fn fn)&& noexcept(see_below) -> Ret
 
-    .. tab:: forwarding
+    | calls :code:`FWD(fn)(FWD(elems_i)...)`
+    | viable if :cpp:concept:`fn_once\<Fn, Ret\><veg::concepts::fn_once>`
+    | ``noexcept`` if :cpp:concept:`nothrow_fn_once\<Fn, Ret\><veg::concepts::fn_once>`
 
-      .. cpp:function:: template <typename... Us>\
-                        constexpr tuple(tuple<Us...>&& tup) noexcept(conditionally);
+  .. cpp:function:: template <typename Fn> constexpr void for_each(Fn fn)&& noexcept(see_below)
 
-        | converting forwarding constructor: each member is initialized by
-          forwarding the corresponding member of the tuple parameter
-          ``Ti(static_cast<Ui&&>(tup.elem_i))``
-        | viable if `constructible<Ti, Ui&&>
-          <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for all
-          ``i``
-        | ``explicit`` if `convertible_to<Ui&&, Ti>
-          <https://en.cppreference.com/w/cpp/types/is_convertible>`__ is
-          ``false`` for at least one ``i``
-        | ``noexcept`` if `nothrow_constructible<Ti, Ui&&>
-          <https://en.cppreference.com/w/cpp/types/is_constructible>`__ for
-          all ``i``
+    | calls :code:`(fn(FWD(elems_i)), ...)`
+    | viable if :cpp:concept:`fn_mut\<Fn, void, Ts[I]\><veg::concepts::fn_mut>` for all ``I``
+    | ``noexcept`` if :cpp:concept:`nothrow_fn_mut\<Fn, void, Ts[I]\><veg::concepts::fn_mut>` for all ``I``
 
-    .. tab:: forwarding (deleted)
+  .. cpp:function:: template <typename Fn> constexpr void for_each_i(Fn fn)&& noexcept(see_below)
 
-      .. cpp:function:: template <typename... Us>\
-                        constexpr tuple(tuple<Us...> const&&) = delete;
+    | calls :code:`(fn(Fix<Is>{}, FWD(elems[Is])), ...)`
+    | viable if :cpp:concept:`fn_mut\<Fn, void, Fix\<Is\>, Ts[I]\><veg::concepts::fn_mut>` for all ``I``
+    | ``noexcept`` if :cpp:concept:`nothrow_fn_mut\<Fn, void, Fix\<Is\>, Ts[I]\><veg::concepts::fn_mut>` for all ``I``
 
-        | prevents implicit ``rvalue -> lvalue`` conversions
+  .. cpp:function:: template <typename Fn, typename Rets = meta::invoke_result_t<Fn&, Ts>...> constexpr auto map(Fn fn)&& noexcept(see_below) -> Tuple<Rets...>
 
-  .. centered:: assignment operators
+    | returns a tuple containing :code:`fn(FWD(elems_i))...`
+    | viable if :cpp:concept:`fn_mut\<Fn, Rets[I], Ts[I]\><veg::concepts::fn_mut>` for all ``I``
+    | ``noexcept`` if :cpp:concept:`nothrow_fn_mut\<Fn, Rets[I], Ts[I]\><veg::concepts::fn_mut>` for all ``I``
 
-  .. tabs::
+  .. cpp:function:: template <\
+       typename Fn,\
+       typename Rets = meta::invoke_result_t<Fn&, Fix<Is>, Ts>...\
+     >\
+     constexpr auto for_each_i(Fn fn)&& noexcept(see_below) -> Tuple<Rets...>
 
-    .. tab:: copy
-
-      .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...> const& tup) & noexcept(conditionally) -> tuple&;
-
-      .. cpp:function:: auto operator=(tuple const&) & -> tuple& = default;
-
-        | assignment operator: assigns to each member ``elem_i = tup.elem_i``
-        | viable if `!reference<Ti>
-          <https://en.cppreference.com/w/cpp/types/is_reference>`__ ``&&``
-          `assignable<Ti&, Ui const&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-        | ``noexcept`` if `nothrow_assignable<Ti&, Ui const&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-
-    .. tab:: forwarding
-
-      .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...>&& tup) & noexcept(conditionally) -> tuple&;
-
-      .. cpp:function:: auto operator=(tuple&&) & -> tuple& = default;
-
-        | forwarding assignment operator: assigns to each member ``elem_i =
-          static_cast<Ui&&>(tup.elem_i)``
-        | viable if `!reference<Ti>
-          <https://en.cppreference.com/w/cpp/types/is_reference>`__ ``&&``
-          `assignable<Ti&, U&&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-        | ``noexcept`` if `nothrow_assignable<Ti&, Ui&&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-
-  .. centered:: proxy assignment operators
-
-  .. tabs::
-
-    .. tab:: copy
-
-      .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...> const&& tup) const&& noexcept(conditionally) -> tuple const&&;
-
-        | proxy assignment operator: assigns to each member ``FORWARD(elem_i) = tup.elem_i``
-        | viable if `assignable<Ti const&&, Ui const&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-        | ``noexcept`` if `nothrow_assignable<Ti const&&, Ui const&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-
-    .. tab:: forwarding
-
-      .. cpp:function:: template <typename... Us>\
-                        constexpr auto operator=(tuple<Us...>&& tup) const&& noexcept(conditionally) -> tuple const&&;
-
-        | forwarding proxy assignment operator: assigns to each member ``FORWARD(elem_i) =
-          FORWARD(tup.elem_i)``
-        | viable if `assignable<Ti const&&, U&&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-        | ``noexcept`` if `nothrow_assignable<Ti const&&, Ui&&>
-          <https://en.cppreference.com/w/cpp/types/is_assignable>`__ for all ``i``
-
-  .. centered:: access operator
-
-  .. tabs::
-
-    .. tab:: const lvalue
-
-      .. cpp:function:: template <i64 I>\
-                        constexpr auto operator[](fix<i64>) const& noexcept -> T_I const&;
-
-        | returns a shallow-const reference to the Ith element
-        | viable if ``0 <= I < sizeof...(Ts)``
-
-    .. tab:: mutable lvalue
-
-      .. cpp:function:: template <i64 I>\
-                        constexpr auto operator[](fix<i64>) & noexcept -> T_I&;
-
-        | returns a reference to the Ith element
-        | viable if ``0 <= I < sizeof...(Ts)``
-
-    .. tab:: rvalue
-
-      .. cpp:function:: template <i64 I>\
-                        constexpr auto operator[](fix<i64>) && noexcept(conditionally) -> T_I;
-
-        | returns a shallow-const reference to the Ith element
-        | viable if ``0 <= I < sizeof...(Ts)`` and `move_constructible<T_I>
-          <https://en.cppreference.com/w/cpp/types/is_move_constructible>`__
-        | ``noexcept`` if `nothrow_move_constructible<T_I>
-          <https://en.cppreference.com/w/cpp/types/is_move_constructible>`__
-
-    .. tab:: rvalue (deleted)
-
-      .. cpp:function:: template <i64 I>\
-                        constexpr void operator[](fix<i64>) && = delete;
-
-        | prevents selecting the const overload
-        | viable if ``0 <= I < sizeof...(Ts)`` and `move_constructible<T_I>
-          <https://en.cppreference.com/w/cpp/types/is_move_constructible>`__ is ``false``
-
-  .. centered:: to reference
-
-  .. tabs::
-
-    .. tab:: const lvalue
-
-      .. cpp:function:: constexpr auto as_ref() const& noexcept -> tuple<Ts const&...>;
-
-    .. tab:: mutable lvalue
-
-      .. cpp:function:: constexpr auto as_ref() && noexcept -> tuple<Ts&&...>;
-
-    .. tab:: rvalue
-
-      .. cpp:function:: constexpr auto as_ref() & noexcept -> tuple<Ts&...>;
-
-  | returns tuple of references to the members, or in the case of
-    references, to the objects they point to
+    | retusn a tuple containing :code:`fn(Fix<Is>{}, FWD(elems[Is]))...`
+    | viable if :cpp:concept:`fn_mut\<Fn, Rets[I], Fix\<Is\>, Ts[I]\><veg::concepts::fn_mut>` for all ``I``
+    | ``noexcept`` if :cpp:concept:`nothrow_fn_mut\<Fn, Rets[I], Fix\<Is\>, Ts[I]\><veg::concepts::fn_mut>` for all ``I``
 
 
 .. cpp:function:: template <usize I, typename... Ts>\
-                  constexpr auto __adl::get(tuple<Ts...>& tup) noexcept -> Ti;
+                  constexpr auto get(Tuple<Ts...>& tup) noexcept -> Ti;
 
 .. cpp:function:: template <usize I, typename... Ts>\
-                  constexpr auto __adl::get(tuple<Ts...> const& tup) noexcept -> Ti const&;
+                  constexpr auto get(Tuple<Ts...> const& tup) noexcept -> Ti const&;
 
 .. cpp:function:: template <usize I, typename... Ts>\
-                  constexpr auto __adl::get(tuple<Ts...>&& tup) noexcept -> Ti&&;
+                  constexpr auto get(Tuple<Ts...>&& tup) noexcept -> Ti&&;
 
 .. cpp:function:: template <usize I, typename... Ts>\
-                  constexpr void __adl::get(tuple<Ts...> const&& tup) = delete;
+                  constexpr void get(Tuple<Ts...> const&& tup) = delete;
 
-  | returns ith element
+  | returns ith element. regular function template, visible to ADL
 
 .. cpp:function:: template <typename... Ts, typename... Us>\
-                  constexpr void __adl::swap(tuple<Ts...>& t, tuple<Us...>& u) noexcept(conditionally);
+                  constexpr void swap(Tuple<Ts...>& t, Tuple<Us...>& u) noexcept(conditionally);
 
-  | expression-equivalent to memberwise swap :cpp:func:`veg::swap`\ :code:`(t.elem_i, u.elem_i)`
+  | expression-equivalent to memberwise swap :cpp:func:`veg::swap`\ :code:`(t.elem_i, u.elem_i)`. regular function template, visible to ADL
   | not viable if some ``Ti``, or some ``Ui`` is a reference
 
-.. cpp:function:: template <typename... Ts, typename... Us>\
-                  constexpr void __adl::swap(tuple<Ts...>& u, tuple<Us...>const&& v) noexcept(conditionally);
+.. cpp:function:: template <typename... Ts>\
+                  constexpr auto cat(Ts... ts) noexcept(conditionally) -> see_below;
 
-  | expression-equivalent to memberwise swap :cpp:func:`veg::swap`\ :code:`(t.elem_i, FORWARD(u.elem_i))`
-  | not viable if some ``Ti`` is a reference
+  | takes a variadic number of indexed tuples and returns a tuple whose elements are those of the first tuple, followed by the elements of the second and so on
+  | viable if ``ts[I]`` is some ``IndexedTuple`` and is :cpp:concept:`movable\<Ts[I]\><veg::concepts::movable>` for all ``I``
+  | ``noexcept`` if it's :cpp:concept:`nothrow_movable\<Ts[I]\><veg::concepts::movable>` for all ``I``
 
-.. cpp:function:: template <typename... Ts, typename... Us>\
-                  constexpr void __adl::swap(tuple<Ts...> const&& u, tuple<Us...>& v) noexcept(conditionally);
+.. cpp:function:: template <typename... Ts>\
+                  constexpr auto zip(Ts... t) noexcept(conditionally) -> see_below;
 
-  | expression-equivalent to memberwise swap :cpp:func:`veg::swap`\ :code:`(FORWARD(t.elem_i), u.elem_i)`
-  | not viable if some ``Ui`` is a reference
-
-.. cpp:function:: template <typename... Ts, typename... Us>\
-                  constexpr void __adl::swap(tuple<Ts...> const&& u, tuple<Us...> const&& v) noexcept(conditionally);
-
-  | expression-equivalent to memberwise swap :cpp:func:`veg::swap`\ :code:`(FORWARD(t.elem_i), FORWARD(u.elem_i))`
+  | takes a variadic number of indexed tuples ``t[i]...`` and returns a tuple whose elements are ``((t[j][i]...)_j...)_i``
+  | viable if ``ts[I]`` is some ``IndexedTuple``, is :cpp:concept:`movable\<Ts[I]\><veg::concepts::movable>` for all ``I``, and the tuples are all the same size
+  | ``noexcept`` if it's :cpp:concept:`nothrow_movable\<Ts[I]\><veg::concepts::movable>` for all ``I``
