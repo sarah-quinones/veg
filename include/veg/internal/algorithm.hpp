@@ -13,14 +13,15 @@ namespace veg {
 namespace internal {
 namespace algo_ {
 
-template <typename T>
-VEG_INLINE VEG_CPP20(constexpr) void backward_destroy_n_direct(T* ptr, i64 n)
-		VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+template <typename T, typename Fn>
+VEG_INLINE
+VEG_CPP20(constexpr) void backward_destroy_n_direct(T* ptr, i64 n, Fn const fn)
+		VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn<Fn, void, T*>)) {
 	if (n == 0) {
 		return;
 	}
 	for (T* p = ptr + n - 1;;) {
-		mem::destroy_at(p);
+		fn(static_cast<T*>(p));
 
 		if (p == ptr) {
 			break;
@@ -29,29 +30,31 @@ VEG_INLINE VEG_CPP20(constexpr) void backward_destroy_n_direct(T* ptr, i64 n)
 	}
 }
 
-template <typename T>
-struct destroy_range_fn {
+template <typename T, typename Fn>
+struct DestroyRangeFn {
 	T* cleanup_ptr;
 	i64 const& size;
+	Fn fn;
 
 	VEG_CPP20(constexpr)
 	VEG_INLINE void operator()() const VEG_NOEXCEPT {
-		algo_::backward_destroy_n_direct<T>(cleanup_ptr, size);
+		algo_::backward_destroy_n_direct(cleanup_ptr, size, fn);
 	}
 };
 
-template <typename T>
-VEG_INLINE VEG_CPP20(constexpr) void backward_destroy_n_may_throw(T* ptr, i64 n)
-		VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+template <typename T, typename Fn>
+VEG_INLINE VEG_CPP20(constexpr) void backward_destroy_n_may_throw(
+		T* ptr, i64 n, Fn const fn)
+		VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn<Fn, void, T*>)) {
 	if (n == 0) {
 		return;
 	}
 	i64 i = n - 1;
-	auto&& cleanup = defer(destroy_range_fn<T>{ptr, i});
+	auto&& cleanup = defer(DestroyRangeFn<T, Fn>{ptr, i, fn});
 	(void)cleanup;
 
 	for (; i >= 0; --i) {
-		mem::destroy_at(ptr + i);
+		fn(static_cast<T*>(ptr + i));
 	}
 	i = 0;
 }
@@ -62,7 +65,8 @@ void uninit_emplace_n(T* dest, T const* src, i64 n)
 		VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T, Cast>)) {
 
 	i64 i = 0;
-	auto&& cleanup = defer(internal::algo_::destroy_range_fn<T>{dest, i});
+	auto&& cleanup = defer(
+			internal::algo_::DestroyRangeFn<T, mem::nb::destroy_at>{dest, i, {}});
 	for (; i < n; ++i) {
 		mem::construct_at(dest + i, const_cast<Cast>(src[i]));
 	}
@@ -75,7 +79,7 @@ void reloc_fallible(T* dest, T* src, i64 n)
 		VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T, Cast>)) {
 
 	i64 i = 0;
-	auto&& cleanup = defer(destroy_range_fn<T>{dest, i});
+	auto&& cleanup = defer(DestroyRangeFn<T, mem::nb::destroy_at>{dest, i, {}});
 	for (; i < n; ++i) {
 		mem::construct_at(dest + i, static_cast<Cast>(src[i]));
 	}
@@ -151,14 +155,15 @@ namespace nb {
 
 struct backward_destroy_n {
 	VEG_TEMPLATE(
-			(typename T, typename... Args),
+			(typename T, typename Fn),
 			requires(!VEG_CONCEPT(void_type<T>)),
-			VEG_INLINE VEG_CPP20(constexpr) void
+			VEG_CPP20(constexpr) void
 			operator(),
 			(ptr, T*),
-			(n, i64))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
-		internal::algo_::backward_destroy_n_may_throw<T>(ptr, n);
+			(n, i64),
+			(fn, Fn))
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn<Fn, void, T*>)) {
+		internal::algo_::backward_destroy_n_may_throw(ptr, n, fn);
 	}
 };
 
