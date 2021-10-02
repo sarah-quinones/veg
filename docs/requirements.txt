@@ -1,3 +1,4 @@
 sphinx
 sphinx-tabs
 pydata-sphinx-theme
+sphinxcontrib-inlinesyntaxhighlight
