@@ -10,7 +10,7 @@ namespace veg {
 namespace abi {
 inline namespace VEG_ABI_VERSION {
 namespace internal {
-auto snprintf1(char* out, usize n, char const* fmt, void* arg) -> int;
+auto snprintf1(char* out, usize n, char const* fmt, void* arg) -> usize;
 }
 } // namespace VEG_ABI_VERSION
 } // namespace abi
@@ -18,12 +18,17 @@ auto snprintf1(char* out, usize n, char const* fmt, void* arg) -> int;
 namespace fmt {
 
 struct Buffer {
-	virtual void reserve(i64 new_cap) = 0;
-	virtual void resize(i64 new_len) = 0;
-	virtual void insert(i64 pos, char const* data, i64 len) = 0;
+	Buffer() = default;
+	Buffer(Buffer const&) = delete;
+	Buffer(Buffer&&) = delete;
+	auto operator=(Buffer const&) -> Buffer& = delete;
+	auto operator=(Buffer&&) -> Buffer& = delete;
+	virtual void reserve(usize new_cap) = 0;
+	virtual void resize(usize new_len) = 0;
+	virtual void insert(usize pos, char const* data, usize len) = 0;
 
 	VEG_NODISCARD virtual auto data() const VEG_ALWAYS_NOEXCEPT -> char* = 0;
-	VEG_NODISCARD virtual auto size() const VEG_ALWAYS_NOEXCEPT -> i64 = 0;
+	VEG_NODISCARD virtual auto size() const VEG_ALWAYS_NOEXCEPT -> usize = 0;
 
 protected:
 	~Buffer() = default;
@@ -36,9 +41,9 @@ namespace fmt {
 using Buffer = veg::fmt::Buffer;
 
 inline void to_string_impl(Buffer& out, char const* fmt, void* arg) {
-	int n = abi::internal::snprintf1(nullptr, 0, fmt, arg) + 1;
+	usize n = abi::internal::snprintf1(nullptr, 0, fmt, arg) + 1;
 
-	i64 old_size = out.size();
+	usize old_size = out.size();
 	out.resize(out.size() + n);
 	abi::internal::snprintf1(out.data() + old_size, usize(n), fmt, arg);
 	out.resize(old_size + n - 1);
@@ -132,8 +137,8 @@ namespace internal {
 struct String final : fmt::Buffer {
 	struct layout {
 		char* ptr;
-		i64 len;
-		i64 cap;
+		usize len;
+		usize cap;
 	} self = {};
 
 	~String();
@@ -145,9 +150,9 @@ struct String final : fmt::Buffer {
 	auto operator=(String const&) -> String& = delete;
 	auto operator=(String&&) -> String& = delete;
 
-	void resize(i64 new_len) override;
-	void reserve(i64 new_cap) override;
-	void insert(i64 pos, char const* data, i64 len) override;
+	void resize(usize new_len) override;
+	void reserve(usize new_cap) override;
+	void insert(usize pos, char const* data, usize len) override;
 	void eprint() const VEG_ALWAYS_NOEXCEPT;
 
 	VEG_NODISCARD VEG_INLINE auto data() const VEG_ALWAYS_NOEXCEPT
@@ -155,7 +160,7 @@ struct String final : fmt::Buffer {
 		return self.ptr;
 	}
 	VEG_NODISCARD VEG_INLINE auto size() const VEG_ALWAYS_NOEXCEPT
-			-> i64 override {
+			-> usize override {
 		return self.len;
 	}
 };

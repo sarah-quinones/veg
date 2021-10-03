@@ -77,6 +77,8 @@ macro(add_all_tests_std_version std_version)
   add_test_std_version(${std_version} option src/test_option.cpp)
   add_test_std_version(${std_version} uwunion src/test_uwunion.cpp)
   add_test_std_version(${std_version} option.stx src/test_option.stx.cpp)
+  add_test_std_version(${std_version} vec src/vec.cpp)
+  add_test_std_version(${std_version} aligned_alloc src/aligned_alloc.cpp)
 
   add_custom_target(
     check.${std_version}

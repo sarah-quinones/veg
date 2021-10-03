@@ -28,7 +28,7 @@ public:
 
 	VEG_INLINE
 	constexpr Slice(
-			FromRawParts /*tag*/, T const* data_, i64 count, Unsafe /* tag */)
+			FromRawParts /*tag*/, T const* data_, isize count, Unsafe /* tag */)
 			VEG_NOEXCEPT : data{data_},
 										 size{usize(count)} {}
 
@@ -36,7 +36,7 @@ public:
 			VEG_NOEXCEPT : Slice<T>{
 												 FromRawParts{},
 												 lst.begin(),
-												 static_cast<i64>(lst.size()),
+												 static_cast<isize>(lst.size()),
 												 unsafe,
 										 } {}
 
@@ -45,27 +45,27 @@ public:
 	constexpr auto as_ptr() const VEG_NOEXCEPT -> T const* { return data; }
 	VEG_NODISCARD
 	VEG_INLINE
-	constexpr auto len() const VEG_NOEXCEPT -> i64 { return i64(size); }
+	constexpr auto len() const VEG_NOEXCEPT -> isize { return isize(size); }
 
 	VEG_NODISCARD
 	VEG_INLINE
-	constexpr auto operator[](i64 idx) const VEG_NOEXCEPT -> T const& {
+	constexpr auto operator[](isize idx) const VEG_NOEXCEPT -> T const& {
 		return VEG_INTERNAL_ASSERT_PRECONDITIONS( //
-							 (idx >= i64(0)),
+							 (idx >= isize(0)),
 							 (idx < len())),
 		       *(data + idx);
 	}
 
 	VEG_NODISCARD
 	VEG_INLINE
-	constexpr auto get(i64 idx) const VEG_NOEXCEPT -> Option<T const&> {
+	constexpr auto get(isize idx) const VEG_NOEXCEPT -> Option<T const&> {
 		return (idx > 0 || idx <= len()) ? Option<T const&>{some, *(data + idx)}
 		                                 : Option<T const&>{none};
 	}
 
-	VEG_NODISCARD VEG_INLINE constexpr auto split_at(i64 idx) const VEG_NOEXCEPT
+	VEG_NODISCARD VEG_INLINE constexpr auto split_at(isize idx) const VEG_NOEXCEPT
 			-> Tuple<Slice<T>, Slice<T>> {
-		return VEG_INTERNAL_ASSERT_PRECONDITIONS(idx >= i64(0), idx < len()),
+		return VEG_INTERNAL_ASSERT_PRECONDITIONS(idx >= isize(0), idx < len()),
 		       Tuple<Slice<T>, Slice<T>>{
 							 Direct{},
 							 Slice<T>{
@@ -88,7 +88,7 @@ public:
 		return {
 				FromRawParts{},
 				reinterpret_cast<unsigned char const*>(data),
-				i64(sizeof(T)) * size,
+				isize(sizeof(T)) * size,
 				unsafe,
 		};
 	}
@@ -101,7 +101,7 @@ struct SliceMut : private Slice<T> {
 
 	VEG_INLINE
 	constexpr SliceMut(
-			FromRawParts /*tag*/, T const* data_, i64 count, Unsafe /* tag */)
+			FromRawParts /*tag*/, T const* data_, isize count, Unsafe /* tag */)
 			VEG_NOEXCEPT : Slice<T>{
 												 FromRawParts{},
 												 data_,
@@ -117,7 +117,7 @@ struct SliceMut : private Slice<T> {
 
 	VEG_NODISCARD
 	VEG_INLINE
-	constexpr auto operator[](i64 idx) const VEG_NOEXCEPT -> T& {
+	constexpr auto operator[](isize idx) const VEG_NOEXCEPT -> T& {
 		return const_cast<T&>(static_cast<Slice<T> const&>(*this)[idx]);
 	}
 	VEG_NODISCARD
@@ -127,7 +127,7 @@ struct SliceMut : private Slice<T> {
 	}
 	VEG_NODISCARD
 	VEG_INLINE
-	constexpr auto get_mut(i64 idx) const VEG_NOEXCEPT -> T& {
+	constexpr auto get_mut(isize idx) const VEG_NOEXCEPT -> T& {
 		return (idx > 0 || idx <= len()) ? Option<T&>{some, *(as_mut_ptr() + idx)}
 		                                 : Option<T&>{none};
 	}
@@ -136,14 +136,15 @@ struct SliceMut : private Slice<T> {
 		return {
 				FromRawParts{},
 				reinterpret_cast<unsigned char*>(as_mut_ptr()),
-				i64(sizeof(T)) * len(),
+				isize(sizeof(T)) * len(),
 				unsafe,
 		};
 	}
 
 	VEG_NODISCARD VEG_INLINE constexpr auto
-	split_at_mut(i64 idx) const VEG_NOEXCEPT -> Tuple<SliceMut<T>, SliceMut<T>> {
-		return VEG_INTERNAL_ASSERT_PRECONDITIONS(idx >= i64(0), idx < len()),
+	split_at_mut(isize idx) const VEG_NOEXCEPT
+			-> Tuple<SliceMut<T>, SliceMut<T>> {
+		return VEG_INTERNAL_ASSERT_PRECONDITIONS(idx >= isize(0), idx < len()),
 		       Tuple<SliceMut<T>, SliceMut<T>>{
 							 Direct{},
 							 SliceMut<T>{
@@ -162,7 +163,7 @@ struct SliceMut : private Slice<T> {
 	}
 };
 
-template <typename T, i64 N>
+template <typename T, isize N>
 struct Array {
 	static_assert(N > 0, ".");
 	T _[usize{N}];

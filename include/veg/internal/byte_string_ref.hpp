@@ -9,7 +9,7 @@ namespace abi {
 inline namespace VEG_ABI_VERSION {
 namespace internal {
 struct ByteStringView {
-	VEG_INLINE constexpr ByteStringView(char const* data, i64 len)
+	VEG_INLINE constexpr ByteStringView(char const* data, usize len)
 			VEG_ALWAYS_NOEXCEPT : data_{data},
 														len_{len} {}
 
@@ -22,23 +22,23 @@ struct ByteStringView {
 											char const*,
 											decltype(VEG_DECLVAL(T const&).data())>) &&
 					VEG_CONCEPT(
-							constructible<i64, decltype(VEG_DECLVAL(T const&).size())>)),
+							constructible<usize, decltype(VEG_DECLVAL(T const&).size())>)),
 
 			VEG_INLINE constexpr ByteStringView,
 			(arg, T const&))
 	VEG_ALWAYS_NOEXCEPT : ByteStringView{
 														static_cast<char const*>(arg.data()),
-														static_cast<i64>(arg.size())} {}
+														static_cast<usize>(arg.size())} {}
 
 	char const* data_;
-	i64 len_;
+	usize len_;
 
 	VEG_NODISCARD VEG_INLINE constexpr auto data() const VEG_ALWAYS_NOEXCEPT
 			-> char const* {
 		return data_;
 	}
 	VEG_NODISCARD VEG_INLINE constexpr auto size() const VEG_ALWAYS_NOEXCEPT
-			-> i64 {
+			-> usize {
 		return len_;
 	}
 	VEG_NODISCARD VEG_INLINE auto

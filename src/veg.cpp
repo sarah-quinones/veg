@@ -40,7 +40,7 @@ void String::eprint() const VEG_ALWAYS_NOEXCEPT {
 	std::cerr.write(self.ptr, self.len);
 	std::cerr.put('\n');
 }
-void String::reserve(i64 new_cap) {
+void String::reserve(usize new_cap) {
 	if (new_cap > self.cap) {
 		auto* new_alloc = static_cast<char*>(std::realloc(self.ptr, new_cap));
 		if (new_alloc == nullptr) {
@@ -50,14 +50,14 @@ void String::reserve(i64 new_cap) {
 		self.cap = new_cap;
 	}
 }
-void String::resize(i64 new_len) {
+void String::resize(usize new_len) {
 	reserve(new_len);
 	self.len = new_len;
 }
-void String::insert(i64 pos, char const* data_, i64 len) {
-	i64 old_size = size();
-	i64 pre_new_size = len + old_size;
-	i64 new_size =
+void String::insert(usize pos, char const* data_, usize len) {
+	usize old_size = size();
+	usize pre_new_size = len + old_size;
+	usize new_size =
 			(pre_new_size > (2 * old_size)) ? pre_new_size : (2 * old_size);
 	reserve(new_size);
 	resize(pre_new_size);
@@ -97,7 +97,7 @@ auto ByteStringView::operator==(ByteStringView other) const VEG_ALWAYS_NOEXCEPT
 	       std::memcmp(data(), other.data(), other.size()) == 0;
 }
 ByteStringView::ByteStringView(char const* str) VEG_ALWAYS_NOEXCEPT
-		: ByteStringView{str, static_cast<i64>(std::strlen(str))} {}
+		: ByteStringView{str, std::strlen(str)} {}
 
 #define LIT(x)                                                                 \
 	ByteStringView { x, sizeof(x) - 1 }
@@ -154,7 +154,7 @@ cleanup::~cleanup() VEG_ALWAYS_NOEXCEPT {
 	failed_asserts.clear();
 }
 
-auto split_at(ByteStringView& text, i64 n) -> ByteStringView {
+auto split_at(ByteStringView& text, usize n) -> ByteStringView {
 	ByteStringView token = {text.data_, n};
 	text = {text.data_ + n, text.len_ - n};
 	return token;
@@ -314,7 +314,8 @@ auto next_tk(ByteStringView& code_str, bool extended_char_set = false)
 		new_str = {new_str.data() + 1, new_str.size() - 1};
 	}
 
-	ByteStringView token = {code_str.data(), new_str.data() - code_str.data()};
+	ByteStringView token = {
+			code_str.data(), static_cast<usize>(new_str.data() - code_str.data())};
 	code_str = new_str;
 	return {token, ident};
 }
@@ -327,7 +328,8 @@ auto peek_next_tk(ByteStringView code_str, bool extended_char_set = false)
 auto merge_tk(ByteStringView code_str, token_t prev_tk) -> ByteStringView {
 	return {
 			prev_tk.text.data(),
-			code_str.data() + code_str.size() - prev_tk.text.data()};
+			static_cast<usize>(
+					(code_str.data() + code_str.size()) - prev_tk.text.data())};
 }
 
 auto one_of(ByteStringView token, std::initializer_list<ByteStringView> tokens)
@@ -812,7 +814,7 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 					b = end;
 				} else {
 					b = e + 1;
-					e = find({b, (msg.data() + msg.size()) - b}, '\n');
+					e = find({b, usize((msg.data() + msg.size()) - b)}, '\n');
 				}
 			}
 		}
@@ -878,53 +880,11 @@ void set_assert_params2(       //
 	failed_asserts.back().callback = msg;
 }
 
-// if possible:
-// aligns the pointer
-// then advances it by `size` bytes, and decreases `space` by `size`
-// returns the previous aligned value
-//
-// otherwise, if there is not enough space for aligning or advancing the
-// pointer, returns nullptr and the values are left unmodified
-auto align_next(i64 alignment, i64 size, void*& ptr, i64& space)
-		VEG_ALWAYS_NOEXCEPT -> void* {
-	static_assert(
-			sizeof(std::uintptr_t) >= sizeof(void*),
-			"std::uintptr_t can't hold a pointer value");
-
-	using byte_ptr = unsigned char*;
-
-	// assert alignment is power of two
-	VEG_ASSERT_ALL_OF( //
-			(alignment > i64(0)),
-			((u64(alignment) & (u64(alignment) - 1)) == u64(0)));
-
-	if (space < size) {
-		return nullptr;
-	}
-
-	std::uintptr_t lo_mask = alignment - 1;
-	std::uintptr_t hi_mask = ~lo_mask;
-
-	auto const intptr = reinterpret_cast<std::uintptr_t>(ptr);
-	auto* const byteptr = static_cast<byte_ptr>(ptr);
-
-	auto offset = ((intptr + alignment - 1) & hi_mask) - intptr;
-
-	if (space - size < offset) {
-		return nullptr;
-	}
-
-	void* const rv = byteptr + offset;
-
-	ptr = byteptr + (offset + size);
-	space = space - (offset + size);
-
-	return rv;
-}
-auto snprintf1(char* out, usize n, char const* fmt, void* arg) -> int {
+auto snprintf1(char* out, usize n, char const* fmt, void* arg) -> usize {
 #define PRINT1(Type, Fmt)                                                      \
 	if (std::strcmp(fmt, "%" #Fmt) == 0) {                                       \
-		return std::snprintf(out, n, fmt, *static_cast<Type*>(arg));               \
+		return usize(                                                              \
+				std::snprintf(out, n, fmt, *static_cast<Type*> /* NOLINT */ (arg)));   \
 	}                                                                            \
 	(void)0
 

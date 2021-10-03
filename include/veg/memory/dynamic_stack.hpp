@@ -2,6 +2,7 @@
 #define VEG_DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS
 
 #include "veg/util/assert.hpp"
+#include "veg/memory/placement.hpp"
 #include "veg/slice.hpp"
 #include "veg/type_traits/constructible.hpp"
 #include "veg/memory/placement.hpp"
@@ -12,74 +13,144 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
+template <typename T>
+struct DynStackArray;
+template <typename T>
+struct DynStackAlloc;
+
 namespace abi {
 inline namespace VEG_ABI_VERSION {
 namespace internal {
-auto align_next(i64 alignment, i64 size, void*& ptr, i64& space) VEG_NOEXCEPT
-		-> void*;
+// if possible:
+// aligns the pointer
+// then advances it by `size` bytes, and decreases `space` by `size`
+// returns the previous aligned value
+//
+// otherwise, if there is not enough space for aligning or advancing the
+// pointer, returns nullptr and the values are left unmodified
+auto align_next(usize alignment, usize size, void*& ptr, usize& space)
+		VEG_ALWAYS_NOEXCEPT -> void* {
+	static_assert(
+			sizeof(std::uintptr_t) >= sizeof(void*),
+			"std::uintptr_t can't hold a pointer value");
+
+	using byte_ptr = unsigned char*;
+
+	// assert alignment is power of two
+	VEG_ASSERT_ALL_OF( //
+			(alignment > usize{0}),
+			((u64(alignment) & (u64(alignment) - 1)) == u64(0)));
+
+	if (space < size) {
+		return nullptr;
+	}
+
+	std::uintptr_t lo_mask = alignment - 1;
+	std::uintptr_t hi_mask = ~lo_mask;
+
+	auto const intptr = reinterpret_cast<std::uintptr_t>(ptr);
+	auto* const byteptr = static_cast<byte_ptr>(ptr);
+
+	auto offset = ((intptr + alignment - 1) & hi_mask) - intptr;
+
+	if (space - size < offset) {
+		return nullptr;
+	}
+
+	void* const rv = byteptr + offset;
+
+	ptr = byteptr + (offset + size);
+	space = space - (offset + size);
+
+	return rv;
 }
+} // namespace internal
 } // namespace VEG_ABI_VERSION
 } // namespace abi
 
 namespace internal {
 namespace dynstack {
+template <typename T, bool = VEG_CONCEPT(trivially_destructible<T>)>
+struct DynStackArrayDtor {};
+
+template <typename T>
+struct DynStackArrayDtor<T, false> {
+	DynStackArrayDtor() = default;
+	DynStackArrayDtor(DynStackArrayDtor const&) = default;
+	DynStackArrayDtor(DynStackArrayDtor&&) = default;
+	auto operator=(DynStackArrayDtor const&) -> DynStackArrayDtor& = default;
+	auto operator=(DynStackArrayDtor&&) -> DynStackArrayDtor& = default;
+	VEG_INLINE ~DynStackArrayDtor()
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+		auto& self = static_cast<DynStackArray<T>&>(*this);
+		veg::internal::algo_::backward_destroy_n_may_throw<T>(
+				self.as_mut_ptr(),
+				self.DynStackAlloc<T>::Base::len,
+				veg::mem::destroy_at);
+	}
+};
 
 struct cleanup;
 struct DynAllocBase;
 
 struct default_init_fn {
 	template <typename T>
-	auto make(void* ptr, i64 len) -> T* {
-		return ::new (ptr) T[static_cast<usize>(len)];
+	auto make(void* ptr, usize len) -> T* {
+		return ::new (ptr) T[len];
 	}
 };
 
 struct zero_init_fn {
 	template <typename T>
-	auto make(void* ptr, i64 len) -> T* {
-		return ::new (ptr) T[static_cast<usize>(len)]{};
+	auto make(void* ptr, usize len) -> T* {
+		return ::new (ptr) T[len]{};
 	}
 };
 
 struct no_init_fn {
 	template <typename T>
-	auto make(void* ptr, i64 len) -> T* {
-		return mem::launder(static_cast<T*>(static_cast<void*>(
-				::new (ptr) unsigned char[static_cast<usize>(len) * sizeof(T)])));
+	auto make(void* ptr, usize len) -> T* {
+		return veg::mem::launder(static_cast<T*>(
+				static_cast<void*>(::new (ptr) unsigned char[len * sizeof(T)])));
 	}
 };
 
 } // namespace dynstack
 } // namespace internal
 
-template <typename T>
-struct DynStackArray;
-template <typename T>
-struct DynStackAlloc;
-
 struct DynStackView {
 public:
 	DynStackView(SliceMut<unsigned char> s) VEG_NOEXCEPT
 			: stack_data(s.as_mut_ptr()),
-				stack_bytes(s.len()) {}
+				stack_bytes(usize(s.len())) {}
 
 	VEG_NODISCARD
-	auto remaining_bytes() const VEG_NOEXCEPT -> i64 { return stack_bytes; }
+	auto remaining_bytes() const VEG_NOEXCEPT -> isize {
+		return isize(stack_bytes);
+	}
 	VEG_NODISCARD
 	auto as_mut_ptr() const VEG_NOEXCEPT -> void* { return stack_data; }
 	VEG_NODISCARD
 	auto as_ptr() const VEG_NOEXCEPT -> void const* { return stack_data; }
 
+private:
+	VEG_INLINE void assert_valid_len(usize len, usize sizeofT) VEG_NOEXCEPT {
+		VEG_INTERNAL_ASSERT_PRECONDITION(usize(len) < ((-usize(1)) / sizeofT));
+	}
+
+public:
 	VEG_TEMPLATE(
 			(typename T),
 			requires VEG_CONCEPT(constructible<T>),
 			VEG_NODISCARD auto make_new,
 			(/*unused*/, Tag<T>),
-			(len, i64),
-			(align = alignof(T), i64))
+			(len, usize),
+			(align = alignof(T), usize))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T>))
 			->Option<DynStackArray<T>> {
-		DynStackArray<T> get{*this, len, align, internal::dynstack::zero_init_fn{}};
+		assert_valid_len(len, sizeof(T));
+		DynStackArray<T> get{
+				*this, usize(len), align, internal::dynstack::zero_init_fn{}};
 		if (get.as_ptr() == nullptr) {
 			return none;
 		}
@@ -91,13 +162,14 @@ public:
 			requires VEG_CONCEPT(constructible<T>),
 			VEG_NODISCARD auto make_new_for_overwrite,
 			(/*unused*/, Tag<T>),
-			(len, i64),
-			(align = alignof(T), i64))
+			(len, usize),
+			(align = alignof(T), usize))
 
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T>))
 			->Option<DynStackArray<T>> {
+		assert_valid_len(len, sizeof(T));
 		DynStackArray<T> get{
-				*this, len, align, internal::dynstack::default_init_fn{}};
+				*this, usize(len), align, internal::dynstack::default_init_fn{}};
 		if (get.as_ptr() == nullptr) {
 			return none;
 		}
@@ -105,10 +177,12 @@ public:
 	}
 
 	template <typename T>
-	VEG_NODISCARD auto
-	make_alloc(Tag<T> /*unused*/, i64 len, i64 align = alignof(T)) VEG_NOEXCEPT
+	VEG_NODISCARD auto make_alloc(
+			Tag<T> /*unused*/, usize len, usize align = alignof(T)) VEG_NOEXCEPT
 			-> Option<DynStackAlloc<T>> {
-		DynStackAlloc<T> get{*this, len, align, internal::dynstack::no_init_fn{}};
+		assert_valid_len(len, sizeof(T));
+		DynStackAlloc<T> get{
+				*this, usize(len), align, internal::dynstack::no_init_fn{}};
 		if (get.as_ptr() == nullptr) {
 			return none;
 		}
@@ -117,7 +191,7 @@ public:
 
 private:
 	void* stack_data;
-	i64 stack_bytes;
+	usize stack_bytes;
 
 	template <typename T>
 	friend struct DynStackAlloc;
@@ -134,7 +208,7 @@ struct cleanup {
 	bool const& success;
 	DynStackView& parent;
 	void* old_data;
-	i64 old_rem_bytes;
+	usize old_rem_bytes;
 
 	VEG_INLINE void operator()() const VEG_NOEXCEPT {
 		if (!success) {
@@ -148,7 +222,7 @@ struct DynAllocBase {
 	DynStackView* parent;
 	void* old_pos;
 	void const volatile* data;
-	i64 len;
+	usize len;
 
 	void destroy(void const volatile* void_data_end) VEG_NOEXCEPT {
 		if (len != 0) {
@@ -162,7 +236,7 @@ struct DynAllocBase {
 					parent_stack_data == data_end,
 					parent_stack_data >= old_position);
 
-			parent->stack_bytes += nb::narrow<i64>{}(
+			parent->stack_bytes += static_cast<usize>(
 					static_cast<unsigned char*>(parent->stack_data) -
 					static_cast<unsigned char*>(old_pos));
 			parent->stack_data = old_pos;
@@ -178,7 +252,9 @@ private:
 	using Base = internal::dynstack::DynAllocBase;
 
 public:
-	~DynStackAlloc() VEG_NOEXCEPT { Base::destroy(as_mut_ptr() + Base::len); }
+	VEG_INLINE ~DynStackAlloc() VEG_NOEXCEPT {
+		Base::destroy(as_mut_ptr() + Base::len);
+	}
 
 	DynStackAlloc(DynStackAlloc const&) = delete;
 	DynStackAlloc(DynStackAlloc&& other) VEG_NOEXCEPT : Base{Base(other)} {
@@ -220,14 +296,17 @@ public:
 	VEG_NODISCARD auto as_ptr() const VEG_NOEXCEPT -> T const* {
 		return static_cast<T const*>(const_cast<void const*>(Base::data));
 	}
-	VEG_NODISCARD auto len() const VEG_NOEXCEPT -> i64 { return Base::len; }
+	VEG_NODISCARD auto len() const VEG_NOEXCEPT -> isize {
+		return isize(Base::len);
+	}
 
 private:
 	friend struct DynStackArray<T>;
 	friend struct DynStackView;
+	friend struct internal::dynstack::DynStackArrayDtor<T>;
 
 	template <typename Fn>
-	DynStackAlloc(DynStackView& parent_ref, i64 alloc_size, i64 align, Fn fn)
+	DynStackAlloc(DynStackView& parent_ref, usize alloc_size, usize align, Fn fn)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T>))
 			: Base{
 						&parent_ref,
@@ -237,11 +316,11 @@ private:
 				} {
 
 		void* const parent_data = parent_ref.stack_data;
-		i64 const parent_bytes = parent_ref.stack_bytes;
+		usize const parent_bytes = parent_ref.stack_bytes;
 
 		void* const ptr = abi::internal::align_next(
 				align,
-				alloc_size * i64{sizeof(T)},
+				alloc_size * sizeof(T),
 				parent_ref.stack_data,
 				parent_ref.stack_bytes);
 
@@ -260,7 +339,9 @@ private:
 };
 
 template <typename T>
-struct DynStackArray : private DynStackAlloc<T> {
+struct DynStackArray : private // destruction order matters
+											 DynStackAlloc<T>,
+											 internal::dynstack::DynStackArrayDtor<T> {
 private:
 	using Base = internal::dynstack::DynAllocBase;
 
@@ -271,6 +352,7 @@ public:
 	using DynStackAlloc<T>::as_mut_ptr;
 	using DynStackAlloc<T>::len;
 
+	~DynStackArray() = default;
 	DynStackArray(DynStackArray const&) = delete;
 	DynStackArray(DynStackArray&&) VEG_NOEXCEPT = default;
 	auto operator=(DynStackArray const&) -> DynStackArray& = delete;
@@ -284,14 +366,10 @@ public:
 		return *this;
 	}
 
-	~DynStackArray() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
-		internal::algo_::backward_destroy_n_may_throw<T>(
-				as_mut_ptr(), this->DynStackAlloc<T>::Base::len);
-	}
-
 private:
 	using DynStackAlloc<T>::DynStackAlloc;
 	friend struct DynStackView;
+	friend struct internal::dynstack::DynStackArrayDtor<T>;
 };
 } // namespace veg
 

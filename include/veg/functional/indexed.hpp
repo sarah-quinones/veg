@@ -9,7 +9,7 @@
 namespace veg {
 namespace fn {
 
-template <i64 I, typename Fn>
+template <isize I, typename Fn>
 struct IndexedFn {
 	Fn fn;
 
@@ -25,7 +25,7 @@ struct IndexedFn {
 	}
 };
 
-template <i64 I, typename Fn>
+template <isize I, typename Fn>
 struct IndexedFnMut {
 	Fn fn;
 
@@ -41,7 +41,7 @@ struct IndexedFnMut {
 	}
 };
 
-template <i64 I, typename Fn>
+template <isize I, typename Fn>
 struct IndexedFnOnce {
 	Fn fn;
 
@@ -58,7 +58,7 @@ struct IndexedFnOnce {
 };
 
 namespace nb {
-template <i64 I>
+template <isize I>
 struct indexed {
 	VEG_TEMPLATE(
 			typename Fn,
@@ -70,7 +70,7 @@ struct indexed {
 		return {Fn(VEG_FWD(fn))};
 	}
 };
-template <i64 I>
+template <isize I>
 struct indexed_mut {
 	VEG_TEMPLATE(
 			typename Fn,
@@ -82,7 +82,7 @@ struct indexed_mut {
 		return {Fn(VEG_FWD(fn))};
 	}
 };
-template <i64 I>
+template <isize I>
 struct indexed_once {
 	VEG_TEMPLATE(
 			typename Fn,
@@ -96,9 +96,9 @@ struct indexed_once {
 	}
 };
 } // namespace nb
-VEG_NIEBLOID_TEMPLATE(i64 I, indexed, I);
-VEG_NIEBLOID_TEMPLATE(i64 I, indexed_mut, I);
-VEG_NIEBLOID_TEMPLATE(i64 I, indexed_once, I);
+VEG_NIEBLOID_TEMPLATE(isize I, indexed, I);
+VEG_NIEBLOID_TEMPLATE(isize I, indexed_mut, I);
+VEG_NIEBLOID_TEMPLATE(isize I, indexed_once, I);
 } // namespace fn
 } // namespace veg
 

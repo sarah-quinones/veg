@@ -5,8 +5,35 @@
 #include <cstddef>
 
 namespace veg {
+namespace internal {
+namespace _meta {
+template <typename T>
+struct make_signed;
+template <>
+struct make_signed<unsigned char> {
+	using Type = signed char;
+};
+template <>
+struct make_signed<unsigned short> {
+	using Type = signed short;
+};
+template <>
+struct make_signed<unsigned int> {
+	using Type = signed int;
+};
+template <>
+struct make_signed<unsigned long> {
+	using Type = signed long;
+};
+template <>
+struct make_signed<unsigned long long> {
+	using Type = signed long long;
+};
+} // namespace _meta
+} // namespace internal
 
 using usize = decltype(sizeof(0));
+using isize = internal::_meta::make_signed<usize>::Type;
 
 using i64 = std::int64_t;
 using u64 = std::uint64_t;

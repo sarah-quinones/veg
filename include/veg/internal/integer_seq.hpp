@@ -9,7 +9,7 @@ namespace veg {
 using usize = decltype(sizeof(0));
 namespace internal {
 
-template <i64 I>
+template <isize I>
 struct EmptyI {};
 
 using Empty = EmptyI<0>;

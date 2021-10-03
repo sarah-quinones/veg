@@ -68,20 +68,20 @@ TEST_CASE("tuple: all") {
 	}
 	{
 		using val_tup = veg::Tuple<int, bool>;
-		val_tup a = tuple::make(5, true);
-		val_tup b = tuple::make(3, false);
+		val_tup tup_a = tuple::make(5, true);
+		val_tup tup_b = tuple::make(3, false);
 
 		unused(Tuple<long, bool>{
 				val_tup{}.map_i(fn::overload(
-						[](Fix<0> /*tag*/, int i) { return long(i); },
-						[](Fix<1> /*tag*/, bool b) { return b; })),
+						[](Fix<0> /*tag*/, int i) -> long { return long(i); },
+						[](Fix<1> /*tag*/, bool b) -> bool { return b; })),
 		});
 
-		veg::swap(a, b);
-		CHECK(a[0_c] == 3);
-		CHECK(b[0_c] == 5);
-		CHECK(a[1_c] == false);
-		CHECK(b[1_c] == true);
+		veg::swap(tup_a, tup_b);
+		CHECK(tup_a[0_c] == 3);
+		CHECK(tup_b[0_c] == 5);
+		CHECK(tup_a[1_c] == false);
+		CHECK(tup_b[1_c] == true);
 		STATIC_ASSERT(val_tup{direct, 1, true} == val_tup{direct, 1, true});
 		STATIC_ASSERT(
 				noexcept(val_tup{direct, 1, true} == val_tup{direct, 1, true}));
@@ -90,8 +90,8 @@ TEST_CASE("tuple: all") {
 						ref(val_tup{direct, 1, true}), ref(val_tup{direct, 1, true})) ==
 				cmp::Ordering::equal);
 
-		CHECK(a == (val_tup{direct, 3, false}));
-		CHECK(b == (val_tup{direct, 5, true}));
+		CHECK(tup_a == (val_tup{direct, 3, false}));
+		CHECK(tup_b == (val_tup{direct, 5, true}));
 	}
 	{
 		using ref_tup = Tuple<RefMut<int>>;
@@ -121,8 +121,6 @@ TEST_CASE("tuple: all") {
 		CHECK(&ref1 != &tup[2_c]);
 		CHECK(&ref2 == &tup[2_c]);
 	}
-
-	using veg::clone;
 
 	VEG_BIND(auto, (e, f, g), [&] { return clone(tup); }());
 #if __cplusplus >= 201703L
@@ -248,11 +246,11 @@ TEST_CASE("tuple: direct") {
 	Tuple<int, double> t1{direct, 1, 1.5};
 	Tuple<long, double> t2(direct, 3, 2.5);
 	Tuple<long, double> t3 = FWD(t1).map_i(fn::overload(
-			fn::nb::indexed<0>{}([](int x) { return long(x); }),
-			fn::nb::indexed<1>{}([](double x) { return double(x); })));
+			fn::nb::indexed<0>{}([](int x) -> long { return long(x); }),
+			fn::nb::indexed<1>{}([](double x) -> double { return x; })));
 	Tuple<int, double> t4 = FWD(t3).map_i(fn::copy_fn(fn::overload(
-			fn::nb::indexed<0>{}([](long x) { return int(x); }),
-			fn::nb::indexed<1>{}([](double x) { return double(x); }))));
+			fn::nb::indexed<0>{}([](long x) -> int { return int(x); }),
+			fn::nb::indexed<1>{}([](double x) -> double { return x; }))));
 
 	STATIC_ASSERT(sizeof(t2) == sizeof(long) + sizeof(double));
 
@@ -262,7 +260,7 @@ TEST_CASE("tuple: direct") {
 	CHECK(
 			t1 == veg::clone(t2).map_i(fn::overload(
 								[](Fix<0>, long i) -> int { return int(i); },
-								[](Fix<1>, double d) { return d; })));
+								[](Fix<1>, double d) -> double { return d; })));
 }
 
 TEST_CASE("tuple: get") {
@@ -299,10 +297,14 @@ TEST_CASE("tuple: *sparkles* functional programming *sparkles*") {
 				});
 	}
 	{
-		unused(Tuple<Tuple<int>>{
-				tuple::make(tuple::make(2.0)).map([](Tuple<double> inner) {
-					return FWD(inner).map(fn::copy_fn([](double x) { return int(x); }));
-				})});
+		CHECK(
+				Tuple<Tuple<int>>{
+						tuple::make(tuple::make(2.3))
+								.map([](Tuple<double> inner) -> Tuple<int> {
+									return FWD(inner).map(
+											fn::copy_fn([](double x) -> int { return int(x); }));
+								}),
+				}[0_c][0_c] == 2);
 	}
 
 	{

@@ -81,7 +81,7 @@ union RawUwunionImpl<false, TrivialDtor> {
 				-> Storage<ith<__VEG_PP_TUPLE_SIZE(Tuple), Ts...>> const& {            \
 			return u.__VEG_PP_CAT(head, __VEG_PP_TUPLE_SIZE(Tuple));                 \
 		}                                                                          \
-	};
+	}
 
 #define VEG_UWUNION_TPL(Tuple)
 
@@ -250,11 +250,11 @@ struct FnMapIWrapper {
 	template <usize I>
 	VEG_INLINE constexpr auto operator()(UTag<I> /*itag*/) const&& //
 			VEG_NOEXCEPT_LIKE(
-					VEG_FWD(fn)(Fix<i64{I}>{}, VEG_DECLVAL_NOEXCEPT(ith<I, Ts...>)))
+					VEG_FWD(fn)(Fix<isize{I}>{}, VEG_DECLVAL_NOEXCEPT(ith<I, Ts...>)))
 					-> decltype(VEG_FWD(fn)(
-							Fix<i64{I}>{}, VEG_DECLVAL_NOEXCEPT(ith<I, Ts...>))) {
+							Fix<isize{I}>{}, VEG_DECLVAL_NOEXCEPT(ith<I, Ts...>))) {
 		return VEG_FWD(fn)(
-				Fix<i64{I}>{},
+				Fix<isize{I}>{},
 				const_cast<ith<I, Ts...>&&>(UwunionGetImpl<I>::get(ref).inner));
 	}
 };
@@ -281,9 +281,9 @@ struct FnVisitIWrapper {
 	template <usize I>
 	VEG_INLINE constexpr auto operator()(UTag<I> /*itag*/) const&& //
 			VEG_NOEXCEPT_LIKE(VEG_FWD(fn)(
-					Fix<i64{I}>{}, VEG_DECLVAL_NOEXCEPT(ith<I, Ts...>))) -> Ret {
+					Fix<isize{I}>{}, VEG_DECLVAL_NOEXCEPT(ith<I, Ts...>))) -> Ret {
 		return VEG_FWD(fn)(
-				Fix<i64{I}>{},
+				Fix<isize{I}>{},
 				const_cast<ith<I, Ts...>&&>(UwunionGetImpl<I>::get(ref).inner));
 	}
 };
@@ -384,8 +384,8 @@ struct UwunionEmptyRef {
 		return *ptr;
 	}
 
-	VEG_NODISCARD VEG_INLINE constexpr auto index() const -> i64 {
-		return i64((ptr == nullptr) ? usize{0} : usize{1});
+	VEG_NODISCARD VEG_INLINE constexpr auto index() const -> isize {
+		return isize((ptr == nullptr) ? usize{0} : usize{1});
 	}
 };
 
@@ -433,8 +433,8 @@ struct TrivialUwunionImplDefaultCtor {
 		return inner;
 	}
 
-	VEG_NODISCARD VEG_INLINE constexpr auto index() const -> i64 {
-		return i64(is_engaged);
+	VEG_NODISCARD VEG_INLINE constexpr auto index() const -> isize {
+		return isize(is_engaged);
 	}
 };
 
@@ -471,8 +471,8 @@ struct TrivialUwunionImplGeneric {
 		       UwunionGetImpl<I>::get(inner).inner;
 	}
 
-	VEG_NODISCARD VEG_INLINE constexpr auto index() const -> i64 {
-		return i64(tag);
+	VEG_NODISCARD VEG_INLINE constexpr auto index() const -> isize {
+		return isize(tag);
 	}
 	VEG_INLINE constexpr auto get_union_ref() const VEG_NOEXCEPT
 			-> RawUwunion<Ts...> const& {
@@ -891,8 +891,8 @@ struct NonTrivialUwunionImpl<Kind, meta::index_sequence<Is...>, Ts...>
 		return (void)meta::unreachable_if(this->inner.tag != I),
 		       UwunionGetImpl<I>::get(this->inner.inner).inner;
 	}
-	VEG_NODISCARD VEG_INLINE constexpr auto index() const -> i64 {
-		return i64(this->inner.tag);
+	VEG_NODISCARD VEG_INLINE constexpr auto index() const -> isize {
+		return isize(this->inner.tag);
 	}
 };
 
@@ -1120,8 +1120,8 @@ struct DoubleStorageCopyMove { /* NOLINT */
 		return *this;
 	}
 
-	VEG_NODISCARD VEG_INLINE constexpr auto index() const VEG_NOEXCEPT -> i64 {
-		return i64(inner.tag_with_bit / 2U);
+	VEG_NODISCARD VEG_INLINE constexpr auto index() const VEG_NOEXCEPT -> isize {
+		return isize(inner.tag_with_bit / 2U);
 	}
 	VEG_INLINE constexpr auto get_union_ref() const VEG_NOEXCEPT
 			-> RawUwunion<Ts...> const& {
@@ -1227,25 +1227,25 @@ struct UwunionIs<meta::index_sequence<Is...>, Ts...>
 			requires(
 					VEG_ALL_OF(VEG_CONCEPT(fn_once<
 																 Fn,
-																 meta::invoke_result_t<Fn, Fix<i64{Is}>, Ts>,
-																 Fix<i64{Is}>,
+																 meta::invoke_result_t<Fn, Fix<isize{Is}>, Ts>,
+																 Fix<isize{Is}>,
 																 Ts>))),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto map_i,
 			(fn, Fn)) && //
 			VEG_NOEXCEPT_IF(
 					VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_once<
 																 Fn,
-																 meta::invoke_result_t<Fn, Fix<i64{Is}>, Ts>,
-																 Fix<i64{Is}>,
+																 meta::invoke_result_t<Fn, Fix<isize{Is}>, Ts>,
+																 Fix<isize{Is}>,
 																 Ts>)))
-					-> Uwunion<meta::invoke_result_t<Fn, Fix<i64{Is}>, Ts>...> {
-		using Target = Uwunion<meta::invoke_result_t<Fn, Fix<i64{Is}>, Ts>...>;
+					-> Uwunion<meta::invoke_result_t<Fn, Fix<isize{Is}>, Ts>...> {
+		using Target = Uwunion<meta::invoke_result_t<Fn, Fix<isize{Is}>, Ts>...>;
 		return internal::visit14<
 				Target,
 				VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_once<
 															 Fn,
-															 meta::invoke_result_t<Fn, Fix<i64{Is}>, Ts>,
-															 Fix<i64{Is}>,
+															 meta::invoke_result_t<Fn, Fix<isize{Is}>, Ts>,
+															 Fix<isize{Is}>,
 															 Ts>)),
 				sizeof...(Ts)>(
 				usize(index()),
@@ -1280,12 +1280,12 @@ struct UwunionIs<meta::index_sequence<Is...>, Ts...>
 	VEG_TEMPLATE(
 			(typename Fn,
 	     typename Ret =
-	         meta::coalesce_t<meta::invoke_result_t<Fn, Fix<i64{Is}>, Ts>...>),
-			requires(VEG_ALL_OF(VEG_CONCEPT(fn_once<Fn, Ret, Fix<i64{Is}>, Ts>))),
+	         meta::coalesce_t<meta::invoke_result_t<Fn, Fix<isize{Is}>, Ts>...>),
+			requires(VEG_ALL_OF(VEG_CONCEPT(fn_once<Fn, Ret, Fix<isize{Is}>, Ts>))),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto visit_i,
 			(fn, Fn)) && //
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(
-					VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Fix<i64{Is}>, Ts>))) -> Ret {
+					VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Fix<isize{Is}>, Ts>))) -> Ret {
 		return internal::visit14<
 				Ret,
 				VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Ts>)),
@@ -1322,7 +1322,7 @@ public:
 	Uwunion() = delete;
 
 	VEG_TEMPLATE(
-			(i64 I),
+			(isize I),
 			requires(VEG_CONCEPT(movable<ith<usize{I}, Ts...>>)),
 			VEG_INLINE constexpr Uwunion,
 			(/*itag*/, Fix<I>),
@@ -1338,7 +1338,7 @@ public:
 				} {}
 
 	VEG_TEMPLATE(
-			(i64 I, typename Fn),
+			(isize I, typename Fn),
 			requires(VEG_CONCEPT(fn_once<Fn, ith<usize{I}, Ts...>>)),
 			VEG_INLINE constexpr Uwunion,
 			(/*inplace*/, InPlace),
@@ -1353,7 +1353,7 @@ public:
 				} {}
 
 	VEG_TEMPLATE(
-			(i64 I, typename Fn),
+			(isize I, typename Fn),
 			requires(
 					usize{I} < sizeof...(Ts) &&
 					VEG_CONCEPT(fn_once<Fn, ith<usize{I}, Ts...>>)),
@@ -1370,7 +1370,7 @@ public:
 	}
 
 	VEG_TEMPLATE(
-			(i64 I),
+			(isize I),
 			requires(usize{I} < sizeof...(Ts)),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto unwrap_fwd,
 			(/*itag*/, Fix<I>)) &&
@@ -1380,7 +1380,7 @@ public:
 	}
 
 	VEG_TEMPLATE(
-			(i64 I),
+			(isize I),
 			requires(usize{I} < sizeof...(Ts)),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto unwrap_unchecked_fwd,
 			(/*itag*/, Fix<I>),
@@ -1393,7 +1393,7 @@ public:
 	}
 
 	VEG_TEMPLATE(
-			(i64 I),
+			(isize I),
 			requires(usize{I} < sizeof...(Ts)),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto unwrap,
 			(/*itag*/, Fix<I>)) &&
@@ -1404,7 +1404,7 @@ public:
 	}
 
 	VEG_TEMPLATE(
-			(i64 I),
+			(isize I),
 			requires(usize{I} < sizeof...(Ts)),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto unwrap_unchecked,
 			(/*itag*/, Fix<I>),

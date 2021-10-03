@@ -15,7 +15,7 @@ struct Tuple;
 
 namespace internal {
 
-template <i64 I, typename Fn, typename Arg>
+template <isize I, typename Fn, typename Arg>
 struct UnindexedFn {
 	Fn&& fn;
 	Arg&& arg;
@@ -68,15 +68,15 @@ struct unpack {
 struct for_each_i {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Ts, usize... Is),
-			requires(VEG_ALL_OF(VEG_CONCEPT(fn_mut<Fn, void, Fix<i64{Is}>, Ts&&>))),
+			requires(VEG_ALL_OF(VEG_CONCEPT(fn_mut<Fn, void, Fix<isize{Is}>, Ts&&>))),
 			VEG_INLINE VEG_CPP14(constexpr) void
 			operator(),
 			(args, IndexedTuple<veg::meta::index_sequence<Is...>, Ts...>),
 			(fn, Fn))
 	const VEG_NOEXCEPT_IF(
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_mut<Fn, void, Fix<i64{Is}>, Ts&&>))) {
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_mut<Fn, void, Fix<isize{Is}>, Ts&&>))) {
 		VEG_EVAL_ALL(fn(
-				Fix<i64{Is}>{},
+				Fix<isize{Is}>{},
 				static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&&>(args).leaf_get())));
 	}
 };
@@ -102,8 +102,8 @@ struct map_i {
 			requires(VEG_ALL_OF(
 					VEG_CONCEPT(fn_mut<
 											Fn,
-											veg::meta::invoke_result_t<Fn&, Fix<i64{Is}>, Ts&&>,
-											Fix<i64{Is}>,
+											veg::meta::invoke_result_t<Fn&, Fix<isize{Is}>, Ts&&>,
+											Fix<isize{Is}>,
 											Ts&&>))),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
 			operator(),
@@ -113,13 +113,13 @@ struct map_i {
 			VEG_ALL_OF(
 					VEG_CONCEPT(nothrow_fn_mut<
 											Fn,
-											veg::meta::invoke_result_t<Fn&, Fix<i64{Is}>, Ts&&>,
-											Fix<i64{Is}>,
+											veg::meta::invoke_result_t<Fn&, Fix<isize{Is}>, Ts&&>,
+											Fix<isize{Is}>,
 											Ts&&>)))
-			->Tuple<veg::meta::invoke_result_t<Fn&, Fix<i64{Is}>, Ts&&>...> {
+			->Tuple<veg::meta::invoke_result_t<Fn&, Fix<isize{Is}>, Ts&&>...> {
 		return {
 				InPlace{},
-				internal::UnindexedFn<i64{Is}, Fn&, Ts&&>{
+				internal::UnindexedFn<isize{Is}, Fn&, Ts&&>{
 						fn,
 						static_cast<Ts&&>(
 								static_cast<TupleLeaf<Is, Ts>&&>(args).leaf_get()),
@@ -196,7 +196,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 			: TupleLeaf<Is, Ts>{
 						InPlace{},
 						internal::ConvertingFn<Ts&&, Ts>{VEG_FWD(args)},
-				}... {};
+				}... {}
 
 	VEG_TEMPLATE(
 			typename... Fns,
@@ -233,11 +233,11 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 		};
 	}
 
-	template <i64 I>
+	template <isize I>
 	void operator[](Fix<I> /*arg*/) const&& = delete;
 
 	VEG_TEMPLATE(
-			(i64 I),
+			(isize I),
 			requires(
 					I < sizeof...(Ts) && (I >= 0) &&
 					VEG_CONCEPT(movable<ith<usize{I}, Ts...>>)),
@@ -251,7 +251,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 	}
 
 	VEG_TEMPLATE(
-			(i64 I),
+			(isize I),
 			requires(I < sizeof...(Ts) && (I >= 0)),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
 			operator[],
@@ -263,7 +263,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 
 	/// returns a const reference to the ith element
 	VEG_TEMPLATE(
-			(i64 I),
+			(isize I),
 			requires(I < sizeof...(Ts) && (I >= 0)),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
 			operator[],
@@ -293,11 +293,11 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 
 	VEG_TEMPLATE(
 			(typename Fn),
-			requires(VEG_ALL_OF(VEG_CONCEPT(fn_mut<Fn, void, Fix<i64{Is}>, Ts>))),
+			requires(VEG_ALL_OF(VEG_CONCEPT(fn_mut<Fn, void, Fix<isize{Is}>, Ts>))),
 			VEG_INLINE VEG_CPP14(constexpr) void for_each_i,
 			(fn, Fn))
 	&&VEG_NOEXCEPT_IF(
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_mut<Fn, void, Fix<i64{Is}>, Ts>))) {
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_mut<Fn, void, Fix<isize{Is}>, Ts>))) {
 		nb::for_each_i{}(static_cast<IndexedTuple&&>(*this), VEG_FWD(fn));
 	}
 
@@ -306,18 +306,18 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 			requires(
 					VEG_ALL_OF(VEG_CONCEPT(fn_mut<
 																 Fn,
-																 meta::invoke_result_t<Fn&, Fix<i64{Is}>, Ts>,
-																 Fix<i64{Is}>,
+																 meta::invoke_result_t<Fn&, Fix<isize{Is}>, Ts>,
+																 Fix<isize{Is}>,
 																 Ts>))),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto map_i,
 			(fn, Fn))
 	&&VEG_NOEXCEPT_IF(
 				VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_mut<
 															 Fn,
-															 meta::invoke_result_t<Fn&, Fix<i64{Is}>, Ts>,
-															 Fix<i64{Is}>,
+															 meta::invoke_result_t<Fn&, Fix<isize{Is}>, Ts>,
+															 Fix<isize{Is}>,
 															 Ts&&>)))
-				->Tuple<meta::invoke_result_t<Fn&, Fix<i64{Is}>, Ts>...> {
+				->Tuple<meta::invoke_result_t<Fn&, Fix<isize{Is}>, Ts>...> {
 		return nb::map_i{}(static_cast<IndexedTuple&&>(*this), VEG_FWD(fn));
 	}
 

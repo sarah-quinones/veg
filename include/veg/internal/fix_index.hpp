@@ -9,23 +9,24 @@
 
 namespace veg {
 struct Dyn;
-template <i64 N>
+template <isize N>
 struct Fix;
 
 namespace internal {
 template <typename L, typename R>
 struct binary_traits {
-	using add = void;
-	using sub = void;
-	using mul = void;
-	using div = void;
+	using Add = void;
+	using Sub = void;
+	using Mul = void;
+	using Div = void;
+	using Mod = void;
 
-	using cmp_eq = void;
-	using cmp_neq = void;
-	using cmp_lt = void;
-	using cmp_le = void;
-	using cmp_gt = void;
-	using cmp_ge = void;
+	using CmpEq = void;
+	using CmpNEq = void;
+	using CmpLT = void;
+	using CmpLE = void;
+	using CmpGT = void;
+	using CmpGE = void;
 };
 
 namespace idx {
@@ -37,7 +38,7 @@ struct IdxBase {};
 namespace meta_ {
 template <typename T>
 struct is_fix : false_type {};
-template <i64 N>
+template <isize N>
 struct is_fix<Fix<N>> : true_type {};
 } // namespace meta_
 } // namespace internal
@@ -89,22 +90,22 @@ private:
 		constexpr auto const& yes_str = "maybe(true)";
 		constexpr auto const& no_str = "maybe(false)";
 		char const* str = (T == yes) ? yes_str : no_str;
-		auto len = i64((T == yes) ? sizeof(yes_str) : sizeof(no_str)) - 1;
-		out.insert(out.size(), str, len);
+		auto len = ((T == yes) ? sizeof(yes_str) : sizeof(no_str)) - 1;
+		out.insert(out.size(), str, (len));
 	}
 };
 
-template <i64 N>
+template <isize N>
 struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 	constexpr Fix() VEG_NOEXCEPT = default;
 	VEG_INLINE constexpr Fix(Dyn /*arg*/, Unsafe /*tag*/) VEG_NOEXCEPT;
 	VEG_INLINE constexpr Fix // NOLINT(hicpp-explicit-conversions)
 			(Dyn arg) VEG_NOEXCEPT;
-	VEG_TEMPLATE((i64 M), requires((M != N)), constexpr Fix, (/*arg*/, Fix<M>)) =
+	VEG_TEMPLATE((isize M), requires((M != N)), constexpr Fix, (/*arg*/, Fix<M>)) =
 			delete;
 
 	VEG_NODISCARD VEG_INLINE explicit constexpr
-	operator i64() const VEG_NOEXCEPT {
+	operator isize() const VEG_NOEXCEPT {
 		return N;
 	}
 	VEG_NODISCARD VEG_INLINE constexpr auto operator+() const VEG_NOEXCEPT
@@ -144,7 +145,7 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 			(typename R),
 			requires(
 					VEG_CONCEPT(index<R>) &&
-					VEG_CONCEPT(index<typename internal::binary_traits<Fix, R>::div>)),
+					VEG_CONCEPT(index<typename internal::binary_traits<Fix, R>::Div>)),
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator/,
 			(b, R))
@@ -154,7 +155,7 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 			(typename R),
 			requires(
 					VEG_CONCEPT(index<R>) &&
-					VEG_CONCEPT(index<typename internal::binary_traits<Fix, R>::mod>)),
+					VEG_CONCEPT(index<typename internal::binary_traits<Fix, R>::Mod>)),
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator%,
 			(b, R))
@@ -244,46 +245,47 @@ struct char_seq {
 	static constexpr char value[] = {Chars...};
 };
 
-template <i64 N, i64 M>
+template <isize N, isize M>
 struct binary_traits<Fix<N>, Fix<M>> {
 
-#define VEG_OP(Name, Op)                                                       \
-	using Name /* NOLINT(bugprone-macro-parentheses) */ = Fix<N Op M>;           \
+#define VEG_OP(Name, TypeName, Op)                                             \
+	using TypeName /* NOLINT(bugprone-macro-parentheses) */ =                    \
+			Fix<isize(usize(isize{N}) Op usize(isize{M}))>;                          \
 	VEG_NODISCARD VEG_INLINE static constexpr auto Name##_fn(Fix<N>, Fix<M>)     \
-			VEG_NOEXCEPT->Name {                                                     \
+			VEG_NOEXCEPT->TypeName {                                                 \
 		return {};                                                                 \
 	}                                                                            \
 	static_assert(true, "")
 
-#define VEG_CMP(Name, Op)                                                      \
-	using Name /* NOLINT(bugprone-macro-parentheses) */ =                        \
+#define VEG_CMP(Name, TypeName, Op)                                            \
+	using TypeName /* NOLINT(bugprone-macro-parentheses) */ =                    \
 			Boolean<(N Op M) ? yes : no>;                                            \
 	VEG_NODISCARD VEG_INLINE static constexpr auto Name##_fn(Fix<N>, Fix<M>)     \
-			VEG_NOEXCEPT->Name {                                                     \
+			VEG_NOEXCEPT->TypeName {                                                 \
 		return {};                                                                 \
 	}                                                                            \
 	static_assert(true, "")
 
-	VEG_OP(add, +);
-	VEG_OP(sub, -);
-	VEG_OP(mul, *);
-	VEG_CMP(cmp_eq, ==);
-	VEG_CMP(cmp_neq, !=);
-	VEG_CMP(cmp_lt, <);
-	VEG_CMP(cmp_le, <=);
-	VEG_CMP(cmp_gt, >);
-	VEG_CMP(cmp_ge, >=);
+	VEG_OP(add, Add, +);
+	VEG_OP(sub, Sub, -);
+	VEG_OP(mul, Mul, *);
+	VEG_CMP(cmp_eq, CmpEq, ==);
+	VEG_CMP(cmp_neq, CmpNEq, !=);
+	VEG_CMP(cmp_lt, CmpLT, <);
+	VEG_CMP(cmp_le, CmpLE, <=);
+	VEG_CMP(cmp_gt, CmpGT, >);
+	VEG_CMP(cmp_ge, CmpGE, >=);
 
-	using div = meta::conditional_t<M == 0, void, Fix<N / (M != 0 ? M : 1)>>;
-	using mod = meta::conditional_t<M == 0, void, Fix<N % (M != 0 ? M : 1)>>;
+	using Div = meta::conditional_t<M == 0, void, Fix<N / (M != 0 ? M : 1)>>;
+	using Mod = meta::conditional_t<M == 0, void, Fix<N % (M != 0 ? M : 1)>>;
 
 	VEG_NODISCARD VEG_INLINE static constexpr auto
-	div_fn(Fix<N> /*a*/, Fix<M> /*b*/) VEG_NOEXCEPT -> div {
-		return div();
+	div_fn(Fix<N> /*a*/, Fix<M> /*b*/) VEG_NOEXCEPT -> Div {
+		return Div();
 	}
 	VEG_NODISCARD VEG_INLINE static constexpr auto
-	mod_fn(Fix<N> /*a*/, Fix<M> /*b*/) VEG_NOEXCEPT -> mod {
-		return mod();
+	mod_fn(Fix<N> /*a*/, Fix<M> /*b*/) VEG_NOEXCEPT -> Mod {
+		return Mod();
 	}
 
 #undef VEG_OP
@@ -316,18 +318,18 @@ struct fmt::Debug<Boolean<no>> {
 	}
 };
 
-template <i64 N>
+template <isize N>
 struct fmt::Debug<Fix<N>> {
 	static void to_string(fmt::Buffer& out, Ref<Fix<N>> /*val*/) {
 		out.insert(out.size(), "Fix[", 4);
-		Debug<i64>::to_string(out, ref(N));
+		Debug<isize>::to_string(out, ref(N));
 		out.insert(out.size(), "]", 1);
 	}
 };
 
-template <i64 N>
+template <isize N>
 struct cmp::is_eq<Fix<N>> : meta::true_type {};
-template <i64 N>
+template <isize N>
 struct cmp::is_ord<Fix<N>> : meta::true_type {};
 template <>
 struct cmp::is_eq<Boolean<yes>> : meta::true_type {};
