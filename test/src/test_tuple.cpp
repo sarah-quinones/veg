@@ -270,7 +270,7 @@ TEST_CASE("tuple: get") {
 	nb::get<0>{}(FWD(arr));
 }
 
-TEST_CASE("tuple: *sparkles* functional programming *sparkles*") {
+TEST_CASE("tuple: ✨ functional programming ✨") {
 	using namespace veg;
 	using veg::clone;
 
