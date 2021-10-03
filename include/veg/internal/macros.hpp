@@ -76,7 +76,7 @@
 #endif
 
 #define VEG_ARROW(...)                                                         \
-	VEG_NOEXCEPT_IF(VEG_IS_NOEXCEPT((__VA_ARGS__)))->decltype(__VA_ARGS__) {     \
+	VEG_NOEXCEPT_IF(VEG_IS_NOEXCEPT((__VA_ARGS__)))->decltype((__VA_ARGS__)) {   \
 		return __VA_ARGS__;                                                        \
 	}
 
