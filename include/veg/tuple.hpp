@@ -576,8 +576,12 @@ struct fmt::Debug<Tuple<Ts...>> {
 				(Is > 0) ? (out.insert(out.size(), ", ", 2)) : void(0),
 				Debug<meta::uncvref_t<Ts>>::to_string(
 						out,
-						static_cast<Ts const&>(
-								static_cast<tuple::TupleLeaf<Is, Ts> const&>(tup).get())));
+						Ref<Ts>{
+								AsRef{},
+								static_cast<Ts const&>(
+										static_cast<tuple::TupleLeaf<Is, Ts> const&>(tup)
+												.leaf_get()),
+						}));
 
 		out.insert(out.size(), "}", 1);
 	}

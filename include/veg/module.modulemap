@@ -107,8 +107,8 @@ module veg {
       header "functional/copy_fn.hpp"
       export *
     }
-    module curry {
-      header "functional/curry.hpp"
+    module bind {
+      header "functional/bind.hpp"
       export *
     }
   }
