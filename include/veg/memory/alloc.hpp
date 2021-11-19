@@ -1,64 +1,138 @@
 #ifndef VEG_ALLOC_HPP_TAWYRUICS
 #define VEG_ALLOC_HPP_TAWYRUICS
 
+#include "veg/ref.hpp"
+#include "veg/type_traits/constructible.hpp"
+#include "veg/type_traits/assignable.hpp"
 #include "veg/internal/typedefs.hpp"
 #include "veg/internal/macros.hpp"
+#include "veg/memory/placement.hpp"
+#include "veg/type_traits/alloc.hpp"
+
+#include <cstddef>  // std::max_align_t
+#include <cstdlib>  // std::{malloc, free, realloc}, ::{aligned_alloc, free}
+#include <malloc.h> // ::malloc_usable_size
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace internal {
-[[noreturn]] HEDLEY_NEVER_INLINE void throw_bad_alloc();
-} // namespace internal
 namespace mem {
-using byte = unsigned char;
-template <typename T>
-struct AllocBlock {
-	T* data;
-	usize cap;
-};
-} // namespace mem
 
-namespace abi {
-inline namespace VEG_ABI_VERSION {
-extern "C" {
-struct RawAlloc {
-	void* data;
-	usize cap;
-};
-namespace internal {
-auto veglib_opaque_memmove(void* dest, void const* src, usize nbytes) noexcept
-		-> void*;
-} // namespace internal
+VEG_INLINE auto aligned_alloc(usize align, usize size) noexcept -> void* {
+	return ::aligned_alloc(align, size);
+}
+VEG_INLINE void aligned_free(usize /*align*/, void* ptr) noexcept {
+	return ::free(ptr);
+}
 
-namespace mem {
-using ::veg::mem::byte;
-
-#if defined(HEDLEY_GNUC_VERSION)
-#define VEG_ATTRIBUTE_MALLOC __attribute__((__malloc__))
-#elif defined(HEDLEY_MSVC_VERSION)
-#define VEG_ATTRIBUTE_MALLOC __declspec(restrict)
-#endif
-
-void veglib_aligned_free(usize align, RawAlloc alloc) VEG_ALWAYS_NOEXCEPT;
-VEG_ATTRIBUTE_MALLOC auto veglib_aligned_alloc(
-		usize* num_accessible_bytes, usize align, usize nbytes) VEG_ALWAYS_NOEXCEPT
-		-> void*;
-VEG_ATTRIBUTE_MALLOC auto veglib_aligned_alloc_zeroed(
-		usize* num_accessible_bytes, usize align, usize nbytes) VEG_ALWAYS_NOEXCEPT
-		-> void*;
-auto veglib_aligned_realloc(
-		usize* num_accessible_bytes, usize align, RawAlloc prev_alloc, usize nbytes)
-		VEG_ALWAYS_NOEXCEPT -> void*;
-auto veglib_aligned_realloc_zeroed(
-		usize* num_accessible_bytes, usize align, RawAlloc prev_alloc, usize nbytes)
-		VEG_ALWAYS_NOEXCEPT -> void*;
-} // namespace mem
-} // extern "C"
-} // namespace VEG_ABI_VERSION
-} // namespace abi
-
-namespace mem {
 struct SystemAlloc {};
+template <>
+struct Alloc<SystemAlloc> {
+	static constexpr usize max_base_align = alignof(std::max_align_t);
+
+	VEG_INLINE static void
+	dealloc(RefMut<SystemAlloc> /*alloc*/, void* ptr, Layout layout) noexcept {
+		(layout.align <= max_base_align) ? std::free(ptr)
+																		 : mem::aligned_free(layout.align, ptr);
+	}
+	VEG_NODISCARD VEG_INLINE static auto
+	alloc(RefMut<SystemAlloc> /*alloc*/, Layout layout) noexcept
+			-> mem::AllocBlock {
+		void* ptr = (layout.align <= max_base_align)
+		                ? std::malloc(layout.byte_size)
+		                : mem::aligned_alloc(layout.align, layout.byte_size);
+		if (HEDLEY_UNLIKELY(ptr == nullptr)) {
+			internal::terminate();
+		}
+		return {ptr, ::malloc_usable_size(ptr)};
+	}
+	VEG_NODISCARD VEG_NO_INLINE static auto realloc(
+			RefMut<SystemAlloc> /*alloc*/,
+			void* ptr,
+			Layout layout,
+			usize new_size,
+			usize copy_size,
+			RelocFn reloc) noexcept -> mem::AllocBlock {
+		void* new_ptr; // NOLINT
+		bool typical_align = layout.align <= max_base_align;
+		bool trivial_reloc = reloc.is_trivial();
+		bool use_realloc = typical_align && trivial_reloc;
+
+		if (use_realloc) {
+			new_ptr = std::realloc(ptr, new_size);
+		} else {
+			new_ptr = mem::aligned_alloc(layout.align, new_size);
+		}
+
+		if (HEDLEY_UNLIKELY(new_ptr == nullptr)) {
+			internal::terminate();
+		}
+
+		if (!use_realloc) {
+			reloc(new_ptr, ptr, copy_size);
+			mem::aligned_free(layout.align, ptr);
+		}
+
+		return {new_ptr, ::malloc_usable_size(new_ptr)};
+	}
+	VEG_NODISCARD VEG_INLINE auto try_grow_in_place(
+			void* /*ptr*/, Layout /*layout*/, usize /*new_size*/) const noexcept
+			-> bool {
+		return false;
+	}
+	VEG_NODISCARD VEG_INLINE static auto grow(
+			RefMut<SystemAlloc> alloc,
+			void* ptr,
+			Layout layout,
+			usize new_size,
+			RelocFn reloc) noexcept -> mem::AllocBlock {
+		return realloc(
+				VEG_FWD(alloc), ptr, layout, new_size, layout.byte_size, reloc);
+	}
+	VEG_NODISCARD VEG_INLINE static auto shrink(
+			RefMut<SystemAlloc> alloc,
+			void* ptr,
+			Layout layout,
+			usize new_size,
+			RelocFn reloc) noexcept -> mem::AllocBlock {
+		return realloc(VEG_FWD(alloc), ptr, layout, new_size, new_size, reloc);
+	}
+};
+
+struct DefaultCloner {};
+template <>
+struct Cloner<DefaultCloner> {
+	template <typename T>
+	using trivial_clone = meta::bool_constant<VEG_CONCEPT(trivially_copyable<T>)>;
+
+	template <typename T, typename Alloc>
+	VEG_INLINE static void
+	destroy(RefMut<DefaultCloner> /*cloner*/, T* ptr, RefMut<Alloc> /*alloc*/)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+		mem::destroy_at(ptr);
+	}
+	VEG_TEMPLATE(
+			(typename T, typename Alloc),
+			requires(VEG_CONCEPT(copyable<T>)),
+			VEG_NODISCARD VEG_INLINE static auto clone,
+			(/*cloner*/, RefMut<DefaultCloner>),
+			(rhs, Ref<T>),
+			(/*alloc*/, RefMut<Alloc>))
+	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_copyable<T>))->T { return T(rhs.get()); }
+	VEG_TEMPLATE(
+			(typename T, typename Alloc),
+			requires(VEG_CONCEPT(copyable<T>)),
+			VEG_INLINE static void clone_from,
+			(/*cloner*/, RefMut<DefaultCloner>),
+			(lhs, RefMut<T>),
+			(rhs, Ref<T>),
+			(/*alloc*/, RefMut<Alloc>))
+	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_copy_assignable<T>)) {
+		lhs.get() = rhs.get();
+	}
+};
+
+VEG_INLINE_VAR(system_alloc, SystemAlloc);
+VEG_INLINE_VAR(default_cloner, DefaultCloner);
 } // namespace mem
 } // namespace veg
 

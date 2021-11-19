@@ -1,28 +1,5 @@
 include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/doctest.cmake)
 
-add_library(project_warnings INTERFACE)
-add_library(project_options INTERFACE)
-
-include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/compiler_warnings.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/static_analyzers.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/sanitizers.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/conan.cmake)
-
-target_link_libraries(veg INTERFACE project_options project_warnings)
-include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/extra_local_settings.cmake)
-
-# Conan dependencies
-set(CONAN_REQUIRES # MIT License
-    fmt/7.1.2 backward-cpp/1.5
-)
-set(CONAN_OPTIONS)
-run_conan()
-message(STATUS ${CONAN_LIBS})
-target_link_libraries(veg PUBLIC CONAN_PKG::fmt)
-
-enable_sanitizers(project_options)
-set_project_warnings(project_warnings)
-
 add_library(doctest_cpp_main src/doctest_main.cpp)
 target_include_directories(
   doctest_cpp_main PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -64,6 +41,7 @@ macro(add_all_tests_std_version std_version)
   target_include_directories(
     veg.${std_version} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
   )
+  target_compile_definitions(veg.${std_version} PUBLIC __VEG_DISABLE_NOEXCEPT)
   target_link_libraries(veg.${std_version} veg.all)
   set_cxx_version(veg.${std_version} ${std_version})
   target_compile_definitions(
@@ -78,7 +56,6 @@ macro(add_all_tests_std_version std_version)
   add_test_std_version(${std_version} uwunion src/test_uwunion.cpp)
   add_test_std_version(${std_version} option.stx src/test_option.stx.cpp)
   add_test_std_version(${std_version} vec src/vec.cpp)
-  add_test_std_version(${std_version} aligned_alloc src/aligned_alloc.cpp)
 
   add_custom_target(
     check.${std_version}

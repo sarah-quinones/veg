@@ -27,8 +27,6 @@
  *
  */
 
-#define __VEG_DISABLE_NOEXCEPT
-
 #include "static_assert.hpp"
 #include "veg/option.hpp"
 #include "veg/functional/compose.hpp"
@@ -85,12 +83,10 @@ auto make_mv() -> MoveOnly<id> {
 
 struct NotEq {};
 
-STATIC_ASSERT(VEG_CONCEPT(swappable<MoveOnly<0>&, MoveOnly<0>&>));
-STATIC_ASSERT(VEG_CONCEPT(partial_eq<MoveOnly<0>, MoveOnly<0>>));
-STATIC_ASSERT(
-		VEG_CONCEPT(partial_eq<Option<MoveOnly<0>>, Option<MoveOnly<0>>>));
-STATIC_ASSERT(!VEG_CONCEPT(partial_eq<NotEq, NotEq>));
-STATIC_ASSERT(!VEG_CONCEPT(partial_eq<Option<NotEq>, Option<NotEq>>));
+STATIC_ASSERT(VEG_CONCEPT(eq<MoveOnly<0>, MoveOnly<0>>));
+STATIC_ASSERT(VEG_CONCEPT(eq<Option<MoveOnly<0>>, Option<MoveOnly<0>>>));
+STATIC_ASSERT(!VEG_CONCEPT(eq<NotEq, NotEq>));
+STATIC_ASSERT(!VEG_CONCEPT(eq<Option<NotEq>, Option<NotEq>>));
 
 struct FnMut {
 	int call_times{};
@@ -226,11 +222,12 @@ TEST_CASE("OptionTest: Equality") {
 void foo(Option<vector<int>>);
 
 TEST_CASE("OptionTest: Contains") {
-	CHECK(some(vector<int>{1, 2, 3, 4}).contains({as_ref, {1, 2, 3, 4}}));
-	CHECK(!some(vector<int>{1, 2, 3, 4}).contains({as_ref, {1, 2, 3, 4, 5}}));
+	CHECK(some(vector<int>{1, 2, 3, 4}).contains(ref(vector<int>{1, 2, 3, 4})));
+	CHECK(
+			!some(vector<int>{1, 2, 3, 4}).contains(ref(vector<int>{1, 2, 3, 4, 5})));
 
-	CHECK(some(8).contains({as_ref, 8}));
-	CHECK(!some(8).contains({as_ref, 88}));
+	CHECK(some(8).contains(ref(8)));
+	CHECK(!some(8).contains(ref(88)));
 }
 
 TEST_CASE("OptionLifetimeTest: Contains") {
@@ -612,15 +609,15 @@ TEST_CASE("OptionTest: Take") {
 TEST_CASE("OptionTest: Clone") {
 	using veg::clone;
 	auto a = some(9);
-	CHECK(clone(a) == some(9));
+	CHECK(clone(ref(a)) == some(9));
 	CHECK(a == some(9));
 
 	auto b = some(static_cast<int*>(nullptr));
-	CHECK(clone(b) == some(static_cast<int*>(nullptr)));
+	CHECK(clone(ref(b)) == some(static_cast<int*>(nullptr)));
 	CHECK(b == some(static_cast<int*>(nullptr)));
 
 	auto c = some(vector<int>{1, 2, 3, 4, 5});
-	CHECK(clone(c) == some(vector<int>{1, 2, 3, 4, 5}));
+	CHECK(clone(ref(c)) == some(vector<int>{1, 2, 3, 4, 5}));
 	CHECK(c == some(vector<int>{1, 2, 3, 4, 5}));
 }
 

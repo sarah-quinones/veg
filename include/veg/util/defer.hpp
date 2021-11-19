@@ -31,7 +31,7 @@ namespace nb {
 struct defer {
 	VEG_TEMPLATE(
 			typename Fn,
-			requires(VEG_CONCEPT(movable<Fn>) && VEG_CONCEPT(fn_once<Fn, void>)),
+			requires(VEG_CONCEPT(fn_once<Fn, void>)),
 			VEG_INLINE VEG_CPP20(constexpr) auto
 			operator(),
 			(fn, Fn&&))

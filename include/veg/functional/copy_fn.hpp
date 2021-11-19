@@ -20,7 +20,7 @@ struct CopyFn {
 			(... args, Args&&))
 	const VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_copyable<Fn>) &&
-			VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Args&&...>))
+			VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Args...>))
 			->Ret {
 		return Fn(fn)(VEG_FWD(args)...);
 	}
@@ -29,11 +29,10 @@ namespace nb {
 struct copy_fn {
 	VEG_TEMPLATE(
 			typename Fn,
-			requires(
-					VEG_CONCEPT(constructible<Fn, Fn&&>) && VEG_CONCEPT(movable<Fn>)),
+			requires(VEG_CONCEPT(copyable<Fn>)),
 			VEG_INLINE constexpr auto
 			operator(),
-			(fn, Fn&&))
+			(fn, Fn))
 	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<Fn>))->CopyFn<Fn> {
 		return {Fn(VEG_FWD(fn))};
 	}
@@ -41,6 +40,15 @@ struct copy_fn {
 } // namespace nb
 VEG_NIEBLOID(copy_fn);
 } // namespace fn
+
+namespace cpo {
+template <typename Fn>
+struct is_trivially_constructible<fn::CopyFn<Fn>>
+		: is_trivially_constructible<Fn> {};
+template <typename Fn>
+struct is_trivially_relocatable<fn::CopyFn<Fn>> : is_trivially_relocatable<Fn> {
+};
+} // namespace cpo
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

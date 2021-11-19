@@ -26,7 +26,7 @@
 // construct_at
 #if __cplusplus >= 202002L
 
-// STD INDCLUDE: construct_at
+// std::construct_at
 #if __VEG_HAS_INCLUDE(<bits/stl_construct.h>) &&                                              \
 		__VEG_HAS_INCLUDE(<bits/stl_iterator_base_types.h>) &&                                \
 				__VEG_HAS_INCLUDE(<bits/stl_iterator_base_funcs.h>)
@@ -164,7 +164,6 @@ struct bit_cast {
 			requires(
 					(VEG_CONCEPT(trivially_copyable<From>) && //
 	         VEG_CONCEPT(trivially_copyable<To>) &&   //
-	         VEG_CONCEPT(movable<To>) &&              //
 	         (sizeof(From) == sizeof(To)))),
 			VEG_INLINE VEG_BITCAST_CONSTEXPR auto
 			operator(),
@@ -176,7 +175,7 @@ struct bit_cast {
 		alignas(To) unsigned char buf[sizeof(To)];
 		To* ptr = reinterpret_cast<To*>(static_cast<unsigned char*>(buf));
 		::std::memcpy(ptr, nb::addressof{}(from), sizeof(To));
-		return static_cast<To&&>(*nb::launder{}(ptr));
+		return To(static_cast<To&&>(*nb::launder{}(ptr)));
 #endif
 	}
 };

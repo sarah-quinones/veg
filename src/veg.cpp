@@ -3,6 +3,7 @@
 #include <cinttypes>
 #include <iostream>
 #include <memory>
+#include <limits>
 
 #include <cstdio>
 #include <cstdlib>
@@ -28,6 +29,11 @@
 #endif
 
 namespace veg {
+namespace internal {
+[[noreturn]] void terminate() VEG_ALWAYS_NOEXCEPT {
+	std::terminate();
+}
+} // namespace internal
 namespace abi {
 inline namespace VEG_ABI_VERSION {
 
@@ -37,7 +43,7 @@ String::~String() {
 }
 
 void String::eprint() const VEG_ALWAYS_NOEXCEPT {
-	std::cerr.write(self.ptr, self.len);
+	std::cerr.write(self.ptr, isize(self.len));
 	std::cerr.put('\n');
 }
 void String::reserve(usize new_cap) {
@@ -64,6 +70,14 @@ void String::insert(usize pos, char const* data_, usize len) {
 	if (len > 0) {
 		std::memmove(data() + pos + len, data() + pos, std::size_t(old_size - pos));
 		std::memmove(data() + pos, data_, std::size_t(len));
+	}
+}
+void String::insert_newline(usize pos) {
+	insert(pos, mem::addressof('\n'), 1);
+	++pos;
+	for (usize i = 0; i < indent_level; ++i) {
+		insert(pos, mem::addressof('\t'), 1);
+		++pos;
 	}
 }
 
@@ -752,6 +766,7 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 		-> std::string {
 	auto _clear = [&] { failed_asserts.clear(); };
 	auto&& clear = defer(_clear);
+	(void)clear;
 
 	std::string output;
 
@@ -859,6 +874,7 @@ void set_assert_params1( //
 	};
 
 	auto&& clear = defer(_clear);
+	(void)clear;
 
 	failed_asserts.push_back({
 			false,
@@ -880,19 +896,41 @@ void set_assert_params2(       //
 	failed_asserts.back().callback = msg;
 }
 
-auto snprintf1(char* out, usize n, char const* fmt, void* arg) -> usize {
-#define PRINT1(Type, Fmt)                                                      \
-	if (std::strcmp(fmt, "%" #Fmt) == 0) {                                       \
-		return usize(                                                              \
-				std::snprintf(out, n, fmt, *static_cast<Type*> /* NOLINT */ (arg)));   \
-	}                                                                            \
-	(void)0
+auto snprintf1(char* out, usize n, unsigned type, void* arg) -> usize {
+	unsigned type_id = type % 4U;
+	unsigned metadata = type / 4U;
 
-	PRINT1(long long signed, lld);
-	PRINT1(long long unsigned, llu);
-	PRINT1(long double, Lf);
-	PRINT1(void*, p);
-	terminate();
+	switch (type_id) {
+	case 0: // signed
+		return usize(
+				std::snprintf(out, n, "%lld", *static_cast<long long signed*>(arg)));
+	case 1: // unsigned
+		return usize(
+				std::snprintf(out, n, "%llu", *static_cast<long long unsigned*>(arg)));
+	case 2: // pointer
+		return usize(std::snprintf(out, n, "%p", arg));
+	case 3: { // float
+		int precision = 0;
+		switch (metadata) {
+		case sizeof(float):
+			precision = int(std::numeric_limits<float>::max_digits10);
+			break;
+		case sizeof(double):
+			precision = int(std::numeric_limits<double>::max_digits10);
+			break;
+		case sizeof(long double):
+			precision = int(std::numeric_limits<long double>::max_digits10);
+			break;
+		default: {
+		}
+		}
+		return usize(std::snprintf(
+				out, n, "%.*Le", precision, *static_cast<long double*>(arg)));
+	}
+		HEDLEY_FALL_THROUGH;
+	default:
+		terminate();
+	}
 }
 } // namespace internal
 } // namespace VEG_ABI_VERSION

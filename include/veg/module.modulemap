@@ -41,8 +41,8 @@ module veg {
       export *
     }
 
-    module aligned_alloc {
-      header "memory/aligned_alloc.hpp"
+    module alloc {
+      header "memory/alloc.hpp"
       export *
     }
   }

@@ -1,5 +1,3 @@
-#define __VEG_DISABLE_NOEXCEPT
-
 #include "veg/memory/dynamic_stack.hpp"
 #include <doctest.h>
 
@@ -28,18 +26,18 @@ public:
 TEST_CASE("dynamic stack: raii") {
 	Array<unsigned char, 4096> buf{};
 
-	DynStackView stack{buf.as_mut_ref()};
+	DynStackView stack{buf.as_mut()};
 
 	{
 		auto s1 = stack.make_new(Tag<S>{}, 3).unwrap();
-		CHECK(s1.as_ptr() != nullptr);
+		CHECK(s1.ptr() != nullptr);
 		CHECK(s1.len() == 3);
 		CHECK(stack.remaining_bytes() == 4093);
 		CHECK(S::n_instances() == 3);
 
 		{
 			auto s2 = stack.make_new(Tag<S>{}, 4).unwrap();
-			CHECK(s2.as_ptr() != nullptr);
+			CHECK(s2.ptr() != nullptr);
 			CHECK(s2.len() == 4);
 			CHECK(stack.remaining_bytes() == 4089);
 			CHECK(S::n_instances() == 7);
@@ -50,7 +48,7 @@ TEST_CASE("dynamic stack: raii") {
 				CHECK(stack.remaining_bytes() == 4089);
 				{
 					auto i4 = stack.make_new(Tag<int>{}, 300).unwrap();
-					CHECK(i4.as_ptr() != nullptr);
+					CHECK(i4.ptr() != nullptr);
 					CHECK(i4.len() == 300);
 					CHECK(stack.remaining_bytes() < 4089 - 300 * sizeof(int));
 				}
@@ -69,7 +67,7 @@ TEST_CASE("dynamic stack: raii") {
 
 TEST_CASE("dynamic stack: evil_reorder") {
 	Array<unsigned char, 4096> buf{};
-	DynStackView stack{buf.as_mut_ref()};
+	DynStackView stack{buf.as_mut()};
 	auto good = [&] {
 		auto s1 = stack.make_new(Tag<int>{}, 30).unwrap();
 		auto s2 = stack.make_new(Tag<double>{}, 20).unwrap();
@@ -86,7 +84,7 @@ TEST_CASE("dynamic stack: evil_reorder") {
 
 TEST_CASE("dynamic stack: assign") {
 	alignas(double) Array<unsigned char, 100> buf{};
-	DynStackView stack{buf.as_mut_ref()};
+	DynStackView stack{buf.as_mut()};
 
 	{
 		auto s1 = stack.make_new(Tag<char>{}, 30);
@@ -104,7 +102,7 @@ TEST_CASE("dynamic stack: assign") {
 
 TEST_CASE("dynamic stack: return") {
 	Array<unsigned char, 4096> buf{};
-	DynStackView stack(buf.as_mut_ref());
+	DynStackView stack(buf.as_mut());
 
 	auto s = [&] {
 		auto s1 = stack.make_new(Tag<S>{}, 3).unwrap();
@@ -118,33 +116,33 @@ TEST_CASE("dynamic stack: return") {
 	CHECK(stack.remaining_bytes() == 4093);
 	CHECK(S::n_instances() == 3);
 
-	CHECK(s.as_ptr() != nullptr);
+	CHECK(s.ptr() != nullptr);
 	CHECK(s.len() == 3);
 }
 
 TEST_CASE("dynamic stack: manual_lifetimes") {
 	Array<unsigned char, 4096> buf{};
-	DynStackView stack(buf.as_mut_ref());
+	DynStackView stack(buf.as_mut());
 
 	{
 		auto s = stack.make_alloc(Tag<S>{}, 3).unwrap();
-		CHECK(s.as_ptr() != nullptr);
+		CHECK(s.ptr() != nullptr);
 		CHECK(s.len() == 3);
 		CHECK(S::n_instances() == 0);
 
 		{
-			new (s.as_mut_ptr() + 0) S{};
+			new (s.mut_ptr() + 0) S{};
 			CHECK(S::n_instances() == 1);
-			new (s.as_mut_ptr() + 1) S{};
+			new (s.mut_ptr() + 1) S{};
 			CHECK(S::n_instances() == 2);
-			new (s.as_mut_ptr() + 2) S{};
+			new (s.mut_ptr() + 2) S{};
 			CHECK(S::n_instances() == 3);
 
-			(s.as_ptr() + 2)->~S();
+			(s.ptr() + 2)->~S();
 			CHECK(S::n_instances() == 2);
-			(s.as_ptr() + 1)->~S();
+			(s.ptr() + 1)->~S();
 			CHECK(S::n_instances() == 1);
-			(s.as_ptr() + 0)->~S();
+			(s.ptr() + 0)->~S();
 			CHECK(S::n_instances() == 0);
 		}
 		CHECK(S::n_instances() == 0);
@@ -159,7 +157,7 @@ struct T : S {
 
 TEST_CASE("dynamic stack: alignment") {
 	Array<unsigned char, 4096 + 1> buf{};
-	DynStackView stack(buf.as_mut_ref().split_at_mut(1)[1_c]);
+	DynStackView stack(buf.as_mut().split_at_mut(1)[1_c]);
 
 	CHECK(stack.remaining_bytes() == 4096);
 	CHECK(T::n_instances() == 0);
@@ -198,7 +196,7 @@ public:
 
 TEST_CASE("dynamic stack: throwing") {
 	Array<unsigned char, 4096> buf{};
-	DynStackView stack(buf.as_mut_ref());
+	DynStackView stack(buf.as_mut());
 
 	CHECK(throwing::n_instances() == 0);
 	auto s1 = stack.make_new(Tag<throwing>{}, 3);

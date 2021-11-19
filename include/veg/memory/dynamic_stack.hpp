@@ -2,6 +2,8 @@
 #define VEG_DYNAMIC_STACK_DYNAMIC_STACK_HPP_UBOMZFTOS
 
 #include "veg/util/assert.hpp"
+#include "veg/internal/collection_algo.hpp"
+#include "veg/memory/alloc.hpp"
 #include "veg/memory/placement.hpp"
 #include "veg/slice.hpp"
 #include "veg/type_traits/constructible.hpp"
@@ -9,7 +11,6 @@
 #include "veg/memory/address.hpp"
 #include "veg/option.hpp"
 #include "veg/internal/narrow.hpp"
-#include "veg/internal/algorithm.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
@@ -28,7 +29,7 @@ namespace internal {
 //
 // otherwise, if there is not enough space for aligning or advancing the
 // pointer, returns nullptr and the values are left unmodified
-auto align_next(usize alignment, usize size, void*& ptr, usize& space)
+inline auto align_next(usize alignment, usize size, void*& ptr, usize& space)
 		VEG_ALWAYS_NOEXCEPT -> void* {
 	static_assert(
 			sizeof(std::uintptr_t) >= sizeof(void*),
@@ -83,10 +84,11 @@ struct DynStackArrayDtor<T, false> {
 	VEG_INLINE ~DynStackArrayDtor()
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
 		auto& self = static_cast<DynStackArray<T>&>(*this);
-		veg::internal::algo_::backward_destroy_n_may_throw<T>(
-				self.as_mut_ptr(),
-				self.DynStackAlloc<T>::Base::len,
-				veg::mem::destroy_at);
+		veg::internal::_collections::backward_destroy(
+				mut(mem::SystemAlloc{}),
+				mut(mem::DefaultCloner{}),
+				self.mut_ptr(),
+				self.mut_ptr() + self.DynStackAlloc<T>::Base::len);
 	}
 };
 
@@ -121,7 +123,7 @@ struct no_init_fn {
 struct DynStackView {
 public:
 	DynStackView(SliceMut<unsigned char> s) VEG_NOEXCEPT
-			: stack_data(s.as_mut_ptr()),
+			: stack_data(s.mut_ptr()),
 				stack_bytes(usize(s.len())) {}
 
 	VEG_NODISCARD
@@ -129,9 +131,9 @@ public:
 		return isize(stack_bytes);
 	}
 	VEG_NODISCARD
-	auto as_mut_ptr() const VEG_NOEXCEPT -> void* { return stack_data; }
+	auto mut_ptr() const VEG_NOEXCEPT -> void* { return stack_data; }
 	VEG_NODISCARD
-	auto as_ptr() const VEG_NOEXCEPT -> void const* { return stack_data; }
+	auto ptr() const VEG_NOEXCEPT -> void const* { return stack_data; }
 
 private:
 	VEG_INLINE void assert_valid_len(usize len, usize sizeofT) VEG_NOEXCEPT {
@@ -151,7 +153,7 @@ public:
 		assert_valid_len(len, sizeof(T));
 		DynStackArray<T> get{
 				*this, usize(len), align, internal::dynstack::zero_init_fn{}};
-		if (get.as_ptr() == nullptr) {
+		if (get.ptr() == nullptr) {
 			return none;
 		}
 		return {some, VEG_FWD(get)};
@@ -170,7 +172,7 @@ public:
 		assert_valid_len(len, sizeof(T));
 		DynStackArray<T> get{
 				*this, usize(len), align, internal::dynstack::default_init_fn{}};
-		if (get.as_ptr() == nullptr) {
+		if (get.ptr() == nullptr) {
 			return none;
 		}
 		return {some, VEG_FWD(get)};
@@ -183,7 +185,7 @@ public:
 		assert_valid_len(len, sizeof(T));
 		DynStackAlloc<T> get{
 				*this, usize(len), align, internal::dynstack::no_init_fn{}};
-		if (get.as_ptr() == nullptr) {
+		if (get.ptr() == nullptr) {
 			return none;
 		}
 		return {some, VEG_FWD(get)};
@@ -253,7 +255,7 @@ private:
 
 public:
 	VEG_INLINE ~DynStackAlloc() VEG_NOEXCEPT {
-		Base::destroy(as_mut_ptr() + Base::len);
+		Base::destroy(mut_ptr() + Base::len);
 	}
 
 	DynStackAlloc(DynStackAlloc const&) = delete;
@@ -275,7 +277,7 @@ public:
 	VEG_NODISCARD auto as_mut() VEG_NOEXCEPT -> SliceMut<T> {
 		return {
 				FromRawParts{},
-				as_mut_ptr(),
+				mut_ptr(),
 				len(),
 				unsafe,
 		};
@@ -284,16 +286,16 @@ public:
 	VEG_NODISCARD auto as_ref() const VEG_NOEXCEPT -> Slice<T> {
 		return {
 				FromRawParts{},
-				as_ptr(),
+				ptr(),
 				len(),
 				unsafe,
 		};
 	}
 
-	VEG_NODISCARD auto as_mut_ptr() VEG_NOEXCEPT -> T* {
+	VEG_NODISCARD auto mut_ptr() VEG_NOEXCEPT -> T* {
 		return static_cast<T*>(const_cast<void*>(Base::data));
 	}
-	VEG_NODISCARD auto as_ptr() const VEG_NOEXCEPT -> T const* {
+	VEG_NODISCARD auto ptr() const VEG_NOEXCEPT -> T const* {
 		return static_cast<T const*>(const_cast<void const*>(Base::data));
 	}
 	VEG_NODISCARD auto len() const VEG_NOEXCEPT -> isize {
@@ -348,8 +350,8 @@ private:
 public:
 	using DynStackAlloc<T>::as_ref;
 	using DynStackAlloc<T>::as_mut;
-	using DynStackAlloc<T>::as_ptr;
-	using DynStackAlloc<T>::as_mut_ptr;
+	using DynStackAlloc<T>::ptr;
+	using DynStackAlloc<T>::mut_ptr;
 	using DynStackAlloc<T>::len;
 
 	~DynStackArray() = default;

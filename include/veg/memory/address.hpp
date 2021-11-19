@@ -7,7 +7,7 @@
 
 #if !VEG_HAS_BUILTIN(__builtin_addressof)
 
-// STD INDCLUDE: addressof
+// std::addressof
 #if __VEG_HAS_INCLUDE(<bits/move.h>)
 #include <bits/move.h>
 #else

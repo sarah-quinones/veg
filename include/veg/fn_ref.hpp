@@ -60,7 +60,7 @@ struct fn_view_impl<fn_kind_e::fn_obj> {
 
 	template <typename Fn, typename Ret, typename... Args>
 	VEG_INLINE static auto call(StatePtr state, Args... args) noexcept(
-			VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>)) -> Ret {
+			VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Args&&...>)) -> Ret {
 		return static_cast<Fn&&>(*static_cast<meta::uncvref_t<Fn>*>(state.ptr))(
 				VEG_FWD(args)...);
 	}
@@ -76,7 +76,7 @@ struct fn_view_impl<fn_kind_e::fn_ptr> {
 
 	template <typename Fn, typename Ret, typename... Args>
 	VEG_INLINE static auto call(StatePtr state, Args... args)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_invocable<Fn, Args&&...>)) -> Ret {
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Args&&...>)) -> Ret {
 		return reinterpret_cast<decltype(+VEG_DECLVAL(Fn&))>(state.fn)(
 				VEG_FWD(args)...);
 	}
@@ -139,15 +139,11 @@ template <typename T>
 struct FnRef;
 template <typename T>
 struct FnRefMut;
-template <typename T>
-struct FnRefOnce;
 
 template <typename T>
 struct NothrowFnRef;
 template <typename T>
 struct NothrowFnRefMut;
-template <typename T>
-struct NothrowFnRefOnce;
 
 template <typename Ret, typename... Args>
 struct FnRef<Ret(Args...)>
@@ -226,63 +222,6 @@ struct FnRefMut<Ret(Args...)>
 };
 
 template <typename Ret, typename... Args>
-struct FnRefOnce<Ret(Args...)>
-		: internal::fnref::function_ref_impl<false, Ret, Args...> {
-	using Base = internal::fnref::function_ref_impl<false, Ret, Args...>;
-
-	FnRefOnce() = delete;
-
-	VEG_NO_COPY(FnRefOnce);
-
-	VEG_TEMPLATE(
-			(typename Fn),
-			requires(VEG_CONCEPT(fn_once<Fn, Ret, Args&&...>)),
-			VEG_INLINE FnRefOnce, /* NOLINT */
-			(fn, RefOnce<Fn>))
-	VEG_NOEXCEPT : Base{
-										 from_raw_parts,
-										 from_raw_parts,
-										 VEG_FWD(fn).get(),
-								 } {}
-
-	VEG_INLINE
-	FnRefOnce(NothrowFnRefOnce<Ret(Args...)> fn) VEG_NOEXCEPT
-			: Base{
-						from_raw_parts,
-						{fn._self.state, fn._self.fn_ptr},
-				} {}
-	VEG_INLINE
-	FnRefOnce(NothrowFnRefMut<Ret(Args...)> fn) VEG_NOEXCEPT
-			: Base{
-						from_raw_parts,
-						{fn._self.state, fn._self.fn_ptr},
-				} {}
-	VEG_INLINE
-	FnRefOnce(NothrowFnRef<Ret(Args...)> fn) VEG_NOEXCEPT
-			: Base{
-						from_raw_parts,
-						{fn._self.state, fn._self.fn_ptr},
-				} {}
-	VEG_INLINE
-	FnRefOnce(FnRefMut<Ret(Args...)> fn) VEG_NOEXCEPT
-			: Base{
-						from_raw_parts,
-						{fn._self.state, fn._self.fn_ptr},
-				} {}
-	VEG_INLINE
-	FnRefOnce(FnRef<Ret(Args...)> fn) VEG_NOEXCEPT
-			: Base{
-						from_raw_parts,
-						{fn._self.state, fn._self.fn_ptr},
-				} {}
-
-	VEG_INLINE
-	auto operator()(Args... args) && -> Ret {
-		return this->_call_fn(VEG_FWD(args)...);
-	}
-};
-
-template <typename Ret, typename... Args>
 struct NothrowFnRef<Ret(Args...)>
 		: internal::fnref::function_ref_impl<true, Ret, Args...> {
 	using Base = internal::fnref::function_ref_impl<true, Ret, Args...>;
@@ -338,46 +277,6 @@ struct NothrowFnRefMut<Ret(Args...)>
 		return this->_call_fn(VEG_FWD(args)...);
 	}
 };
-
-template <typename Ret, typename... Args>
-struct NothrowFnRefOnce<Ret(Args...)>
-		: internal::fnref::function_ref_impl<true, Ret, Args...> {
-	using Base = internal::fnref::function_ref_impl<true, Ret, Args...>;
-
-	NothrowFnRefOnce() = delete;
-
-	VEG_NO_COPY(NothrowFnRefOnce);
-
-	VEG_TEMPLATE(
-			(typename Fn),
-			requires(VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Args&&...>)),
-			VEG_INLINE NothrowFnRefOnce, /* NOLINT */
-			(fn, RefOnce<Fn>))
-	VEG_NOEXCEPT : Base{
-										 from_raw_parts,
-										 from_raw_parts,
-										 VEG_FWD(fn).get(),
-								 } {}
-
-	VEG_INLINE
-	NothrowFnRefOnce(NothrowFnRefMut<Ret(Args...)> fn) VEG_NOEXCEPT
-			: Base{
-						from_raw_parts,
-						{fn._self.state, fn._self.fn_ptr},
-				} {}
-	VEG_INLINE
-	NothrowFnRefOnce(NothrowFnRef<Ret(Args...)> fn) VEG_NOEXCEPT
-			: Base{
-						from_raw_parts,
-						{fn._self.state, fn._self.fn_ptr},
-				} {}
-
-	VEG_INLINE
-	auto operator()(Args... args) && VEG_NOEXCEPT -> Ret {
-		return this->_call_fn(VEG_FWD(args)...);
-	}
-};
-
 } // namespace fn
 } // namespace veg
 

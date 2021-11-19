@@ -3,25 +3,441 @@
 
 #include "veg/internal/delete_special_members.hpp"
 #include "veg/memory/alloc.hpp"
-#include "veg/internal/algorithm.hpp"
+#include "veg/internal/collection_algo.hpp"
 #include "veg/internal/narrow.hpp"
 #include "veg/slice.hpp"
-#include "veg/memory/alloc.hpp"
+#include "veg/util/compare.hpp"
+
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace tags {
-VEG_TAG(from_slice, FromSlice);
-} // namespace tags
+namespace internal {
+namespace _vector {
+namespace adl {
+struct AdlBase {};
+} // namespace adl
+} // namespace _vector
+} // namespace internal
+
+namespace internal {
+template <typename T>
+VEG_INLINE constexpr auto min2(T a, T b) noexcept -> T {
+	return (static_cast<T const&>(a) < static_cast<T const&>(b)) ? VEG_FWD(a)
+	                                                             : VEG_FWD(b);
+}
+template <typename T>
+VEG_INLINE constexpr auto max2(T a, T b) noexcept -> T {
+	return (static_cast<T const&>(a) < static_cast<T const&>(b)) ? VEG_FWD(b)
+	                                                             : VEG_FWD(a);
+}
+
+namespace _collections {
+VEG_INLINE constexpr auto vector_grow_compute(usize current_cap) noexcept
+		-> usize {
+	return current_cap + current_cap;
+}
+// new_cap must be larger than current_cap
+VEG_INLINE constexpr auto
+vector_grow_choose(usize current_cap, usize new_cap) noexcept -> usize {
+	return internal::max2(
+			_collections::vector_grow_compute(current_cap), new_cap);
+}
+
+template <typename T>
+auto relocate(void* out, void const* in, usize nbytes) noexcept -> void*;
+
+struct relocate_pointer_trivial {
+	static constexpr void* (*value)(void*, void const*, usize) = &mem::memmove;
+};
+template <typename T, bool = cpo::is_trivially_relocatable<T>::value>
+struct relocate_pointer : relocate_pointer_trivial {};
+
+template <typename T>
+struct relocate_pointer<T, false> {
+	static constexpr void* (*value)(void*, void const*, usize) =
+			_collections::relocate<T>;
+};
+} // namespace _collections
+} // namespace internal
+
+namespace collections {
+template <typename T>
+struct relocate_pointer : internal::_collections::relocate_pointer<T> {};
+} // namespace collections
 
 namespace vector {
 template <typename T>
 struct RawVector {
 	T* data;
-	usize len;
-	usize cap;
+	T* end;
+	T* end_alloc;
 };
 } // namespace vector
+
+namespace internal {
+namespace _collections {
+template <bool IsNoExcept>
+struct CloneImpl;
+
+template <bool NoThrow, typename T, typename A, typename C>
+struct CloneFn {
+	RefMut<A> alloc;
+	RefMut<C> cloner;
+	T const* in;
+	VEG_CPP14(constexpr)
+	VEG_INLINE auto operator()() VEG_NOEXCEPT_IF(NoThrow) -> T {
+		return mem::Cloner<C>::clone(VEG_FWD(cloner), ref(*in), VEG_FWD(alloc));
+	}
+};
+
+template <>
+struct CloneImpl<true> {
+	template <typename T, typename A, typename C>
+	static VEG_CPP14(constexpr) void fn( //
+			RefMut<A> alloc,
+			RefMut<C> cloner,
+			T* out,
+			T* out_end,
+			T const* in) VEG_NOEXCEPT {
+		for (; out < out_end; ++out, ++in) {
+			mem::construct_with(
+					out,
+					CloneFn<true, T, A, C>{//
+			                           VEG_FWD(alloc),
+			                           VEG_FWD(cloner),
+			                           in});
+		}
+	}
+};
+
+template <>
+struct CloneImpl<false> {
+	template <typename T, typename A, typename C>
+	static VEG_CPP20(constexpr) void fn( //
+			RefMut<A> alloc,
+			RefMut<C> cloner,
+			T* out,
+			T* out_end,
+			T const* in) VEG_NOEXCEPT_IF(false) {
+
+		Defer<Cleanup<T, A, C>> _{{VEG_FWD(alloc), VEG_FWD(cloner), out, out_end}};
+		for (; _.fn.ptr < _.fn.ptr_end; ++_.fn.ptr, ++in) {
+			mem::construct_with(
+					_.fn.ptr,
+					CloneFn<false, T, A, C>{
+							VEG_FWD(_.fn.alloc),
+							VEG_FWD(_.fn.cloner),
+							in,
+					});
+		}
+	}
+};
+
+template <typename T, typename A, typename C>
+VEG_CPP14(constexpr)
+void slice_clone(
+		RefMut<A> alloc, RefMut<C> cloner, T* out, T* out_end, T const* in)
+		VEG_NOEXCEPT_IF(VEG_CONCEPT(alloc::nothrow_clone<C, T, A>)) {
+	CloneImpl<VEG_CONCEPT(alloc::nothrow_clone<C, T, A>)>::fn(
+			VEG_FWD(alloc), VEG_FWD(cloner), out, out_end, in);
+}
+
+template <typename T, typename A, typename C>
+VEG_CPP14(constexpr)
+void slice_clone_from(
+		RefMut<A> alloc, RefMut<C> cloner, T* out, T* out_end, T const* in)
+		VEG_NOEXCEPT_IF(true) {
+	while (true) {
+		if (out == out_end) {
+			break;
+		}
+		mem::Cloner<C>::clone_from( //
+				VEG_FWD2(cloner),
+				mut(*out),
+				ref(*in),
+				VEG_FWD2(alloc));
+		++out;
+		++in;
+	}
+}
+
+template <typename T>
+auto relocate(void* out, void const* in, usize nbytes) noexcept -> void* {
+	T* out_T = static_cast<T*>(out);
+	T* in_T = const_cast<T*>(static_cast<T const*>(in));
+	usize n = nbytes / sizeof(T);
+
+	for (usize i = 0; i < n; ++i) {
+		out_T[i] = static_cast<T&&>(in_T[i]);
+		in_T[i].~T();
+	}
+
+	return out;
+}
+
+template <typename A>
+struct AllocCleanup {
+	RefMut<A> alloc;
+	void* data;
+	mem::Layout layout;
+
+	VEG_INLINE VEG_CPP14(constexpr) void operator()()
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(alloc::nothrow_dealloc<A>)) {
+		if (data != nullptr) {
+			mem::Alloc<A>::dealloc(
+					VEG_FWD(alloc), static_cast<void*>(data), mem::Layout(layout));
+		}
+	}
+};
+
+template <typename T, typename A, typename C>
+auto alloc_and_copy(RefMut<A> alloc, RefMut<C> cloner, T const* data, usize len)
+		VEG_NOEXCEPT_IF(
+				VEG_CONCEPT(alloc::nothrow_alloc<A>) &&
+				VEG_CONCEPT(alloc::nothrow_clone<C, T, A>)) -> mem::AllocBlock {
+
+	mem::AllocBlock block = mem::Alloc<A>::alloc(
+			VEG_FWD(alloc), mem::Layout{sizeof(T) * usize(len), alignof(T)});
+
+	// if copying fails, this takes care of deallocating
+	Defer<AllocCleanup<A>> _{{
+			VEG_FWD(alloc),
+			block.data,
+			mem::Layout{block.byte_cap, alignof(T)},
+	}};
+
+	// copy construct elements
+	_collections::slice_clone(
+			VEG_FWD(_.fn.alloc),
+			VEG_FWD(cloner),
+			static_cast<T*>(block.data),
+			static_cast<T*>(block.data) + len,
+			data);
+
+	_.fn.data = nullptr;
+	return block;
+}
+
+template <typename T, typename A, typename C>
+auto realloc_and_append( //
+		RefMut<A> alloc,
+		RefMut<C> cloner,
+		mem::AllocBlock out,
+		usize out_len,
+		T const* in,
+		usize in_len)
+		VEG_NOEXCEPT_IF(
+				VEG_CONCEPT(alloc::nothrow_grow<A>) &&
+				VEG_CONCEPT(alloc::nothrow_clone<C, T, A>)) -> mem::AllocBlock {
+
+	if (in_len == 0) {
+		return out;
+	}
+
+	if (out.byte_cap >= (in_len + out_len) * sizeof(T)) {
+		mem::AllocBlock block = mem::Alloc<A>::grow(
+				VEG_FWD(alloc),
+				VEG_FWD(out.data),
+				mem::Layout{out.byte_cap, alignof(T)},
+				out_len * sizeof(T),
+				mem::RelocFn{collections::relocate_pointer<T>::value});
+
+		// if copying fails, this takes care of deallocating
+		Defer<AllocCleanup<A>> _{{
+				VEG_FWD(alloc),
+				block.data,
+				mem::Layout{block.byte_cap, alignof(T)},
+		}};
+		// if copying fails, this takes care of destroying
+		Defer<Cleanup<T, A, C>> destroy{{
+				VEG_FWD(_.fn.alloc),
+				VEG_FWD(cloner),
+				static_cast<T*>(block.data),
+				static_cast<T*>(block.data) + out_len,
+		}};
+
+		// copy construct elements
+		_collections::slice_clone( //
+				VEG_FWD(destroy.fn.alloc),
+				VEG_FWD(destroy.fn.cloner),
+				static_cast<T*>(block.data) + out_len,
+				static_cast<T*>(block.data) + in_len,
+				in);
+		// disable destruction
+		destroy.fn.ptr = nullptr;
+		destroy.fn.ptr_end = nullptr;
+		// disable deallocation
+		_.fn.data = nullptr;
+		out = block;
+	} else {
+		// copy construct elements
+		_collections::slice_clone( //
+				VEG_FWD(alloc),
+				VEG_FWD(cloner),
+				static_cast<T*>(out.data) + out_len,
+				static_cast<T*>(out.data) + in_len,
+				in);
+	}
+	return out;
+}
+
+template <bool TrivialAssign>
+struct CloneFromImpl;
+
+template <>
+struct CloneFromImpl<false> {
+	template <typename T, typename A, typename C>
+	static VEG_CPP20(constexpr) void fn(
+			RefMut<A> lhs_alloc,
+			RefMut<C> cloner,
+			vector::RawVector<T>& lhs_raw,
+			Ref<A> rhs_alloc,
+			vector::RawVector<T> const rhs_raw)
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_copy_assignable<A>) &&    //
+					VEG_CONCEPT(alloc::nothrow_alloc<A>) &&       //
+					VEG_CONCEPT(alloc::nothrow_clone<C, T, A>) && //
+					VEG_CONCEPT(alloc::nothrow_clone_from<C, T, A>)) {
+
+		vector::RawVector<T> lhs_copy = lhs_raw;
+		usize rhs_len = (rhs_raw.end - rhs_raw.data);
+
+		if (cmp::ne(lhs_alloc.as_const(), rhs_alloc)) {
+			T* data = lhs_copy.data;
+			T* data_end = lhs_copy.end;
+
+			// clean up old alloc
+			_collections::backward_destroy(VEG_FWD(lhs_alloc), data, data_end);
+
+			// assign before deallocation in case it fails
+			lhs_raw = {};
+			lhs_copy = {};
+
+			// don't need to deallocate on backward_destroy failure, since lhs can
+			// still access and reuse the allocation
+			mem::Alloc<A>::dealloc( //
+					VEG_FWD(lhs_alloc),
+					static_cast<void*>(data),
+					mem::Layout{
+							(lhs_copy.end_alloc - lhs_copy.data) * sizeof(T), alignof(T)});
+		}
+
+		lhs_alloc.get() = rhs_alloc.get();
+
+		usize assign_len = internal::min2(lhs_copy.len, rhs_raw.len);
+		// copy assign until the shared len
+		_collections::slice_clone_from( //
+				VEG_FWD(lhs_alloc),
+				VEG_FWD(cloner),
+				lhs_copy.data,
+				lhs_copy.data + assign_len,
+				rhs_raw.data);
+
+		// destroy from the shared len until end of lhs
+		lhs_raw.len = assign_len;
+		_collections::backward_destroy( //
+				VEG_FWD(lhs_alloc),
+				VEG_FWD(cloner),
+				lhs_copy.data + assign_len,
+				lhs_copy.end);
+
+		// pass allocation to realloc_and_append
+
+		lhs_raw = {};
+		// realloc and copy construct new elements until end of rhs
+		mem::AllocBlock block = _collections::realloc_and_append(
+				VEG_FWD(lhs_alloc),
+				VEG_FWD(cloner),
+				mem::AllocBlock{
+						lhs_copy.data,
+						(lhs_copy.end_alloc - lhs_copy.data) * sizeof(T),
+				},                         // out
+				assign_len,                // out_len
+				rhs_raw.data + assign_len, // in
+				rhs_len - assign_len);     // in_len
+
+		lhs_raw = vector::RawVector<T>{
+				static_cast<T*>(block.data),
+				static_cast<T*>(block.data) + rhs_len,
+				static_cast<T*>(block.data) + block.byte_cap / sizeof(T),
+		};
+	}
+};
+template <>
+struct CloneFromImpl<true> {
+	template <typename T, typename A, typename C>
+	static VEG_CPP20(constexpr) void fn(
+			RefMut<A> lhs_alloc,
+			vector::RawVector<T>& lhs_raw,
+			RefMut<C> cloner,
+			Ref<A> rhs_alloc,
+			vector::RawVector<T> const rhs_raw)
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_copy_assignable<A>) && //
+					VEG_CONCEPT(alloc::nothrow_dealloc<A>) &&
+					VEG_CONCEPT(alloc::nothrow_alloc<A>)) {
+
+		vector::RawVector<T> lhs_copy = lhs_raw;
+
+		bool need_to_realloc =
+				(cmp::ne(lhs_alloc.as_const(), rhs_alloc) ||
+		     (lhs_copy.cap < rhs_raw.len));
+		if (need_to_realloc) {
+			T* data = lhs_copy.data;
+			T* data_end = lhs_copy.data + lhs_copy.len;
+			usize cap = lhs_copy.cap;
+
+			// assign before deallocation in case it fails
+			lhs_raw = {};
+			mem::Alloc<A>::dealloc( //
+					VEG_FWD(lhs_alloc),
+					static_cast<void*>(data),
+					mem::Layout{cap * sizeof(T), alignof(T)});
+			lhs_copy = {};
+		}
+
+		lhs_alloc.get() = rhs_alloc.get();
+
+		// allocate and copy all elements
+		if (need_to_realloc) {
+			mem::AllocBlock block = _collections::alloc_and_copy( //
+					VEG_FWD(lhs_alloc),
+					VEG_FWD(cloner),
+					rhs_raw.data,
+					rhs_raw.len);
+			lhs_raw.data = block.data;
+			lhs_raw.cap = block.byte_cap / sizeof(T);
+		} else {
+			_collections::slice_clone( //
+					VEG_FWD(lhs_alloc),
+					VEG_FWD(cloner),
+					lhs_copy.data,
+					lhs_copy.data + rhs_raw.len,
+					rhs_raw.data);
+		}
+		lhs_raw.len = rhs_raw.len;
+	}
+};
+
+template <typename T, typename A, typename C>
+VEG_INLINE VEG_CPP20(constexpr) void clone_from(
+		RefMut<A> lhs_alloc,
+		RefMut<C> cloner,
+		vector::RawVector<T>& lhs_raw,
+		Ref<A> rhs_alloc,
+		vector::RawVector<T> const rhs_raw)
+		VEG_NOEXCEPT_IF(
+				VEG_CONCEPT(nothrow_copy_assignable<A>) &&    //
+				VEG_CONCEPT(alloc::nothrow_alloc<A>) &&       //
+				VEG_CONCEPT(alloc::nothrow_clone<C, T, A>) && //
+				VEG_CONCEPT(alloc::nothrow_clone_from<C, T, A>)) {
+	_collections::
+			CloneFromImpl<mem::Cloner<C>::template trivial_clone<T>::value>::fn(
+					lhs_alloc, cloner, lhs_raw, rhs_alloc, rhs_raw);
+}
+} // namespace _collections
+} // namespace internal
+
 namespace internal {
 namespace _vector {
 
@@ -32,204 +448,415 @@ struct RawVectorMoveRaii /* NOLINT */ {
 	RawVectorMoveRaii() = default;
 	RawVectorMoveRaii(FromRawParts /*tag*/, vector::RawVector<T> inner)
 			VEG_NOEXCEPT : _{inner} {};
-	VEG_INLINE VEG_CPP20(constexpr)
+	VEG_INLINE VEG_CPP14(constexpr)
 			RawVectorMoveRaii(RawVectorMoveRaii&& rhs) VEG_NOEXCEPT : _{rhs._} {
-		rhs = {};
+		rhs._ = {};
 	}
-	VEG_INLINE VEG_CPP20(constexpr)
+	VEG_INLINE VEG_CPP14(constexpr)
 			RawVectorMoveRaii(RawVectorMoveRaii const& /*rhs*/) VEG_NOEXCEPT {}
 };
 
-#define VEG_DECLPTR(...) (static_cast<__VA_ARGS__*>(nullptr))
-#define VEG_DECLREF(...) (*VEG_DECLPTR(__VA_ARGS__))
-#define VEG_DECL_VEGREF(...)                                                   \
-	(static_cast<::veg::Ref<__VA_ARGS__>&&>(                                     \
-			*static_cast<::veg::Ref<__VA_ARGS__>*>(nullptr)))
-
-#define VEG_DECL_VEGMUT(...)                                                   \
-	(static_cast<::veg::RefMut<__VA_ARGS__>&&>(                                  \
-			*static_cast<::veg::RefMut<__VA_ARGS__>*>(nullptr)))
-
-template <typename T, typename AllocManager>
-struct VecSharedDealloc /* NOLINT */ {
-	Tuple<AllocManager, RawVectorMoveRaii<T>>
-			_; // alloc manager needs to be constructed first
-
-	VEG_INLINE VEG_CPP20(constexpr) ~VecSharedDealloc() VEG_IS_NOEXCEPT(
-			VEG_DECLREF(AllocManager).deallocate(VEG_DECLPTR(T), usize{})) {
-		vector::RawVector<T> raw = _[1_c]._;
-		if ((raw.data != nullptr) && (raw.cap != 0)) {
-			_[0_c].deallocate(+raw.data, +raw.cap);
-		}
-	}
-};
-
-struct CopyCtorRaiiTag {};
-
-template <typename T, typename AllocManager>
-struct VecSharedImpl {
+template <typename T, typename A>
+struct VecAlloc :
+		// alloc manager needs to be constructed first
+		private Tuple<A, RawVectorMoveRaii<T>> {
 private:
-	VecSharedDealloc<T, AllocManager> self;
+	using Tuple<A, RawVectorMoveRaii<T>>::Tuple;
 
 public:
-	static constexpr bool nothrow_alloc = VEG_IS_NOEXCEPT(
-			VEG_DECLREF(AllocManager).allocate(veg::Tag<T>{}, usize{}));
-	static constexpr bool nothrow_dealloc = VEG_IS_NOEXCEPT(
-			VEG_DECLREF(AllocManager).deallocate(VEG_DECLPTR(T), usize{}));
+	VecAlloc(VecAlloc const&) = default;
+	VecAlloc(VecAlloc&&) = default;
+	auto operator=(VecAlloc const&) -> VecAlloc& = default;
+	auto operator=(VecAlloc&&) -> VecAlloc& = default;
 
-	static constexpr bool nothrow_dtor = VEG_IS_NOEXCEPT(
-			VEG_DECLREF(AllocManager).destroy(VEG_DECLVAL_NOEXCEPT(RefMut<T>)));
+	VEG_NODISCARD VEG_INLINE
+	VEG_CPP14(constexpr) auto alloc_ref() const VEG_NOEXCEPT -> Ref<A> {
+		return ref((*this)[0_c]);
+	}
+	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto raw_ref() const
+			VEG_NOEXCEPT -> Ref<vector::RawVector<T>> {
+		return ref((*this)[1_c]._);
+	}
+	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto alloc_mut(Unsafe /*tag*/)
+			VEG_NOEXCEPT -> RefMut<A> {
+		return mut((*this)[0_c]);
+	}
+	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto raw_mut(Unsafe /*tag*/)
+			VEG_NOEXCEPT -> RefMut<vector::RawVector<T>> {
+		return mut((*this)[1_c]._);
+	}
 
-	static constexpr bool nothrow_copy_ctor = VEG_IS_NOEXCEP(
-			VEG_DECLREF(AllocManager).clone(VEG_DECLVAL_NOEXCEPT(Ref<T>)));
-	static constexpr bool nothrow_copy_assign =
-			VEG_IS_NOEXCEPT(VEG_DECLREF(AllocManager)
-	                        .clone_assign_to(
-															VEG_DECLVAL_NOEXCEPT(RefMut<T>),
-															VEG_DECLVAL_NOEXCEPT(Ref<T>),
-															VEG_DECLVAL_NOEXCEPT(Ref<AllocManager>)));
+	VEG_INLINE VEG_CPP20(constexpr) ~VecAlloc()
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(alloc::nothrow_dealloc<A>)) {
+		vector::RawVector<T> raw = raw_ref().get();
+		if ((raw.data != nullptr) && (raw.end_alloc != 0)) {
+#if VEG_HAS_ASAN
+			internal::__sanitizer_annotate_contiguous_container( //
+					raw.data,
+					raw.end_alloc,
+					raw.data,
+					raw.end_alloc);
+#endif
 
-	static constexpr bool trivial_copy =
-			AllocManager::trivial_copy(veg::Tag<T>{});
-	static constexpr bool trivial_relocate =
-			AllocManager::trivial_relocate(veg::Tag<T>{});
-	static constexpr bool trivial_dtor =
-			AllocManager::trivial_dtor(veg::Tag<T>{});
-
-	VEG_INLINE VEG_CPP20(constexpr) ~VecSharedImpl()
-			VEG_NOEXCEPT_IF((nothrow_dtor && nothrow_dealloc)) {
-		vector::RawVector<T> raw = self._[1_c]._;
-		if (raw.data != nullptr) {
-			this->destroy_nonnull();
+			mem::Alloc<A>::dealloc(
+					alloc_mut(unsafe),
+					static_cast<void*>(raw.data),
+					mem::Layout{usize(raw.end_alloc - raw.data) * sizeof(T), alignof(T)});
 		}
-	}
-
-	VEG_INLINE VEG_CPP20(constexpr) VecSharedImpl() = default;
-
-	VEG_INLINE VEG_CPP20(constexpr) VecSharedImpl(
-			FromRawParts /*tag*/, vector::RawVector<T> rawvec, AllocManager alloc)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<AllocManager>))
-			: self{Tuple<AllocManager, RawVectorMoveRaii<T>>{
-						direct,
-						VEG_FWD(alloc),
-						internal::_vector::RawVectorMoveRaii<T>{
-								from_raw_parts, VEG_FWD(rawvec)},
-				}} {}
-
-	VEG_INLINE VEG_CPP20(constexpr) VecSharedImpl(VecSharedImpl&&) = default;
-
-private:
-	VEG_CPP20(constexpr)
-	VecSharedImpl(CopyCtorRaiiTag /*tag*/, VecSharedImpl const& rhs)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_copyable<AllocManager>))
-			: self{rhs.self} {}
-
-public:
-	VEG_NO_INLINE
-	VEG_CPP20(constexpr)
-	VecSharedImpl(VecSharedImpl const& rhs) VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_copyable<AllocManager>) && //
-			nothrow_alloc &&                               //
-			nothrow_copy_ctor)
-			: VecSharedImpl{CopyCtorRaiiTag{}, rhs} // <────────────────────────────┐
-	//                                                                          |
-	{                                                                        // |
-		AllocManager& alloc = self._[0_c];                                     // |
-		vector::RawVector<T> rhs_raw = rhs.self._[1_c]._;                      // |
-		                                                                       // |
-		mem::AllocBlock<T> block = alloc.allocate(+rhs_raw.data);              // |
-		self._[1_c]._ = {block.data, 0, block.cap};                            // |
-		                                                                       // |
-		usize target_len = rhs_raw.len;                                        // |
-		usize& current_len = self._[1_c]._.len;                                // |
-		                                                                       // |
-		struct Copy {                                                          // |
-			AllocManager& alloc;                                                 // |
-			T const& rhs;                                                        // |
-			VEG_INLINE VEG_CPP20(constexpr) auto operator()() const              // |
-					VEG_NOEXCEPT_IF(nothrow_copy_ctor) -> T {                        // |
-				return alloc.clone(Ref<T>{as_ref, rhs});                           // |
-			}                                                                    // |
-		};                                                                     // |
-		                                                                       // |
-		if (trivial_copy && !meta::is_consteval()) {                           // |
-			abi::internal::veglib_opaque_memmove(                                // |
-					block.data,                                                      // |
-					rhs_raw.data,                                                    // |
-					sizeof(T) * target_len);                                         // |
-		} else {                                                               // |
-			for (usize i = 0; i < target_len; ++i) {                             // |
-				mem::construct_with(block.data + i, Copy{alloc, rhs_raw.data[i]}); // |
-				++current_len;                                                     // |
-			}                                                                    // |
-		}                                                                      // |
-		// cleanup is handled automatically if loop throws,                       |
-		// thanks to deferred ctor  ──────────────────────────────────────────────┘
-	}
-
-	VEG_NO_INLINE void reserve_exact(usize new_cap);
-
-	VEG_NO_INLINE
-	VEG_CPP20(constexpr)
-	auto operator=(VecSharedImpl const& rhs) VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_copy_assignable<AllocManager>) && //
-			nothrow_alloc &&                                      //
-			nothrow_copy_assign) -> VecSharedImpl& {
-		if (this != mem::addressof(rhs)) {
-			// first, copy assign the elements, passing the old and new allocators as
-			// arguments
-			// then, copy assign the allocator
-			//
-			// if element assignment fails, destroy the tail, then assign the
-			// allocator
-
-			struct AllocAssign {
-				AllocManager& lhs;
-				AllocManager const& rhs;
-				VEG_INLINE VEG_CPP20(constexpr) void operator()() const VEG_NOEXCEPT_IF(
-						VEG_CONCEPT(nothrow_copy_assignable<AllocManager>)) {
-					lhs = rhs;
-				}
-			};
-
-			auto&& _assign_alloc = defer(AllocAssign{self._[0_c], rhs.self._[0_c]});
-			for (usize i = 0; i < 0; ++i) {
-			}
-		}
-		return *this;
-	}
-
-private:
-	VEG_INLINE VEG_CPP20(constexpr) void destroy_nonnull()
-			VEG_NOEXCEPT_IF(nothrow_dtor) {
-		struct Destroy {
-			AllocManager& alloc;
-			VEG_INLINE VEG_CPP20(constexpr) void operator()(T* ptr) const
-					VEG_NOEXCEPT_LIKE(alloc.destroy(ptr)) {
-				alloc.destroy(RefMut<T>{as_mut, *VEG_FWD(ptr)});
-			}
-		};
-
-		AllocManager& alloc = self._[0_c];
-		vector::RawVector<T> raw = self._[1_c]._;
-
-		meta::conditional_t<
-				trivial_dtor,
-				veg::nb::unused,
-				veg::nb::backward_destroy_n>{}(raw.data, raw.len, Destroy{alloc});
 	}
 };
 } // namespace _vector
 } // namespace internal
 
-template <typename T>
-struct Vec;
+#if VEG_HAS_ASAN
+#define __VEG_ASAN_ANNOTATE() /* NOLINT */                                     \
+	if (ptr() != nullptr) {                                                      \
+		internal::__sanitizer_annotate_contiguous_container(                       \
+				ptr(), ptr() + capacity(), ptr() + len(), ptr() + capacity());         \
+	}                                                                            \
+	auto&& _veglib_asan = defer([&]() noexcept {                                 \
+		if (ptr() != nullptr) {                                                    \
+			internal::__sanitizer_annotate_contiguous_container(                     \
+					ptr(), ptr() + capacity(), ptr() + capacity(), ptr() + len());       \
+		}                                                                          \
+	});                                                                          \
+	(void)_veglib_asan
+#else
+#define __VEG_ASAN_ANNOTATE() /* NOLINT */ (void)0;
+#endif
 
-template <typename T>
-struct cpo::is_trivially_relocatable<Vec<T>> : meta::true_type {};
-template <typename T>
-struct cpo::is_trivially_swappable<Vec<T>> : meta::true_type {};
+namespace collections {
+template <typename T, typename A = mem::SystemAlloc>
+struct VecIncomplete : internal::_vector::VecAlloc<T, A>,
+											 private internal::_vector::adl::AdlBase {
+private:
+	using Base = internal::_vector::VecAlloc<T, A>;
+
+	VEG_INLINE void _reserve_grow_exact_impl(Unsafe /*tag*/, usize new_cap)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(alloc::nothrow_grow<A>)) {
+		__VEG_ASAN_ANNOTATE();
+
+		vector::RawVector<T>& raw = this->raw_mut(unsafe).get();
+		auto len = usize(this->len());
+
+		mem::AllocBlock new_block = mem::Alloc<A>::grow(
+				this->alloc_mut(unsafe),
+				VEG_FWD(raw.data),
+				mem::Layout{
+						usize(byte_capacity()),
+						alignof(T),
+				},
+				new_cap * sizeof(T),
+				mem::RelocFn{collections::relocate_pointer<T>::value});
+
+		T* data = static_cast<T*>(new_block.data);
+		raw = {
+				data,
+				data + len,
+				data + new_block.byte_cap / sizeof(T),
+		};
+	}
+	VEG_INLINE void _reserve_grow_exact(Unsafe /*tag*/, isize new_cap)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(alloc::nothrow_grow<A>)) {
+		isize old_len = len();
+		this->_reserve_grow_exact_impl(unsafe, usize(new_cap));
+		meta::unreachable_if(capacity() < new_cap);
+		meta::unreachable_if(len() != old_len);
+	}
+	VEG_INLINE void _reserve_one_more(Unsafe /*tag*/) {
+		this->_reserve_grow_exact(
+				unsafe,
+				1 + isize(internal::_collections::vector_grow_compute(
+								usize(capacity()))));
+	}
+
+public:
+	VEG_INLINE VEG_CPP20(constexpr) ~VecIncomplete() VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(alloc::nothrow_alloc<A>) &&
+			VEG_CONCEPT(nothrow_destructible<T>)) {
+		vector::RawVector<T> raw = this->raw_ref().get();
+		if (raw.data != nullptr) {
+			this->clear();
+		}
+	}
+
+	VEG_INLINE VEG_CPP20(constexpr) VecIncomplete() = default;
+
+	VEG_INLINE VEG_CPP20(constexpr)
+			VecIncomplete(FromRawParts /*tag*/, vector::RawVector<T> rawvec, A alloc)
+					VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<A>))
+			: Base{
+						direct,
+						VEG_FWD(alloc),
+						internal::_vector::RawVectorMoveRaii<T>{
+								from_raw_parts, VEG_FWD(rawvec)},
+				} {}
+
+	VEG_INLINE VEG_CPP20(constexpr) VecIncomplete(VecIncomplete&&) = default;
+	VEG_INLINE VEG_CPP20(constexpr) auto operator=(VecIncomplete&&)
+			-> VecIncomplete& = default;
+
+	explicit VEG_CPP20(constexpr) VecIncomplete(VecIncomplete const& rhs)
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_copyable<A>) && //
+					VEG_CONCEPT(nothrow_copyable<T>) && //
+					VEG_CONCEPT(alloc::nothrow_alloc<A>))
+			: Base{static_cast<Base const>(rhs)} {
+		__VEG_ASAN_ANNOTATE();
+		vector::RawVector<T> rhs_raw = rhs.raw_ref().get();
+		mem::AllocBlock blk = internal::_collections::alloc_and_copy(
+				this->alloc_mut(unsafe),
+				mut(mem::DefaultCloner{}),
+				rhs_raw.data,
+				usize(rhs.len()));
+
+		T* data = static_cast<T*>(blk.data);
+		this->raw_mut(unsafe).get() = vector::RawVector<T>{
+				data,
+				data + usize(rhs.len()),
+				data + blk.byte_cap / sizeof(T),
+		};
+	}
+
+	VEG_CPP20(constexpr)
+	auto operator=(VecIncomplete const& rhs) VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(nothrow_copy_assignable<A>) &&
+			VEG_CONCEPT(nothrow_copyable<T>) &&
+			VEG_CONCEPT(nothrow_copy_assignable<T>) &&
+			VEG_CONCEPT(alloc::nothrow_alloc<A>)) -> VecIncomplete& {
+		if (this != mem::addressof(rhs)) {
+			__VEG_ASAN_ANNOTATE();
+
+			internal::_collections::clone_from(
+					this->alloc_mut(unsafe).get(),
+					mem::DefaultCloner{},
+					this->raw_mut(unsafe).get(),
+					rhs.alloc_ref().get(),
+					rhs.raw_ref().get());
+		}
+		return *this;
+	}
+
+	VEG_INLINE void reserve_exact(isize new_cap)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(alloc::nothrow_grow<A>)) {
+		if (new_cap > capacity()) {
+			this->_reserve_grow_exact(unsafe, new_cap);
+		}
+	}
+	VEG_INLINE void reserve(isize new_cap)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(alloc::nothrow_grow<A>)) {
+		auto cap = capacity();
+		if (new_cap > cap) {
+			this->reserve_exact(isize(internal::_collections::vector_grow_choose(
+					usize(cap), usize(new_cap))));
+		}
+	}
+
+	VEG_INLINE VEG_CPP20(constexpr) void clear()
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+		__VEG_ASAN_ANNOTATE();
+
+		vector::RawVector<T>& raw = this->raw_mut(unsafe).get();
+
+		T* end = raw.end;
+		raw.end = raw.data;
+		internal::_collections::backward_destroy(
+				this->alloc_mut(unsafe), mut(mem::DefaultCloner{}), raw.data, end);
+	}
+
+  VEG_TEMPLATE(
+      typename Fn,
+      requires(VEG_CONCEPT(fn_mut<Fn, isize, T*, isize>)),
+      VEG_INLINE VEG_CPP20(constexpr) void resize_and_overwrite,
+      (fn, Fn)
+      ) ;
+
+	VEG_TEMPLATE(
+			typename Fn,
+			requires(VEG_CONCEPT(fn_once<Fn, T>)),
+			VEG_INLINE VEG_CPP20(constexpr) void push_with_unchecked,
+			(/*tag*/, Unsafe),
+			(fn, Fn))
+	VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(nothrow_fn_once<Fn, T>) &&
+			VEG_CONCEPT(alloc::nothrow_alloc<A>)) {
+		__VEG_ASAN_ANNOTATE();
+
+		vector::RawVector<T>& raw = this->raw_mut(unsafe).get();
+		mem::construct_with(raw.end, VEG_FWD(fn));
+		++raw.end;
+	}
+
+	VEG_TEMPLATE(
+			typename Fn,
+			requires(VEG_CONCEPT(fn_once<Fn, T>)),
+			VEG_INLINE VEG_CPP20(constexpr) void push_with,
+			(fn, Fn))
+	VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(nothrow_fn_once<Fn, T>) &&
+			VEG_CONCEPT(alloc::nothrow_alloc<A>)) {
+		vector::RawVector<T> raw = this->raw_ref().get();
+		if (HEDLEY_UNLIKELY(raw.end == raw.end_alloc)) {
+			this->_reserve_one_more(unsafe);
+		}
+		this->push_with_unchecked(unsafe, VEG_FWD(fn));
+	}
+	VEG_INLINE VEG_CPP20(constexpr) void push(T value) VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(nothrow_movable<T>) && VEG_CONCEPT(alloc::nothrow_alloc<A>)) {
+		this->push_with(internal::MoveFn<T>{VEG_FWD(value)});
+	}
+	VEG_INLINE VEG_CPP20(constexpr) void push_unchecked(Unsafe /*tag*/, T value)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) {
+		this->push_with_unchecked(unsafe, internal::MoveFn<T>{VEG_FWD(value)});
+	}
+
+	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto as_ref() const VEG_NOEXCEPT
+			-> Slice<T> {
+		return {from_raw_parts, unsafe, ptr(), len()};
+	}
+	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto as_mut() const VEG_NOEXCEPT
+			-> Slice<T> {
+		return {from_raw_parts, unsafe, ptr_mut(), len()};
+	}
+
+	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto ptr() const VEG_NOEXCEPT
+			-> T const* {
+		return this->raw_ref().get().data;
+	}
+	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto ptr_mut() VEG_NOEXCEPT
+			-> T* {
+		return const_cast<T*>(this->ptr());
+	}
+	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto len() const VEG_NOEXCEPT
+			-> isize {
+		auto& raw = this->raw_ref().get();
+		return isize(raw.end - raw.data);
+	}
+	VEG_NODISCARD VEG_INLINE
+	VEG_CPP20(constexpr) auto capacity() const VEG_NOEXCEPT -> isize {
+		auto& raw = this->raw_ref().get();
+		return isize(raw.end_alloc - raw.data);
+	}
+	VEG_NODISCARD VEG_INLINE
+	VEG_CPP20(constexpr) auto byte_capacity() const VEG_NOEXCEPT -> isize {
+		auto& raw = this->raw_ref().get();
+		return meta::is_consteval()
+		           ? (raw.end_alloc - raw.data) * isize(sizeof(T))
+		           : (reinterpret_cast<char const*>(raw.end_alloc) -
+		              reinterpret_cast<char const*>(raw.data));
+	}
+	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto
+	operator[](isize i) const VEG_NOEXCEPT -> T const& {
+		VEG_ASSERT(usize(i) < usize(len()));
+		return this->ptr()[i];
+	}
+	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto
+	operator[](isize i) VEG_NOEXCEPT -> T& {
+		return const_cast<T&>(
+				static_cast<VecIncomplete const*>(this)->operator[](i));
+	}
+};
+} // namespace collections
+
+template <typename T, typename A = mem::SystemAlloc>
+struct Vec : collections::VecIncomplete<T, A>,
+						 meta::conditional_t<
+								 VEG_CONCEPT(copyable<T>),
+								 internal::EmptyI<0>,
+								 internal::NoCopyCtor>,
+						 meta::conditional_t<
+								 VEG_CONCEPT(copy_assignable<T>),
+								 internal::EmptyI<1>,
+								 internal::NoCopyAssign> {
+	Vec() = default;
+	VEG_EXPLICIT_COPY(Vec);
+};
+
+namespace internal {
+namespace _vector {
+namespace adl {
+VEG_TEMPLATE(
+		(typename T, typename LhsA, typename U, typename RhsA),
+		requires(VEG_CONCEPT(eq<T, U>)),
+		VEG_NODISCARD static VEG_CPP14(constexpr) auto
+		operator==,
+		(lhs, collections::VecIncomplete<T, LhsA> const&),
+		(rhs, collections::VecIncomplete<U, RhsA> const&))
+VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_eq<T, U>))->bool {
+	return internal::_slice::adl::operator==(lhs.as_ref(), rhs.as_ref());
+}
+} // namespace adl
+struct DbgVecI {
+	template <typename T, typename A>
+	static void
+	to_string(fmt::BufferMut out, Ref<collections::VecIncomplete<T, A>> arg) {
+		fmt::Debug<Slice<T>>::to_string(out, ref(arg.get().as_ref()));
+	}
+};
+struct DbgVec {
+	template <typename T, typename A>
+	static void to_string(fmt::BufferMut out, Ref<Vec<T, A>> arg) {
+		fmt::Debug<Slice<T>>::to_string(out, ref(arg.get().as_ref()));
+	}
+};
+struct OrdVec {
+	VEG_TEMPLATE(
+			(typename T, typename LhsA, typename U, typename RhsA),
+			requires(VEG_CONCEPT(ord<T, U>)),
+			VEG_NODISCARD VEG_INLINE static constexpr auto cmp,
+			(lhs, Ref<Vec<T, LhsA>>),
+			(rhs, Ref<Vec<U, RhsA>>))
+	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_ord<T, U>))->cmp::Ordering {
+		return cmp::Ord<Slice<T>, Slice<U>>::cmp( //
+				ref(lhs.get().as_ref()),
+				ref(rhs.get().as_ref()));
+	}
+};
+struct OrdVecI {
+	VEG_TEMPLATE(
+			(typename T, typename LhsA, typename U, typename RhsA),
+			requires(VEG_CONCEPT(ord<T, U>)),
+			VEG_NODISCARD VEG_INLINE static constexpr auto cmp,
+			(lhs, Ref<collections::VecIncomplete<T, LhsA>>),
+			(rhs, Ref<collections::VecIncomplete<U, RhsA>>))
+	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_ord<T, U>))->cmp::Ordering {
+		return cmp::Ord<Slice<T>, Slice<U>>::cmp( //
+				ref(lhs.get().as_ref()),
+				ref(rhs.get().as_ref()));
+	}
+};
+} // namespace _vector
+} // namespace internal
+
+template <typename T, typename A>
+struct cpo::is_trivially_relocatable<collections::VecIncomplete<T, A>>
+		: cpo::is_trivially_relocatable<A> {};
+template <typename T, typename A>
+struct cpo::is_trivially_constructible<collections::VecIncomplete<T, A>>
+		: cpo::is_trivially_constructible<A> {};
+
+template <typename T, typename A>
+struct cpo::is_trivially_relocatable<Vec<T, A>>
+		: cpo::is_trivially_relocatable<A> {};
+template <typename T, typename A>
+struct cpo::is_trivially_constructible<Vec<T, A>>
+		: cpo::is_trivially_constructible<A> {};
+
+template <typename T, typename A>
+struct fmt::Debug<Vec<T, A>> : internal::_vector::DbgVec {};
+template <typename T, typename A>
+struct fmt::Debug<collections::VecIncomplete<T, A>>
+		: internal::_vector::DbgVecI {};
+
+template <typename T, typename LhsA, typename U, typename RhsA>
+struct cmp::Ord<Vec<T, LhsA>, Vec<U, RhsA>> : internal::_vector::OrdVec {};
+template <typename T, typename LhsA, typename U, typename RhsA>
+struct cmp::Ord< //
+		collections::VecIncomplete<T, LhsA>,
+		collections::VecIncomplete<U, RhsA>> : internal::_vector::OrdVecI {};
 } // namespace veg
+
+#undef __VEG_ASAN_ANNOTATE
 
 #include "veg/internal/epilogue.hpp"
 #endif /* end of include guard VEG_VECTOR_HPP_QWFSH3ROS */

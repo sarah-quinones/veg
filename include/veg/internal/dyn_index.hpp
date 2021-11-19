@@ -248,19 +248,6 @@ struct fmt::Debug<Dyn> {
 		out.insert(out.size(), "]", 1);
 	}
 };
-
-template <>
-struct cmp::is_eq<Dyn> : meta::true_type {};
-template <>
-struct cmp::is_ord<Dyn> : meta::true_type {};
-template <>
-struct cmp::is_eq<Boolean<maybe>> : meta::true_type {};
-template <>
-struct cmp::is_ord<Boolean<maybe>> : meta::true_type {};
-template <>
-struct cpo::is_trivially_constructible<Dyn> : meta::true_type {};
-template <>
-struct cpo::is_trivially_constructible<Boolean<maybe>> : meta::true_type {};
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

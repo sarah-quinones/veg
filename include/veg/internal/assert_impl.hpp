@@ -114,7 +114,7 @@ struct lhs_all_of_t {
 
 	VEG_TEMPLATE(
 			typename U,
-			requires(VEG_CONCEPT(partial_eq<T, U>)),
+			requires(VEG_CONCEPT(eq<T, U>)),
 			VEG_INLINE constexpr auto
 			operator==,
 			(rhs, U const&))
@@ -124,7 +124,7 @@ struct lhs_all_of_t {
 	}
 	VEG_TEMPLATE(
 			typename U,
-			requires(VEG_CONCEPT(partial_eq<T, U>)),
+			requires(VEG_CONCEPT(eq<T, U>)),
 			VEG_INLINE constexpr auto
 			operator!=,
 			(rhs, U const&))
@@ -135,7 +135,7 @@ struct lhs_all_of_t {
 
 	VEG_TEMPLATE(
 			typename U,
-			requires(VEG_CONCEPT(partial_ord<T, U>)),
+			requires(VEG_CONCEPT(ord<T, U>)),
 			VEG_INLINE constexpr auto
 			operator<,
 			(rhs, U const&))
@@ -145,7 +145,7 @@ struct lhs_all_of_t {
 	}
 	VEG_TEMPLATE(
 			typename U,
-			requires(VEG_CONCEPT(partial_ord<T, U>)),
+			requires(VEG_CONCEPT(ord<T, U>)),
 			VEG_INLINE constexpr auto
 			operator>,
 			(rhs, U const&))
@@ -155,7 +155,7 @@ struct lhs_all_of_t {
 	}
 	VEG_TEMPLATE(
 			typename U,
-			requires(VEG_CONCEPT(partial_ord<T, U>)),
+			requires(VEG_CONCEPT(ord<T, U>)),
 			VEG_INLINE constexpr auto
 			operator<=,
 			(rhs, U const&))
@@ -165,7 +165,7 @@ struct lhs_all_of_t {
 	}
 	VEG_TEMPLATE(
 			typename U,
-			requires(VEG_CONCEPT(partial_ord<T, U>)),
+			requires(VEG_CONCEPT(ord<T, U>)),
 			VEG_INLINE constexpr auto
 			operator>=,
 			(rhs, U const&))

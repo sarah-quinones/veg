@@ -7,11 +7,12 @@
 
 #ifdef __VEG_DISABLE_NOEXCEPT
 #define VEG_NOEXCEPT noexcept(false)
-#define VEG_NOEXCEPT_IF(Cond) noexcept(false)
+#define VEG_NOEXCEPT_IF(...)                                                   \
+	noexcept(VEG_WRAP_SILENCE_WARNING((__VA_ARGS__)) && false)
 #define VEG_IS_NOEXCEPT(Expr) noexcept(Expr)
 #else
 #define VEG_NOEXCEPT noexcept(true)
-#define VEG_NOEXCEPT_IF(Cond) noexcept(Cond)
+#define VEG_NOEXCEPT_IF(...) noexcept(VEG_WRAP_SILENCE_WARNING(__VA_ARGS__))
 #define VEG_IS_NOEXCEPT(Expr) noexcept(Expr)
 #endif
 #define VEG_NOEXCEPT_LIKE(Expr) VEG_NOEXCEPT_IF(VEG_IS_NOEXCEPT(Expr))
@@ -106,9 +107,9 @@
 	VEG_INTERNAL_ASSERT_PRECONDITION(::veg::internal::all_of({__VA_ARGS__}))
 
 #define VEG_INTERNAL_ASSERT_PRECONDITION(Cond)                                 \
-	((Cond) ? (void)0 : ((throw 0), (void)0))
+	(bool(Cond) ? (void)0 : ((throw 0) /* NOLINT */, (void)0))
 #define VEG_INTERNAL_ASSERT_INVARIANT(...)                                     \
-	((__VA_ARGS__) ? (void)0 : ((throw 0), (void)0))
+	(bool(__VA_ARGS__) ? (void)0 : ((throw 0), (void)0))
 #endif
 
 #if __cplusplus >= 201402L

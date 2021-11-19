@@ -3,10 +3,13 @@
 
 #include "veg/type_traits/invocable.hpp"
 #include "veg/type_traits/constructible.hpp"
-#include "veg/internal/tuple_generic.hpp"
+#include "veg/tuple.hpp"
+#include "veg/functional/pipe.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
+template <typename T, usize I>
+using inner_ith = decltype(VEG_DECLVAL(T)[Fix<isize{I}>{}]);
 
 namespace internal {
 namespace _fn {
@@ -27,7 +30,7 @@ VEG_INLINE static constexpr auto call_bound_back_once(
 			VEG_FWD(args)...,
 			static_cast<StoredArgs&&>(
 					static_cast<tuple::TupleLeaf<Is, StoredArgs>&>(stored)
-							.leaf_get())...);
+							.__VEG_IMPL_LEAF_GET())...);
 }
 template <
 		typename Fn,
@@ -43,7 +46,8 @@ VEG_INLINE static constexpr auto call_bound_front_once(
 				VEG_CONCEPT(nothrow_fn_once<Fn, Ret, StoredArgs..., Args...>)) -> Ret {
 	return VEG_FWD(fn)(
 			static_cast<StoredArgs&&>(
-					static_cast<tuple::TupleLeaf<Is, StoredArgs>&>(stored).leaf_get())...,
+					static_cast<tuple::TupleLeaf<Is, StoredArgs>&>(stored)
+							.__VEG_IMPL_LEAF_GET())...,
 			VEG_FWD(args)...);
 }
 
@@ -61,10 +65,8 @@ VEG_INLINE static constexpr auto call_bound_back_mut(
 				nothrow_fn_mut<Fn, Ret, Args..., RefMut<StoredArgs>...>)) -> Ret {
 	return fn(
 			VEG_FWD(args)...,
-			RefMut<StoredArgs>{
-					AsMut{},
-					static_cast<tuple::TupleLeaf<Is, StoredArgs>&>(stored).leaf_get(),
-			}...);
+			mut(static_cast<tuple::TupleLeaf<Is, StoredArgs>&>(stored)
+	            .__VEG_IMPL_LEAF_GET())...);
 }
 template <
 		typename Fn,
@@ -79,10 +81,8 @@ VEG_INLINE static constexpr auto call_bound_front_mut(
 		VEG_NOEXCEPT_IF(VEG_CONCEPT(
 				nothrow_fn_mut<Fn, Ret, RefMut<StoredArgs>..., Args...>)) -> Ret {
 	return fn(
-			RefMut<StoredArgs>{
-					AsMut{},
-					static_cast<tuple::TupleLeaf<Is, StoredArgs>&>(stored).leaf_get(),
-			}...,
+			mut(static_cast<tuple::TupleLeaf<Is, StoredArgs>&>(stored)
+	            .__VEG_IMPL_LEAF_GET())...,
 			VEG_FWD(args)...);
 }
 
@@ -102,11 +102,8 @@ VEG_INLINE static constexpr auto call_bound_back(
 				VEG_CONCEPT(nothrow_fn<Fn, Ret, Args..., Ref<StoredArgs>...>)) -> Ret {
 	return fn(
 			VEG_FWD(args)...,
-			Ref<StoredArgs>{
-					AsRef{},
-					static_cast<tuple::TupleLeaf<Is, StoredArgs> const&>(stored)
-							.leaf_get(),
-			}...);
+			ref(static_cast<tuple::TupleLeaf<Is, StoredArgs> const&>(stored)
+	            .__VEG_IMPL_LEAF_GET())...);
 }
 template <
 		typename Fn,
@@ -123,11 +120,8 @@ VEG_INLINE static constexpr auto call_bound_front(
 		VEG_NOEXCEPT_IF(
 				VEG_CONCEPT(nothrow_fn<Fn, Ret, Ref<StoredArgs>..., Args...>)) -> Ret {
 	return fn(
-			Ref<StoredArgs>{
-					AsRef{},
-					static_cast<tuple::TupleLeaf<Is, StoredArgs> const&>(stored)
-							.leaf_get(),
-			}...,
+			ref(static_cast<tuple::TupleLeaf<Is, StoredArgs> const&>(stored)
+	            .__VEG_IMPL_LEAF_GET())...,
 			VEG_FWD(args)...);
 }
 
@@ -148,7 +142,7 @@ VEG_INLINE static constexpr auto call_bound_back_copy(
 			VEG_FWD(args)...,
 			static_cast<StoredArgs>(
 					static_cast<tuple::TupleLeaf<Is, StoredArgs> const&>(stored)
-							.leaf_get())...);
+							.__VEG_IMPL_LEAF_GET())...);
 }
 template <
 		typename Fn,
@@ -166,7 +160,7 @@ VEG_INLINE static constexpr auto call_bound_front_copy(
 	return fn(
 			static_cast<StoredArgs>(
 					static_cast<tuple::TupleLeaf<Is, StoredArgs> const&>(stored)
-							.leaf_get())...,
+							.__VEG_IMPL_LEAF_GET())...,
 			VEG_FWD(args)...);
 }
 
@@ -175,7 +169,7 @@ VEG_INLINE static constexpr auto call_bound_front_copy(
 
 namespace fn {
 
-template <typename Fn, typename... StoredArgs>
+template <typename PipeTag, typename Fn, typename... StoredArgs>
 struct BindBackOnce {
 	Fn fn;
 	Tuple<StoredArgs...> stored_args;
@@ -194,7 +188,7 @@ struct BindBackOnce {
 	}
 };
 
-template <typename Fn, typename... StoredArgs>
+template <typename PipeTag, typename Fn, typename... StoredArgs>
 struct BindFrontOnce {
 	Fn fn;
 	Tuple<StoredArgs...> stored_args;
@@ -213,7 +207,7 @@ struct BindFrontOnce {
 	}
 };
 
-template <typename Fn, typename... StoredArgs>
+template <typename PipeTag, typename Fn, typename... StoredArgs>
 struct BindBackMut {
 	Fn fn;
 	Tuple<StoredArgs...> stored_args;
@@ -234,7 +228,7 @@ struct BindBackMut {
 	}
 };
 
-template <typename Fn, typename... StoredArgs>
+template <typename PipeTag, typename Fn, typename... StoredArgs>
 struct BindFrontMut {
 	Fn fn;
 	Tuple<StoredArgs...> stored_args;
@@ -255,7 +249,7 @@ struct BindFrontMut {
 	}
 };
 
-template <typename Fn, typename... StoredArgs>
+template <typename PipeTag, typename Fn, typename... StoredArgs>
 struct BindBack {
 	Fn fn;
 	Tuple<StoredArgs...> stored_args;
@@ -275,7 +269,7 @@ struct BindBack {
 	}
 };
 
-template <typename Fn, typename... StoredArgs>
+template <typename PipeTag, typename Fn, typename... StoredArgs>
 struct BindFront {
 	Fn fn;
 	Tuple<StoredArgs...> stored_args;
@@ -295,7 +289,7 @@ struct BindFront {
 	}
 };
 
-template <typename Fn, typename... StoredArgs>
+template <typename PipeTag, typename Fn, typename... StoredArgs>
 struct BindBackCopy {
 	Fn fn;
 	Tuple<StoredArgs...> stored_args;
@@ -314,7 +308,7 @@ struct BindBackCopy {
 				fn, stored_args, VEG_FWD(args)...);
 	}
 };
-template <typename Fn, typename... StoredArgs>
+template <typename PipeTag, typename Fn, typename... StoredArgs>
 struct BindFrontCopy {
 	Fn fn;
 	Tuple<StoredArgs...> stored_args;
@@ -336,180 +330,132 @@ struct BindFrontCopy {
 
 namespace nb {
 struct bind_back_once {
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
-			requires(
-					VEG_CONCEPT(movable<Fn>) && VEG_ALL_OF(VEG_CONCEPT(movable<Args>))),
-			VEG_INLINE constexpr auto
-			operator(),
-			(fn, Fn),
-			(... args, Args))
-	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_movable<Fn>) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
-			->BindBackOnce<Fn, Args...> {
+	template <typename Fn, typename... Args>
+	VEG_INLINE constexpr auto operator()(Fn fn, Args... args) const
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_movable<Fn>) &&
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
+					-> BindBackOnce<Pipeable, Fn, Args...> {
 		return {
 				VEG_FWD(fn),
 				Tuple<Args...>{
-						Direct{},
-						VEG_FWD(args)...,
+						inplace[tuplify],
+						internal::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
 };
 struct bind_front_once {
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
-			requires(
-					VEG_CONCEPT(movable<Fn>) && VEG_ALL_OF(VEG_CONCEPT(movable<Args>))),
-			VEG_INLINE constexpr auto
-			operator(),
-			(fn, Fn),
-			(... args, Args))
-	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_movable<Fn>) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
-			->BindFrontOnce<Fn, Args...> {
+	template <typename Fn, typename... Args>
+	VEG_INLINE constexpr auto operator()(Fn fn, Args... args) const
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_movable<Fn>) &&
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
+					-> BindFrontOnce<Pipeable, Fn, Args...> {
 		return {
 				VEG_FWD(fn),
-				{
-						Direct{},
-						VEG_FWD(args)...,
+				Tuple<Args...>{
+						inplace[tuplify],
+						internal::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
 };
 
 struct bind_back_mut {
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
-			requires(
-					VEG_CONCEPT(movable<Fn>) && VEG_ALL_OF(VEG_CONCEPT(movable<Args>))),
-			VEG_INLINE constexpr auto
-			operator(),
-			(fn, Fn),
-			(... args, Args))
-	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_movable<Fn>) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
-			->BindBackMut<Fn, Args...> {
+	template <typename Fn, typename... Args>
+	VEG_INLINE constexpr auto operator()(Fn fn, Args... args) const
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_movable<Fn>) &&
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
+					-> BindBackMut<Pipeable, Fn, Args...> {
 		return {
 				VEG_FWD(fn),
 				Tuple<Args...>{
-						Direct{},
-						VEG_FWD(args)...,
+						inplace[tuplify],
+						internal::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
 };
 struct bind_front_mut {
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
-			requires(
-					VEG_CONCEPT(movable<Fn>) && VEG_ALL_OF(VEG_CONCEPT(movable<Args>))),
-			VEG_INLINE constexpr auto
-			operator(),
-			(fn, Fn),
-			(... args, Args))
-	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_movable<Fn>) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
-			->BindFrontMut<Fn, Args...> {
+	template <typename Fn, typename... Args>
+	VEG_INLINE constexpr auto operator()(Fn fn, Args... args) const
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_movable<Fn>) &&
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
+					-> BindFrontMut<Pipeable, Fn, Args...> {
 		return {
 				VEG_FWD(fn),
-				{
-						Direct{},
-						VEG_FWD(args)...,
+				Tuple<Args...>{
+						inplace[tuplify],
+						internal::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
 };
 
 struct bind_back {
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
-			requires(
-					VEG_CONCEPT(movable<Fn>) && VEG_ALL_OF(VEG_CONCEPT(movable<Args>))),
-			VEG_INLINE constexpr auto
-			operator(),
-			(fn, Fn),
-			(... args, Args))
-	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_movable<Fn>) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
-			->BindBack<Fn, Args...> {
+	template <typename Fn, typename... Args>
+	VEG_INLINE constexpr auto operator()(Fn fn, Args... args) const
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_movable<Fn>) &&
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
+					-> BindBack<Pipeable, Fn, Args...> {
 		return {
 				VEG_FWD(fn),
 				Tuple<Args...>{
-						Direct{},
-						VEG_FWD(args)...,
+						inplace[tuplify],
+						internal::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
 };
 struct bind_front {
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
-			requires(
-					VEG_CONCEPT(movable<Fn>) && VEG_ALL_OF(VEG_CONCEPT(movable<Args>))),
-			VEG_INLINE constexpr auto
-			operator(),
-			(fn, Fn),
-			(... args, Args))
-	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_movable<Fn>) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
-			->BindFront<Fn, Args...> {
+	template <typename Fn, typename... Args>
+	VEG_INLINE constexpr auto operator()(Fn fn, Args... args) const
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_movable<Fn>) &&
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
+					-> BindFront<Pipeable, Fn, Args...> {
 		return {
 				VEG_FWD(fn),
-				{
-						Direct{},
-						VEG_FWD(args)...,
+				Tuple<Args...>{
+						inplace[tuplify],
+						internal::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
 };
 
 struct bind_back_copy {
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
-			requires(
-					VEG_CONCEPT(movable<Fn>) && VEG_ALL_OF(VEG_CONCEPT(movable<Args>))),
-			VEG_INLINE constexpr auto
-			operator(),
-			(fn, Fn),
-			(... args, Args))
-	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_movable<Fn>) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
-			->BindBackCopy<Fn, Args...> {
+	template <typename Fn, typename... Args>
+	VEG_INLINE constexpr auto operator()(Fn fn, Args... args) const
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_movable<Fn>) &&
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
+					-> BindBackCopy<Pipeable, Fn, Args...> {
 		return {
 				VEG_FWD(fn),
-				{
-						Direct{},
-						VEG_FWD(args)...,
+				Tuple<Args...>{
+						inplace[tuplify],
+						internal::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
 };
 struct bind_front_copy {
-	VEG_TEMPLATE(
-			(typename Fn, typename... Args),
-			requires(
-					VEG_CONCEPT(movable<Fn>) && VEG_ALL_OF(VEG_CONCEPT(movable<Args>))),
-			VEG_INLINE constexpr auto
-			operator(),
-			(fn, Fn),
-			(... args, Args))
-	const VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_movable<Fn>) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
-			->BindFrontCopy<Fn, Args...> {
+	template <typename Fn, typename... Args>
+	VEG_INLINE constexpr auto operator()(Fn fn, Args... args) const
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_movable<Fn>) &&
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Args>)))
+					-> BindFrontCopy<Pipeable, Fn, Args...> {
 		return {
 				VEG_FWD(fn),
-				{
-						Direct{},
-						VEG_FWD(args)...,
+				Tuple<Args...>{
+						inplace[tuplify],
+						internal::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
@@ -524,6 +470,32 @@ VEG_NIEBLOID(bind_front);
 VEG_NIEBLOID(bind_back_copy);
 VEG_NIEBLOID(bind_front_copy);
 } // namespace fn
+
+namespace cpo {
+#define VEG_CPO(Name)                                                          \
+	template <typename Fn, typename... Args>                                     \
+	struct is_trivially_constructible<Name /* NOLINT */<Fn, Args...>>            \
+			: meta::bool_constant<(                                                  \
+						is_trivially_constructible<Fn>::value &&                           \
+						VEG_ALL_OF(is_trivially_constructible<Args>::value))> {};          \
+	template <typename Fn, typename... Args>                                     \
+	struct is_trivially_relocatable<Name /* NOLINT */<Fn, Args...>>              \
+			: meta::bool_constant<(                                                  \
+						is_trivially_relocatable<Fn>::value &&                             \
+						VEG_ALL_OF(is_trivially_relocatable<Args>::value))> {};
+
+VEG_CPO(fn::BindBack);
+VEG_CPO(fn::BindBackMut);
+VEG_CPO(fn::BindBackOnce);
+VEG_CPO(fn::BindBackCopy);
+
+VEG_CPO(fn::BindFront);
+VEG_CPO(fn::BindFrontMut);
+VEG_CPO(fn::BindFrontOnce);
+VEG_CPO(fn::BindFrontCopy);
+
+#undef VEG_CPO
+} // namespace cpo
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

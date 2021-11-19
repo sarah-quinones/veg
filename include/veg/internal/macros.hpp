@@ -55,12 +55,34 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined(__clang__)
+#define VEG_WRAP_SILENCE_WARNING(...)                                          \
+	HEDLEY_DIAGNOSTIC_PUSH _Pragma(                                              \
+			"clang diagnostic ignored \"-Wc++17-extensions\"")                       \
+			__VA_ARGS__ HEDLEY_DIAGNOSTIC_POP
+#else
+#define VEG_WRAP_SILENCE_WARNING(...) __VA_ARGS__
+#endif
+
+#ifndef VEG_HAS_NO_UNIQUE_ADDRESS
+#define VEG_HAS_NO_UNIQUE_ADDRESS 0
+#endif
+
+#if VEG_HAS_NO_UNIQUE_ADDRESS
+#ifdef _MSC_VER
+#define VEG_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+#else
+#define VEG_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#endif
+#else
+#define VEG_NO_UNIQUE_ADDRESS
+#endif
+
 #ifndef VEG_INLINE
 #define VEG_INLINE HEDLEY_ALWAYS_INLINE
 #define VEG_NO_INLINE HEDLEY_NEVER_INLINE
 #endif
 
-#define VEG_DECLVAL(...) (static_cast<__VA_ARGS__ (*)()>(nullptr)())
 #if defined(__cpp_concepts) && __cpp_concepts >= 201907L
 #define VEG_HAS_CONCEPTS 1
 #else
@@ -68,27 +90,51 @@
 #endif
 
 #if __cplusplus >= 201703L
-#define VEG_DECLVAL_NOEXCEPT(...)                                              \
-	(static_cast<__VA_ARGS__ (*)() noexcept>(nullptr)())
+#define VEG_DECLVAL(...) (static_cast<__VA_ARGS__ (*)() noexcept>(nullptr)())
 #else
-#define VEG_DECLVAL_NOEXCEPT(...)                                              \
-	(::veg::internal::meta_::declval<__VA_ARGS__>())
+#define VEG_DECLVAL(...) (::veg::internal::meta_::declval<__VA_ARGS__>())
 #endif
 
+#if defined(__clang__)
+#define VEG_ARROW(...)                                                         \
+	__attribute__((always_inline)) noexcept(noexcept((__VA_ARGS__)))             \
+			->decltype((__VA_ARGS__)) {                                              \
+		return __VA_ARGS__;                                                        \
+	}
+#elif defined(__GNUC__)
+#define VEG_ARROW(...)                                                         \
+	noexcept(noexcept((__VA_ARGS__))) __attribute__((always_inline))             \
+			->decltype((__VA_ARGS__)) {                                              \
+		return __VA_ARGS__;                                                        \
+	}
+#else
 #define VEG_ARROW(...)                                                         \
 	noexcept(noexcept((__VA_ARGS__)))->decltype((__VA_ARGS__)) {                 \
 		return __VA_ARGS__;                                                        \
 	}
+#endif
+
+#define VEG_LAZY(...) [&]() VEG_ARROW(__VA_ARGS__)
 
 #define VEG_LIFT(...)                                                          \
 	[&](auto&&... args) VEG_ARROW((__VA_ARGS__)(VEG_FWD(args)...))
 
-#define VEG_DEDUCE_RET(...) VEG_ARROW(__VA_ARGS__) VEG_NOM_SEMICOLON
+#define VEG_DEDUCE_RET(...)                                                    \
+	noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) {                     \
+		return __VA_ARGS__;                                                        \
+	}                                                                            \
+	VEG_NOM_SEMICOLON
 
 #if __cplusplus >= 201703L
+#define VEG_HAS_FOLD_EXPR 1
 #define VEG_ALL_OF(...) (__VA_ARGS__ && ... && true)
 #define VEG_ANY_OF(...) (__VA_ARGS__ || ... || false)
+#elif defined(__clang__)
+#define VEG_HAS_FOLD_EXPR 1
+#define VEG_ALL_OF(...) VEG_WRAP_SILENCE_WARNING((__VA_ARGS__ && ... && true))
+#define VEG_ANY_OF(...) VEG_WRAP_SILENCE_WARNING((__VA_ARGS__ || ... || false))
 #else
+#define VEG_HAS_FOLD_EXPR 0
 #define VEG_ALL_OF(...)                                                        \
 	::veg::meta::and_test<                                                       \
 			::veg::meta::make_index_sequence<                                        \
@@ -135,17 +181,23 @@
 #define VEG_DEF_CONCEPT_DISJUNCTION(Tpl, Name, Terms)                          \
 	VEG_DEF_CONCEPT(Tpl, Name, __VEG_IMPL_DISJUNCTION Terms)
 
-#else
-
-#if __cplusplus >= 201703L
-#define __VEG_IMPL_DEF_CONCEPT(Tpl, Name, Value, ...)                          \
-	namespace _ {                                                                \
-	template <__VEG_PP_REMOVE_PAREN1(Tpl)>                                       \
-	struct Name : __VA_ARGS__ {};                                                \
+#define VEG_CONCEPT_EXPR(Tpl, TplNames, Name, Expr, ...)                       \
+	namespace _veg_internal {                                                    \
+	template <typename ExprType, __VEG_PP_REMOVE_PAREN1(Tpl)>                    \
+	concept test_return_##Name = __VA_ARGS__;                                    \
 	}                                                                            \
 	template <__VEG_PP_REMOVE_PAREN1(Tpl)>                                       \
-	inline constexpr bool const& Name = Value
-#elif __cplusplus >= 201402L
+	concept Name = _veg_internal::                                               \
+			test_return_##Name<decltype((Expr)), __VEG_PP_REMOVE_PAREN1(TplNames)>;  \
+	template <__VEG_PP_REMOVE_PAREN1(Tpl)>                                       \
+	concept xnothrow_##Name = noexcept(Expr);                                    \
+	template <__VEG_PP_REMOVE_PAREN1(Tpl)>                                       \
+	concept nothrow_##Name = noexcept(Expr);                                     \
+	VEG_NOM_SEMICOLON
+
+#else
+
+#if __cplusplus >= 201402L
 #define __VEG_IMPL_DEF_CONCEPT(Tpl, Name, Value, ...)                          \
 	namespace _ {                                                                \
 	template <__VEG_PP_REMOVE_PAREN1(Tpl)>                                       \
@@ -161,6 +213,48 @@
 	template <__VEG_PP_REMOVE_PAREN1(Tpl)>                                       \
 	struct Name : __VA_ARGS__ {}
 #endif
+
+#ifdef __clang__
+#define __VEG_NO_WARNING_PRAGMA_PUSH                                           \
+	HEDLEY_DIAGNOSTIC_PUSH _Pragma("clang diagnostic ignored \"-Wconversion\"")
+#define __VEG_NO_WARNING_PRAGMA_POP HEDLEY_DIAGNOSTIC_POP
+#else
+#define __VEG_NO_WARNING_PRAGMA_PUSH
+#define __VEG_NO_WARNING_PRAGMA_POP
+#endif
+
+#define VEG_CONCEPT_EXPR(Tpl, TplNames, Name, Expr, ...)                       \
+	namespace _veg_internal {                                                    \
+	template <typename _veg_Enable, __VEG_PP_REMOVE_PAREN1(Tpl)>                 \
+	struct test_sfinae_##Name {                                                  \
+		using TestExpr = ::veg::meta::false_type;                                  \
+		using NothrowTestExpr = ::veg::meta::false_type;                           \
+	};                                                                           \
+	template <__VEG_PP_REMOVE_PAREN1(Tpl)>                                       \
+	struct test_sfinae_##Name<                                                   \
+			::veg::meta::void_t<decltype((Expr))>,                                   \
+			__VEG_PP_REMOVE_PAREN1(TplNames)> {                                      \
+		using ExprType = decltype((Expr));                                         \
+		using TestExpr = ::veg::meta::bool_constant<__VA_ARGS__>;                  \
+		using NothrowTestExpr = ::veg::meta::bool_constant<                        \
+				(TestExpr::value) && __VEG_NO_WARNING_PRAGMA_PUSH noexcept(Expr)       \
+																 __VEG_NO_WARNING_PRAGMA_POP>;                 \
+	};                                                                           \
+	}                                                                            \
+	VEG_DEF_CONCEPT(                                                             \
+			Tpl,                                                                     \
+			Name,                                                                    \
+			_veg_internal::test_sfinae_##Name<                                       \
+					void,                                                                \
+					__VEG_PP_REMOVE_PAREN1(TplNames)>::TestExpr::value);                 \
+	VEG_DEF_CONCEPT(Tpl, nothrow_##Name, noexcept(Expr));                        \
+	VEG_DEF_CONCEPT(                                                             \
+			Tpl,                                                                     \
+			xnothrow_##Name,                                                         \
+			_veg_internal::test_sfinae_##Name<                                       \
+					void,                                                                \
+					__VEG_PP_REMOVE_PAREN1(TplNames)>::NothrowTestExpr::value);          \
+	VEG_NOM_SEMICOLON
 
 #if __cplusplus >= 201402L
 #define VEG_CONCEPT_MACRO(Namespace, ...) Namespace::__VA_ARGS__
@@ -248,7 +342,7 @@
 #if VEG_HAS_CONCEPTS
 #define VEG_CONSTRAINED_MEMBER_FN(Constraint, Attr_Name, Params, ...)          \
 	Attr_Name __VEG_PP_TUPLE_TRANSFORM_I(__VEG_IMPL_PARAM_EXPAND, _, Params)     \
-			__VA_ARGS__ requires __VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint)
+	__VA_ARGS__ requires __VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint)
 
 #define VEG_CONSTRAINED_MEMBER_FN_NO_PARAM(Constraint, Attr_Name, Ret, ...)    \
 	Attr_Name() __VA_ARGS__->__VEG_PP_REMOVE_PAREN(Ret) requires __VEG_PP_CAT2(  \
@@ -404,9 +498,13 @@
 	VEG_INLINE_VAR_TEMPLATE(Tpl, Name, nb::Name<__VA_ARGS__>) // NOLINT
 
 #define VEG_TAG(Name, Type)                                                    \
+	namespace _ {                                                                \
+	template <int I>                                                             \
 	struct Type {                                                                \
 		explicit Type() = default;                                                 \
 	};                                                                           \
+	}                                                                            \
+	using Type = _::Type<0>;                                                     \
 	VEG_INLINE_VAR(Name, Type)
 
 #define VEG_TAG_TEMPLATE(Tpl, Name, Type, ...)                                 \
@@ -417,6 +515,7 @@
 	VEG_INLINE_VAR_TEMPLATE(Tpl, Name, Type<__VA_ARGS__>)
 
 #define VEG_FWD(X) static_cast<decltype(X)&&>(X)
+#define VEG_FWD2(X) static_cast<decltype(X)>(static_cast<decltype(X)&&>(X))
 
 // disallows moving const rvalues
 #define VEG_MOV(X) static_cast<typename ::veg::uncvref_t<decltype(X)>&&>(X)
@@ -517,7 +616,130 @@ struct unused {
 } // namespace nb
 VEG_NIEBLOID(unused);
 
+using usize = decltype(sizeof(0));
 namespace internal {
+
+template <isize I>
+struct EmptyI {};
+
+using Empty = EmptyI<0>;
+using EmptyArr = Empty[];
+namespace meta_ {
+
+template <typename T, T... Nums>
+struct integer_sequence;
+
+#if VEG_HAS_BUILTIN(__make_integer_seq)
+
+template <typename T, T N>
+using make_integer_sequence = __make_integer_seq<integer_sequence, T, N>;
+
+#elif __GNUC__ >= 8
+
+template <typename T, T N>
+using make_integer_sequence = integer_sequence<T, __integer_pack(N)...>;
+
+#else
+
+namespace internal {
+
+template <typename Seq1, typename Seq2>
+struct _merge;
+
+template <typename Seq1, typename Seq2>
+struct _merge_p1;
+
+template <typename T, T... Nums1, T... Nums2>
+struct _merge<integer_sequence<T, Nums1...>, integer_sequence<T, Nums2...>> {
+	using type = integer_sequence<T, Nums1..., (sizeof...(Nums1) + Nums2)...>;
+};
+
+template <typename T, T... Nums1, T... Nums2>
+struct _merge_p1<integer_sequence<T, Nums1...>, integer_sequence<T, Nums2...>> {
+	using type = integer_sequence<
+			T,
+			Nums1...,
+			(sizeof...(Nums1) + Nums2)...,
+			sizeof...(Nums1) + sizeof...(Nums2)>;
+};
+
+template <typename T, usize N, bool Even = (N % 2) == 0>
+struct _make_integer_sequence {
+	using type = typename _merge<
+			typename _make_integer_sequence<T, N / 2>::type,
+			typename _make_integer_sequence<T, N / 2>::type>::type;
+};
+
+template <typename T, usize N>
+struct _make_integer_sequence<T, N, false> {
+	using type = typename _merge_p1<
+			typename _make_integer_sequence<T, N / 2>::type,
+			typename _make_integer_sequence<T, N / 2>::type>::type;
+};
+
+template <typename T>
+struct _make_integer_sequence<T, 0> {
+	using type = integer_sequence<T>;
+};
+template <typename T>
+struct _make_integer_sequence<T, 1> {
+	using type = integer_sequence<T, 0>;
+};
+
+} // namespace internal
+
+template <typename T, T N>
+using make_integer_sequence =
+		typename internal::_make_integer_sequence<T, N>::type;
+
+#endif
+
+template <usize N>
+using make_index_sequence = make_integer_sequence<usize, N>;
+
+template <typename... Ts>
+struct type_sequence;
+
+} // namespace meta_
+
+template <usize I, typename T>
+struct SimpleLeaf {
+	T inner;
+};
+
+template <typename Seq, typename... Ts>
+struct SimpleITuple;
+
+template <usize... Is, typename... Ts>
+struct SimpleITuple<meta_::integer_sequence<usize, Is...>, Ts...>
+		: SimpleLeaf<Is, Ts>... {
+#if __cplusplus < 201703
+	constexpr SimpleITuple(Ts... args) noexcept
+			: SimpleLeaf<Is, Ts>{Ts(VEG_FWD(args))}... {}
+#endif
+};
+
+template <typename... Ts>
+using SimpleTuple =
+		SimpleITuple<meta_::make_index_sequence<sizeof...(Ts)>, Ts...>;
+
+template <typename... Ts>
+constexpr auto make_simple_tuple(Empty /*dummy*/, Ts... args) noexcept
+		-> SimpleTuple<Ts...> {
+#if __cplusplus < 201703
+	return {Ts(VEG_FWD(args))...};
+#else
+	return {{Ts(VEG_FWD(args))}...};
+#endif
+}
+
+template <typename T>
+struct mem_ptr_type;
+template <typename C, typename Mem>
+struct mem_ptr_type<Mem C::*> {
+	using Type = Mem;
+};
+
 constexpr auto all_of_slice(bool const* arr, usize size) VEG_NOEXCEPT -> bool {
 	return size == 0 ? true
 	                 : (arr[0] && internal::all_of_slice(arr + 1, size - 1));
@@ -535,11 +757,61 @@ template <typename T>
 using uncvref_t = typename internal::meta_::uncvlref<T&>::type;
 } // namespace meta
 using meta::uncvref_t;
+
+template <typename T, typename Dummy = void>
+struct extract_members {
+	extract_members() = delete;
+};
 } // namespace veg
+
+#define VEG_DECLTYPE_VOID(...) decltype(void(__VA_ARGS__))
+#define VEG_BOOL_NOEXCEPT(...) ::veg::meta::bool_constant<noexcept(__VA_ARGS__)>
 
 #define VEG_CHECK_CONCEPT(...)                                                 \
 	VEG_CHECK_CONCEPT_MACRO(::veg::concepts, __VA_ARGS__)
 #define VEG_CONCEPT(...) VEG_CONCEPT_MACRO(::veg::concepts, __VA_ARGS__)
+
+#define __VEG_IMPL_GET_MEMBER_PTR(_, MemberPtr) /* NOLINT */ , &Type::MemberPtr
+#define __VEG_IMPL_GET_MEMBER_NAME_PTR(_, MemberPtr) /* NOLINT */              \
+	static_cast<char const*>(__VEG_PP_STRINGIZE(MemberPtr)),
+#define __VEG_IMPL_GET_MEMBER_NAME_LEN(_, MemberPtr) /* NOLINT */              \
+	(sizeof(__VEG_PP_STRINGIZE(MemberPtr)) - 1),
+
+#define __VEG_IMPL_NO_COMMA()    /* NOLINT */
+#define __VEG_IMPL_YES_COMMA() , /* NOLINT */
+
+#define __VEG_IMPL_TPL_STRUCT_SETUP(Comma, Tpl, PClass, ...) /* NOLINT */      \
+	template <typename Dummy Comma() __VEG_PP_REMOVE_PAREN(Tpl)>                 \
+	struct veg::extract_members<__VEG_PP_REMOVE_PAREN(PClass), Dummy> {          \
+		using Type = __VEG_PP_REMOVE_PAREN(PClass);                                \
+		using MemberTuple = decltype(::veg::internal::make_simple_tuple(           \
+				::veg::internal::Empty {} __VEG_PP_TUPLE_FOR_EACH(                     \
+						__VEG_IMPL_GET_MEMBER_PTR, _, (__VA_ARGS__))));                    \
+		static constexpr MemberTuple member_pointers =                             \
+				::veg::internal::make_simple_tuple(                                    \
+						::veg::internal::Empty {} __VEG_PP_TUPLE_FOR_EACH(                 \
+								__VEG_IMPL_GET_MEMBER_PTR, _, (__VA_ARGS__)));                 \
+		static constexpr char const* class_name_ptr = __VEG_PP_STRINGIZE PClass;   \
+		static constexpr ::veg::usize class_name_len =                             \
+				sizeof(__VEG_PP_STRINGIZE PClass) - 1;                                 \
+		static constexpr char const* member_name_ptrs[] = {                        \
+				__VEG_PP_TUPLE_FOR_EACH(                                               \
+						__VEG_IMPL_GET_MEMBER_NAME_PTR, _, (__VA_ARGS__))};                \
+		static constexpr ::veg::usize member_name_lens[] = {                       \
+				__VEG_PP_TUPLE_FOR_EACH(                                               \
+						__VEG_IMPL_GET_MEMBER_NAME_LEN, _, (__VA_ARGS__))};                \
+	};                                                                           \
+	template <typename Dummy Comma() __VEG_PP_REMOVE_PAREN(Tpl)>                 \
+	constexpr typename veg::extract_members<                                     \
+			__VEG_PP_REMOVE_PAREN(PClass),                                           \
+			Dummy>::MemberTuple veg::                                                \
+			extract_members<__VEG_PP_REMOVE_PAREN(PClass), Dummy>::member_pointers;  \
+	VEG_NOM_SEMICOLON
+
+#define VEG_STRUCT_SETUP(PClass, ...)                                          \
+	__VEG_IMPL_TPL_STRUCT_SETUP(__VEG_IMPL_NO_COMMA, (), PClass, __VA_ARGS__)
+#define VEG_TPL_STRUCT_SETUP(Tpl, PClass, ...)                                 \
+	__VEG_IMPL_TPL_STRUCT_SETUP(__VEG_IMPL_YES_COMMA, Tpl, PClass, __VA_ARGS__)
 
 #include "veg/internal/epilogue.hpp"
 #endif /* end of include guard VEG_MACROS_HPP_HSTLSKZXS */

@@ -26,35 +26,25 @@ template <>
 struct ComposeOnce<> {
 
 	// a forwarding reference is used to allow composing with `ref, mut`
-	VEG_TEMPLATE(
-			typename T,
-			requires(VEG_CONCEPT(movable<T>)),
-			VEG_INLINE VEG_CPP14(constexpr) auto
-			operator(),
-			(arg, T&&))
-	&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))->T&& {
+	template <typename T>
+			VEG_INLINE VEG_CPP14(constexpr) auto operator()(T&& arg) && VEG_NOEXCEPT
+																																	-> T&& {
 		return VEG_FWD(arg);
 	}
 };
 template <>
 struct ComposeMut<> {
-	VEG_TEMPLATE(
-			typename T,
-			requires(VEG_CONCEPT(movable<T>)),
-			VEG_INLINE VEG_CPP14(constexpr) auto
-			operator(),
-			(arg, T&&))
-	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))->T&& { return VEG_FWD(arg); }
+	template <typename T>
+			VEG_INLINE VEG_CPP14(constexpr) auto operator()(T&& arg) & VEG_NOEXCEPT
+																																 -> T&& {
+		return VEG_FWD(arg);
+	}
 };
 template <>
 struct Compose<> {
-	VEG_TEMPLATE(
-			typename T,
-			requires(VEG_CONCEPT(movable<T>)),
-			VEG_INLINE constexpr auto
-			operator(),
-			(arg, T&&))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))->T&& {
+	template <typename T>
+			VEG_INLINE constexpr auto operator()(T&& arg) const
+			& VEG_NOEXCEPT -> T&& {
 		return VEG_FWD(arg);
 	}
 };
@@ -135,14 +125,10 @@ HEDLEY_DIAGNOSTIC_PUSH
 
 namespace nb {
 struct compose_once {
-	VEG_TEMPLATE(
-			typename... Fns,
-			requires(VEG_ALL_OF(VEG_CONCEPT(movable<Fns>))),
-			constexpr auto
-			operator(),
-			(... fns, Fns))
-	const VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
-			->ComposeOnce<Fns...> {
+	template <typename... Fns>
+	constexpr auto operator()(Fns... fns) const
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
+					-> ComposeOnce<Fns...> {
 
 		/* https://eel.is/c++draft/dcl.init.aggr#15
 		 * https://eel.is/c++draft/dcl.init.aggr#16
@@ -158,29 +144,21 @@ struct compose_once {
 	}
 };
 struct compose_mut {
-	VEG_TEMPLATE(
-			typename... Fns,
-			requires(VEG_ALL_OF(VEG_CONCEPT(movable<Fns>))),
-			constexpr auto
-			operator(),
-			(... fns, Fns))
-	const VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
-			->ComposeMut<Fns...> {
+	template <typename... Fns>
+	constexpr auto operator()(Fns... fns) const
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
+					-> ComposeMut<Fns...> {
 		return {internal::Wrapper<Fns>{Fns(VEG_FWD(fns))}..., {}};
 	}
 }; // namespace nb
 struct compose {
-	VEG_TEMPLATE(
-			typename... Fns,
-			requires(VEG_ALL_OF(VEG_CONCEPT(movable<Fns>))),
-			constexpr auto
-			operator(),
-			(... fns, Fns))
-	const VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
-			->Compose<Fns...> {
+	template <typename... Fns>
+	constexpr auto operator()(Fns... fns) const
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
+					-> Compose<Fns...> {
 		return {internal::Wrapper<Fns>{Fns(VEG_FWD(fns))}..., {}};
 	}
-}; // namespace nb
+};
 } // namespace nb
 
 #ifdef __clang__
@@ -191,6 +169,24 @@ VEG_NIEBLOID(compose_once);
 VEG_NIEBLOID(compose_mut);
 VEG_NIEBLOID(compose);
 } // namespace fn
+
+namespace cpo {
+#define VEG_CPO(Name)                                                          \
+	template <typename... Fns>                                                   \
+	struct is_trivially_constructible<Name /* NOLINT */<Fns...>>                 \
+			: meta::bool_constant<(                                                  \
+						VEG_ALL_OF(is_trivially_constructible<Fns>::value))> {};           \
+	template <typename... Fns>                                                   \
+	struct is_trivially_relocatable<Name /* NOLINT */<Fns...>>                   \
+			: meta::bool_constant<(                                                  \
+						VEG_ALL_OF(is_trivially_relocatable<Fns>::value))> {};
+
+VEG_CPO(fn::Compose);
+VEG_CPO(fn::ComposeMut);
+VEG_CPO(fn::ComposeOnce);
+
+#undef VEG_CPO
+} // namespace cpo
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

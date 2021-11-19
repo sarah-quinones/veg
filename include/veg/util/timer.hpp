@@ -74,7 +74,7 @@ namespace nb {
 struct raii_timer {
 	VEG_TEMPLATE(
 			typename Fn,
-			requires(VEG_CONCEPT(fn_once<Fn, void, i64>) && VEG_CONCEPT(movable<Fn>)),
+			requires(VEG_CONCEPT(fn_once<Fn, void, i64>)),
 			auto
 			operator(),
 			(fn, Fn&&))

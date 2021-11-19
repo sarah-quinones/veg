@@ -1,6 +1,3 @@
-#include <iostream>
-#define __VEG_DISABLE_NOEXCEPT
-
 #include "static_assert.hpp"
 #include <veg/fn_ref.hpp>
 #include <veg/option.hpp>
@@ -28,26 +25,14 @@ TEST_CASE("function_view: no_args") {
 	CHECK(i == 2);
 	FnRef<void()>{f}();
 	CHECK(i == 3);
-	FnRefOnce<void()>{f}();
-	CHECK(i == 4);
-
-	STATIC_ASSERT(
-			!std::is_constructible<FnRef<void()>, FnRefOnce<void()>>::value);
-	STATIC_ASSERT(
-			std::is_constructible<FnRefOnce<void()>, FnRefOnce<void()>>::value);
-	STATIC_ASSERT(
-			std::is_constructible<FnRefOnce<void()>, NothrowFnRef<void()>>::value);
-	VEG_CPP17(STATIC_ASSERT(!std::is_constructible<
-													NothrowFnRefOnce<void()>,
-													FnRef<void()>>::value);)
 
 	f = ref(inc2_lambda);
 	f();
-	CHECK(i == 6);
+	CHECK(i == 5);
 
 	f = ref(returns_lambda);
 	f();
-	CHECK(i == 9);
+	CHECK(i == 8);
 
 	f = ref(*inc_fn_ptr);
 	CHECK(global == 0);

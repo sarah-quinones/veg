@@ -100,6 +100,28 @@ VEG_NIEBLOID_TEMPLATE(isize I, indexed, I);
 VEG_NIEBLOID_TEMPLATE(isize I, indexed_mut, I);
 VEG_NIEBLOID_TEMPLATE(isize I, indexed_once, I);
 } // namespace fn
+
+namespace cpo {
+template <isize I, typename Fn>
+struct is_trivially_constructible<fn::IndexedFn<I, Fn>>
+		: is_trivially_constructible<Fn> {};
+template <isize I, typename Fn>
+struct is_trivially_constructible<fn::IndexedFnMut<I, Fn>>
+		: is_trivially_constructible<Fn> {};
+template <isize I, typename Fn>
+struct is_trivially_constructible<fn::IndexedFnOnce<I, Fn>>
+		: is_trivially_constructible<Fn> {};
+
+template <isize I, typename Fn>
+struct is_trivially_relocatable<fn::IndexedFn<I, Fn>>
+		: is_trivially_relocatable<Fn> {};
+template <isize I, typename Fn>
+struct is_trivially_relocatable<fn::IndexedFnMut<I, Fn>>
+		: is_trivially_relocatable<Fn> {};
+template <isize I, typename Fn>
+struct is_trivially_relocatable<fn::IndexedFnOnce<I, Fn>>
+		: is_trivially_relocatable<Fn> {};
+} // namespace cpo
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

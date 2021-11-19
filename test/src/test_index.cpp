@@ -1,5 +1,3 @@
-#define __VEG_DISABLE_NOEXCEPT
-
 #include <veg/util/index.hpp>
 #include <ostream>
 #include <doctest.h>

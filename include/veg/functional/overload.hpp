@@ -98,20 +98,26 @@ VEG_OVERLOAD_GENERIC(__VEG_PP_MAKE_TUPLE(8));
 
 namespace nb {
 struct overload {
-	VEG_TEMPLATE(
-			typename... Fns,
-			requires(VEG_ALL_OF(VEG_CONCEPT(movable<Fns>))),
-			VEG_INLINE constexpr auto
-			operator(),
-			(... fns, Fns))
-	const VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
-			->Overload<Fns...> {
-		return {internal::ConvertingFn<Fns, Fns&&>{VEG_FWD(fns)}...};
+	template <typename... Fns>
+	VEG_INLINE constexpr auto operator()(Fns... fns) const
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
+					-> Overload<Fns...> {
+		return {internal::MoveFn<Fns>{VEG_FWD(fns)}...};
 	}
 };
 } // namespace nb
 VEG_NIEBLOID(overload);
 } // namespace fn
+
+namespace cpo {
+template <typename... Fns>
+struct is_trivially_constructible<fn::Overload<Fns...>>
+		: meta::bool_constant<VEG_ALL_OF(is_trivially_constructible<Fns>::value)> {
+};
+template <typename... Fns>
+struct is_trivially_relocatable<fn::Overload<Fns...>>
+		: meta::bool_constant<VEG_ALL_OF(is_trivially_relocatable<Fns>::value)> {};
+} // namespace cpo
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

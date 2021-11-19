@@ -46,7 +46,7 @@ TEST_CASE("option: all") {
 	STATIC_ASSERT_IF_14(i.as_ref().unwrap().get() == 3);
 	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).is_some());
 	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).unwrap() == 1000. / 3);
-	STATIC_ASSERT_IF_17(Option<int>{inplace, [&] { return 0; }}.is_some());
+	STATIC_ASSERT_IF_17(Option<int>{inplace[some], [&] { return 0; }}.is_some());
 	STATIC_ASSERT_IF_14(i.as_ref().map(B{}).unwrap() == 2000. / 3);
 
 	STATIC_ASSERT_IF_14(i.as_ref().map_or_else(B{}, C{}) == 2000. / 3);
@@ -85,12 +85,12 @@ TEST_CASE("option: all") {
 						 .unwrap()
 						 ->as_ref()
 						 .unwrap() == 3);
-		STATIC_ASSERT_IF_14(clone(opt).unwrap().unwrap().unwrap() == 3);
-		STATIC_ASSERT_IF_14(clone(opt).flatten().flatten().unwrap() == 3);
-		STATIC_ASSERT_IF_14(clone(opt2).unwrap().unwrap().is_none());
-		STATIC_ASSERT_IF_14(clone(opt2).flatten().flatten().is_none());
-		STATIC_ASSERT_IF_14(clone(opt2).flatten().is_some());
-		STATIC_ASSERT_IF_14(clone(opt2).flatten().is_some());
+		STATIC_ASSERT_IF_14(clone(ref(opt)).unwrap().unwrap().unwrap() == 3);
+		STATIC_ASSERT_IF_14(clone(ref(opt)).flatten().flatten().unwrap() == 3);
+		STATIC_ASSERT_IF_14(clone(ref(opt2)).unwrap().unwrap().is_none());
+		STATIC_ASSERT_IF_14(clone(ref(opt2)).flatten().flatten().is_none());
+		STATIC_ASSERT_IF_14(clone(ref(opt2)).flatten().is_some());
+		STATIC_ASSERT_IF_14(clone(ref(opt2)).flatten().is_some());
 	}
 
 	{

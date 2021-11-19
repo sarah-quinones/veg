@@ -53,19 +53,12 @@ VEG_DEF_CONCEPT_FROM_BUILTIN_OR_TRAIT(
 		T,
 		T&&);
 
-namespace _internal {
-template <typename T, typename... Ts>
-using inplace_ctor_expr =
-		decltype(new (static_cast<void*>(nullptr)) T(VEG_DECLVAL(Ts &&)...));
-} // namespace _internal
-VEG_DEF_CONCEPT(
+VEG_CONCEPT_EXPR(
 		(typename T, typename... Ts),
+		(T, Ts...),
 		inplace_constructible,
-		VEG_CONCEPT(detected<_internal::inplace_ctor_expr, T, Ts&&...>));
-VEG_DEF_CONCEPT(
-		(typename T, typename... Ts),
-		nothrow_inplace_constructible,
-		VEG_IS_NOEXCEPT(new (static_cast<void*>(nullptr)) T(VEG_DECLVAL(Ts&&)...)));
+		new (static_cast<void*>(nullptr)) T(VEG_DECLVAL(Ts&&)...),
+		true);
 
 VEG_DEF_CONCEPT_FROM_BUILTIN_OR_STD(
 		(typename T, typename... Ts), constructible, T, Ts&&...);
@@ -82,59 +75,111 @@ VEG_DEF_CONCEPT(
 		VEG_CONCEPT(convertible<U&&, T>));
 
 VEG_DEF_CONCEPT(
-		typename T, movable, VEG_CONCEPT(constructible<T, T&&>));
+		typename T,
+		movable,
+		VEG_HAS_BUILTIN_OR(
+				__is_constructiblex,
+				__is_constructible(T, T&&),
+				(VEG_CONCEPT(constructible<T, T&&>))));
 VEG_DEF_CONCEPT(
 		typename T,
 		nothrow_movable,
-		VEG_CONCEPT(nothrow_constructible<T, T&&>));
+		VEG_HAS_BUILTIN_OR(
+				__is_nothrow_constructiblex,
+				__is_nothrow_constructible(T, T&&),
+				(VEG_CONCEPT(nothrow_constructible<T, T&&>))));
 
-VEG_DEF_CONCEPT(
-		typename T, copyable, VEG_CONCEPT(constructible<T, T const&>));
+VEG_DEF_CONCEPT(typename T, copyable, VEG_CONCEPT(constructible<T, T const&>));
 VEG_DEF_CONCEPT(
 		typename T,
 		nothrow_copyable,
 		VEG_CONCEPT(nothrow_constructible<T, T const&>));
 
 } // namespace concepts
+namespace cpo {
+template <typename T>
+struct is_trivially_constructible;
+
+template <typename T>
+struct is_trivially_relocatable;
+} // namespace cpo
+
+namespace internal {
+namespace _cpo {
+
+template <bool IsComplete, template <typename> class Trait, typename T>
+struct extract_members_deduce_trait_impl;
+
+template <template <typename> class Trait, typename T>
+struct extract_members_deduce_trait_impl<false, Trait, T> : meta::false_type {};
+
+template <template <typename> class Trait, typename Tuple>
+struct member_trait_and;
+
+template <
+		template <typename>
+		class Trait,
+		usize... Is,
+		typename C,
+		typename... Ts>
+struct member_trait_and<
+		Trait,
+		SimpleITuple<meta_::integer_sequence<usize, Is...>, Ts C::*...> const>
+		: meta::bool_constant<VEG_ALL_OF(Trait<Ts>::value)> {};
+
+template <template <typename> class Trait, typename T>
+struct extract_members_deduce_trait_impl<true, Trait, T>
+		: member_trait_and<Trait, decltype(extract_members<T>::member_pointers)> {};
+
+template <template <typename> class Trait, typename T>
+struct extract_members_deduce_trait
+		: extract_members_deduce_trait_impl<
+					VEG_CONCEPT(constructible<extract_members<T>>),
+					Trait,
+					T> {};
+
+} // namespace _cpo
+} // namespace internal
 
 namespace cpo {
 template <typename T>
 struct is_trivially_constructible
-		: meta::bool_constant<VEG_CONCEPT(trivially_default_constructible<T>)> {};
+		: meta::conditional_t<
+					VEG_CONCEPT(trivially_default_constructible<T>),
+					meta::true_type,
+					internal::_cpo::
+							extract_members_deduce_trait<is_trivially_relocatable, T>> {};
 
 template <typename T>
 struct is_trivially_relocatable
-		: meta::bool_constant<
+		: meta::conditional_t<
 					VEG_CONCEPT(trivially_copyable<T>) &&
-					VEG_CONCEPT(trivially_move_constructible<T>)> {};
-
+							VEG_CONCEPT(trivially_move_constructible<T>),
+					meta::true_type,
+					internal::_cpo::
+							extract_members_deduce_trait<is_trivially_relocatable, T>> {};
 } // namespace cpo
 
 namespace internal {
-template <typename From, typename To>
-struct ConvertingFn {
-	From&& value;
-	VEG_INLINE constexpr auto operator()() const&& VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_constructible<From, To>)) -> To {
-		return To(VEG_FWD(value));
+template <typename T>
+struct MoveFn {
+	T&& value;
+	VEG_INLINE constexpr auto
+	operator()() const&& VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> T {
+		return T(VEG_FWD(value));
 	}
 };
+template <typename Fn, typename T>
+struct WithArg {
+	Fn&& fn;
+	T&& arg;
+	VEG_INLINE constexpr auto
+	operator()() const&& -> decltype(VEG_FWD(fn)(VEG_FWD(arg))) {
+		return VEG_FWD(fn)(VEG_FWD(arg));
+	}
+};
+
 } // namespace internal
-namespace nb {
-struct clone {
-	VEG_TEMPLATE(
-			typename T,
-			requires(VEG_CONCEPT(constructible<meta::decay_t<T>, T>)),
-			VEG_INLINE constexpr auto
-			operator(),
-			(arg, T&&))
-	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<meta::decay_t<T>, T>))
-			->meta::decay_t<T> {
-		return meta::decay_t<T>(VEG_FWD(arg));
-	}
-};
-} // namespace nb
-VEG_NIEBLOID(clone);
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

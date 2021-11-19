@@ -101,8 +101,8 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 	VEG_INLINE constexpr Fix(Dyn /*arg*/, Unsafe /*tag*/) VEG_NOEXCEPT;
 	VEG_INLINE constexpr Fix // NOLINT(hicpp-explicit-conversions)
 			(Dyn arg) VEG_NOEXCEPT;
-	VEG_TEMPLATE((isize M), requires((M != N)), constexpr Fix, (/*arg*/, Fix<M>)) =
-			delete;
+	VEG_TEMPLATE(
+			(isize M), requires((M != N)), constexpr Fix, (/*arg*/, Fix<M>)) = delete;
 
 	VEG_NODISCARD VEG_INLINE explicit constexpr
 	operator isize() const VEG_NOEXCEPT {
@@ -326,19 +326,6 @@ struct fmt::Debug<Fix<N>> {
 		out.insert(out.size(), "]", 1);
 	}
 };
-
-template <isize N>
-struct cmp::is_eq<Fix<N>> : meta::true_type {};
-template <isize N>
-struct cmp::is_ord<Fix<N>> : meta::true_type {};
-template <>
-struct cmp::is_eq<Boolean<yes>> : meta::true_type {};
-template <>
-struct cmp::is_ord<Boolean<yes>> : meta::true_type {};
-template <>
-struct cmp::is_eq<Boolean<no>> : meta::true_type {};
-template <>
-struct cmp::is_ord<Boolean<no>> : meta::true_type {};
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
