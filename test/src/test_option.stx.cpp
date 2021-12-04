@@ -128,25 +128,25 @@ TEST_CASE("OptionTest: ObjectConstructionTest") {
 
 TEST_CASE("OptionTest: CopyConstructionTest") {
 	Option<int> a = none;
-	Option<int> b = a;
+	Option<int> b(a);
 	CHECK(a == b);
 
 	Option<int> c = {some, 98};
 	b = c;
 	CHECK(b == c);
-	CHECK(a != c);
-	CHECK(a != b);
+	CHECK(!(a == c));
+	CHECK(!(a == b));
 
 	Option<vector<int>> d = none;
-	Option<vector<int>> e = d;
+	Option<vector<int>> e(d);
 
 	CHECK(d == e);
 
 	auto f = some(vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 	e = f;
 	CHECK(e == f);
-	CHECK(d != e);
-	CHECK(d != f);
+	CHECK(!(d == e));
+	CHECK(!(d == f));
 }
 
 TEST_CASE("OptionTest: ObjectForwardingTest") {
@@ -181,20 +181,20 @@ TEST_CASE("OptionTest: ObjectForwardingTest") {
 TEST_CASE("OptionTest: Equality") {
 	CHECK(some(0).is_some());
 	CHECK(some(90) == some(90));
-	CHECK(some(90) != some(70));
+	CHECK(!(some(90) == some(70)));
 	CHECK((Option<Option<int>>{some, none}).is_some());
 	CHECK(none == none);
 	CHECK(some(90) == some(90));
-	CHECK(some(90) != some(70));
+	CHECK(!(some(90) == some(70)));
 	CHECK(some(90) == some(90));
-	CHECK(some(90) != some(20));
+	CHECK(!(some(90) == some(20)));
 	CHECK(some(90).is_some());
 	CHECK(Option<int>{none}.is_none());
 	CHECK((Option<Option<int>>{some, Option<int>(none)}).is_some());
 
 	CHECK((Option<Option<int>>{some, Option<int>{none}}).is_some());
 	CHECK(some(90) == some(90));
-	CHECK(some(70) != some(90));
+	CHECK(!(some(70) == some(90)));
 	CHECK(some(90).is_some());
 	CHECK(Option<int>(none).is_none());
 	CHECK(Option<Option<int>>({some, Option<int>(none)}).is_some());
@@ -210,13 +210,13 @@ TEST_CASE("OptionTest: Equality") {
 
 	CHECK(some(909909) == option::some(x));
 	CHECK(some(909909) == option::some(y));
-	CHECK(some(101101) != option::some(x));
-	CHECK(some(101101) != option::some(y));
+	CHECK(!(some(101101) == option::some(x)));
+	CHECK(!(some(101101) == option::some(y)));
 
 	CHECK(option::some(x) == some(909909));
 	CHECK(option::some(y) == some(909909));
-	CHECK(option::some(x) != some(101101));
-	CHECK(option::some(y) != some(101101));
+	CHECK(!(option::some(x) == some(101101)));
+	CHECK(!(option::some(y) == some(101101)));
 }
 
 void foo(Option<vector<int>>);

@@ -107,11 +107,8 @@ struct is_trivially_relocatable;
 namespace internal {
 namespace _cpo {
 
-template <bool IsComplete, template <typename> class Trait, typename T>
-struct extract_members_deduce_trait_impl;
-
-template <template <typename> class Trait, typename T>
-struct extract_members_deduce_trait_impl<false, Trait, T> : meta::false_type {};
+template <bool, template <typename> class Trait, typename T>
+struct extract_members_deduce_trait_impl : meta::false_type {};
 
 template <template <typename> class Trait, typename Tuple>
 struct member_trait_and;
@@ -120,21 +117,24 @@ template <
 		template <typename>
 		class Trait,
 		usize... Is,
-		typename C,
+		typename... Bases,
 		typename... Ts>
 struct member_trait_and<
 		Trait,
-		SimpleITuple<meta_::integer_sequence<usize, Is...>, Ts C::*...> const>
+		SimpleITuple<meta_::integer_sequence<usize, Is...>, Ts Bases::*...>>
 		: meta::bool_constant<VEG_ALL_OF(Trait<Ts>::value)> {};
 
 template <template <typename> class Trait, typename T>
 struct extract_members_deduce_trait_impl<true, Trait, T>
-		: member_trait_and<Trait, decltype(extract_members<T>::member_pointers)> {};
+		: member_trait_and<
+					Trait,
+					decltype(internal::member_extract_access<
+									 T>::Type::member_pointers())> {};
 
 template <template <typename> class Trait, typename T>
 struct extract_members_deduce_trait
 		: extract_members_deduce_trait_impl<
-					VEG_CONCEPT(constructible<extract_members<T>>),
+					internal::member_extract_access<T>::value,
 					Trait,
 					T> {};
 

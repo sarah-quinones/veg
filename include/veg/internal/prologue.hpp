@@ -33,22 +33,15 @@
 	VEG_DEF_CONCEPT_FROM_BUILTIN_OR_TRAIT(                                       \
 			Tpl, Trait, __VEG_PP_CAT(is_, Trait), __VA_ARGS__)
 
-#define VEG_DEFAULT_CTOR_ASSIGN(Class)                                         \
-	~Class() = default; /**/                                                     \
-	Class(Class&&) = default;                                                    \
-	Class(Class const&) = default;                                               \
-	auto operator=(Class&&)&->Class& = default;                                  \
-	auto operator=(Class const&)&->Class& = default
-
 #define VEG_EXPLICIT_COPY(Class)                                               \
-	~Class() = default; /**/                                                     \
+	~Class() = default;                                                          \
 	Class(Class&&) = default;                                                    \
 	explicit Class(Class const&) = default;                                      \
 	auto operator=(Class&&)&->Class& = default;                                  \
 	auto operator=(Class const&)&->Class& = default
 
 #define VEG_NO_COPY(Class)                                                     \
-	~Class() = default; /**/                                                     \
+	~Class() = default;                                                          \
 	Class(Class&&) = default;                                                    \
 	Class(Class const&) = delete;                                                \
 	auto operator=(Class&&)&->Class& = default;                                  \

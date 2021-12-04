@@ -114,7 +114,7 @@
 	}
 #endif
 
-#define VEG_LAZY(...) [&]() VEG_ARROW(__VA_ARGS__)
+#define VEG_LAZY_BY_REF(...) [&]() VEG_ARROW(__VA_ARGS__)
 
 #define VEG_LIFT(...)                                                          \
 	[&](auto&&... args) VEG_ARROW((__VA_ARGS__)(VEG_FWD(args)...))
@@ -544,6 +544,10 @@
 #define VEG_NOM_SEMICOLON static_assert(true, ".")
 
 namespace veg {
+namespace meta {
+template <typename...>
+using void_t = void;
+} // namespace meta
 namespace internal {
 namespace meta_ {
 
@@ -748,6 +752,24 @@ inline VEG_CPP14(constexpr) auto all_of(std::initializer_list<bool> lst)
 		VEG_NOEXCEPT -> bool {
 	return internal::all_of_slice(lst.begin(), lst.size());
 }
+
+template <typename T>
+struct member_extract_access {
+	template <typename U, typename = U>
+	struct DetectImpl {
+		static constexpr bool value = false;
+		using Type = void;
+	};
+	template <typename U>
+	struct DetectImpl<U, typename U::_veglib_impl_member_extract::Type> {
+		static constexpr bool value = true;
+		using Type = typename U::_veglib_impl_member_extract;
+	};
+
+	using Detect = DetectImpl<T>;
+	static constexpr bool value = Detect::value;
+	using Type = typename Detect::Type;
+};
 } // namespace internal
 namespace meta {
 template <bool B, typename T = void>
@@ -757,11 +779,6 @@ template <typename T>
 using uncvref_t = typename internal::meta_::uncvlref<T&>::type;
 } // namespace meta
 using meta::uncvref_t;
-
-template <typename T, typename Dummy = void>
-struct extract_members {
-	extract_members() = delete;
-};
 } // namespace veg
 
 #define VEG_DECLTYPE_VOID(...) decltype(void(__VA_ARGS__))
@@ -777,23 +794,20 @@ struct extract_members {
 #define __VEG_IMPL_GET_MEMBER_NAME_LEN(_, MemberPtr) /* NOLINT */              \
 	(sizeof(__VEG_PP_STRINGIZE(MemberPtr)) - 1),
 
-#define __VEG_IMPL_NO_COMMA()    /* NOLINT */
-#define __VEG_IMPL_YES_COMMA() , /* NOLINT */
-
-#define __VEG_IMPL_TPL_STRUCT_SETUP(Comma, Tpl, PClass, ...) /* NOLINT */      \
-	template <typename Dummy Comma() __VEG_PP_REMOVE_PAREN(Tpl)>                 \
-	struct veg::extract_members<__VEG_PP_REMOVE_PAREN(PClass), Dummy> {          \
+#define __VEG_IMPL_STRUCT_SETUP(PClass, ...) /* NOLINT */                      \
+	struct _veglib_impl_member_extract {                                         \
 		using Type = __VEG_PP_REMOVE_PAREN(PClass);                                \
 		using MemberTuple = decltype(::veg::internal::make_simple_tuple(           \
 				::veg::internal::Empty {} __VEG_PP_TUPLE_FOR_EACH(                     \
 						__VEG_IMPL_GET_MEMBER_PTR, _, (__VA_ARGS__))));                    \
-		static constexpr MemberTuple member_pointers =                             \
-				::veg::internal::make_simple_tuple(                                    \
-						::veg::internal::Empty {} __VEG_PP_TUPLE_FOR_EACH(                 \
-								__VEG_IMPL_GET_MEMBER_PTR, _, (__VA_ARGS__)));                 \
-		static constexpr char const* class_name_ptr = __VEG_PP_STRINGIZE PClass;   \
+		static constexpr auto member_pointers() noexcept -> MemberTuple {          \
+			return ::veg::internal::make_simple_tuple(::veg::internal::Empty {       \
+			} __VEG_PP_TUPLE_FOR_EACH(__VEG_IMPL_GET_MEMBER_PTR, _, (__VA_ARGS__))); \
+		}                                                                          \
+		static constexpr char const* class_name_ptr =                              \
+				__VEG_PP_STRINGIZE (__VEG_PP_REMOVE_PAREN(PClass));                     \
 		static constexpr ::veg::usize class_name_len =                             \
-				sizeof(__VEG_PP_STRINGIZE PClass) - 1;                                 \
+				sizeof(__VEG_PP_STRINGIZE (__VEG_PP_REMOVE_PAREN(PClass))) - 1;         \
 		static constexpr char const* member_name_ptrs[] = {                        \
 				__VEG_PP_TUPLE_FOR_EACH(                                               \
 						__VEG_IMPL_GET_MEMBER_NAME_PTR, _, (__VA_ARGS__))};                \
@@ -801,17 +815,11 @@ struct extract_members {
 				__VEG_PP_TUPLE_FOR_EACH(                                               \
 						__VEG_IMPL_GET_MEMBER_NAME_LEN, _, (__VA_ARGS__))};                \
 	};                                                                           \
-	template <typename Dummy Comma() __VEG_PP_REMOVE_PAREN(Tpl)>                 \
-	constexpr typename veg::extract_members<                                     \
-			__VEG_PP_REMOVE_PAREN(PClass),                                           \
-			Dummy>::MemberTuple veg::                                                \
-			extract_members<__VEG_PP_REMOVE_PAREN(PClass), Dummy>::member_pointers;  \
+	friend struct ::veg::internal::member_extract_access<__VEG_PP_REMOVE_PAREN(  \
+			PClass)>;                                                                \
 	VEG_NOM_SEMICOLON
 
-#define VEG_STRUCT_SETUP(PClass, ...)                                          \
-	__VEG_IMPL_TPL_STRUCT_SETUP(__VEG_IMPL_NO_COMMA, (), PClass, __VA_ARGS__)
-#define VEG_TPL_STRUCT_SETUP(Tpl, PClass, ...)                                 \
-	__VEG_IMPL_TPL_STRUCT_SETUP(__VEG_IMPL_YES_COMMA, Tpl, PClass, __VA_ARGS__)
+#define VEG_REFLECT(PClass, ...) __VEG_IMPL_STRUCT_SETUP(PClass, __VA_ARGS__)
 
 #include "veg/internal/epilogue.hpp"
 #endif /* end of include guard VEG_MACROS_HPP_HSTLSKZXS */

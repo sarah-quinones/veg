@@ -122,60 +122,61 @@ struct dbg_b {
 	}
 };
 
-template <bool CanExtract>
-struct dbg_g_impl;
-
-template <>
-struct dbg_g_impl<true> {
-	template <typename T, usize... Is, typename... Members>
-	static void to_string_impl(
-			BufferMut out,
-			Ref<T> arg,
-			SimpleITuple<meta_::integer_sequence<usize, Is...>, Members T::*...>
-					member_ptrs) {
-		out.insert(
-				out.size(),
-				extract_members<T>::class_name_ptr,
-				extract_members<T>::class_name_len);
-		out.append_literal(" ");
-		{
-			fmt_::DbgStructScope _{VEG_FWD(out)};
-			VEG_EVAL_ALL((
-					void(_.out.append_ln()),
-					void(_.out.insert(
-							_.out.size(),
-							extract_members<T>::member_name_ptrs[Is],
-							extract_members<T>::member_name_lens[Is])),
-					void(_.out.append_literal(": ")),
-					void(fmt::Debug<Members>::to_string(
-							VEG_FWD(_.out),
-							ref(arg.get().*
-			            (static_cast<SimpleLeaf<Is, Members T::*> const&>(member_ptrs)
-			                 .inner)))),
-					void(_.out.append_literal(","))
-
-							));
-		}
-	}
-
-	template <typename T>
-	static void to_string(BufferMut out, Ref<T> arg) {
-		to_string_impl(VEG_FWD(out), arg, extract_members<T>::member_pointers);
-	}
-};
-
-template <>
-struct dbg_g_impl<false> {
+template <bool>
+struct dbg_g_impl {
 	template <typename T>
 	static void to_string(BufferMut out, Ref<T> /*arg*/) {
 		out.insert(out.size(), "{?}", 3);
 	}
 };
 
+template <>
+struct dbg_g_impl<true> {
+
+	template <typename T>
+	using Access = typename internal::member_extract_access<T>::Type;
+
+	template <typename T, typename... Bases, usize... Is, typename... Members>
+	static void to_string_impl(
+			BufferMut out,
+			Ref<T> arg,
+			SimpleITuple<meta_::integer_sequence<usize, Is...>, Members Bases::*...>
+					member_ptrs) {
+
+		out.insert(
+				out.size(), Access<T>::class_name_ptr, Access<T>::class_name_len);
+		out.append_literal(" ");
+		{
+			fmt_::DbgStructScope _{VEG_FWD(out)};
+			VEG_EVAL_ALL(
+					(void(_.out.append_ln()),
+			     void(_.out.insert(
+							 _.out.size(),
+							 Access<T>::member_name_ptrs[Is],
+							 Access<T>::member_name_lens[Is])),
+			     void(_.out.append_literal(": ")),
+			     void(fmt::Debug<Members>::to_string(
+							 VEG_FWD(_.out),
+							 ref(arg.get().*
+			             (static_cast<SimpleLeaf<Is, Members Bases::*> const&>(
+												member_ptrs)
+			                  .inner)))),
+			     void(_.out.append_literal(","))
+
+			         ));
+		}
+	}
+
+	template <typename T>
+	static void to_string(BufferMut out, Ref<T> arg) {
+		to_string_impl(VEG_FWD(out), arg, Access<T>::member_pointers());
+	}
+};
+
 struct dbg_g {
 	template <typename T>
 	static void to_string(BufferMut out, Ref<T> arg) {
-		dbg_g_impl<VEG_CONCEPT(constructible<extract_members<T>>)>::to_string(
+		dbg_g_impl<internal::member_extract_access<T>::value>::to_string(
 				VEG_FWD(out), arg);
 	}
 };

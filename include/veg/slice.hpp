@@ -115,12 +115,12 @@ struct SliceMut : private Slice<T> {
 
 	VEG_INLINE
 	constexpr SliceMut(
-			FromRawParts /*tag*/, T const* data_, isize count, Unsafe /* tag */)
+			FromRawParts /*tag*/, Unsafe /*tag*/, T const* data_, isize count)
 			VEG_NOEXCEPT : Slice<T>{
 												 FromRawParts{},
+												 unsafe,
 												 data_,
 												 count,
-												 unsafe,
 										 } {}
 
 	using Slice<T>::ptr;
@@ -163,15 +163,15 @@ struct SliceMut : private Slice<T> {
 							 tuplify,
 							 SliceMut<T>{
 									 FromRawParts{},
+									 unsafe,
 									 mut_ptr(),
 									 idx,
-									 unsafe,
 							 },
 							 SliceMut<T>{
 									 FromRawParts{},
+									 unsafe,
 									 mut_ptr() + idx,
 									 len() - idx,
-									 unsafe,
 							 },
 					 };
 	}
@@ -218,7 +218,8 @@ VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_eq<T, U>))->bool {
 		return false;
 	}
 	for (isize i = 0; i < lhs.len(); ++i) {
-		if (!(lhs.get_unchecked(unsafe, i).get() == rhs.get_unchecked(unsafe, i).get())) {
+		if (!(lhs.get_unchecked(unsafe, i).get() ==
+		      rhs.get_unchecked(unsafe, i).get())) {
 			return false;
 		}
 	}
@@ -323,7 +324,8 @@ VEG_TEMPLATE(
 		(lhs, Array<T, N> const&),
 		(rhs, Array<U, M> const&))
 VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_eq<T, U>))->bool {
-	return (N == M) && internal::_slice::adl::operator==(lhs.as_ref(), rhs.as_ref());
+	return (N == M) &&
+	       internal::_slice::adl::operator==(lhs.as_ref(), rhs.as_ref());
 }
 } // namespace array
 

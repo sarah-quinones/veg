@@ -100,7 +100,7 @@ public:
 						internal::_uwunion::IdxMoveFn<internal::Empty>{internal::Empty{}},
 						usize{0},
 				} {}
-	VEG_DEFAULT_CTOR_ASSIGN(Option);
+	VEG_EXPLICIT_COPY(Option);
 
 	constexpr Option // NOLINT(hicpp-explicit-conversions)
 			(None /*tag*/) VEG_NOEXCEPT : Option{} {}
@@ -267,7 +267,9 @@ public:
 			(fn, Fn),
 			(d, D)) &&
 
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, Ret>)) -> Ret {
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_fn_once<Fn, Ret, T>) &&
+					VEG_CONCEPT(nothrow_fn_once<D, Ret>)) -> Ret {
 		if (is_some()) {
 			return VEG_FWD(fn)(static_cast<T&&>(this->_get()));
 		}

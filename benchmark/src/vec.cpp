@@ -66,12 +66,12 @@ static void bench_veg_vec_unchecked(benchmark::State& s) {
 	}
 
 	for (auto _ : s) {
-		[n, v_in = v_in.ptr()]() __attribute__((noinline)) {
+		[ n, v_in = v_in.ptr() ]() __attribute__((noinline)) {
 			Vec<T> v;
 			benchmark::DoNotOptimize(&v);
 			v.reserve(n);
 			for (isize i = 0; i < n; ++i) {
-				v.push_unchecked(unsafe, T(v_in[i]));
+				v.push_with_unchecked(unsafe, VEG_LAZY_BY_REF(T(v_in[i])));
 			}
 			benchmark::ClobberMemory();
 		}
@@ -79,8 +79,9 @@ static void bench_veg_vec_unchecked(benchmark::State& s) {
 	}
 }
 
+// TODO: implement resize_and_overwrite
 template <typename T>
-static void bench_veg_vec_rsfo(benchmark::State& s) {
+static void bench_veg_vec_rsao(benchmark::State& s) {
 	auto n = isize(s.range(0));
 	Vec<T> v_in;
 	for (isize i = 0; i < n; ++i) {
@@ -88,13 +89,13 @@ static void bench_veg_vec_rsfo(benchmark::State& s) {
 	}
 
 	for (auto _ : s) {
-		[n, v_in = v_in.ptr()]() __attribute__((noinline)) {
+		[ n, v_in = v_in.ptr() ]() __attribute__((noinline)) {
 			Vec<T> v;
 			benchmark::DoNotOptimize(&v);
 			v.reserve(n);
 			benchmark::DoNotOptimize(v.ptr_mut());
 
-      T* v_out = v.ptr_mut();
+			T* v_out = v.ptr_mut();
 			for (isize i = 0; i < n; ++i) {
 				v_out[i] = T(v_in[i]);
 			}

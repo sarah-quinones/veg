@@ -1226,6 +1226,11 @@ protected:
 	using Base::Base;
 
 public:
+	VEG_INLINE constexpr auto get_union_ref() const noexcept
+			-> internal::_uwunion::RawUwunion<Ts...> const& {
+		return Base::get_union_ref();
+	}
+
 	template <isize I>
 	VEG_INLINE constexpr IndexedUwunion(Fix<I> /*itag*/, ith<usize{I}, Ts...> arg)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<ith<usize{I}, Ts...>>))
@@ -1251,20 +1256,6 @@ public:
 				} {}
 
 	using Base::index;
-
-	VEG_TEMPLATE(
-			(typename... As, typename... Bs, usize... Ks),
-			requires(VEG_ALL_OF(VEG_CONCEPT(eq<As, Bs>))),
-			friend constexpr auto uwunion::operator==,
-			(lhs, IndexedUwunion<meta::index_sequence<Ks...>, As...> const&),
-			(rhs, IndexedUwunion<meta::index_sequence<Ks...>, Bs...> const&))
-	VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_eq<As, Bs>)))->bool;
-
-	friend struct fmt::Debug<Uwunion<Ts...>>;
-	friend void internal::_uwunion::dbg_impl<>(
-			fmt::BufferMut out,
-			uwunion::IndexedUwunion<meta::index_sequence<Is...>, Ts...> const& u)
-			VEG_NOEXCEPT_IF(false);
 
 	VEG_TEMPLATE(
 			typename Fn,
@@ -1515,6 +1506,7 @@ private:
 
 	using Base =
 			uwunion::IndexedUwunion<meta::make_index_sequence<sizeof...(Ts)>, Ts...>;
+	using Base::get_union_ref;
 
 public:
 	using Base::Base;
