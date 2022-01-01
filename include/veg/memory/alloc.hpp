@@ -18,7 +18,8 @@ namespace veg {
 namespace mem {
 
 VEG_INLINE auto aligned_alloc(usize align, usize size) noexcept -> void* {
-	return ::aligned_alloc(align, size);
+  usize const mask = align - 1;
+	return ::aligned_alloc(align, (size + mask) & ~mask);
 }
 VEG_INLINE void aligned_free(usize /*align*/, void* ptr) noexcept {
 	return ::free(ptr);

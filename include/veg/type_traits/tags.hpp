@@ -12,7 +12,6 @@ struct make_unsafe;
 
 inline namespace tags {
 VEG_TAG_TEMPLATE(typename T, tag, Tag, T);
-VEG_TAG(direct, Direct);
 VEG_TAG(from_raw_parts, FromRawParts);
 VEG_TAG(as_ref, AsRef);
 VEG_TAG(as_mut, AsMut);

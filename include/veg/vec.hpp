@@ -324,6 +324,20 @@ struct CloneFromImpl<false> {
 
 		lhs_alloc.get() = rhs_alloc.get();
 
+		if (lhs_raw.data == nullptr) {
+			usize len = rhs_raw.end - rhs_raw.data;
+
+			mem::AllocBlock blk = _collections::alloc_and_copy(
+					VEG_FWD(lhs_alloc), VEG_FWD(cloner), rhs_raw.data, len);
+			T* data = static_cast<T*>(blk.data);
+			lhs_raw = {
+					data,
+					data + len,
+					data + blk.byte_cap / sizeof(T),
+			};
+			return;
+		}
+
 		usize assign_len = internal::min2(lhs_copy.len, rhs_raw.len);
 		// copy assign until the shared len
 		_collections::slice_clone_from( //
@@ -490,6 +504,12 @@ public:
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(alloc::nothrow_dealloc<A>)) {
 		vector::RawVector<T> raw = raw_ref().get();
 		if ((raw.data != nullptr) && (raw.end_alloc != 0)) {
+
+			// FIXME: if asan is enabled, before sanitizing make sure that:
+			//  - begin is 8 byte aligned
+			//  - either:
+			//    - end is 8 byte aligned
+			//    - A is the SystemAlloc
 #if VEG_HAS_ASAN
 			internal::__sanitizer_annotate_contiguous_container( //
 					raw.data,
@@ -539,15 +559,23 @@ private:
 		vector::RawVector<T>& raw = this->raw_mut(unsafe).get();
 		auto len = usize(this->len());
 
-		mem::AllocBlock new_block = mem::Alloc<A>::grow(
-				this->alloc_mut(unsafe),
-				VEG_FWD(raw.data),
-				mem::Layout{
-						usize(byte_capacity()),
-						alignof(T),
-				},
-				new_cap * sizeof(T),
-				mem::RelocFn{collections::relocate_pointer<T>::value});
+		mem::AllocBlock new_block =
+				(capacity() == 0)
+						? mem::Alloc<A>::alloc(
+									this->alloc_mut(unsafe),
+									mem::Layout{
+											new_cap * sizeof(T),
+											alignof(T),
+									})
+						: mem::Alloc<A>::grow(
+									this->alloc_mut(unsafe),
+									VEG_FWD(raw.data),
+									mem::Layout{
+											usize(byte_capacity()),
+											alignof(T),
+									},
+									new_cap * sizeof(T),
+									mem::RelocFn{collections::relocate_pointer<T>::value});
 
 		T* data = static_cast<T*>(new_block.data);
 		raw = {
@@ -570,6 +598,9 @@ private:
 								usize(capacity()))));
 	}
 
+	static_assert(VEG_CONCEPT(nothrow_move_assignable<A>), ".");
+	static_assert(VEG_CONCEPT(nothrow_movable<A>), ".");
+
 public:
 	VEG_INLINE VEG_CPP20(constexpr) ~VecIncomplete() VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(alloc::nothrow_alloc<A>) &&
@@ -586,15 +617,26 @@ public:
 			VecIncomplete(FromRawParts /*tag*/, vector::RawVector<T> rawvec, A alloc)
 					VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<A>))
 			: Base{
-						direct,
+						tuplify,
 						VEG_FWD(alloc),
 						internal::_vector::RawVectorMoveRaii<T>{
 								from_raw_parts, VEG_FWD(rawvec)},
 				} {}
 
 	VEG_INLINE VEG_CPP20(constexpr) VecIncomplete(VecIncomplete&&) = default;
-	VEG_INLINE VEG_CPP20(constexpr) auto operator=(VecIncomplete&&)
-			-> VecIncomplete& = default;
+	VEG_INLINE VEG_CPP20(constexpr) auto operator=(VecIncomplete&& rhs)
+			-> VecIncomplete& {
+		auto tmp = VEG_FWD(rhs);
+		{ auto cleanup = static_cast<VecIncomplete&&>(*this); }
+
+		// can't fail
+		this->alloc_mut(unsafe).get() =
+				static_cast<A&&>(tmp.alloc_mut(unsafe).get());
+		this->raw_mut(unsafe).get() = tmp.raw_ref().get();
+		tmp.raw_mut(unsafe).get() = {};
+
+		return *this;
+	};
 
 	explicit VEG_CPP20(constexpr) VecIncomplete(VecIncomplete const& rhs)
 			VEG_NOEXCEPT_IF(
@@ -664,12 +706,11 @@ public:
 				this->alloc_mut(unsafe), mut(mem::DefaultCloner{}), raw.data, end);
 	}
 
-  VEG_TEMPLATE(
-      typename Fn,
-      requires(VEG_CONCEPT(fn_mut<Fn, isize, T*, isize>)),
-      VEG_INLINE VEG_CPP20(constexpr) void resize_and_overwrite,
-      (fn, Fn)
-      ) ;
+	VEG_TEMPLATE(
+			typename Fn,
+			requires(VEG_CONCEPT(fn_mut<Fn, isize, T*, isize>)),
+			VEG_INLINE VEG_CPP20(constexpr) void resize_and_overwrite,
+			(fn, Fn));
 
 	VEG_TEMPLATE(
 			typename Fn,
@@ -768,6 +809,8 @@ struct Vec : collections::VecIncomplete<T, A>,
 								 VEG_CONCEPT(copy_assignable<T>),
 								 internal::EmptyI<1>,
 								 internal::NoCopyAssign> {
+
+	using collections::VecIncomplete<T, A>::VecIncomplete;
 	Vec() = default;
 	VEG_EXPLICIT_COPY(Vec);
 };

@@ -203,7 +203,6 @@ using choose_dbg = meta::conditional_t<
 } // namespace internal
 
 namespace fmt {
-
 template <typename T>
 struct Debug : internal::fmt_::choose_dbg<T> {};
 template <typename T>
@@ -223,6 +222,30 @@ struct dbg_to {
 };
 } // namespace nb
 VEG_NIEBLOID(dbg_to);
+} // namespace fmt
+
+namespace internal {
+namespace _fmt {
+struct DbgRef {
+	template <typename T>
+	static void to_string(fmt::BufferMut out, Ref<Ref<T>> arg) {
+		fmt::dbg_to(VEG_FWD(out), arg.get());
+	}
+};
+struct DbgMut {
+	template <typename T>
+	static void to_string(fmt::BufferMut out, Ref<RefMut<T>> arg) {
+		fmt::dbg_to(VEG_FWD(out), arg.get().as_const());
+	}
+};
+} // namespace _fmt
+} // namespace internal
+
+namespace fmt {
+template <typename T>
+struct Debug<Ref<T>> : internal::_fmt::DbgRef {};
+template <typename T>
+struct Debug<RefMut<T>> : internal::_fmt::DbgMut {};
 } // namespace fmt
 
 namespace abi {

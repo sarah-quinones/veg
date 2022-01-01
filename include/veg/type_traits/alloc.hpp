@@ -119,22 +119,12 @@ VEG_CONCEPT_EXPR(
 VEG_CONCEPT_EXPR(
 		(typename A),
 		(A),
-		try_grow_in_place,
-		mem::Alloc<A>::try_grow_in_place( //
-				VEG_DECLVAL(RefMut<A>),
-				VEG_DECLVAL(void*),
-				VEG_DECLVAL(mem::Layout),
-				VEG_DECLVAL(usize)),
-		VEG_CONCEPT(same<ExprType, bool>));
-
-VEG_CONCEPT_EXPR(
-		(typename A),
-		(A),
 		shrink,
 		mem::Alloc<A>::shrink(
 				VEG_DECLVAL(RefMut<A>),
-				VEG_DECLVAL(mem::AllocBlock),
+				VEG_DECLVAL(void*),
 				VEG_DECLVAL(mem::Layout),
+				VEG_DECLVAL(usize),
 				VEG_DECLVAL(mem::RelocFn)),
 		VEG_CONCEPT(same<ExprType, mem::AllocBlock>));
 
