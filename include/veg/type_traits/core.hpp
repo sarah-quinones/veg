@@ -65,6 +65,8 @@ template <typename T>
 struct type_identity {
 	using type = T;
 };
+template <typename T>
+using type_identity_t = typename type_identity<T>::type;
 
 template <bool B, typename T, typename F>
 using conditional_t =
@@ -144,23 +146,12 @@ struct is_pointer : false_type, type_identity<T> {};
 template <typename T>
 struct is_pointer<T*> : true_type, type_identity<T> {};
 
-struct wrapper_base {
-	static auto test(...) -> false_type;
-};
-template <typename T>
-struct wrapper : wrapper_base {
-	using wrapper_base::test;
-	static auto test(wrapper<T>*) -> true_type;
-};
-
 template <typename Base>
 struct baseof_wrapper : wrapper_base {
 	using wrapper_base::test;
 	static auto test(Base const volatile*) -> true_type;
 };
 
-template <typename T, typename U>
-using is_same = decltype(wrapper<T>::test(static_cast<wrapper<U>*>(nullptr)));
 template <typename Base, typename Derived>
 using is_base_of =
 		decltype(baseof_wrapper<Base>::test(static_cast<Derived>(nullptr)));
@@ -192,15 +183,6 @@ namespace concepts {
 using meta::conjunction;
 using meta::disjunction;
 
-#define VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL(Tpl, Name, ...)                    \
-	VEG_DEF_CONCEPT(                                                             \
-			Tpl,                                                                     \
-			Name,                                                                    \
-			VEG_HAS_BUILTIN_OR(                                                      \
-					__is_##Name,                                                         \
-					__is_##Name(__VA_ARGS__),                                            \
-					(internal::meta_::is_##Name<__VA_ARGS__>::value)))
-
 #if __cplusplus >= 202002L
 VEG_DEF_CONCEPT(
 		(template <typename...> class Op, typename... Args), detected, requires {
@@ -218,7 +200,6 @@ VEG_DEF_CONCEPT(
 		internal::meta_::is_detected<Op, Args...>::value);
 #endif
 
-VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL((typename T, typename U), same, T, U);
 VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL((typename T, typename U), base_of, T, U);
 
 VEG_DEF_CONCEPT(
@@ -276,6 +257,8 @@ using detected_return_t = detected_or_t<internal::meta_::none, Op, Args...>;
 template <typename T>
 using decay_t = typename internal::meta_::decay_helper<uncvref_t<T>>::type;
 } // namespace meta
+template <typename T> 
+using DoNotDeduce = meta::type_identity_t<T>;
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

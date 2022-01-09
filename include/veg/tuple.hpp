@@ -336,72 +336,12 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 namespace internal {
 namespace _tuple {
 
-#if VEG_HAS_FOLD_EXPR == 1 && __cplusplus >= 201402L
-template <typename... Ts>
-struct CmpImpl {
-	template <typename... Us>
-	VEG_INLINE static constexpr auto
-	cmp(Ts const&... ts, Us const&... us) VEG_NOEXCEPT -> cmp::Ordering {
-
-		bool found = false;
-		auto c = cmp::Ordering::equal;
-
-		(void)(
-
-				VEG_ALL_OF(
-						((void)(c = cmp::cmp(ref(ts), ref(us))),
-		         ((c != cmp::Ordering::equal) ? void(found = true) : (void)0),
-		         !found))
-
-		);
-		return c;
-	}
-};
-#else
-
-template <typename... Ts>
-struct CmpImpl;
-template <typename T0, typename... Ts>
-struct CmpImpl<T0, Ts...> {
-
-	template <typename U0, typename... Us>
-	VEG_INLINE static constexpr auto
-	eq(T0 const& t0, Ts const&... ts, U0 const& u0, Us const&... us) VEG_NOEXCEPT
-			-> bool {
-		return (t0 == u0) && CmpImpl<Ts...>::eq(ts..., us...);
-	}
-
-	template <typename U0, typename... Us>
-	VEG_INLINE static constexpr auto
-	cmp(T0 const& t0, Ts const&... ts, U0 const& u0, Us const&... us) VEG_NOEXCEPT
-			-> cmp::Ordering {
-		return CmpImpl::cmp2(cmp::cmp(ref(t0), ref(u0)), ts..., us...);
-	}
-
-	template <typename... Us>
-	VEG_INLINE static constexpr auto
-	cmp2(cmp::Ordering res, Ts const&... ts, Us const&... us) VEG_NOEXCEPT
-			-> cmp::Ordering {
-		return (res != cmp::Ordering::equal) ? res
-		                                     : CmpImpl<Ts...>::cmp(ts..., us...);
-	}
-};
-template <>
-struct CmpImpl<> {
-	VEG_INLINE static constexpr auto eq() VEG_NOEXCEPT -> bool { return true; }
-	VEG_INLINE static constexpr auto cmp() VEG_NOEXCEPT -> cmp::Ordering {
-		return cmp::Ordering::equal;
-	}
-};
-
-#endif
-
 struct cmp_impl {
 	template <usize... Is, typename... Ts, typename... Us>
 	static constexpr auto
 	eq(tuple::IndexedTuple<meta::index_sequence<Is...>, Ts...> const& lhs,
 	   tuple::IndexedTuple<meta::index_sequence<Is...>, Us...> const& rhs)
-			VEG_NOEXCEPT -> bool {
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_eq<Ts, Us>))) -> bool {
 #if VEG_HAS_FOLD_EXPR
 		return VEG_ALL_OF((
 				static_cast<Ts const&>(static_cast<tuple::TupleLeaf<Is, Ts> const&>(lhs)
@@ -421,7 +361,8 @@ struct cmp_impl {
 	static constexpr auto
 	cmp(tuple::IndexedTuple<meta::index_sequence<Is...>, Ts...> const& lhs,
 	    tuple::IndexedTuple<meta::index_sequence<Is...>, Us...> const& rhs)
-			VEG_NOEXCEPT -> cmp::Ordering {
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_ord<Ts, Us>)))
+					-> cmp::Ordering {
 		return CmpImpl<Ts...>::cmp(
 				static_cast<tuple::TupleLeaf<Is, Ts> const&>(lhs)
 						.__VEG_IMPL_LEAF_GET()...,
@@ -549,7 +490,7 @@ VEG_TEMPLATE(
 		operator==,
 		(lhs, tuple::IndexedTuple<veg::meta::index_sequence<Is...>, Ts...> const&),
 		(rhs, tuple::IndexedTuple<veg::meta::index_sequence<Is...>, Us...> const&))
-VEG_NOEXCEPT->bool {
+VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_eq<Ts, Us>)))->bool {
 	return internal::_tuple::cmp_impl::eq(lhs, rhs);
 }
 
@@ -560,7 +501,7 @@ VEG_TEMPLATE(
 		operator!=,
 		(lhs, tuple::IndexedTuple<veg::meta::index_sequence<Is...>, Ts...> const&),
 		(rhs, tuple::IndexedTuple<veg::meta::index_sequence<Is...>, Us...> const&))
-VEG_NOEXCEPT->bool {
+VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_eq<Ts, Us>)))->bool {
 	return !tuple::operator==(lhs, rhs);
 }
 } // namespace tuple
@@ -871,7 +812,8 @@ template <typename... Ts, typename... Us, usize... Is>
 VEG_NODISCARD VEG_INLINE constexpr auto
 ord(tuple::IndexedTuple<veg::meta::index_sequence<Is...>, Ts...> const& lhs,
     tuple::IndexedTuple<veg::meta::index_sequence<Is...>, Us...> const& rhs)
-		VEG_NOEXCEPT -> cmp::Ordering {
+		VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_ord<Ts, Us>)))
+				-> cmp::Ordering {
 	return internal::_tuple::cmp_impl::cmp(lhs, rhs);
 }
 struct OrdTupleBase {
@@ -901,7 +843,7 @@ template <typename... Ts, usize... Is>
 static void to_string_impl(
 		fmt::BufferMut out,
 		tuple::IndexedTuple<meta::index_sequence<Is...>, Ts...> const& tup) {
-	internal::fmt_::DbgStructScope _{VEG_FWD(out)};
+	internal::_fmt::DbgStructScope _{VEG_FWD(out)};
 	VEG_EVAL_ALL(
 			(_.out.append_ln(),
 	     fmt::Debug<Ts>::to_string(

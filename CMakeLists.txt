@@ -21,6 +21,7 @@ set_property(TARGET _veg_ub PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
 add_library(
   veg ${CMAKE_CURRENT_SOURCE_DIR}/src/veg.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/src/time.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/parse.cpp
 )
 target_include_directories(veg PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(_veg_ub PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

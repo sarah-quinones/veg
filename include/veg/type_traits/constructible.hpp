@@ -162,6 +162,14 @@ struct is_trivially_relocatable
 
 namespace internal {
 template <typename T>
+struct DefaultFn {
+	VEG_INLINE constexpr auto
+	operator()() const&& VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T>))
+			-> T {
+		return T();
+	}
+};
+template <typename T>
 struct MoveFn {
 	T&& value;
 	VEG_INLINE constexpr auto
@@ -169,6 +177,15 @@ struct MoveFn {
 		return T(VEG_FWD(value));
 	}
 };
+template <typename T>
+struct CopyFn {
+	T const& value;
+	VEG_INLINE constexpr auto
+	operator()() const&& VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_copyable<T>)) -> T {
+		return T(value);
+	}
+};
+
 template <typename Fn, typename T>
 struct WithArg {
 	Fn&& fn;

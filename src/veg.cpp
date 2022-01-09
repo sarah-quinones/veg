@@ -1,5 +1,6 @@
 #include "veg/util/assert.hpp"
 #include "veg/util/timer.hpp"
+#include "veg/internal/parse.hpp"
 #include <cinttypes>
 #include <iostream>
 #include <memory>
@@ -30,6 +31,9 @@
 
 namespace veg {
 namespace internal {
+namespace type_parse {
+void function_decl_to_str(RefMut<std::string> str, FunctionDecl decl) noexcept;
+} // namespace type_parse
 [[noreturn]] void terminate() VEG_ALWAYS_NOEXCEPT {
 	std::terminate();
 }
@@ -122,6 +126,7 @@ struct color_t {
 	std::uint8_t b;
 };
 
+constexpr color_t default_color = {0, 0, 0};
 constexpr color_t olive = {128, 128, 0};
 constexpr color_t orange_red = {255, 69, 0};
 constexpr color_t azure = {240, 255, 255};
@@ -569,189 +574,6 @@ void print_type(
 	}
 }
 
-auto parse_func_signature(ByteStringView func) -> std::string {
-	std::string output;
-	auto color = azure;
-
-	ByteStringView code_str = func;
-
-	token_t token{empty_str, {}};
-	while (peek_next_tk(code_str).kind == keyword) {
-		token = next_tk(code_str);
-	}
-
-	bool trailing_return_type = false;
-
-	if (peek_next_tk(code_str).text == LIT("auto")) {
-		auto copy = code_str;
-		next_tk(copy);
-		if (!(peek_next_tk(copy).kind == qual ||
-		      one_of(peek_next_tk(copy).text, {LIT("&"), LIT("&&"), LIT("*")}))) {
-			trailing_return_type = true;
-			code_str = copy;
-			(void)trailing_return_type;
-		}
-	}
-
-	parse_type_result_t return_type;
-	std::vector<parse_type_result_t> fn_params;
-	std::vector<token_t> fn_qual;
-
-	std::vector<parse_type_result_t> tp_param_types;
-	std::vector<token_t> tp_param_ids;
-	std::vector<parse_type_result_t> tp_param_values;
-
-	if (!trailing_return_type) {
-		return_type = parse_type(code_str);
-	}
-
-	auto fn_name = parse_type(code_str);
-
-	token = next_tk(code_str);
-	if (!(token.text == LIT("("))) {
-		return "";
-	}
-
-	// function parameters
-	bool first_param = true;
-	while (!(token.text.size() == 0 || token.text.starts_with(LIT(")")))) {
-		auto res = parse_type(code_str);
-		if (res.tokens.empty() && !first_param) {
-			return "";
-		}
-		if (!res.tokens.empty()) {
-			fn_params.push_back(static_cast<parse_type_result_t&&>(res));
-		}
-		token = next_tk(code_str);
-		first_param = false;
-	}
-
-	if (token.text.size() == 0) {
-		return "";
-	}
-
-	// member function qualifiers
-	token = next_tk(code_str);
-	while (token.kind == qual || token.text == LIT("noexcept")) {
-		fn_qual.push_back(token);
-		token = next_tk(code_str);
-	}
-
-	// return type
-	if (trailing_return_type) {
-		if (token.text == LIT("->")) {
-			return_type = parse_type(code_str);
-		}
-		token = next_tk(code_str);
-	}
-
-	// template arguments
-	if (token.text == LIT("[")) {
-		if (peek_next_tk(code_str, true).text == LIT("with")) {
-			token = next_tk(code_str);
-		}
-
-		first_param = true;
-		while (!(token.text.size() == 0 || token.text.starts_with(LIT("]")))) {
-			bool id_and_eq = false;
-			{
-				ByteStringView copy = code_str;
-				next_tk(copy, true);
-				auto eq = next_tk(copy);
-
-				if (eq.text == LIT("=")) {
-					id_and_eq = true;
-				}
-			}
-
-			if (id_and_eq) {
-				tp_param_types.emplace_back();
-			} else {
-				// assume type prefix
-				auto res = parse_type(code_str);
-				if (res.tokens.empty()) {
-					return "";
-				}
-				tp_param_types.push_back(static_cast<parse_type_result_t&&>(res));
-			}
-
-			// id
-			token = next_tk(code_str, true);
-			tp_param_ids.push_back(token);
-
-			// '=' sign
-			token = next_tk(code_str);
-
-			auto res = parse_type(code_str);
-			if (res.tokens.empty() && !first_param) {
-				return "";
-			}
-			tp_param_values.push_back(static_cast<parse_type_result_t&&>(res));
-			token = next_tk(code_str);
-			first_param = false;
-		}
-	}
-
-	if (tp_param_ids.size() != tp_param_types.size() ||
-	    tp_param_ids.size() != tp_param_values.size()) {
-		return "";
-	}
-
-	output += '\n';
-
-	output += with_color(color, "function name:");
-	output += fn_name.multiline ? '\n' : ' ';
-	print_type(output, fn_name, color);
-	output += '\n';
-
-	output += with_color(color, "return type =");
-	output += return_type.multiline ? '\n' : ' ';
-	print_type(output, return_type, color);
-	output += '\n';
-
-	if (!fn_qual.empty()) {
-		output += with_color(color, "function qualifiers: ");
-		char const* sep = "";
-		for (auto tk : fn_qual) {
-			output += with_color(color, sep + to_owned(tk.text));
-			sep = ", ";
-		}
-		output += '\n';
-	}
-
-	for (auto const& param : fn_params) {
-		output += with_color(color, "parameter type =");
-		output += param.multiline ? '\n' : ' ';
-		print_type(output, param, color);
-		output += '\n';
-	}
-
-	for (size_t i = 0; i < tp_param_ids.size(); ++i) {
-		auto& id = tp_param_ids[i];
-		auto& type = tp_param_types[i];
-		auto& value = tp_param_values[i];
-
-		output += with_color(color, "template parameter");
-		output += ' ';
-		output += to_owned(id.text);
-		if (type.tokens.empty()) {
-		} else {
-			output += with_color(color, " with type =");
-			output += type.multiline ? '\n' : ' ';
-			print_type(output, type, color);
-			output += type.multiline ? '\n' : ' ';
-			output += with_color(color, "and value");
-		}
-		output += with_color(color, " =");
-		output += value.multiline ? '\n' : ' ';
-
-		print_type(output, value, color);
-		output += '\n';
-	}
-	output += '\n';
-	return output;
-}
-
 auto find(ByteStringView sv, char c) -> char const* {
 	char const* it = sv.data();
 	for (; it < sv.data() + sv.size(); ++it) {
@@ -776,13 +598,13 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 			"========================================"
 			"=======================================");
 	output += '\n';
-	output += with_color(azure, std::to_string(failed_asserts.size()));
+	output += with_color(orange_red, std::to_string(failed_asserts.size()));
 	output += " assertion";
 	if (failed_asserts.size() > 1) {
 		output += 's';
 	}
 	output += ' ';
-	output += with_color(orange_red, "failed");
+	output += "failed";
 	output += '\n';
 	if (func.size() > 0) {
 		output += "in function:\n";
@@ -791,7 +613,13 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 		output +=
 				with_color(gray, to_owned(file) + (':' + std::to_string(line)) + ':');
 		output += '\n';
-		output += parse_func_signature(func);
+		veg::internal::type_parse::function_decl_to_str(
+				mut(output),
+				veg::internal::type_parse::parse_function_decl({
+						from_raw_parts,
+						{func.data(), func.size()},
+				}));
+		output += '\n';
 	}
 
 	char const* separator = "";
@@ -808,9 +636,9 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 		}
 		output += "assertion ";
 		output += '`';
-		output += with_color(azure, to_owned(a.expr));
+		output += with_color(orange_red, to_owned(a.expr));
 		output += '\'';
-		output += with_color(orange_red, " failed:");
+		output += " failed:";
 
 		if (!multiline) {
 			output += ' ';
@@ -835,7 +663,7 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 		}
 
 		output += "\nassertion expands to: `";
-		output += with_color(azure, a.lhs + to_owned(a.op) + a.rhs);
+		output += with_color(orange_red, a.lhs + to_owned(a.op) + a.rhs);
 		output += '\'';
 		output += '\n';
 		separator = "\n";

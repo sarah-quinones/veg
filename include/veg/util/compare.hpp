@@ -8,6 +8,7 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
+
 namespace cmp {
 enum struct Ordering : unsigned char {
 	equal = 0,
@@ -224,6 +225,154 @@ VEG_NIEBLOID(gt);
 VEG_NIEBLOID(leq);
 VEG_NIEBLOID(geq);
 VEG_NIEBLOID(cmp);
+} // namespace cmp
+
+namespace internal {
+#if VEG_HAS_FOLD_EXPR == 1 && __cplusplus >= 201402L
+template <typename... Ts>
+struct CmpImpl {
+	template <typename... Us>
+	VEG_INLINE static constexpr auto eq(Ts const&... ts, Us const&... us)
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_eq<Ts, Us>))) -> bool {
+		return VEG_ALL_OF((ts == us));
+	}
+
+	template <typename... Us>
+	VEG_INLINE static constexpr auto cmp(Ts const&... ts, Us const&... us)
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_ord<Ts, Us>)))
+					-> cmp::Ordering {
+
+		bool found = false;
+		auto c = cmp::Ordering::equal;
+
+		(void)(
+
+				VEG_ALL_OF(
+						((void)(c = cmp::cmp(ref(ts), ref(us))),
+		         ((c != cmp::Ordering::equal) ? void(found = true) : (void)0),
+		         !found))
+
+		);
+		return c;
+	}
+};
+#else
+
+template <typename... Ts>
+struct CmpImpl;
+template <typename T0, typename... Ts>
+struct CmpImpl<T0, Ts...> {
+
+	template <typename U0, typename... Us>
+	VEG_INLINE static constexpr auto
+	eq(T0 const& t0, Ts const&... ts, U0 const& u0, Us const&... us)
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_eq<T0, U0>) &&
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_eq<Ts, Us>))) -> bool {
+		return (t0 == u0) && CmpImpl<Ts...>::eq(ts..., us...);
+	}
+
+	template <typename U0, typename... Us>
+	VEG_INLINE static constexpr auto
+	cmp(T0 const& t0, Ts const&... ts, U0 const& u0, Us const&... us)
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_ord<T0, U0>) &&
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_ord<Ts, Us>))) -> cmp::Ordering {
+		return CmpImpl::cmp2(cmp::cmp(ref(t0), ref(u0)), ts..., us...);
+	}
+
+	template <typename... Us>
+	VEG_INLINE static constexpr auto
+	cmp2(cmp::Ordering res, Ts const&... ts, Us const&... us)
+			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_ord<Ts, Us>)))
+					-> cmp::Ordering {
+		return (res != cmp::Ordering::equal) ? res
+		                                     : CmpImpl<Ts...>::cmp(ts..., us...);
+	}
+};
+template <>
+struct CmpImpl<> {
+	VEG_INLINE static constexpr auto eq() VEG_NOEXCEPT -> bool { return true; }
+	VEG_INLINE static constexpr auto cmp() VEG_NOEXCEPT -> cmp::Ordering {
+		return cmp::Ordering::equal;
+	}
+};
+
+#endif
+
+template <typename T, usize... Is, typename... Bases, typename... Members>
+VEG_INLINE constexpr auto reflected_eq_impl(
+		T const& lhs,
+		T const& rhs,
+		internal::SimpleITuple<
+				internal::meta_::integer_sequence<usize, Is...>,
+				Members Bases::*...> member_ptrs)
+		VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_eq<Members, Members>)))
+				-> bool {
+	return internal::CmpImpl<Members...>::eq( //
+			lhs.*(static_cast<internal::SimpleLeaf<Is, Members Bases::*> const&>(
+								member_ptrs)
+	              .inner)...,
+			rhs.*(static_cast<internal::SimpleLeaf<Is, Members Bases::*> const&>(
+								member_ptrs)
+	              .inner)...);
+}
+
+template <typename T, usize... Is, typename... Bases, typename... Members>
+VEG_INLINE constexpr auto reflected_cmp_impl(
+		T const& lhs,
+		T const& rhs,
+		internal::SimpleITuple<
+				internal::meta_::integer_sequence<usize, Is...>,
+				Members Bases::*...> member_ptrs)
+		VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_eq<Members, Members>)))
+				-> cmp::Ordering {
+	return internal::CmpImpl<Members...>::cmp( //
+			lhs.*(static_cast<internal::SimpleLeaf<Is, Members Bases::*> const&>(
+								member_ptrs)
+	              .inner)...,
+			rhs.*(static_cast<internal::SimpleLeaf<Is, Members Bases::*> const&>(
+								member_ptrs)
+	              .inner)...);
+}
+} // namespace internal
+namespace cmp {
+namespace nb {
+struct reflected_eq {
+	template <typename T>
+	VEG_INLINE constexpr auto operator()(T const& lhs, T const& rhs) const
+			VEG_NOEXCEPT_LIKE(internal::reflected_eq_impl(
+					lhs,
+					rhs,
+					internal::member_extract_access<T>::Type::member_pointers()))
+					-> bool {
+		return internal::reflected_eq_impl(
+				lhs, rhs, internal::member_extract_access<T>::Type::member_pointers());
+	}
+};
+struct reflected_cmp {
+	template <typename T>
+	VEG_INLINE constexpr auto operator()(T const& lhs, T const& rhs) const
+			VEG_NOEXCEPT_LIKE(internal::reflected_cmp_impl(
+					lhs,
+					rhs,
+					internal::member_extract_access<T>::Type::member_pointers()))
+					-> veg::cmp::Ordering {
+		return internal::reflected_cmp_impl(
+				lhs, rhs, internal::member_extract_access<T>::Type::member_pointers());
+	}
+};
+} // namespace nb
+VEG_NIEBLOID(reflected_eq);
+VEG_NIEBLOID(reflected_cmp);
+
+struct ReflectOrd {
+	template <typename T>
+	VEG_INLINE static constexpr auto cmp(Ref<T> lhs, Ref<T> rhs)
+			VEG_NOEXCEPT_LIKE(reflected_cmp(lhs, rhs)) -> cmp::Ordering {
+		return reflected_cmp(lhs, rhs);
+	}
+};
 } // namespace cmp
 } // namespace veg
 

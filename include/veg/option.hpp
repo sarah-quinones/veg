@@ -158,8 +158,8 @@ private:
 	}
 
 public:
-	VEG_NODISCARD VEG_CPP14(constexpr) auto take()
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> Option<T> {
+	VEG_CPP14(constexpr)
+	auto take() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> Option<T> {
 		if (is_some()) {
 			Option<T> val{
 					inplace[some],
@@ -171,14 +171,15 @@ public:
 		return none;
 	}
 
-	VEG_NODISCARD VEG_CPP14(constexpr) auto unwrap_unchecked(Unsafe /*tag*/) &&
+	VEG_CPP14(constexpr)
+	auto unwrap_unchecked(Unsafe /*tag*/) &&
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> T {
 		meta::unreachable_if(is_none());
 		return static_cast<T&&>(this->_get());
 	}
 
-	VEG_NODISCARD VEG_CPP14(constexpr) auto unwrap() &&
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> T {
+	VEG_CPP14(constexpr)
+	auto unwrap() && VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> T {
 		VEG_INTERNAL_ASSERT_PRECONDITION(is_some());
 		return static_cast<T&&>(this->_get());
 	}
@@ -229,7 +230,7 @@ public:
 	VEG_TEMPLATE(
 			(typename Fn, typename Ret = meta::invoke_result_t<Fn, T>),
 			requires(VEG_CONCEPT(fn_once<Fn, Ret, T>)),
-			VEG_NODISCARD VEG_CPP14(constexpr) auto map,
+			VEG_CPP14(constexpr) auto map,
 			(fn, Fn)) &&
 
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, Ret, T>)) -> Option<Ret> {
@@ -263,7 +264,7 @@ public:
 			requires(
 					VEG_CONCEPT(fn_once<Fn, Ret, T>) && //
 					VEG_CONCEPT(fn_once<D, Ret>)),
-			VEG_NODISCARD VEG_CPP14(constexpr) auto map_or_else,
+			VEG_CPP14(constexpr) auto map_or_else,
 			(fn, Fn),
 			(d, D)) &&
 
@@ -279,9 +280,9 @@ public:
 	VEG_TEMPLATE(
 			(typename Fn, typename Ret = meta::invoke_result_t<Fn, T>),
 			requires(VEG_CONCEPT(fn_once<Fn, Ret, T>)),
-			VEG_NODISCARD VEG_CPP14(constexpr) auto map_or,
+			VEG_CPP14(constexpr) auto map_or,
 			(fn, Fn),
-			(d, Ret)) &&
+			(d, DoNotDeduce<Ret>)) &&
 
 			VEG_NOEXCEPT_IF(
 					VEG_CONCEPT(nothrow_fn_once<Fn, Ret, T>) &&
@@ -315,14 +316,6 @@ public:
 	}
 	VEG_NODISCARD VEG_INLINE constexpr auto is_none() const VEG_NOEXCEPT -> bool {
 		return !is_some();
-	}
-
-	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_cref() const
-			VEG_NOEXCEPT -> Option<meta::uncvref_t<T> const&> {
-		if (is_some()) {
-			return {some, this->_get()};
-		}
-		return {};
 	}
 
 	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_mut() VEG_NOEXCEPT

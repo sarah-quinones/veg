@@ -2,8 +2,10 @@
 #define VEG_FMT_HPP_GQU8XFRUS
 
 #include "veg/type_traits/primitives.hpp"
+#include "veg/internal/terminate.hpp"
 #include "veg/type_traits/constructible.hpp"
 #include "veg/ref.hpp"
+#include "veg/type_traits/primitives.hpp"
 #include "veg/internal/prologue.hpp"
 #include <cstring>
 
@@ -49,7 +51,7 @@ protected:
 using BufferMut = Buffer&;
 } // namespace fmt
 namespace internal {
-namespace fmt_ {
+namespace _fmt {
 
 struct DbgStructScope {
 	DbgStructScope(DbgStructScope const&) = delete;
@@ -84,35 +86,35 @@ struct dbg_i {
 	template <typename T>
 	static void to_string(BufferMut out, Ref<T> arg) {
 		auto _ = static_cast<long long signed>(arg.get());
-		fmt_::to_string_impl(VEG_FWD(out), 0U, &_);
+		_fmt::to_string_impl(VEG_FWD(out), 0U, &_);
 	}
 };
 struct dbg_u {
 	template <typename T>
 	static void to_string(BufferMut out, Ref<T> arg) {
 		auto _ = static_cast<long long unsigned>(arg.get());
-		fmt_::to_string_impl(VEG_FWD(out), 1U, &_);
+		_fmt::to_string_impl(VEG_FWD(out), 1U, &_);
 	}
 };
 struct dbg_p {
 	template <typename T>
 	static void to_string(BufferMut out, Ref<T*> arg) {
 		auto* _ = const_cast<void*>(static_cast<void const volatile*>(arg.get()));
-		fmt_::to_string_impl(VEG_FWD(out), 2U, _);
+		_fmt::to_string_impl(VEG_FWD(out), 2U, _);
 	}
 };
 struct dbg_pf {
 	template <typename Ret, typename... Args>
 	static void to_string(BufferMut out, Ref<Ret (*)(Args...)> arg) {
 		auto* _ = reinterpret_cast<void*>(arg.get());
-		fmt_::to_string_impl(VEG_FWD(out), 2U, _);
+		_fmt::to_string_impl(VEG_FWD(out), 2U, _);
 	}
 };
 struct dbg_f {
 	template <typename T>
 	static void to_string(BufferMut out, Ref<T> arg) {
 		auto _ = static_cast<long double>(arg.get());
-		fmt_::to_string_impl(VEG_FWD(out), 3U + 4U * sizeof(T), &_);
+		_fmt::to_string_impl(VEG_FWD(out), 3U + 4U * sizeof(T), &_);
 	}
 };
 struct dbg_b {
@@ -147,7 +149,7 @@ struct dbg_g_impl<true> {
 				out.size(), Access<T>::class_name_ptr, Access<T>::class_name_len);
 		out.append_literal(" ");
 		{
-			fmt_::DbgStructScope _{VEG_FWD(out)};
+			_fmt::DbgStructScope _{VEG_FWD(out)};
 			VEG_EVAL_ALL(
 					(void(_.out.append_ln()),
 			     void(_.out.insert(
@@ -181,36 +183,108 @@ struct dbg_g {
 	}
 };
 
+struct EnumName {
+	char const* ptr;
+	usize len;
+};
+
+template <typename T, T __veglib_variable_name> // NOLINT
+auto enum_name_impl() noexcept -> EnumName {
+	auto const& str = __PRETTY_FUNCTION__;
+	auto const& needle = "__veglib_variable_name";
+
+	usize len = sizeof(str) - 1;
+	usize needle_len = sizeof(needle) - 1;
+	if (!(len > needle_len)) {
+		abi::internal::terminate();
+	}
+
+	usize pos = 0;
+	while (std::memcmp(str + pos, needle, needle_len) != 0) {
+		++pos;
+		if (!(pos != (len - needle_len))) {
+			abi::internal::terminate();
+		}
+	}
+	pos += needle_len + 3;
+	if (!(pos < len)) {
+		abi::internal::terminate();
+	}
+
+	return {
+			str + pos,
+			len - pos - 1,
+	};
+}
+
+template <typename T, T x>
+auto enum_name() noexcept -> EnumName {
+	static const auto cached = internal::_fmt::enum_name_impl<T, x>();
+	return cached;
+}
+
+template <typename T, usize... Is>
+auto enum_name_runtime_impl(meta::index_sequence<Is...> /*tag*/, T n) noexcept
+		-> EnumName {
+	using FnType = EnumName() VEG_CPP17(noexcept);
+	constexpr FnType* fn_ptrs[] = {
+			(&_fmt::enum_name<T, T(Is)>)...,
+	};
+	auto idx = usize(n);
+	if (!(idx < sizeof...(Is))) {
+		abi::internal::terminate();
+	}
+
+	return fn_ptrs[idx]();
+}
+
+template <typename T>
+auto enum_name_runtime(T n) noexcept -> EnumName {
+	return _fmt::enum_name_runtime_impl(
+			meta::make_index_sequence<usize(T::ENUM_END)>{}, n);
+}
+
+struct dbg_e {
+	template <typename T>
+	static void to_string(BufferMut out, Ref<T> arg) {
+		EnumName name = _fmt::enum_name_runtime(arg.get());
+		out.insert(out.size(), name.ptr, name.len);
+	}
+};
+
 template <typename T>
 using choose_dbg = meta::conditional_t<
 		VEG_CONCEPT(same<T, bool>),
-		internal::fmt_::dbg_b,
+		dbg_b,
 		meta::conditional_t<
 				VEG_CONCEPT(signed_integral<T>),
-				internal::fmt_::dbg_i,
+				dbg_i,
 				meta::conditional_t<
 						VEG_CONCEPT(unsigned_integral<T>),
-						internal::fmt_::dbg_u,
+						dbg_u,
 						meta::conditional_t<
 								VEG_CONCEPT(floating_point<T>),
-								internal::fmt_::dbg_f,
+								dbg_f,
 								meta::conditional_t<
 										VEG_CONCEPT(constructible<bool, T>),
-										internal::fmt_::dbg_b,
-										internal::fmt_::dbg_g>>>>>;
+										dbg_b,
+										meta::conditional_t<
+												VEG_CONCEPT(enum_type<T>),
+												dbg_e,
+												dbg_g>>>>>>;
 
-} // namespace fmt_
+} // namespace _fmt
 } // namespace internal
 
 namespace fmt {
 template <typename T>
-struct Debug : internal::fmt_::choose_dbg<T> {};
+struct Debug : internal::_fmt::choose_dbg<T> {};
 template <typename T>
-struct Debug<T*> : internal::fmt_::dbg_p {};
+struct Debug<T*> : internal::_fmt::dbg_p {};
 template <>
-struct Debug<decltype(nullptr)> : internal::fmt_::dbg_p {};
+struct Debug<decltype(nullptr)> : internal::_fmt::dbg_p {};
 template <typename Ret, typename... Args>
-struct Debug<Ret (*)(Args...)> : internal::fmt_::dbg_pf {};
+struct Debug<Ret (*)(Args...)> : internal::_fmt::dbg_pf {};
 
 namespace nb {
 struct dbg_to {
@@ -290,7 +364,7 @@ namespace nb {
 struct dbg {
 	template <typename T>
 	auto operator()( //
-			T arg,
+			T&& arg,
 			unsigned line =
 #if VEG_HAS_BUILTIN(__builtin_LINE)
 					__builtin_LINE(),
@@ -327,7 +401,7 @@ struct dbg {
 			fmt::Debug<unsigned>::to_string(out, nb::ref{}(line));
 			out.append_literal("] ");
 		}
-		fmt::Debug<T>::to_string(out, nb::ref{}(arg));
+		fmt::Debug<uncvref_t<T>>::to_string(out, nb::ref{}(arg));
 		out.eprint();
 		return T(VEG_FWD(arg));
 	}

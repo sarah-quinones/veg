@@ -1240,6 +1240,21 @@ public:
 						internal::_uwunion::IdxMoveFn<ith<usize{I}, Ts...>>{VEG_FWD(arg)},
 						usize{I},
 				} {}
+	template <typename T, isize I = idx<T, Ts...>::value>
+	VEG_INLINE constexpr IndexedUwunion(
+			Tag<T> /*tag*/, meta::type_identity_t<T> arg)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))
+			: Base{
+						internal::_uwunion::EmplaceTag{},
+						internal::UTag<I>{},
+						internal::_uwunion::IdxMoveFn<T>{VEG_FWD(arg)},
+						I,
+				} {}
+
+	template <typename T>
+	VEG_INLINE constexpr auto holds(Tag<T> /*tag*/) const noexcept -> bool {
+		return index() == idx<T, Ts...>::value;
+	}
 
 	VEG_TEMPLATE(
 			(isize I, typename Fn),
@@ -1253,6 +1268,19 @@ public:
 						internal::UTag<usize{I}>{},
 						internal::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)},
 						usize{I},
+				} {}
+	VEG_TEMPLATE(
+			(typename T, typename Fn),
+			requires(VEG_CONCEPT(fn_once<Fn, T>)),
+			VEG_INLINE constexpr IndexedUwunion,
+			(/*inplace*/, InPlace<Tag<T>>),
+			(fn, Fn))
+	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, T>))
+			: Base{
+						internal::_uwunion::EmplaceTag{},
+						internal::UTag<idx<T, Ts...>::value>{},
+						internal::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)},
+						idx<T, Ts...>::value,
 				} {}
 
 	using Base::index;
@@ -1385,7 +1413,7 @@ public:
 			(/*itag*/, Fix<I>)) &&
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<ith<usize{I}, Ts...>>))
 					-> ith<usize{I}, Ts...> {
-		VEG_INTERNAL_ASSERT_PRECONDITION(I == index());
+		VEG_ASSERT(I == index());
 		return static_cast<IndexedUwunion&&>(*this).unwrap_unchecked(
 				Fix<I>{}, unsafe);
 	}
@@ -1396,7 +1424,7 @@ public:
 			operator[],
 			(/*itag*/, Fix<I>))
 	const & VEG_NOEXCEPT->ith<usize{I}, Ts...> const& {
-		VEG_INTERNAL_ASSERT_PRECONDITION(I == index());
+		VEG_ASSERT(I == index());
 		return internal::_uwunion::UwunionGetImpl<usize{I}>::get(
 							 this->get_union_ref())
 		    .inner;
@@ -1408,7 +1436,46 @@ public:
 			operator[],
 			(/*itag*/, Fix<I>))
 	&VEG_NOEXCEPT->ith<usize{I}, Ts...>& {
-		VEG_INTERNAL_ASSERT_PRECONDITION(I == index());
+		VEG_ASSERT(I == index());
+		return const_cast<ith<usize{I}, Ts...>&>(
+				internal::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
+						.inner);
+	}
+
+	template <typename T>
+	void operator[](Tag<T>) const&& = delete;
+	VEG_TEMPLATE(
+			(typename T, isize I = idx<T, Ts...>::value),
+			requires(usize{I} < sizeof...(Ts)),
+			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
+			operator[],
+			(/*itag*/, Tag<T>)) &&
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<ith<usize{I}, Ts...>>))
+					-> ith<usize{I}, Ts...> {
+		VEG_ASSERT(I == index());
+		return static_cast<IndexedUwunion&&>(*this).unwrap_unchecked(
+				Fix<I>{}, unsafe);
+	}
+	VEG_TEMPLATE(
+			(typename T, isize I = idx<T, Ts...>::value),
+			requires(usize{I} < sizeof...(Ts)),
+			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
+			operator[],
+			(/*itag*/, Tag<T>))
+	const & VEG_NOEXCEPT->ith<usize{I}, Ts...> const& {
+		VEG_ASSERT(I == index());
+		return internal::_uwunion::UwunionGetImpl<usize{I}>::get(
+							 this->get_union_ref())
+		    .inner;
+	}
+	VEG_TEMPLATE(
+			(typename T, isize I = idx<T, Ts...>::value),
+			requires(usize{I} < sizeof...(Ts)),
+			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
+			operator[],
+			(/*itag*/, Tag<T>))
+	&VEG_NOEXCEPT->ith<usize{I}, Ts...>& {
+		VEG_ASSERT(I == index());
 		return const_cast<ith<usize{I}, Ts...>&>(
 				internal::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
 						.inner);
@@ -1421,7 +1488,7 @@ public:
 			(/*itag*/, Fix<I>)) &&
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<ith<usize{I}, Ts...>>))
 					-> ith<usize{I}, Ts...> {
-		VEG_INTERNAL_ASSERT_PRECONDITION(I == index());
+		VEG_ASSERT(I == index());
 		return static_cast<IndexedUwunion&&>(*this).unwrap_unchecked(
 				Fix<I>{}, unsafe);
 	}
@@ -1510,6 +1577,93 @@ private:
 
 public:
 	using Base::Base;
+
+	template <isize I>
+	void operator[](Fix<I>) const&& = delete;
+	VEG_TEMPLATE(
+			(isize I),
+			requires(usize{I} < sizeof...(Ts)),
+			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
+			operator[],
+			(/*itag*/, Fix<I>)) &&
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<ith<usize{I}, Ts...>>))
+					-> ith<usize{I}, Ts...> {
+		VEG_ASSERT(I == this->index());
+		return static_cast<Uwunion&&>(*this).unwrap_unchecked(Fix<I>{}, unsafe);
+	}
+	VEG_TEMPLATE(
+			(isize I),
+			requires(usize{I} < sizeof...(Ts)),
+			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
+			operator[],
+			(/*itag*/, Fix<I>))
+	const & VEG_NOEXCEPT->ith<usize{I}, Ts...> const& {
+		VEG_ASSERT(I == this->index());
+		return internal::_uwunion::UwunionGetImpl<usize{I}>::get(
+							 this->get_union_ref())
+		    .inner;
+	}
+	VEG_TEMPLATE(
+			(isize I),
+			requires(usize{I} < sizeof...(Ts)),
+			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
+			operator[],
+			(/*itag*/, Fix<I>))
+	&VEG_NOEXCEPT->ith<usize{I}, Ts...>& {
+		VEG_ASSERT(I == this->index());
+		return const_cast<ith<usize{I}, Ts...>&>(
+				internal::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
+						.inner);
+	}
+
+	template <typename T>
+	void operator[](Tag<T>) const&& = delete;
+	VEG_TEMPLATE(
+			(typename T, isize I = idx<T, Ts...>::value),
+			requires(usize{I} < sizeof...(Ts)),
+			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
+			operator[],
+			(/*itag*/, Tag<T>)) &&
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<ith<usize{I}, Ts...>>))
+					-> ith<usize{I}, Ts...> {
+		VEG_ASSERT(I == this->index());
+		return static_cast<Uwunion&&>(*this).unwrap_unchecked(Fix<I>{}, unsafe);
+	}
+	VEG_TEMPLATE(
+			(typename T, isize I = idx<T, Ts...>::value),
+			requires(usize{I} < sizeof...(Ts)),
+			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
+			operator[],
+			(/*itag*/, Tag<T>))
+	const & VEG_NOEXCEPT->ith<usize{I}, Ts...> const& {
+		VEG_ASSERT(I == this->index());
+		return internal::_uwunion::UwunionGetImpl<usize{I}>::get(
+							 this->get_union_ref())
+		    .inner;
+	}
+	VEG_TEMPLATE(
+			(typename T, isize I = idx<T, Ts...>::value),
+			requires(usize{I} < sizeof...(Ts)),
+			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
+			operator[],
+			(/*itag*/, Tag<T>))
+	&VEG_NOEXCEPT->ith<usize{I}, Ts...>& {
+		VEG_ASSERT(I == this->index());
+		return const_cast<ith<usize{I}, Ts...>&>(
+				internal::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
+						.inner);
+	}
+
+	VEG_TEMPLATE(
+			(isize I),
+			requires(usize{I} < sizeof...(Ts)),
+			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto unwrap,
+			(/*itag*/, Fix<I>)) &&
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<ith<usize{I}, Ts...>>))
+					-> ith<usize{I}, Ts...> {
+		VEG_ASSERT(I == this->index());
+		return static_cast<Uwunion&&>(*this).unwrap_unchecked(Fix<I>{}, unsafe);
+	}
 
 	VEG_EXPLICIT_COPY(Uwunion);
 	Uwunion() = delete;

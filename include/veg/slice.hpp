@@ -243,7 +243,7 @@ struct DbgSliceBase {
 		T const* ptr = arg.get().ptr();
 		isize len = arg.get().len();
 
-		internal::fmt_::DbgStructScope _{out};
+		internal::_fmt::DbgStructScope _{out};
 		for (isize i = 0; i < len; ++i) {
 			out.append_ln();
 			fmt::Debug<T>::to_string(out, ref(ptr[i]));

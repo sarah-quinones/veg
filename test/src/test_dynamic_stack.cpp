@@ -1,3 +1,4 @@
+#define __VEG_DISABLE_NOEXCEPT
 #include "veg/memory/dynamic_stack.hpp"
 #include <doctest.h>
 

@@ -41,7 +41,6 @@ macro(add_all_tests_std_version std_version)
   target_include_directories(
     veg.${std_version} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
   )
-  target_compile_definitions(veg.${std_version} PUBLIC __VEG_DISABLE_NOEXCEPT)
   target_link_libraries(veg.${std_version} veg.all)
   set_cxx_version(veg.${std_version} ${std_version})
   target_compile_definitions(
@@ -69,6 +68,9 @@ add_all_tests_std_version(11)
 add_all_tests_std_version(14)
 add_all_tests_std_version(17)
 add_all_tests_std_version(20)
+
+add_executable(test.decl_parser src/test_parser.cpp)
+target_link_libraries(test.decl_parser veg)
 
 add_custom_target(
   check

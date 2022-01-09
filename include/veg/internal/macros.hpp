@@ -698,6 +698,15 @@ using make_integer_sequence =
 
 #endif
 
+#define VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL(Tpl, Name, ...)                    \
+	VEG_DEF_CONCEPT(                                                             \
+			Tpl,                                                                     \
+			Name,                                                                    \
+			VEG_HAS_BUILTIN_OR(                                                      \
+					__is_##Name,                                                         \
+					__is_##Name(__VA_ARGS__),                                            \
+					(internal::meta_::is_##Name<__VA_ARGS__>::value)))
+
 template <usize N>
 using make_index_sequence = make_integer_sequence<usize, N>;
 
@@ -748,9 +757,9 @@ constexpr auto all_of_slice(bool const* arr, usize size) VEG_NOEXCEPT -> bool {
 	return size == 0 ? true
 	                 : (arr[0] && internal::all_of_slice(arr + 1, size - 1));
 }
-inline VEG_CPP14(constexpr) auto all_of(std::initializer_list<bool> lst)
-		VEG_NOEXCEPT -> bool {
-	return internal::all_of_slice(lst.begin(), lst.size());
+template <usize N>
+inline constexpr auto all_of(bool const (&lst)[N]) VEG_NOEXCEPT -> bool {
+	return internal::all_of_slice(lst, N);
 }
 
 template <typename T>
@@ -779,6 +788,38 @@ template <typename T>
 using uncvref_t = typename internal::meta_::uncvlref<T&>::type;
 } // namespace meta
 using meta::uncvref_t;
+
+namespace meta {
+template <typename T, T Value>
+struct constant {
+	static constexpr T value = Value;
+};
+template <typename T, T Value>
+constexpr T constant<T, Value>::value;
+template <bool B>
+using bool_constant = constant<bool, B>;
+
+using true_type = bool_constant<true>;
+using false_type = bool_constant<false>;
+} // namespace meta
+namespace internal {
+namespace meta_ {
+
+struct wrapper_base {
+	static auto test(...) -> meta::false_type;
+};
+template <typename T>
+struct wrapper : wrapper_base {
+	using wrapper_base::test;
+	static auto test(wrapper<T>*) -> meta::true_type;
+};
+template <typename T, typename U>
+using is_same = decltype(wrapper<T>::test(static_cast<wrapper<U>*>(nullptr)));
+} // namespace meta_
+} // namespace internal
+namespace concepts {
+VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL((typename T, typename U), same, T, U);
+} // namespace concepts
 } // namespace veg
 
 #define VEG_DECLTYPE_VOID(...) decltype(void(__VA_ARGS__))
@@ -795,6 +836,11 @@ using meta::uncvref_t;
 	(sizeof(__VEG_PP_STRINGIZE(MemberPtr)) - 1),
 
 #define __VEG_IMPL_STRUCT_SETUP(PClass, ...) /* NOLINT */                      \
+	void _veg_lib_name_test()&& noexcept {                                       \
+		static_assert(                                                             \
+				VEG_CONCEPT(same<decltype(this), __VEG_PP_REMOVE_PAREN(PClass)*>),     \
+				"struct mismatch in VEG_REFLECT");                                      \
+	}                                                                            \
 	struct _veglib_impl_member_extract {                                         \
 		using Type = __VEG_PP_REMOVE_PAREN(PClass);                                \
 		using MemberTuple = decltype(::veg::internal::make_simple_tuple(           \

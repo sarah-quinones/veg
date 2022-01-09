@@ -8,19 +8,6 @@
 namespace veg {
 namespace meta {
 
-template <typename T, T Value>
-struct constant {
-	static constexpr T value = Value;
-};
-template <typename T, T Value>
-constexpr T constant<T, Value>::value;
-
-template <bool B>
-using bool_constant = constant<bool, B>;
-
-using true_type = bool_constant<true>;
-using false_type = bool_constant<false>;
-
 template <typename T, T N>
 using make_integer_sequence = internal::meta_::make_integer_sequence<T, N>*;
 template <usize N>
@@ -199,6 +186,8 @@ struct HollowIndexedTuple<meta::index_sequence<Is...>, Ts...>
 
 template <usize I, typename T>
 auto get_type(HollowLeaf<I, T> const*) VEG_NOEXCEPT -> T;
+template <typename T, usize I>
+auto get_idx(HollowLeaf<I, T> const*) VEG_NOEXCEPT -> meta::constant<usize, I>;
 
 template <usize I>
 struct pack_ith_elem {
@@ -208,7 +197,19 @@ struct pack_ith_elem {
 					HollowIndexedTuple<meta::make_index_sequence<sizeof...(Ts)>, Ts...>*>(
 					nullptr)));
 };
+
+template <typename T>
+struct pack_idx_elem {
+	template <typename... Ts>
+	using Type = decltype(internal::get_idx<T>(
+			static_cast<
+					HollowIndexedTuple<meta::make_index_sequence<sizeof...(Ts)>, Ts...>*>(
+					nullptr)));
+};
 } // namespace internal
+
+template <typename T, typename... Ts>
+using idx = typename internal::pack_idx_elem<T>::template Type<Ts...>;
 
 #if VEG_HAS_BUILTIN(__type_pack_element)
 template <usize I, typename... Ts>

@@ -18,14 +18,19 @@ namespace veg {
 namespace mem {
 
 VEG_INLINE auto aligned_alloc(usize align, usize size) noexcept -> void* {
-  usize const mask = align - 1;
+	usize const mask = align - 1;
 	return ::aligned_alloc(align, (size + mask) & ~mask);
 }
 VEG_INLINE void aligned_free(usize /*align*/, void* ptr) noexcept {
 	return ::free(ptr);
 }
 
-struct SystemAlloc {};
+struct SystemAlloc {
+	constexpr friend auto
+	operator==(SystemAlloc /*unused*/, SystemAlloc /*unused*/) noexcept -> bool {
+		return true;
+	}
+};
 template <>
 struct Alloc<SystemAlloc> {
 	static constexpr usize max_base_align = alignof(std::max_align_t);
@@ -135,6 +140,23 @@ struct Cloner<DefaultCloner> {
 VEG_INLINE_VAR(system_alloc, SystemAlloc);
 VEG_INLINE_VAR(default_cloner, DefaultCloner);
 } // namespace mem
+
+namespace internal {
+namespace _mem {
+template <typename A>
+struct ManagedAlloc /* NOLINT */ {
+	void* data;
+	mem::Layout layout;
+	RefMut<A> alloc;
+
+	VEG_INLINE ~ManagedAlloc() {
+		if (data != nullptr) {
+			mem::Alloc<A>::dealloc(VEG_FWD(alloc), VEG_FWD(data), VEG_FWD(layout));
+		}
+	}
+};
+} // namespace _mem
+} // namespace internal
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"
