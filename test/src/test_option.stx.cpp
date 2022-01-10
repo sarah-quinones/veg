@@ -254,16 +254,16 @@ TEST_CASE("OptionTest: Exists") {
 
 TEST_CASE("OptionTest: AsConstRef") {
 	auto const a = some(68);
-	CHECK(a.as_cref().unwrap() == 68);
+	CHECK(a.as_ref().unwrap() == ref(68));
 
 	Option<int> const b = none;
-	CHECK(b.as_cref().is_none());
+	CHECK(b.as_ref().is_none());
 
 	auto const c = some(vector<int>{1, 2, 3, 4});
-	CHECK(c.as_cref().unwrap() == vector<int>{1, 2, 3, 4});
+	CHECK(c.as_ref().unwrap() == ref(vector<int>{1, 2, 3, 4}));
 
 	Option<vector<int>> const d = none;
-	CHECK(d.as_cref().is_none());
+	CHECK(d.as_ref().is_none());
 }
 
 TEST_CASE("OptionTest: AsRef") {

@@ -220,14 +220,13 @@ auto parse_templated_entity(StrView between_angled_brackets) -> Vec<Entity> {
 	return out;
 }
 
-auto greedy_parse_templated_entity(StrView after_angled)
+auto greedy_parse_templated_entity(StrView after_angled, StrView end_delim)
 		-> Tuple<Vec<Entity>, StrView> {
 	VEG_BIND( //
 			auto,
 			(between_angled, tail),
-			type_parse::find_matching({from_literal, ">"}, after_angled));
-	assert(tail.len() > usize(0));
-	assert(tail.ptr()[0] == '>');
+			type_parse::find_matching(end_delim, after_angled));
+	assert(tail.begins_with(end_delim));
 	return {
 			tuplify,
 			type_parse::parse_templated_entity(between_angled),
@@ -239,11 +238,13 @@ auto greedy_parse_nestable_entity(StrView str) noexcept
 		-> Tuple<Entity, StrView> {
 	VEG_BIND(auto, (tk, tail), type_parse::parse_token(str));
 
-	if (tk.str == StrView({from_literal, "<"})) {
+	if (tk.str == StrView({from_literal, "<"}) ||
+	    tk.str == StrView({from_literal, "{"})) {
 		tail = str;
 		tk = empty_tk;
 	}
-	if (tail.begins_with({from_literal, "<"})) {
+	if (tail.begins_with({from_literal, "<"}) ||
+	    tail.begins_with({from_literal, "{"})) {
 
 		Entity tpl_head = Entity{
 				Entity::Uwunion{
@@ -256,7 +257,9 @@ auto greedy_parse_nestable_entity(StrView str) noexcept
 		VEG_BIND(
 				auto,
 				(tpl_args, tail2),
-				type_parse::greedy_parse_templated_entity(tail.skip_leading(1)));
+				type_parse::greedy_parse_templated_entity(
+						tail.skip_leading(1),
+						{from_literal, tail.begins_with({from_literal, "{"}) ? "}" : ">"}));
 
 		return Tuple<Entity, StrView>{
 				tuplify,
@@ -551,11 +554,6 @@ auto parse_function_decl(StrView str) noexcept -> FunctionDecl {
 		}
 	}
 
-	// TODO
-	// dependent expansions
-	// [with ... = ... SEP ... = ...]
-	// SEP is ; or ,
-	// check ; first as it is less common (impossible?) in other contexts
 	Vec<Tuple<Entity, Entity>> dependent_expansions;
 	{
 		VEG_BIND(auto, (tk, tail), type_parse::parse_token(after_args));
@@ -570,7 +568,6 @@ auto parse_function_decl(StrView str) noexcept -> FunctionDecl {
 					type_parse::find_matching({from_literal, "]"}, after_args));
 			while (true) {
 				between_square = between_square.trim(' ');
-				dbg(between_square);
 				if (between_square.len() == 0) {
 					break;
 				}

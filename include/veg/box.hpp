@@ -69,32 +69,32 @@ struct BoxIncomplete {
 			-> RefMut<A> {
 		return mut(_[0_c]);
 	}
-	VEG_INLINE constexpr auto ptr_ref() const noexcept -> Ref<T*> {
+	VEG_INLINE constexpr auto data_ref() const noexcept -> Ref<T*> {
 		return ref(_[1_c].inner);
 	}
-	VEG_INLINE VEG_CPP14(constexpr) auto ptr_ref_mut(Unsafe /*tag*/) noexcept
+	VEG_INLINE VEG_CPP14(constexpr) auto data_mut(Unsafe /*tag*/) noexcept
 			-> RefMut<T*> {
 		return mut(_[1_c].inner);
 	}
 
 	VEG_INLINE constexpr auto ptr() const noexcept -> T const* {
-		return ptr_ref().get();
+		return data_ref().get();
 	}
 	VEG_INLINE VEG_CPP14(constexpr) auto ptr_mut() noexcept -> T* {
-		return ptr_ref().get();
+		return data_ref().get();
 	}
 
 	VEG_INLINE constexpr auto operator*() const noexcept -> T const& {
-		return *ptr_ref().get();
+		return *ptr();
 	}
 	VEG_INLINE VEG_CPP14(constexpr) auto operator*() noexcept -> T& {
-		return *ptr_ref().get();
+		return *ptr_mut();
 	}
 	VEG_INLINE constexpr auto operator->() const noexcept -> T const* {
-		return ptr_ref().get();
+		return ptr();
 	}
 	VEG_INLINE VEG_CPP14(constexpr) auto operator->() noexcept -> T* {
-		return ptr_ref().get();
+		return ptr_mut();
 	}
 
 	VEG_TEMPLATE(
@@ -131,7 +131,7 @@ struct BoxIncomplete {
 
 		mem::construct_with(static_cast<T*>(block.data), VEG_FWD(fn_t));
 
-		this->ptr_ref_mut(unsafe).get() = static_cast<T*>(block.data);
+		this->data_mut(unsafe).get() = static_cast<T*>(block.data);
 		block.data = nullptr;
 	}
 
@@ -145,8 +145,8 @@ struct BoxIncomplete {
 						from_raw_parts,
 						unsafe,
 						internal::CopyFn<A>{rhs.alloc_ref().get()},
-						(rhs.ptr_ref().get() != nullptr),
-						internal::_mem::DerefCopyFn<T>{rhs.ptr_ref().get()},
+						(rhs.ptr() != nullptr),
+						internal::_mem::DerefCopyFn<T>{rhs.ptr()},
 				} {
 		static_assert(
 				NoThrowCopy == (VEG_CONCEPT(nothrow_copyable<T>) &&
@@ -159,9 +159,9 @@ struct BoxIncomplete {
 		{ auto cleanup = static_cast<BoxIncomplete&&>(*this); }
 		this->alloc_mut(unsafe).get() =
 				static_cast<A&&>(tmp.alloc_mut(unsafe).get());
-		this->ptr_ref_mut(unsafe).get() = tmp.ptr_ref().get();
+		this->data_mut(unsafe).get() = tmp.ptr_mut();
 
-		tmp.ptr_ref_mut(unsafe).get() = nullptr;
+		tmp.data_mut(unsafe).get() = nullptr;
 		return *this;
 	}
 
@@ -174,9 +174,10 @@ struct BoxIncomplete {
 		                    VEG_CONCEPT(nothrow_copy_assignable<T>)),
 				".");
 		if (this != mem::addressof(rhs)) {
-			if (cmp::eq(this->alloc_ref(), rhs.alloc_ref()) &&
-			    this->ptr_ref().get() != nullptr && rhs.ptr_ref().get() != nullptr) {
-				*(this->ptr_ref_mut(unsafe).get()) = *(rhs.ptr_ref().get());
+			if (cmp::eq(this->alloc_ref(), rhs.alloc_ref()) && //
+			    ptr() != nullptr && rhs.ptr() != nullptr) {
+				alloc_mut(unsafe).get() = rhs.alloc_ref().get();
+				*ptr_mut() = *rhs.ptr();
 			} else {
 				*this = BoxIncomplete(rhs);
 			}
@@ -187,7 +188,7 @@ struct BoxIncomplete {
 	VEG_INLINE ~BoxIncomplete() {
 		static_assert(VEG_CONCEPT(nothrow_destructible<T>), ".");
 		static_assert(VEG_CONCEPT(alloc::nothrow_dealloc<A>), ".");
-		auto ptr = this->ptr_ref().get();
+		auto ptr = this->ptr();
 		if (ptr != nullptr) {
 			mem::destroy_at(ptr);
 		}
@@ -202,10 +203,9 @@ VEG_TEMPLATE(
 		(lhs, BoxIncomplete<LT, LA> const&),
 		(rhs, BoxIncomplete<RT, RA> const&))
 VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_eq<LT, RT>))->bool {
-	return (lhs.ptr_ref().get() == nullptr || rhs.ptr_ref().get() == nullptr)
-	           ? (lhs.ptr_ref().get() == nullptr &&
-	              rhs.ptr_ref().get() == nullptr)
-	           : (*(lhs.ptr_ref().get()) == *(rhs.ptr_ref().get()));
+	return (lhs.ptr() == nullptr || rhs.ptr() == nullptr)
+	           ? (lhs.ptr() == nullptr && rhs.ptr() == nullptr)
+	           : (*lhs.ptr() == *rhs.ptr());
 }
 } // namespace mem
 template <typename T, typename A = mem::SystemAlloc>
@@ -234,19 +234,18 @@ struct OrdBoxI {
 			(lhs, Ref<mem::BoxIncomplete<LT, LA>>),
 			(rhs, Ref<mem::BoxIncomplete<RT, RA>>))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_ord<LT, RT>))->cmp::Ordering {
-		if (lhs.get().ptr_ref().get() == nullptr &&
-		    rhs.get().ptr_ref().get() == nullptr) {
+		if (lhs.get().ptr() == nullptr && rhs.get().ptr() == nullptr) {
 			return cmp::Ordering::equal;
 		}
-		if (lhs.get().ptr_ref().get() == nullptr) {
+		if (lhs.get().ptr() == nullptr) {
 			return cmp::Ordering::less;
 		}
-		if (rhs.get().ptr_ref().get() == nullptr) {
+		if (rhs.get().ptr() == nullptr) {
 			return cmp::Ordering::greater;
 		}
 		return cmp::cmp( //
-				ref(*lhs.get().ptr_ref().get()),
-				ref(*rhs.get().ptr_ref().get()));
+				ref(*lhs.get().ptr()),
+				ref(*rhs.get().ptr()));
 	}
 };
 struct OrdBox {
@@ -265,17 +264,19 @@ struct OrdBox {
 struct DbgBoxI {
 	template <typename T>
 	static void to_string_impl(fmt::BufferMut out, T const* ptr) noexcept {
-		out.append_literal("[");
 		if (ptr != nullptr) {
+			out.append_literal("some(");
 			fmt::dbg_to(VEG_FWD(out), ref(*ptr));
+			out.append_literal(")");
+		} else {
+			out.append_literal("none");
 		}
-		out.append_literal("]");
 	}
 
 	template <typename T, typename A>
 	static void
 	to_string(fmt::BufferMut out, Ref<mem::BoxIncomplete<T, A>> r) noexcept {
-		to_string_impl(VEG_FWD(out), r.get().ptr_ref().get());
+		to_string_impl(VEG_FWD(out), r.get().ptr());
 	}
 };
 struct DbgBox {

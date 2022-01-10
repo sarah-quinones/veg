@@ -282,7 +282,12 @@ struct Debug : internal::_fmt::choose_dbg<T> {};
 template <typename T>
 struct Debug<T*> : internal::_fmt::dbg_p {};
 template <>
-struct Debug<decltype(nullptr)> : internal::_fmt::dbg_p {};
+struct Debug<decltype(nullptr)> {
+	static void to_string(BufferMut out, Ref<decltype(nullptr)> /*arg*/) {
+		internal::_fmt::dbg_p::to_string(
+				VEG_FWD(out), ref(static_cast<void*>(nullptr)));
+	}
+};
 template <typename Ret, typename... Args>
 struct Debug<Ret (*)(Args...)> : internal::_fmt::dbg_pf {};
 

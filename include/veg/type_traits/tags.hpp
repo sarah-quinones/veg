@@ -15,6 +15,7 @@ VEG_TAG_TEMPLATE(typename T, tag, Tag, T);
 VEG_TAG(from_raw_parts, FromRawParts);
 VEG_TAG(as_ref, AsRef);
 VEG_TAG(as_mut, AsMut);
+VEG_TAG(from, From);
 VEG_TAG(as_ref_once, AsRefOnce);
 
 VEG_TAG(safe, Safe);
@@ -28,7 +29,8 @@ template <>
 struct InPlace<void> {
 	InPlace() = default;
 	template <typename Tag>
-	VEG_INLINE constexpr auto operator[](Tag /*tag*/) const noexcept -> InPlace<Tag> {
+	VEG_INLINE constexpr auto operator[](Tag /*tag*/) const noexcept
+			-> InPlace<Tag> {
 		return InPlace<Tag>{};
 	}
 };

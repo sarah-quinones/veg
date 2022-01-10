@@ -1,5 +1,4 @@
 #include "veg/option.hpp"
-#include "veg/fn_ref.hpp"
 #include <doctest.h>
 #include <vector>
 #include "static_assert.hpp"
@@ -150,7 +149,7 @@ TEST_CASE("option: all") {
 		}();
 
 		CHECK(opt == some(vector<int>{1, 2, 3, 4}));
-		CHECK(VEG_FWD(opt).map([](vector<int> v) {
+		CHECK(VEG_FWD(opt).map([](vector<int> v) -> vector<int> {
 			v.push_back(5);
 			return v;
 		}) == some(vector<int>{1, 2, 3, 4, 5}));
