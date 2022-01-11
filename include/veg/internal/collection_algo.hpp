@@ -6,7 +6,7 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace internal {
+namespace _detail {
 namespace _collections {
 template <bool IsNoExcept>
 struct DestroyImpl;
@@ -71,7 +71,7 @@ VEG_INLINE VEG_CPP14(constexpr) void backward_destroy(
 			VEG_FWD(alloc), VEG_FWD(cloner), ptr, ptr_end);
 }
 } // namespace _collections
-} // namespace internal
+} // namespace _detail
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

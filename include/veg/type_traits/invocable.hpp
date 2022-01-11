@@ -6,16 +6,16 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace internal {
-namespace meta_ {
+namespace _detail {
+namespace _meta {
 template <typename Fn, typename... Args>
 using call_expr = decltype(VEG_DECLVAL(Fn &&)(VEG_DECLVAL(Args &&)...));
-} // namespace meta_
-} // namespace internal
+} // namespace _meta
+} // namespace _detail
 namespace meta {
 template <typename Fn, typename... Args>
 using invoke_result_t =
-		meta::detected_t<internal::meta_::call_expr, Fn&&, Args&&...>;
+		meta::detected_t<_detail::_meta::call_expr, Fn&&, Args&&...>;
 } // namespace meta
 
 namespace concepts {

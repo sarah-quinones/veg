@@ -23,7 +23,7 @@ template <typename T>
 using MayThrow = NoThrowIf<false, T>;
 } // namespace fn
 
-namespace internal {
+namespace _detail {
 namespace _fn {
 template <typename Sig>
 struct valid_sig : meta::false_type {};
@@ -62,30 +62,30 @@ struct invocable_with_sig<T, fn::NoThrowIf<B, R(Ts...) &&>> {
 	static constexpr bool value = VEG_CONCEPT(fn_once<T, R, Ts...>);
 };
 } // namespace _fn
-} // namespace internal
+} // namespace _detail
 
 namespace concepts {
-VEG_DEF_CONCEPT((typename Sig), sig, internal::_fn::valid_sig<Sig>::value);
+VEG_DEF_CONCEPT((typename Sig), sig, _detail::_fn::valid_sig<Sig>::value);
 VEG_DEF_CONCEPT(
-		(typename Sig), sig_mut, internal::_fn::valid_sig_mut<Sig>::value);
+		(typename Sig), sig_mut, _detail::_fn::valid_sig_mut<Sig>::value);
 VEG_DEF_CONCEPT(
-		(typename Sig), sig_once, internal::_fn::valid_sig_once<Sig>::value);
+		(typename Sig), sig_once, _detail::_fn::valid_sig_once<Sig>::value);
 
 VEG_DEF_CONCEPT(
 		(typename T, typename Sig),
 		fn_with_sig,
-		internal::_fn::invocable_with_sig<T const&, Sig>::value);
+		_detail::_fn::invocable_with_sig<T const&, Sig>::value);
 VEG_DEF_CONCEPT(
 		(typename T, typename Sig),
 		fn_mut_with_sig,
-		internal::_fn::invocable_with_sig<T&, Sig>::value);
+		_detail::_fn::invocable_with_sig<T&, Sig>::value);
 VEG_DEF_CONCEPT(
 		(typename T, typename Sig),
 		fn_once_with_sig,
-		internal::_fn::invocable_with_sig<T&&, Sig>::value);
+		_detail::_fn::invocable_with_sig<T&&, Sig>::value);
 } // namespace concepts
 
-namespace internal {
+namespace _detail {
 namespace _fn {
 using fn::NoThrowIf;
 
@@ -226,7 +226,7 @@ struct Group<T, Ts...> : T, Group<Ts...> {
 };
 
 } // namespace _fn
-} // namespace internal
+} // namespace _detail
 namespace fn {
 template <typename Seq, typename A, typename... Sigs>
 struct IndexedFnDyn;
@@ -237,14 +237,14 @@ struct IndexedFnMutDyn;
 
 template <usize... Is, typename... Sigs>
 struct IndexedFnRefDyn<meta::index_sequence<Is...>, Sigs...>
-		: internal::_fn::Group<internal::_fn::FnCrtp<
+		: _detail::_fn::Group<_detail::_fn::FnCrtp<
 					IndexedFnRefDyn<meta::index_sequence<Is...>, Sigs...>,
 					Is,
 					Sigs>...> {
 	static_assert(VEG_ALL_OF(VEG_CONCEPT(sig<Sigs>)), ".");
 
-	using VTable = internal::_fn::VTableI<meta::index_sequence<Is...>, Sigs...>;
-	using internal::_fn::Group<internal::_fn::FnCrtp<
+	using VTable = _detail::_fn::VTableI<meta::index_sequence<Is...>, Sigs...>;
+	using _detail::_fn::Group<_detail::_fn::FnCrtp<
 			IndexedFnRefDyn<meta::index_sequence<Is...>, Sigs...>,
 			Is,
 			Sigs>...>::operator();
@@ -289,21 +289,21 @@ public:
 	VEG_NOEXCEPT : IndexedFnRefDyn{} {
 		this->data_mut(unsafe).get() = mem::addressof(t.get());
 		this->vtable_mut(unsafe).get() = mem::addressof(
-				internal::_fn::VTableIObject<T, meta::index_sequence<Is...>, Sigs...>::
+				_detail::_fn::VTableIObject<T, meta::index_sequence<Is...>, Sigs...>::
 						value);
 	}
 };
 
 template <usize... Is, typename... Sigs>
 struct IndexedFnMutDyn<meta::index_sequence<Is...>, Sigs...>
-		: internal::_fn::Group<internal::_fn::FnCrtp<
+		: _detail::_fn::Group<_detail::_fn::FnCrtp<
 					IndexedFnMutDyn<meta::index_sequence<Is...>, Sigs...>,
 					Is,
 					Sigs>...> {
 	static_assert(VEG_ALL_OF(VEG_CONCEPT(sig_mut<Sigs>)), ".");
 
-	using VTable = internal::_fn::VTableI<meta::index_sequence<Is...>, Sigs...>;
-	using internal::_fn::Group<internal::_fn::FnCrtp<
+	using VTable = _detail::_fn::VTableI<meta::index_sequence<Is...>, Sigs...>;
+	using _detail::_fn::Group<_detail::_fn::FnCrtp<
 			IndexedFnMutDyn<meta::index_sequence<Is...>, Sigs...>,
 			Is,
 			Sigs>...>::operator();
@@ -348,14 +348,14 @@ public:
 	VEG_NOEXCEPT : IndexedFnMutDyn{} {
 		this->data_mut(unsafe).get() = const_cast<void*>(mem::addressof(t.get()));
 		this->vtable_mut(unsafe).get() = mem::addressof(
-				internal::_fn::VTableIObject<T, meta::index_sequence<Is...>, Sigs...>::
+				_detail::_fn::VTableIObject<T, meta::index_sequence<Is...>, Sigs...>::
 						value);
 	}
 };
 
 template <usize... Is, typename A, typename... Sigs>
 struct IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>
-		: internal::_fn::Group<internal::_fn::FnCrtp<
+		: _detail::_fn::Group<_detail::_fn::FnCrtp<
 					IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>,
 					Is,
 					Sigs>...> {
@@ -363,8 +363,8 @@ struct IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>
 	static_assert(VEG_CONCEPT(nothrow_movable<A>), ".");
 	static_assert(VEG_CONCEPT(nothrow_move_assignable<A>), ".");
 
-	using VTable = internal::_fn::VTableI<meta::index_sequence<Is...>, Sigs...>;
-	using internal::_fn::Group<internal::_fn::FnCrtp<
+	using VTable = _detail::_fn::VTableI<meta::index_sequence<Is...>, Sigs...>;
+	using _detail::_fn::Group<_detail::_fn::FnCrtp<
 			IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>,
 			Is,
 			Sigs>...>::operator();
@@ -440,7 +440,7 @@ public:
 			: raw{
 						inplace[tuplify],
 						VEG_FWD(fn_a),
-						internal::MoveFn<_raw0>{_raw0{vtable, data}},
+						_detail::MoveFn<_raw0>{_raw0{vtable, data}},
 				} {}
 
 	VEG_TEMPLATE(
@@ -455,9 +455,9 @@ public:
 	VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(alloc::nothrow_alloc<A>) &&
 			VEG_CONCEPT(nothrow_fn_once<FnT, T>))
-			: raw{inplace[tuplify], VEG_FWD(fn_a), internal::DefaultFn<_raw0>{}} {
+			: raw{inplace[tuplify], VEG_FWD(fn_a), _detail::DefaultFn<_raw0>{}} {
 		auto l = mem::Layout{sizeof(T), alignof(T)};
-		internal::_mem::ManagedAlloc<A> block{
+		_detail::_mem::ManagedAlloc<A> block{
 				mem::Alloc<A>::alloc(alloc_mut(unsafe), l).data,
 				l,
 				this->alloc_mut(unsafe),
@@ -465,7 +465,7 @@ public:
 		mem::construct_with(static_cast<T*>(block.data), VEG_FWD(fn_t));
 		this->data_mut(unsafe).get() = block.data;
 		this->vtable_mut(unsafe).get() = mem::addressof(
-				internal::_fn::VTableIObject<T, meta::index_sequence<Is...>, Sigs...>::
+				_detail::_fn::VTableIObject<T, meta::index_sequence<Is...>, Sigs...>::
 						value);
 		block.data = nullptr;
 	}
@@ -482,8 +482,8 @@ public:
 			VEG_CONCEPT(alloc::nothrow_alloc<A>) && VEG_CONCEPT(nothrow_movable<T>))
 			: IndexedFnDyn{
 						inplace[from],
-						internal::MoveFn<A>{VEG_FWD(alloc)},
-						internal::MoveFn<T>{(VEG_FWD(t))}} {}
+						_detail::MoveFn<A>{VEG_FWD(alloc)},
+						_detail::MoveFn<T>{(VEG_FWD(t))}} {}
 };
 
 template <typename... Sigs>

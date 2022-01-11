@@ -30,13 +30,13 @@ struct init_list {
 } // namespace nb
 VEG_NIEBLOID(init_list);
 
-namespace internal {
+namespace _detail {
 namespace _slice {
 namespace adl {
 struct AdlBase {};
 } // namespace adl
 } // namespace _slice
-} // namespace internal
+} // namespace _detail
 
 template <typename T>
 struct Slice {
@@ -203,7 +203,7 @@ struct Array {
 } // namespace array
 using array::Array;
 
-namespace internal {
+namespace _detail {
 namespace _slice {
 namespace adl {
 VEG_TEMPLATE(
@@ -243,7 +243,7 @@ struct DbgSliceBase {
 		T const* ptr = arg.get().ptr();
 		isize len = arg.get().len();
 
-		internal::_fmt::DbgStructScope _{out};
+		_detail::_fmt::DbgStructScope _{out};
 		for (isize i = 0; i < len; ++i) {
 			out.append_ln();
 			fmt::Debug<T>::to_string(out, ref(ptr[i]));
@@ -314,7 +314,7 @@ struct OrdArrayBase {
 	}
 };
 } // namespace _slice
-} // namespace internal
+} // namespace _detail
 namespace array {
 VEG_TEMPLATE(
 		(typename T, isize N, typename U, isize M),
@@ -325,7 +325,7 @@ VEG_TEMPLATE(
 		(rhs, Array<U, M> const&))
 VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_eq<T, U>))->bool {
 	return (N == M) &&
-	       internal::_slice::adl::operator==(lhs.as_ref(), rhs.as_ref());
+	       _detail::_slice::adl::operator==(lhs.as_ref(), rhs.as_ref());
 }
 } // namespace array
 
@@ -333,19 +333,18 @@ template <typename T>
 struct cpo::is_trivially_constructible<Slice<T>> : meta::bool_constant<true> {};
 
 template <typename T, typename U>
-struct cmp::Ord<Slice<T>, Slice<U>> : internal::_slice::OrdSliceBase {};
+struct cmp::Ord<Slice<T>, Slice<U>> : _detail::_slice::OrdSliceBase {};
 template <typename T, typename U>
-struct cmp::Ord<SliceMut<T>, SliceMut<U>> : internal::_slice::OrdSliceMutBase {
-};
+struct cmp::Ord<SliceMut<T>, SliceMut<U>> : _detail::_slice::OrdSliceMutBase {};
 template <typename T, isize N, typename U, isize M>
-struct cmp::Ord<Array<T, N>, Array<U, M>> : internal::_slice::OrdArrayBase {};
+struct cmp::Ord<Array<T, N>, Array<U, M>> : _detail::_slice::OrdArrayBase {};
 
 template <typename T>
-struct fmt::Debug<Slice<T>> : internal::_slice::DbgSliceBase {};
+struct fmt::Debug<Slice<T>> : _detail::_slice::DbgSliceBase {};
 template <typename T>
-struct fmt::Debug<SliceMut<T>> : internal::_slice::DbgSliceBase {};
+struct fmt::Debug<SliceMut<T>> : _detail::_slice::DbgSliceBase {};
 template <typename T, isize N>
-struct fmt::Debug<Array<T, N>> : internal::_slice::DbgArrayBase {};
+struct fmt::Debug<Array<T, N>> : _detail::_slice::DbgArrayBase {};
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

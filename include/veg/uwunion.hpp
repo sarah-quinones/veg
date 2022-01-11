@@ -27,7 +27,7 @@ using inner_ith = decltype(VEG_DECLVAL(T)[Fix<isize{I}>{}]);
 template <typename... Ts>
 struct Uwunion;
 
-namespace internal {
+namespace _detail {
 namespace _uwunion {
 
 template <typename T>
@@ -506,7 +506,7 @@ struct TrivialUwunionImpl<Empty, T&&> : UwunionEmptyRef<T&&> {
 template <typename Base, usize N, bool NoExcept, typename Fn>
 VEG_INLINE constexpr auto make(Fn fn, usize tag) VEG_NOEXCEPT_IF(NoExcept)
 		-> Base {
-	return internal::visit<Base, NoExcept, N>(
+	return _detail::visit<Base, NoExcept, N>(
 			tag, EmplaceWrapper<Base, Fn>{VEG_FWD(fn), tag});
 }
 
@@ -515,7 +515,7 @@ struct NonTrivialUwunionDtor;
 
 #define VEG_TAGGED_UWUNION_DTOR_true                                           \
 	VEG_INLINE VEG_CPP14(constexpr) void destroy() VEG_NOEXCEPT {                \
-		internal::visit<void, true, sizeof...(Ts)>(                                \
+		_detail::visit<void, true, sizeof...(Ts)>(                                 \
 				tag, DropFn<true, decltype(inner), Ts...>{inner});                     \
 	}                                                                            \
 	VEG_INLINE VEG_CPP20(constexpr) ~NonTrivialUwunionDtor() { destroy(); }
@@ -561,7 +561,7 @@ struct NonTrivialUwunionDtor;
 			: inner{} {                                                              \
 		using Fn = UwunionGetter<decltype(inner.inner)&&, Ts...>;                  \
 		inner.tag = rhs.inner.tag;                                                 \
-		internal::visit<                                                           \
+		_detail::visit<                                                            \
 				void,                                                                  \
 				VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>)),                          \
 				sizeof...(Ts)>(                                                        \
@@ -576,7 +576,7 @@ struct NonTrivialUwunionDtor;
 			: inner{} {                                                              \
 		using Fn = UwunionGetter<decltype(inner.inner) const&, Ts...>;             \
 		inner.tag = rhs.inner.tag;                                                 \
-		internal::visit<                                                           \
+		_detail::visit<                                                            \
 				void,                                                                  \
 				VEG_ALL_OF(VEG_CONCEPT(nothrow_copyable<Ts>)),                         \
 				sizeof...(Ts)>(                                                        \
@@ -692,7 +692,7 @@ struct NonTrivialCopyAssign {
 		using NestedInner = decltype(self.inner.inner);
 
 		if (self.inner.tag == rhs.inner.tag) {
-			internal::visit<
+			_detail::visit<
 					void,
 					VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_assignable<Storage<Ts>>)),
 					sizeof...(Ts)>(
@@ -731,7 +731,7 @@ struct NonTrivialMoveAssign {
 		using NestedInner = decltype(self.inner.inner);
 
 		if (self.inner.tag == rhs.inner.tag) {
-			internal::visit<
+			_detail::visit<
 					void,
 					VEG_ALL_OF(VEG_CONCEPT(nothrow_move_assignable<Storage<Ts>>)),
 					sizeof...(Ts)>(
@@ -849,7 +849,7 @@ struct NonTrivialUwunionImpl<false, meta::index_sequence<Is...>, Ts...>
 	template <typename Fn>
 	VEG_INLINE VEG_CPP20(constexpr) void construct(Fn fn)
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_IS_NOEXCEPT(VEG_FWD(fn)(UTag<Is>{})))) {
-		internal::visit<
+		_detail::visit<
 				void,
 				VEG_ALL_OF(VEG_IS_NOEXCEPT(VEG_FWD(fn)(UTag<Is>{}))),
 				sizeof...(Ts)>(
@@ -913,7 +913,7 @@ struct DoubleStorageDtor { /* NOLINT */
 	VEG_CPP20(constexpr)
 	void destroy()
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_destructible<Ts>))) {
-		internal::visit14<
+		_detail::visit14<
 				void,
 				VEG_ALL_OF(VEG_CONCEPT(nothrow_destructible<Ts>)),
 				sizeof...(Ts)>(
@@ -926,7 +926,7 @@ struct DoubleStorageDtor { /* NOLINT */
 	VEG_CPP20(constexpr)
 	void destroy_inactive(usize tag)
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_destructible<Ts>))) {
-		internal::visit14<
+		_detail::visit14<
 				void,
 				VEG_ALL_OF(VEG_CONCEPT(nothrow_destructible<Ts>)),
 				sizeof...(Ts)>(
@@ -989,7 +989,7 @@ struct DoubleStorageCopyMove { /* NOLINT */
 			: inner{} {
 		using Fn = UwunionGetter<decltype(inner.inner0)&&, Ts...>;
 		inner.tag_with_bit = rhs.inner.tag_with_bit / 2U * 2U;
-		internal::visit<
+		_detail::visit<
 				void,
 				VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>)),
 				sizeof...(Ts)>(
@@ -1007,7 +1007,7 @@ struct DoubleStorageCopyMove { /* NOLINT */
 			: inner{} {
 		using Fn = UwunionGetter<decltype(inner.inner0) const&, Ts...>;
 		inner.tag_with_bit = rhs.inner.tag_with_bit / 2U * 2U;
-		internal::visit<
+		_detail::visit<
 				void,
 				VEG_ALL_OF(VEG_CONCEPT(nothrow_copyable<Ts>)),
 				sizeof...(Ts)>(
@@ -1058,14 +1058,14 @@ struct DoubleStorageCopyMove { /* NOLINT */
 		if (self_tag == fn_tag) {
 			// see above for justification
 
-			internal::visit<
+			_detail::visit<
 					void,
 					VEG_ALL_OF(VEG_CONCEPT(nothrow_move_assignable<Storage<Ts>>)),
 					sizeof...(Ts)>(
 					self_tag,
 					AssignFn<decltype(inner.inner0), Fn, Ts...>{self_inner, VEG_FWD(fn)});
 		} else {
-			internal::visit<
+			_detail::visit<
 					void,
 					VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>)),
 					sizeof...(Ts)>(
@@ -1198,13 +1198,13 @@ void dbg_impl(
 		fmt::BufferMut out,
 		uwunion::IndexedUwunion<meta::index_sequence<Is...>, Ts...> const& u)
 		VEG_NOEXCEPT_IF(false) {
-	internal::visit14<void, false, sizeof...(Is)>(
+	_detail::visit14<void, false, sizeof...(Is)>(
 			usize(u.index()),
-			internal::_uwunion::Dbg<internal::_uwunion::RawUwunion<Ts...>>{
+			_detail::_uwunion::Dbg<_detail::_uwunion::RawUwunion<Ts...>>{
 					VEG_FWD(out), u.get_union_ref()});
 }
 } // namespace _uwunion
-} // namespace internal
+} // namespace _detail
 
 namespace uwunion {
 
@@ -1219,15 +1219,15 @@ VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_eq<Ts, Us>)))->bool;
 
 template <usize... Is, typename... Ts>
 struct IndexedUwunion<meta::index_sequence<Is...>, Ts...>
-		: protected internal::_uwunion::UwunionImpl<Ts...> {
+		: protected _detail::_uwunion::UwunionImpl<Ts...> {
 
 protected:
-	using Base = internal::_uwunion::UwunionImpl<Ts...>;
+	using Base = _detail::_uwunion::UwunionImpl<Ts...>;
 	using Base::Base;
 
 public:
 	VEG_INLINE constexpr auto get_union_ref() const noexcept
-			-> internal::_uwunion::RawUwunion<Ts...> const& {
+			-> _detail::_uwunion::RawUwunion<Ts...> const& {
 		return Base::get_union_ref();
 	}
 
@@ -1235,9 +1235,9 @@ public:
 	VEG_INLINE constexpr IndexedUwunion(Fix<I> /*itag*/, ith<usize{I}, Ts...> arg)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<ith<usize{I}, Ts...>>))
 			: Base{
-						internal::_uwunion::EmplaceTag{},
-						internal::UTag<usize{I}>{},
-						internal::_uwunion::IdxMoveFn<ith<usize{I}, Ts...>>{VEG_FWD(arg)},
+						_detail::_uwunion::EmplaceTag{},
+						_detail::UTag<usize{I}>{},
+						_detail::_uwunion::IdxMoveFn<ith<usize{I}, Ts...>>{VEG_FWD(arg)},
 						usize{I},
 				} {}
 	template <typename T, isize I = idx<T, Ts...>::value>
@@ -1245,9 +1245,9 @@ public:
 			Tag<T> /*tag*/, meta::type_identity_t<T> arg)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))
 			: Base{
-						internal::_uwunion::EmplaceTag{},
-						internal::UTag<I>{},
-						internal::_uwunion::IdxMoveFn<T>{VEG_FWD(arg)},
+						_detail::_uwunion::EmplaceTag{},
+						_detail::UTag<I>{},
+						_detail::_uwunion::IdxMoveFn<T>{VEG_FWD(arg)},
 						I,
 				} {}
 
@@ -1264,9 +1264,9 @@ public:
 			(fn, Fn))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, ith<usize{I}, Ts...>>))
 			: Base{
-						internal::_uwunion::EmplaceTag{},
-						internal::UTag<usize{I}>{},
-						internal::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)},
+						_detail::_uwunion::EmplaceTag{},
+						_detail::UTag<usize{I}>{},
+						_detail::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)},
 						usize{I},
 				} {}
 	VEG_TEMPLATE(
@@ -1277,9 +1277,9 @@ public:
 			(fn, Fn))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, T>))
 			: Base{
-						internal::_uwunion::EmplaceTag{},
-						internal::UTag<idx<T, Ts...>::value>{},
-						internal::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)},
+						_detail::_uwunion::EmplaceTag{},
+						_detail::UTag<idx<T, Ts...>::value>{},
+						_detail::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)},
 						idx<T, Ts...>::value,
 				} {}
 
@@ -1295,16 +1295,16 @@ public:
 					VEG_CONCEPT(nothrow_fn_once<Fn, meta::invoke_result_t<Fn, Ts>, Ts>)))
 					-> Uwunion<meta::invoke_result_t<Fn, Ts>...> {
 		using Target = Uwunion<meta::invoke_result_t<Fn, Ts>...>;
-		return internal::visit14<
+		return _detail::visit14<
 				Target,
 				VEG_ALL_OF(VEG_CONCEPT(
 						nothrow_fn_once<Fn, meta::invoke_result_t<Fn, Ts>, Ts>)),
 				sizeof...(Ts)>(
 				usize(index()),
-				internal::_uwunion::EmplaceWrapper<
+				_detail::_uwunion::EmplaceWrapper<
 						Target,
-						internal::_uwunion::FnMapWrapper<Fn&&, Ts...>&&>{
-						internal::_uwunion::FnMapWrapper<Fn&&, Ts...>{
+						_detail::_uwunion::FnMapWrapper<Fn&&, Ts...>&&>{
+						_detail::_uwunion::FnMapWrapper<Fn&&, Ts...>{
 								VEG_FWD(fn),
 								this->get_union_ref(),
 						},
@@ -1328,7 +1328,7 @@ public:
 																 Ts>)))
 					-> Uwunion<meta::invoke_result_t<inner_ith<Fn, Is>, Ts>...> {
 		using Target = Uwunion<meta::invoke_result_t<inner_ith<Fn, Is>, Ts>...>;
-		return internal::visit14<
+		return _detail::visit14<
 				Target,
 				VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_once<
 															 inner_ith<Fn, Is>,
@@ -1336,10 +1336,10 @@ public:
 															 Ts>)),
 				sizeof...(Ts)>(
 				usize(index()),
-				internal::_uwunion::EmplaceWrapper<
+				_detail::_uwunion::EmplaceWrapper<
 						Target,
-						internal::_uwunion::FnMapIWrapper<Fn&&, Ts...>&&>{
-						internal::_uwunion::FnMapIWrapper<Fn&&, Ts...>{
+						_detail::_uwunion::FnMapIWrapper<Fn&&, Ts...>&&>{
+						_detail::_uwunion::FnMapIWrapper<Fn&&, Ts...>{
 								VEG_FWD(fn),
 								this->get_union_ref(),
 						},
@@ -1355,12 +1355,12 @@ public:
 			(fn, Fn)) && //
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Ts>)))
 					-> Ret {
-		return internal::visit14<
+		return _detail::visit14<
 				Ret,
 				VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Ts>)),
 				sizeof...(Ts)>(
 				usize(index()),
-				internal::_uwunion::FnVisitWrapper<Ret, Fn&&, Ts...>{
+				_detail::_uwunion::FnVisitWrapper<Ret, Fn&&, Ts...>{
 						VEG_FWD(fn),
 						this->get_union_ref(),
 				});
@@ -1375,12 +1375,12 @@ public:
 			(fn, Fn)) && //
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(
 					VEG_CONCEPT(nothrow_fn_once<inner_ith<Fn, Is>, Ret, Ts>))) -> Ret {
-		return internal::visit14<
+		return _detail::visit14<
 				Ret,
 				VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_once<inner_ith<Fn, Is>, Ret, Ts>)),
 				sizeof...(Ts)>(
 				usize(index()),
-				internal::_uwunion::FnVisitIWrapper<Ret, Fn&&, Ts...>{
+				_detail::_uwunion::FnVisitIWrapper<Ret, Fn&&, Ts...>{
 						VEG_FWD(fn),
 						this->get_union_ref(),
 				});
@@ -1397,9 +1397,9 @@ public:
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, ith<usize{I}, Ts...>>))
 			->RefMut<ith<usize{I}, Ts...>> {
 		this->template _emplace<usize{I}>(
-				internal::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)});
+				_detail::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)});
 		return mut(const_cast<ith<usize{I}, Ts...>&>(
-				internal::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
+				_detail::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
 						.inner));
 	}
 
@@ -1425,7 +1425,7 @@ public:
 			(/*itag*/, Fix<I>))
 	const & VEG_NOEXCEPT->ith<usize{I}, Ts...> const& {
 		VEG_ASSERT(I == index());
-		return internal::_uwunion::UwunionGetImpl<usize{I}>::get(
+		return _detail::_uwunion::UwunionGetImpl<usize{I}>::get(
 							 this->get_union_ref())
 		    .inner;
 	}
@@ -1438,7 +1438,7 @@ public:
 	&VEG_NOEXCEPT->ith<usize{I}, Ts...>& {
 		VEG_ASSERT(I == index());
 		return const_cast<ith<usize{I}, Ts...>&>(
-				internal::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
+				_detail::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
 						.inner);
 	}
 
@@ -1464,7 +1464,7 @@ public:
 			(/*itag*/, Tag<T>))
 	const & VEG_NOEXCEPT->ith<usize{I}, Ts...> const& {
 		VEG_ASSERT(I == index());
-		return internal::_uwunion::UwunionGetImpl<usize{I}>::get(
+		return _detail::_uwunion::UwunionGetImpl<usize{I}>::get(
 							 this->get_union_ref())
 		    .inner;
 	}
@@ -1477,7 +1477,7 @@ public:
 	&VEG_NOEXCEPT->ith<usize{I}, Ts...>& {
 		VEG_ASSERT(I == index());
 		return const_cast<ith<usize{I}, Ts...>&>(
-				internal::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
+				_detail::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
 						.inner);
 	}
 
@@ -1503,7 +1503,7 @@ public:
 					-> ith<usize{I}, Ts...> {
 		meta::unreachable_if(I != index());
 		return const_cast<ith<usize{I}, Ts...>&&>(
-				internal::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
+				_detail::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
 						.inner);
 	}
 
@@ -1511,24 +1511,24 @@ public:
 
 	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_ref() const & //
 			VEG_NOEXCEPT -> Uwunion<Ref<Ts>...> {
-		using Raw = internal::_uwunion::RawUwunion<Ts...>;
-		return internal::visit14<Uwunion<Ref<Ts>...>, true, sizeof...(Ts)>(
+		using Raw = _detail::_uwunion::RawUwunion<Ts...>;
+		return _detail::visit14<Uwunion<Ref<Ts>...>, true, sizeof...(Ts)>(
 				usize(index()),
-				internal::_uwunion::EmplaceWrapper<
+				_detail::_uwunion::EmplaceWrapper<
 						Uwunion<Ref<Ts>...>,
-						internal::_uwunion::UwunionGetterRef<Raw, Ts...>>{
+						_detail::_uwunion::UwunionGetterRef<Raw, Ts...>>{
 						{const_cast<Raw&>(this->get_union_ref())},
 						usize(index()),
 				});
 	}
 	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto as_mut() //
 			VEG_NOEXCEPT -> Uwunion<RefMut<Ts>...> {
-		using Raw = internal::_uwunion::RawUwunion<Ts...>;
-		return internal::visit14<Uwunion<RefMut<Ts>...>, true, sizeof...(Ts)>(
+		using Raw = _detail::_uwunion::RawUwunion<Ts...>;
+		return _detail::visit14<Uwunion<RefMut<Ts>...>, true, sizeof...(Ts)>(
 				usize(index()),
-				internal::_uwunion::EmplaceWrapper<
+				_detail::_uwunion::EmplaceWrapper<
 						Uwunion<RefMut<Ts>...>,
-						internal::_uwunion::UwunionGetterMut<Raw&, Ts...>>{
+						_detail::_uwunion::UwunionGetterMut<Raw&, Ts...>>{
 						{const_cast<Raw&>(this->get_union_ref())},
 						usize(index()),
 				});
@@ -1544,15 +1544,15 @@ VEG_TEMPLATE(
 		(rhs, IndexedUwunion<meta::index_sequence<Is...>, Us...> const&))
 VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_eq<Ts, Us>)))->bool {
 	return lhs.index() == rhs.index() && //
-	       internal::visit<
+	       _detail::visit<
 						 bool,
 						 VEG_ALL_OF(VEG_CONCEPT(nothrow_eq<Ts, Us>)),
 						 sizeof...(Is)>(
 						 usize(lhs.index()),
-						 internal::_uwunion::Eq<
+						 _detail::_uwunion::Eq<
 								 VEG_ALL_OF(VEG_CONCEPT(nothrow_eq<Ts, Us>)),
-								 internal::_uwunion::RawUwunion<Ts...>,
-								 internal::_uwunion::RawUwunion<Us...>>{
+								 _detail::_uwunion::RawUwunion<Ts...>,
+								 _detail::_uwunion::RawUwunion<Us...>>{
 								 lhs.get_union_ref(),
 								 rhs.get_union_ref(),
 						 });
@@ -1569,7 +1569,7 @@ private:
 	template <typename Seq, typename... Us>
 	friend struct veg::uwunion::IndexedUwunion;
 	template <typename, typename>
-	friend struct internal::_uwunion::EmplaceWrapper;
+	friend struct _detail::_uwunion::EmplaceWrapper;
 
 	using Base =
 			uwunion::IndexedUwunion<meta::make_index_sequence<sizeof...(Ts)>, Ts...>;
@@ -1599,7 +1599,7 @@ public:
 			(/*itag*/, Fix<I>))
 	const & VEG_NOEXCEPT->ith<usize{I}, Ts...> const& {
 		VEG_ASSERT(I == this->index());
-		return internal::_uwunion::UwunionGetImpl<usize{I}>::get(
+		return _detail::_uwunion::UwunionGetImpl<usize{I}>::get(
 							 this->get_union_ref())
 		    .inner;
 	}
@@ -1612,7 +1612,7 @@ public:
 	&VEG_NOEXCEPT->ith<usize{I}, Ts...>& {
 		VEG_ASSERT(I == this->index());
 		return const_cast<ith<usize{I}, Ts...>&>(
-				internal::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
+				_detail::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
 						.inner);
 	}
 
@@ -1637,7 +1637,7 @@ public:
 			(/*itag*/, Tag<T>))
 	const & VEG_NOEXCEPT->ith<usize{I}, Ts...> const& {
 		VEG_ASSERT(I == this->index());
-		return internal::_uwunion::UwunionGetImpl<usize{I}>::get(
+		return _detail::_uwunion::UwunionGetImpl<usize{I}>::get(
 							 this->get_union_ref())
 		    .inner;
 	}
@@ -1650,7 +1650,7 @@ public:
 	&VEG_NOEXCEPT->ith<usize{I}, Ts...>& {
 		VEG_ASSERT(I == this->index());
 		return const_cast<ith<usize{I}, Ts...>&>(
-				internal::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
+				_detail::_uwunion::UwunionGetImpl<usize{I}>::get(this->get_union_ref())
 						.inner);
 	}
 
@@ -1673,7 +1673,7 @@ namespace uwunion {
 using veg::Uwunion;
 } // namespace uwunion
 
-namespace internal {
+namespace _detail {
 namespace _uwunion {
 
 template <bool NoExcept, typename U1, typename U2>
@@ -1700,7 +1700,7 @@ ord(uwunion::IndexedUwunion<veg::meta::index_sequence<Is...>, Ts...> const& lhs,
 				-> cmp::Ordering {
 	return (lhs.index() != rhs.index())
 	           ? cmp::Ord<isize, isize>::cmp(ref(lhs.index()), ref(rhs.index()))
-	           : internal::visit<
+	           : _detail::visit<
 									 cmp::Ordering,
 									 VEG_ALL_OF(VEG_CONCEPT(nothrow_ord<Ts, Us>)),
 									 sizeof...(Is)>(
@@ -1753,22 +1753,22 @@ struct DbgUwunionBase {
 	}
 };
 } // namespace _uwunion
-} // namespace internal
+} // namespace _detail
 
 template <typename... Ts, typename... Us>
 struct cmp::Ord<Uwunion<Ts...>, Uwunion<Us...>>
-		: internal::_uwunion::OrdUwunionBase {};
+		: _detail::_uwunion::OrdUwunionBase {};
 template <typename... Ts, typename... Us, usize... Is>
 struct cmp::Ord<
 		uwunion::IndexedUwunion<meta::index_sequence<Is...>, Ts...>,
 		uwunion::IndexedUwunion<meta::index_sequence<Is...>, Us...>>
-		: internal::_uwunion::OrdUwunionBase {};
+		: _detail::_uwunion::OrdUwunionBase {};
 
 template <typename... Ts>
-struct fmt::Debug<Uwunion<Ts...>> : internal::_uwunion::DbgUwunionBase {};
+struct fmt::Debug<Uwunion<Ts...>> : _detail::_uwunion::DbgUwunionBase {};
 template <usize... Is, typename... Ts>
 struct fmt::Debug<uwunion::IndexedUwunion<meta::index_sequence<Is...>, Ts...>>
-		: internal::_uwunion::DbgIUwunionBase {};
+		: _detail::_uwunion::DbgIUwunionBase {};
 
 template <usize... Is, typename... Ts>
 struct cpo::is_trivially_constructible<

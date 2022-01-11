@@ -10,7 +10,7 @@ inline namespace tags {
 VEG_TAG(from_slice, FromSlice);
 } // namespace tags
 
-namespace internal {
+namespace _detail {
 namespace _mem {
 
 template <usize MaxAlign>
@@ -102,14 +102,14 @@ struct BumpAllocLayout {
 	}
 };
 } // namespace _mem
-} // namespace internal
+} // namespace _detail
 
 namespace mem {
 
 template <usize MaxAlign>
-struct BumpAlloc : private internal::_mem::BumpAllocLayout<MaxAlign> {
+struct BumpAlloc : private _detail::_mem::BumpAllocLayout<MaxAlign> {
 	BumpAlloc(FromSlice /*tag*/, SliceMut<byte> s) noexcept
-			: internal::_mem::BumpAllocLayout<MaxAlign>{
+			: _detail::_mem::BumpAllocLayout<MaxAlign>{
 						s.mut_ptr(),
 						s.mut_ptr(),
 						s.mut_ptr() + s.len(),
@@ -134,7 +134,7 @@ struct MonotonicAlloc : private BumpAlloc<MaxAlign> {
 
 template <usize MaxAlign>
 struct Alloc<BumpAlloc<MaxAlign>> {
-	using ImplMut = internal::_mem::BumpAllocLayout<MaxAlign>&;
+	using ImplMut = _detail::_mem::BumpAllocLayout<MaxAlign>&;
 	using RefMut = veg::RefMut<BumpAlloc<MaxAlign>>;
 
 	VEG_INLINE static auto alloc(RefMut ref, mem::Layout layout) noexcept
@@ -157,7 +157,7 @@ struct Alloc<BumpAlloc<MaxAlign>> {
 
 template <usize MaxAlign>
 struct Alloc<StackAlloc<MaxAlign>> {
-	using ImplMut = internal::_mem::BumpAllocLayout<MaxAlign>&;
+	using ImplMut = _detail::_mem::BumpAllocLayout<MaxAlign>&;
 	using RefMut = veg::RefMut<StackAlloc<MaxAlign>>;
 
 	VEG_INLINE static auto alloc(RefMut ref, mem::Layout layout) noexcept
@@ -180,7 +180,7 @@ struct Alloc<StackAlloc<MaxAlign>> {
 
 template <usize MaxAlign>
 struct Alloc<MonotonicAlloc<MaxAlign>> {
-	using ImplMut = internal::_mem::BumpAllocLayout<MaxAlign>&;
+	using ImplMut = _detail::_mem::BumpAllocLayout<MaxAlign>&;
 	using RefMut = veg::RefMut<MonotonicAlloc<MaxAlign>>;
 
 	VEG_INLINE static auto alloc(RefMut ref, mem::Layout layout) noexcept

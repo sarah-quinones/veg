@@ -47,7 +47,7 @@ struct Alloc<SystemAlloc> {
 		                ? std::malloc(layout.byte_size)
 		                : mem::aligned_alloc(layout.align, layout.byte_size);
 		if (HEDLEY_UNLIKELY(ptr == nullptr)) {
-			internal::terminate();
+			_detail::terminate();
 		}
 		return {ptr, ::malloc_usable_size(ptr)};
 	}
@@ -70,7 +70,7 @@ struct Alloc<SystemAlloc> {
 		}
 
 		if (HEDLEY_UNLIKELY(new_ptr == nullptr)) {
-			internal::terminate();
+			_detail::terminate();
 		}
 
 		if (!use_realloc) {
@@ -141,7 +141,7 @@ VEG_INLINE_VAR(system_alloc, SystemAlloc);
 VEG_INLINE_VAR(default_cloner, DefaultCloner);
 } // namespace mem
 
-namespace internal {
+namespace _detail {
 namespace _mem {
 template <typename A>
 struct ManagedAlloc /* NOLINT */ {
@@ -156,7 +156,7 @@ struct ManagedAlloc /* NOLINT */ {
 	}
 };
 } // namespace _mem
-} // namespace internal
+} // namespace _detail
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

@@ -5,7 +5,7 @@
 #include "veg/internal/typedefs.hpp"
 
 namespace veg {
-namespace internal {
+namespace _detail {
 struct NoDefaultCtor {
 	NoDefaultCtor() = delete;
 };
@@ -42,7 +42,7 @@ struct NoCopyCtor {
 	auto operator=(NoCopyCtor&&) -> NoCopyCtor& = default;
 };
 
-} // namespace internal
+} // namespace _detail
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

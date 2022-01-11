@@ -211,7 +211,7 @@ struct map_i {
 			->Tuple<veg::meta::invoke_result_t<inner_ith<Fn&, Is>, Ts>...> {
 		return {
 				inplace[tuplify{}],
-				internal::WithArg<inner_ith<Fn&, Is>, Ts>{
+				_detail::WithArg<inner_ith<Fn&, Is>, Ts>{
 						fn[Fix<isize{Is}>{}],
 						static_cast<Ts&&>(static_cast<TupleLeaf<Is, Ts>&>(args)
 		                              .__VEG_IMPL_LEAF_GET())}...};
@@ -233,7 +233,7 @@ struct map {
 			->Tuple<veg::meta::invoke_result_t<Fn&, Ts&&>...> {
 		return {
 				inplace[tuplify{}],
-				internal::WithArg<Fn&, Ts&&>{
+				_detail::WithArg<Fn&, Ts&&>{
 						fn,
 						static_cast<Ts&&>(
 								static_cast<TupleLeaf<Is, Ts>&&>(args).__VEG_IMPL_LEAF_GET()),
@@ -252,8 +252,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 #define __VEG_IMPL_FWD /* NOLINT */ Ts(VEG_FWD(args))
 #define __VEG_IMPL_INPLACE /* NOLINT */ Ts(VEG_FWD(fns)())
 #else
-#define __VEG_IMPL_FWD /* NOLINT */                                            \
-	inplace, internal::MoveFn<Ts>{VEG_FWD(args)},
+#define __VEG_IMPL_FWD /* NOLINT */ inplace, _detail::MoveFn<Ts>{VEG_FWD(args)},
 #define __VEG_IMPL_INPLACE /* NOLINT */ inplace, VEG_FWD(fns)
 #endif
 
@@ -333,7 +332,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 };
 } // namespace tuple
 
-namespace internal {
+namespace _detail {
 namespace _tuple {
 
 struct cmp_impl {
@@ -371,9 +370,9 @@ struct cmp_impl {
 	}
 };
 } // namespace _tuple
-} // namespace internal
+} // namespace _detail
 
-namespace internal {
+namespace _detail {
 namespace meta_ {
 
 struct NonTupleBaseInfoImpl {
@@ -411,13 +410,13 @@ struct IndexedToTuple<tuple::IndexedTuple<meta::index_sequence<Is...>, Ts...>> {
 	using Type = Tuple<Ts...>;
 };
 } // namespace meta_
-} // namespace internal
+} // namespace _detail
 
 namespace tuple {
 namespace meta {
 template <typename T>
 using TupleBaseInfo =
-		decltype(internal::meta_::is_tuple_helper::test(static_cast<T*>(nullptr)));
+		decltype(_detail::meta_::is_tuple_helper::test(static_cast<T*>(nullptr)));
 
 template <typename T>
 using is_tuple = veg::meta::bool_constant<TupleBaseInfo<T>::is_tuple>;
@@ -491,7 +490,7 @@ VEG_TEMPLATE(
 		(lhs, tuple::IndexedTuple<veg::meta::index_sequence<Is...>, Ts...> const&),
 		(rhs, tuple::IndexedTuple<veg::meta::index_sequence<Is...>, Us...> const&))
 VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_eq<Ts, Us>)))->bool {
-	return internal::_tuple::cmp_impl::eq(lhs, rhs);
+	return _detail::_tuple::cmp_impl::eq(lhs, rhs);
 }
 
 VEG_TEMPLATE(
@@ -506,7 +505,7 @@ VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_eq<Ts, Us>)))->bool {
 }
 } // namespace tuple
 
-namespace internal {
+namespace _detail {
 namespace _tuple {
 template <usize... Is, typename... Ts>
 VEG_INLINE static constexpr auto tuple_fwd(
@@ -520,7 +519,7 @@ VEG_INLINE static constexpr auto tuple_fwd(
 }
 
 } // namespace _tuple
-} // namespace internal
+} // namespace _detail
 
 namespace tuple {
 namespace nb {
@@ -581,8 +580,8 @@ private:
 		return zip::from_ref_to_result(
 				Tag<veg::meta::type_sequence_zip<
 						Tuple,
-						typename internal::meta_::IndexedToTuple<Tuples>::Type...>>{},
-				zip::apply(internal::_tuple::tuple_fwd(VEG_FWD(tups))...));
+						typename _detail::meta_::IndexedToTuple<Tuples>::Type...>>{},
+				zip::apply(_detail::_tuple::tuple_fwd(VEG_FWD(tups))...));
 	}
 
 	VEG_INLINE static constexpr auto apply() VEG_NOEXCEPT -> Tuple<> {
@@ -637,7 +636,7 @@ private:
 
 			return {
 					inplace[tuplify{}],
-					internal::MoveFn<InnerTargets>{static_cast<InnerTargets&&>(
+					_detail::MoveFn<InnerTargets>{static_cast<InnerTargets&&>(
 							static_cast<TupleLeaf<Is, InnerTargets&&>&>(refs)
 									.__VEG_IMPL_LEAF_GET())}...,
 			};
@@ -705,7 +704,7 @@ private:
 					-> Concat<Tuples...> {
 		return cat::template from_ref_to_result(
 				Tag<veg::meta::type_sequence_cat<Tuple, Tuples...>>{},
-				cat::apply(internal::_tuple::tuple_fwd(VEG_FWD(tups))...));
+				cat::apply(_detail::_tuple::tuple_fwd(VEG_FWD(tups))...));
 	}
 
 	template <typename... Targets, usize... Is, typename... Refs>
@@ -716,7 +715,7 @@ private:
 					-> veg::Tuple<Targets...> {
 		return {
 				inplace[tuplify{}],
-				internal::MoveFn<Targets>{static_cast<Targets&&>(
+				_detail::MoveFn<Targets>{static_cast<Targets&&>(
 						static_cast<Targets&&>(static_cast<TupleLeaf<Is, Targets&&>&>(refs)
 		                                   .__VEG_IMPL_LEAF_GET()))}...,
 		};
@@ -733,7 +732,7 @@ private:
 			-> veg::meta::type_sequence_cat<
 					Tuple,
 					Tuple<Ts...>,
-					typename internal::meta_::IndexedToTuple<Tuples>::Type...> {
+					typename _detail::meta_::IndexedToTuple<Tuples>::Type...> {
 		return cat::apply2(VEG_FWD(first), cat::apply(VEG_FWD(rest)...));
 	}
 
@@ -806,7 +805,7 @@ struct is_trivially_constructible<tuple::Tuple<Ts...>>
 };
 } // namespace cpo
 
-namespace internal {
+namespace _detail {
 namespace _tuple {
 template <typename... Ts, typename... Us, usize... Is>
 VEG_NODISCARD VEG_INLINE constexpr auto
@@ -814,7 +813,7 @@ ord(tuple::IndexedTuple<veg::meta::index_sequence<Is...>, Ts...> const& lhs,
     tuple::IndexedTuple<veg::meta::index_sequence<Is...>, Us...> const& rhs)
 		VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_ord<Ts, Us>)))
 				-> cmp::Ordering {
-	return internal::_tuple::cmp_impl::cmp(lhs, rhs);
+	return _detail::_tuple::cmp_impl::cmp(lhs, rhs);
 }
 struct OrdTupleBase {
 	VEG_TEMPLATE(
@@ -843,7 +842,7 @@ template <typename... Ts, usize... Is>
 static void to_string_impl(
 		fmt::BufferMut out,
 		tuple::IndexedTuple<meta::index_sequence<Is...>, Ts...> const& tup) {
-	internal::_fmt::DbgStructScope _{VEG_FWD(out)};
+	_detail::_fmt::DbgStructScope _{VEG_FWD(out)};
 	VEG_EVAL_ALL(
 			(_.out.append_ln(),
 	     fmt::Debug<Ts>::to_string(
@@ -869,21 +868,21 @@ struct DebugTupleBase {
 	}
 };
 } // namespace _tuple
-} // namespace internal
+} // namespace _detail
 
 template <typename... Ts, typename... Us>
-struct cmp::Ord<Tuple<Ts...>, Tuple<Us...>> : internal::_tuple::OrdTupleBase {};
+struct cmp::Ord<Tuple<Ts...>, Tuple<Us...>> : _detail::_tuple::OrdTupleBase {};
 template <usize... Is, typename... Ts, typename... Us>
 struct cmp::Ord<
 		tuple::IndexedTuple<meta::index_sequence<Is...>, Ts...>,
 		tuple::IndexedTuple<meta::index_sequence<Is...>, Us...>>
-		: internal::_tuple::OrdITupleBase {};
+		: _detail::_tuple::OrdITupleBase {};
 
 template <typename... Ts>
-struct fmt::Debug<Tuple<Ts...>> : internal::_tuple::DebugTupleBase {};
+struct fmt::Debug<Tuple<Ts...>> : _detail::_tuple::DebugTupleBase {};
 template <usize... Is, typename... Ts>
 struct fmt::Debug<tuple::IndexedTuple<meta::index_sequence<Is...>, Ts...>>
-		: internal::_tuple::DebugITupleBase {};
+		: _detail::_tuple::DebugITupleBase {};
 } // namespace veg
 
 template <typename... Ts>

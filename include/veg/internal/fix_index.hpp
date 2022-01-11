@@ -12,7 +12,7 @@ struct Dyn;
 template <isize N>
 struct Fix;
 
-namespace internal {
+namespace _detail {
 template <typename L, typename R>
 struct binary_traits {
 	using Add = void;
@@ -35,19 +35,19 @@ template <typename T>
 struct IdxBase {};
 } // namespace adl
 } // namespace idx
-namespace meta_ {
+namespace _meta {
 template <typename T>
 struct is_fix : false_type {};
 template <isize N>
 struct is_fix<Fix<N>> : true_type {};
-} // namespace meta_
-} // namespace internal
+} // namespace _meta
+} // namespace _detail
 
 namespace concepts {
 VEG_DEF_CONCEPT(
 		typename T,
 		index,
-		VEG_CONCEPT(same<T, Dyn>) || internal::meta_::is_fix<T>::value);
+		VEG_CONCEPT(same<T, Dyn>) || _detail::_meta::is_fix<T>::value);
 } // namespace concepts
 
 enum struct Ternary : unsigned char {
@@ -96,7 +96,7 @@ private:
 };
 
 template <isize N>
-struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
+struct Fix : _detail::idx::adl::IdxBase<Fix<N>> {
 	constexpr Fix() VEG_NOEXCEPT = default;
 	VEG_INLINE constexpr Fix(Dyn /*arg*/, Unsafe /*tag*/) VEG_NOEXCEPT;
 	VEG_INLINE constexpr Fix // NOLINT(hicpp-explicit-conversions)
@@ -123,7 +123,7 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator+,
 			(b, R))
-	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::add_fn(*this, b));
+	const VEG_DEDUCE_RET(_detail::binary_traits<Fix, R>::add_fn(*this, b));
 
 	VEG_TEMPLATE(
 			(typename R),
@@ -131,7 +131,7 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator-,
 			(b, R))
-	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::sub_fn(*this, b));
+	const VEG_DEDUCE_RET(_detail::binary_traits<Fix, R>::sub_fn(*this, b));
 
 	VEG_TEMPLATE(
 			(typename R),
@@ -139,27 +139,27 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator*,
 			(b, R))
-	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::mul_fn(*this, b));
+	const VEG_DEDUCE_RET(_detail::binary_traits<Fix, R>::mul_fn(*this, b));
 
 	VEG_TEMPLATE(
 			(typename R),
 			requires(
 					VEG_CONCEPT(index<R>) &&
-					VEG_CONCEPT(index<typename internal::binary_traits<Fix, R>::Div>)),
+					VEG_CONCEPT(index<typename _detail::binary_traits<Fix, R>::Div>)),
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator/,
 			(b, R))
-	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::div_fn(*this, b));
+	const VEG_DEDUCE_RET(_detail::binary_traits<Fix, R>::div_fn(*this, b));
 
 	VEG_TEMPLATE(
 			(typename R),
 			requires(
 					VEG_CONCEPT(index<R>) &&
-					VEG_CONCEPT(index<typename internal::binary_traits<Fix, R>::Mod>)),
+					VEG_CONCEPT(index<typename _detail::binary_traits<Fix, R>::Mod>)),
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator%,
 			(b, R))
-	const VEG_DEDUCE_RET(internal::binary_traits<Fix, R>::mod_fn(*this, b));
+	const VEG_DEDUCE_RET(_detail::binary_traits<Fix, R>::mod_fn(*this, b));
 
 #define VEG_CMP(Name, Op)                                                      \
 	VEG_TEMPLATE(                                                                \
@@ -169,7 +169,7 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 			operator Op,                                                             \
 			(b, R))                                                                  \
 	const VEG_DEDUCE_RET(                                                        \
-			internal::binary_traits<Fix, R>::cmp_##Name##_fn(*this, b))
+			_detail::binary_traits<Fix, R>::cmp_##Name##_fn(*this, b))
 
 	VEG_CMP(eq, ==);
 	VEG_CMP(neq, !=);
@@ -181,7 +181,7 @@ struct Fix : internal::idx::adl::IdxBase<Fix<N>> {
 #undef VEG_CMP
 };
 
-namespace internal {
+namespace _detail {
 struct Error {
 	constexpr auto operator()(u64 const* fail = nullptr) const VEG_NOEXCEPT
 			-> u64 {
@@ -294,13 +294,13 @@ struct binary_traits<Fix<N>, Fix<M>> {
 namespace idx {
 namespace adl {} // namespace adl
 } // namespace idx
-} // namespace internal
+} // namespace _detail
 
 inline namespace literals {
 template <char... Chars>
 VEG_INLINE constexpr auto
-operator"" _c() VEG_NOEXCEPT -> Fix<internal::parse_int(
-		internal::char_seq<Chars...>::value, sizeof...(Chars), internal::Error{})> {
+operator"" _c() VEG_NOEXCEPT -> Fix<_detail::parse_int(
+		_detail::char_seq<Chars...>::value, sizeof...(Chars), _detail::Error{})> {
 	return {};
 }
 } // namespace literals

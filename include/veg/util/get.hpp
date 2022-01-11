@@ -17,8 +17,8 @@ template <usize N, typename T>
 struct array_extent<T[N]> : constant<usize, N> {};
 } // namespace meta
 
-namespace internal {
-namespace meta_ {
+namespace _detail {
+namespace _meta {
 
 template <typename T>
 void get() = delete;
@@ -76,8 +76,8 @@ struct has_adl_get
 					detected<adl_get::result_type, constant<usize, I>, T&&>)>,
 			adl_get {};
 
-} // namespace meta_
-} // namespace internal
+} // namespace _meta
+} // namespace _detail
 
 namespace concepts {
 namespace aux {
@@ -93,14 +93,14 @@ VEG_DEF_CONCEPT(
 		(usize I, typename T),
 		member_gettable,
 		VEG_CONCEPT(detected<
-								internal::meta_::member_get_expr,
+								_detail::_meta::member_get_expr,
 								meta::constant<usize, I>,
 								T>));
 VEG_DEF_CONCEPT(
 		(usize I, typename T),
 		adl_gettable,
 		VEG_CONCEPT(
-				detected<internal::meta_::adl_get_expr, meta::constant<usize, I>, T>));
+				detected<_detail::_meta::adl_get_expr, meta::constant<usize, I>, T>));
 
 VEG_DEF_CONCEPT_DISJUNCTION(
 		(usize I, typename T),
@@ -116,10 +116,10 @@ struct get {
 	VEG_TEMPLATE(
 			(typename T,
 	     typename Impl = meta::disjunction<
-					 internal::meta_::has_array_get<I, T>,
-					 internal::meta_::has_member_get<I, T>,
-					 internal::meta_::has_adl_get<I, T>,
-					 internal::meta_::none_found>),
+					 _detail::_meta::has_array_get<I, T>,
+					 _detail::_meta::has_member_get<I, T>,
+					 _detail::_meta::has_adl_get<I, T>,
+					 _detail::_meta::none_found>),
 			requires(VEG_CONCEPT(gettable<I, T>)),
 			VEG_INLINE constexpr auto
 			operator(),

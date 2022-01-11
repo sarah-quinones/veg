@@ -11,7 +11,7 @@ namespace veg {
 template <typename T, usize I>
 using inner_ith = decltype(VEG_DECLVAL(T)[Fix<isize{I}>{}]);
 
-namespace internal {
+namespace _detail {
 namespace _fn {
 
 template <
@@ -165,7 +165,7 @@ VEG_INLINE static constexpr auto call_bound_front_copy(
 }
 
 } // namespace _fn
-} // namespace internal
+} // namespace _detail
 
 namespace fn {
 
@@ -183,7 +183,7 @@ struct BindBackOnce {
 			(... args, Args&&)) &&
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(
 					nothrow_fn_once<Fn, Ret, Args..., StoredArgs...>)) -> Ret {
-		return internal::_fn::call_bound_back_once(
+		return _detail::_fn::call_bound_back_once(
 				VEG_FWD(fn), VEG_FWD(stored_args), VEG_FWD(args)...);
 	}
 };
@@ -202,7 +202,7 @@ struct BindFrontOnce {
 			(... args, Args&&)) &&
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(
 					nothrow_fn_once<Fn, Ret, StoredArgs..., Args...>)) -> Ret {
-		return internal::_fn::call_bound_front_once(
+		return _detail::_fn::call_bound_front_once(
 				VEG_FWD(fn), VEG_FWD(stored_args), VEG_FWD(args)...);
 	}
 };
@@ -223,8 +223,7 @@ struct BindBackMut {
 	VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_fn_mut<Fn, Ret, Args..., RefMut<StoredArgs>...>))
 			->Ret {
-		return internal::_fn::call_bound_back_mut(
-				fn, stored_args, VEG_FWD(args)...);
+		return _detail::_fn::call_bound_back_mut(fn, stored_args, VEG_FWD(args)...);
 	}
 };
 
@@ -244,7 +243,7 @@ struct BindFrontMut {
 	VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_fn_mut<Fn, Ret, RefMut<StoredArgs>..., Args...>))
 			->Ret {
-		return internal::_fn::call_bound_front_mut(
+		return _detail::_fn::call_bound_front_mut(
 				fn, stored_args, VEG_FWD(args)...);
 	}
 };
@@ -265,7 +264,7 @@ struct BindBack {
 	const VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_fn<Fn, Ret, Args..., Ref<StoredArgs>...>))
 			->Ret {
-		return internal::_fn::call_bound_back(fn, stored_args, VEG_FWD(args)...);
+		return _detail::_fn::call_bound_back(fn, stored_args, VEG_FWD(args)...);
 	}
 };
 
@@ -285,7 +284,7 @@ struct BindFront {
 	const VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_fn<Fn, Ret, Ref<StoredArgs>..., Args...>))
 			->Ret {
-		return internal::_fn::call_bound_front(fn, stored_args, VEG_FWD(args)...);
+		return _detail::_fn::call_bound_front(fn, stored_args, VEG_FWD(args)...);
 	}
 };
 
@@ -304,7 +303,7 @@ struct BindBackCopy {
 	const VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_fn<Fn, Ret, Args..., StoredArgs...>))
 			->Ret {
-		return internal::_fn::call_bound_back_copy(
+		return _detail::_fn::call_bound_back_copy(
 				fn, stored_args, VEG_FWD(args)...);
 	}
 };
@@ -323,7 +322,7 @@ struct BindFrontCopy {
 	const VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_fn<Fn, Ret, StoredArgs..., Args...>))
 			->Ret {
-		return internal::_fn::call_bound_front_copy(
+		return _detail::_fn::call_bound_front_copy(
 				fn, stored_args, VEG_FWD(args)...);
 	}
 };
@@ -340,7 +339,7 @@ struct bind_back_once {
 				VEG_FWD(fn),
 				Tuple<Args...>{
 						inplace[tuplify],
-						internal::MoveFn<Args>{VEG_FWD(args)}...,
+						_detail::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
@@ -356,7 +355,7 @@ struct bind_front_once {
 				VEG_FWD(fn),
 				Tuple<Args...>{
 						inplace[tuplify],
-						internal::MoveFn<Args>{VEG_FWD(args)}...,
+						_detail::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
@@ -373,7 +372,7 @@ struct bind_back_mut {
 				VEG_FWD(fn),
 				Tuple<Args...>{
 						inplace[tuplify],
-						internal::MoveFn<Args>{VEG_FWD(args)}...,
+						_detail::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
@@ -389,7 +388,7 @@ struct bind_front_mut {
 				VEG_FWD(fn),
 				Tuple<Args...>{
 						inplace[tuplify],
-						internal::MoveFn<Args>{VEG_FWD(args)}...,
+						_detail::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
@@ -406,7 +405,7 @@ struct bind_back {
 				VEG_FWD(fn),
 				Tuple<Args...>{
 						inplace[tuplify],
-						internal::MoveFn<Args>{VEG_FWD(args)}...,
+						_detail::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
@@ -422,7 +421,7 @@ struct bind_front {
 				VEG_FWD(fn),
 				Tuple<Args...>{
 						inplace[tuplify],
-						internal::MoveFn<Args>{VEG_FWD(args)}...,
+						_detail::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
@@ -439,7 +438,7 @@ struct bind_back_copy {
 				VEG_FWD(fn),
 				Tuple<Args...>{
 						inplace[tuplify],
-						internal::MoveFn<Args>{VEG_FWD(args)}...,
+						_detail::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}
@@ -455,7 +454,7 @@ struct bind_front_copy {
 				VEG_FWD(fn),
 				Tuple<Args...>{
 						inplace[tuplify],
-						internal::MoveFn<Args>{VEG_FWD(args)}...,
+						_detail::MoveFn<Args>{VEG_FWD(args)}...,
 				},
 		};
 	}

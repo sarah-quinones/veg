@@ -1,21 +1,15 @@
 #ifndef VEG_PARSE_HPP_JMZVOEG1S
 #define VEG_PARSE_HPP_JMZVOEG1S
 
-#include <veg/box.hpp>
-#include <veg/vec.hpp>
-#include <iostream>
+#include "veg/box.hpp"
+#include "veg/vec.hpp"
 #include <cassert>
 
 namespace veg {
-namespace internal {
+namespace _detail {
 namespace type_parse {
 VEG_TAG(from_literal, FromLiteral);
 struct StrView {
-	void dump() const noexcept {
-		std::cerr.write(_.begin, isize(_.len));
-		std::cerr << '\n';
-	}
-
 	struct Inner {
 		char const* begin;
 		usize len;
@@ -229,12 +223,12 @@ auto greedy_parse_nested_entity(StrView str) noexcept -> Tuple<Entity, StrView>;
 void strip_discard_1st(RefMut<Entity> e_mut) noexcept;
 void recurse_strip_discard_1st(RefMut<Entity> e_mut) noexcept;
 } // namespace type_parse
-} // namespace internal
+} // namespace _detail
 
 template <>
-struct fmt::Debug<internal::type_parse::StrView> {
+struct fmt::Debug<_detail::type_parse::StrView> {
 	static void
-	to_string(fmt::Buffer& out, Ref<internal::type_parse::StrView> str_ref) {
+	to_string(fmt::Buffer& out, Ref<_detail::type_parse::StrView> str_ref) {
 		out.reserve(str_ref->len() + 2);
 		usize n = out.size();
 		// TODO: escape sequences

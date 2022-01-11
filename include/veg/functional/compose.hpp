@@ -7,12 +7,12 @@
 
 namespace veg {
 
-namespace internal {
+namespace _detail {
 template <typename T>
 struct Wrapper {
 	T inner;
 };
-} // namespace internal
+} // namespace _detail
 
 namespace fn {
 template <typename... Fns>
@@ -52,8 +52,8 @@ struct Compose<> {
 template <typename First, typename... RestElems>
 struct ComposeOnce<First, RestElems...> {
 	using Rest = ComposeOnce<RestElems...>;
-	internal::Wrapper<First> first;
-	internal::Wrapper<Rest> rest;
+	_detail::Wrapper<First> first;
+	_detail::Wrapper<Rest> rest;
 
 	VEG_TEMPLATE(
 			(typename... Args,
@@ -74,8 +74,8 @@ struct ComposeOnce<First, RestElems...> {
 template <typename First, typename... RestElems>
 struct ComposeMut<First, RestElems...> {
 	using Rest = ComposeMut<RestElems...>;
-	internal::Wrapper<First> first;
-	internal::Wrapper<Rest> rest;
+	_detail::Wrapper<First> first;
+	_detail::Wrapper<Rest> rest;
 
 	VEG_TEMPLATE(
 			(typename... Args,
@@ -97,8 +97,8 @@ struct ComposeMut<First, RestElems...> {
 template <typename First, typename... RestElems>
 struct Compose<First, RestElems...> {
 	using Rest = Compose<RestElems...>;
-	internal::Wrapper<First> first;
-	internal::Wrapper<Rest> rest;
+	_detail::Wrapper<First> first;
+	_detail::Wrapper<Rest> rest;
 
 	VEG_TEMPLATE(
 			(typename... Args,
@@ -138,7 +138,7 @@ struct compose_once {
 		 */
 
 		return {
-				internal::Wrapper<Fns>{Fns(VEG_FWD(fns))}...,
+				_detail::Wrapper<Fns>{Fns(VEG_FWD(fns))}...,
 				{},
 		};
 	}
@@ -148,7 +148,7 @@ struct compose_mut {
 	constexpr auto operator()(Fns... fns) const
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
 					-> ComposeMut<Fns...> {
-		return {internal::Wrapper<Fns>{Fns(VEG_FWD(fns))}..., {}};
+		return {_detail::Wrapper<Fns>{Fns(VEG_FWD(fns))}..., {}};
 	}
 }; // namespace nb
 struct compose {
@@ -156,7 +156,7 @@ struct compose {
 	constexpr auto operator()(Fns... fns) const
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
 					-> Compose<Fns...> {
-		return {internal::Wrapper<Fns>{Fns(VEG_FWD(fns))}..., {}};
+		return {_detail::Wrapper<Fns>{Fns(VEG_FWD(fns))}..., {}};
 	}
 };
 } // namespace nb

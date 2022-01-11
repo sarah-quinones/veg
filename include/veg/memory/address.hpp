@@ -19,8 +19,8 @@ namespace veg {
 
 #if !(VEG_HAS_BUILTIN(__builtin_addressof) || __cplusplus >= 201703L)
 
-namespace internal {
-namespace mem_ {
+namespace _detail {
+namespace _mem {
 struct member_addr {
 	template <typename T>
 	using type = decltype(void(VEG_DECLVAL(T&).operator&()));
@@ -54,8 +54,8 @@ template <typename T>
 struct addr_impl
 		: meta::disjunction<has_member_addr<T>, has_adl_addr<T>, builtin_addr> {};
 
-} // namespace mem_
-} // namespace internal
+} // namespace _mem
+} // namespace _detail
 
 #endif
 
@@ -63,13 +63,14 @@ namespace mem {
 namespace nb {
 struct addressof {
 	template <typename T>
-	VEG_INLINE constexpr auto operator()(T&& var) const VEG_NOEXCEPT -> meta::unref_t<T>* {
+	VEG_INLINE constexpr auto operator()(T&& var) const VEG_NOEXCEPT
+			-> meta::unref_t<T>* {
 #if VEG_HAS_BUILTIN(__builtin_addressof)
 		return __builtin_addressof(var);
 #elif __cplusplus >= 201703L
 		return ::std::addressof(var);
 #else
-		return internal::mem_::addr_impl<T>::apply(var);
+		return _detail::_mem::addr_impl<T>::apply(var);
 #endif
 	}
 };

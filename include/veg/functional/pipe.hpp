@@ -11,7 +11,7 @@ template <typename Fn>
 struct Piped {};
 } // namespace fn
 
-namespace internal {
+namespace _detail {
 namespace _pipe {
 struct PipeableBase {};
 
@@ -27,9 +27,9 @@ VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, Ret, T>))
 	return VEG_FWD(fn)(VEG_FWD(value));
 }
 } // namespace _pipe
-} // namespace internal
+} // namespace _detail
 
-struct Pipeable : internal::_pipe::PipeableBase {};
+struct Pipeable : _detail::_pipe::PipeableBase {};
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

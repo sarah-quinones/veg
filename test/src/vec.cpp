@@ -7,7 +7,7 @@ using namespace veg;
 
 TEST_CASE("empty box") {
 	Box<int> u;
-	REQUIRE(*u.ptr_ref() == nullptr);
+	REQUIRE(*u.data_ref() == nullptr);
 	REQUIRE(u == u);
 
 	dbg(u);
@@ -16,9 +16,9 @@ TEST_CASE("empty box") {
 	Box<int> w;
 	w = u;
 
-	REQUIRE(*v.ptr_ref() == nullptr);
-	REQUIRE(*u.ptr_ref() == nullptr);
-	REQUIRE(*w.ptr_ref() == nullptr);
+	REQUIRE(*v.data_ref() == nullptr);
+	REQUIRE(*u.data_ref() == nullptr);
+	REQUIRE(*w.data_ref() == nullptr);
 	REQUIRE(v == u);
 	REQUIRE(w == u);
 }
@@ -26,8 +26,8 @@ TEST_CASE("empty box") {
 TEST_CASE("full box") {
 	Box<int> u = box(3);
 
-	REQUIRE(*u.ptr_ref() != nullptr);
-	REQUIRE(**u.ptr_ref() == 3);
+	REQUIRE(*u.data_ref() != nullptr);
+	REQUIRE(**u.data_ref() == 3);
 
 	Box<int> v = u; /* NOLINT */
 	Box<int> w;
@@ -35,15 +35,15 @@ TEST_CASE("full box") {
 	REQUIRE(cmp::cmp(ref(w), ref(v)) == cmp::Ordering::less);
 	w = u;
 
-	REQUIRE(*u.ptr_ref() != nullptr);
+	REQUIRE(*u.data_ref() != nullptr);
 
-	REQUIRE(*v.ptr_ref() != nullptr);
-	REQUIRE(*w.ptr_ref() != nullptr);
-	REQUIRE(*v.ptr_ref() != *u.ptr_ref());
-	REQUIRE(*w.ptr_ref() != *u.ptr_ref());
+	REQUIRE(*v.data_ref() != nullptr);
+	REQUIRE(*w.data_ref() != nullptr);
+	REQUIRE(*v.data_ref() != *u.data_ref());
+	REQUIRE(*w.data_ref() != *u.data_ref());
 
-	REQUIRE(**v.ptr_ref() == 3);
-	REQUIRE(**w.ptr_ref() == 3);
+	REQUIRE(**v.data_ref() == 3);
+	REQUIRE(**w.data_ref() == 3);
 
 	REQUIRE(cmp::cmp(ref(v), ref(v)) == cmp::Ordering::equal);
 	REQUIRE(v == v);

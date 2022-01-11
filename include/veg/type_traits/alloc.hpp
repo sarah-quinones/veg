@@ -16,7 +16,7 @@ struct Alloc {};
 template <typename T>
 struct Cloner {};
 } // namespace mem
-namespace internal {
+namespace _detail {
 
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)
@@ -51,7 +51,7 @@ struct DeferUnreachable /* NOLINT */ {
 	}
 };
 } // namespace _mem
-} // namespace internal
+} // namespace _detail
 
 namespace mem {
 auto memmove(void* dest, void const* src, usize nbytes) noexcept -> void*;
@@ -69,7 +69,7 @@ struct RelocFn {
 	void* (*fn)(void*, void const*, usize);
 
 	VEG_INLINE void operator()(void* dst, void* src, usize n) const noexcept {
-		internal::_mem::DeferUnreachable _{true};
+		_detail::_mem::DeferUnreachable _{true};
 		(*fn)(dst, src, n);
 		_.is_unreachable = false;
 	}

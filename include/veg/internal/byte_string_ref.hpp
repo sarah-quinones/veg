@@ -5,9 +5,7 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace abi {
-inline namespace VEG_ABI_VERSION {
-namespace internal {
+namespace _detail {
 struct ByteStringView {
 	VEG_INLINE constexpr ByteStringView(char const* data, usize len)
 			VEG_ALWAYS_NOEXCEPT : data_{data},
@@ -56,9 +54,7 @@ namespace /* NOLINT */ {
 constexpr auto const& empty_str /* NOLINT */ =
 		byte_str_static_const<ByteStringView>::value;
 } // namespace
-} // namespace internal
-} // namespace VEG_ABI_VERSION
-} // namespace abi
+} // namespace _detail
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

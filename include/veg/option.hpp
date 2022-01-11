@@ -13,13 +13,13 @@
 
 namespace veg {
 
-namespace internal {
+namespace _detail {
 namespace _option {
 namespace adl {
 struct AdlBase {};
 } // namespace adl
 } // namespace _option
-} // namespace internal
+} // namespace _detail
 
 template <typename T>
 struct Option;
@@ -30,7 +30,7 @@ struct some {
 	template <typename T>
 	VEG_NODISCARD VEG_INLINE constexpr auto operator()(T arg) const
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> Option<T> {
-		return {inplace[some{}], internal::MoveFn<T>{VEG_FWD(arg)}};
+		return {inplace[some{}], _detail::MoveFn<T>{VEG_FWD(arg)}};
 	}
 };
 } // namespace nb
@@ -41,7 +41,7 @@ inline namespace tags {
 using Some = veg::option::nb::some;
 using veg::option::some;
 
-struct None : internal::_option::adl::AdlBase {};
+struct None : _detail::_option::adl::AdlBase {};
 VEG_INLINE_VAR(none, None);
 } // namespace tags
 
@@ -52,7 +52,7 @@ template <typename T>
 struct is_option<Option<T>> : true_type {};
 
 template <typename T>
-struct option_type : type_identity<internal::meta_::none> {};
+struct option_type : type_identity<_detail::_meta::none> {};
 template <typename T>
 struct option_type<Option<T>> : type_identity<T> {};
 
@@ -64,7 +64,7 @@ namespace concepts {
 VEG_DEF_CONCEPT(typename T, option, meta::is_option<T>::value);
 } // namespace concepts
 
-namespace internal {
+namespace _detail {
 namespace _option {
 template <typename To>
 struct into_fn {
@@ -83,21 +83,21 @@ struct ret_none {
 };
 
 } // namespace _option
-} // namespace internal
+} // namespace _detail
 
 template <typename T>
 struct VEG_NODISCARD Option
-		: private internal::_uwunion::UwunionImpl<internal::Empty, T>,
-			private internal::_option::adl::AdlBase {
+		: private _detail::_uwunion::UwunionImpl<_detail::Empty, T>,
+			private _detail::_option::adl::AdlBase {
 private:
-	using Base = internal::_uwunion::UwunionImpl<internal::Empty, T>;
+	using Base = _detail::_uwunion::UwunionImpl<_detail::Empty, T>;
 
 public:
 	constexpr Option() VEG_NOEXCEPT
 			: Base{
-						internal::_uwunion::EmplaceTag{},
-						internal::UTag<usize{0}>{},
-						internal::_uwunion::IdxMoveFn<internal::Empty>{internal::Empty{}},
+						_detail::_uwunion::EmplaceTag{},
+						_detail::UTag<usize{0}>{},
+						_detail::_uwunion::IdxMoveFn<_detail::Empty>{_detail::Empty{}},
 						usize{0},
 				} {}
 	VEG_EXPLICIT_COPY(Option);
@@ -108,9 +108,9 @@ public:
 	VEG_INLINE constexpr Option(Some /*tag*/, T value)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))
 			: Base{
-						internal::_uwunion::EmplaceTag{},
-						internal::UTag<usize{1}>{},
-						internal::_uwunion::IdxMoveFn<T>{VEG_FWD(value)},
+						_detail::_uwunion::EmplaceTag{},
+						_detail::UTag<usize{1}>{},
+						_detail::_uwunion::IdxMoveFn<T>{VEG_FWD(value)},
 						usize{1},
 				} {}
 
@@ -122,9 +122,9 @@ public:
 			(fn, Fn))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, T>))
 			: Base{
-						internal::_uwunion::EmplaceTag{},
-						internal::UTag<usize{1}>{},
-						internal::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)},
+						_detail::_uwunion::EmplaceTag{},
+						_detail::UTag<usize{1}>{},
+						_detail::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)},
 						usize{1},
 				} {}
 
@@ -132,7 +132,7 @@ public:
 	void reset() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
 		if (is_some()) {
 			this->template _emplace<usize{0}>(
-					internal::_uwunion::IdxMoveFn<internal::Empty>{internal::Empty{}});
+					_detail::_uwunion::IdxMoveFn<_detail::Empty>{_detail::Empty{}});
 		}
 	}
 
@@ -149,7 +149,7 @@ public:
 			T,
 			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))) {
 		return static_cast<Option<T>&&>(*this).map_or_else(
-				internal::_option::into_fn<T>{}, internal::_option::ret_none<T>{});
+				_detail::_option::into_fn<T>{}, _detail::_option::ret_none<T>{});
 	}
 
 private:
@@ -163,7 +163,7 @@ public:
 		if (is_some()) {
 			Option<T> val{
 					inplace[some],
-					internal::MoveFn<T>{static_cast<T&&>(this->_get())},
+					_detail::MoveFn<T>{static_cast<T&&>(this->_get())},
 			};
 			reset();
 			return val;
@@ -196,7 +196,7 @@ public:
 		if (is_some() && VEG_FWD(fn)(ref(this->_get()))) {
 			return {
 					inplace[some],
-					internal::MoveFn<T>{static_cast<T&&>(this->_get())},
+					_detail::MoveFn<T>{static_cast<T&&>(this->_get())},
 			};
 		}
 		return none;
@@ -223,7 +223,7 @@ public:
 					VEG_CONCEPT(nothrow_destructible<T>) &&
 					VEG_CONCEPT(nothrow_fn_once<Fn, T>)) -> T& {
 		this->template _emplace<usize{1}>(
-				internal::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)});
+				_detail::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)});
 		return this->_get();
 	}
 
@@ -237,7 +237,7 @@ public:
 		if (is_some()) {
 			return Option<Ret>{
 					inplace[some],
-					internal::WithArg<Fn&&, T&&>{
+					_detail::WithArg<Fn&&, T&&>{
 							VEG_FWD(fn), static_cast<T&&>(this->_get())},
 			};
 		}
@@ -305,7 +305,7 @@ public:
 		if (is_some()) {
 			return {
 					inplace[some],
-					internal::MoveFn<T>{static_cast<T&&>(this->_get())},
+					_detail::MoveFn<T>{static_cast<T&&>(this->_get())},
 			};
 		}
 		return VEG_FWD(fn)();
@@ -333,7 +333,7 @@ public:
 		return {};
 	}
 };
-namespace internal {
+namespace _detail {
 namespace _option {
 namespace adl {
 VEG_TEMPLATE(
@@ -366,9 +366,9 @@ constexpr auto operator==(None /*lhs*/, None /*rhs*/) VEG_NOEXCEPT -> bool {
 }
 } // namespace adl
 } // namespace _option
-} // namespace internal
+} // namespace _detail
 
-namespace internal {
+namespace _detail {
 namespace _option {
 struct DbgOptionBase {
 	template <typename T>
@@ -417,10 +417,10 @@ struct OrdOptionBaseRhsNone {
 	}
 };
 } // namespace _option
-} // namespace internal
+} // namespace _detail
 
 template <typename T>
-struct fmt::Debug<Option<T>> : internal::_option::DbgOptionBase {};
+struct fmt::Debug<Option<T>> : _detail::_option::DbgOptionBase {};
 template <>
 struct fmt::Debug<None> {
 	static void to_string(fmt::BufferMut out, Ref<None> /*unused*/) {
@@ -428,13 +428,13 @@ struct fmt::Debug<None> {
 	}
 };
 template <typename T, typename U>
-struct cmp::Ord<Option<T>, Option<U>> : internal::_option::OrdOptionBase {};
+struct cmp::Ord<Option<T>, Option<U>> : _detail::_option::OrdOptionBase {};
 template <typename U>
-struct cmp::Ord<None, Option<U>> : internal::_option::OrdOptionBaseLhsNone {};
+struct cmp::Ord<None, Option<U>> : _detail::_option::OrdOptionBaseLhsNone {};
 template <typename T>
-struct cmp::Ord<Option<T>, None> : internal::_option::OrdOptionBaseRhsNone {};
+struct cmp::Ord<Option<T>, None> : _detail::_option::OrdOptionBaseRhsNone {};
 template <>
-struct cmp::Ord<None, None> : internal::_option::OrdOptionBaseRhsNone {
+struct cmp::Ord<None, None> : _detail::_option::OrdOptionBaseRhsNone {
 	VEG_NODISCARD VEG_INLINE static constexpr auto
 	cmp(Ref<None> /*unused*/, Ref<None> /*unused*/) VEG_NOEXCEPT
 			-> cmp::Ordering {

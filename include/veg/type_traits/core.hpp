@@ -32,8 +32,8 @@ struct is_consteval {
 VEG_NIEBLOID(is_consteval);
 } // namespace meta
 
-namespace internal {
-namespace meta_ {
+namespace _detail {
+namespace _meta {
 template <bool B>
 struct conditional_;
 template <>
@@ -47,8 +47,8 @@ struct conditional_<false> {
 	using type = F;
 };
 struct none {};
-} // namespace meta_
-} // namespace internal
+} // namespace _meta
+} // namespace _detail
 
 namespace meta {
 
@@ -70,7 +70,7 @@ using type_identity_t = typename type_identity<T>::type;
 
 template <bool B, typename T, typename F>
 using conditional_t =
-		typename internal::meta_::conditional_<B>::template type<T, F>;
+		typename _detail::_meta::conditional_<B>::template type<T, F>;
 
 template <typename...>
 using void_t = void;
@@ -94,8 +94,8 @@ struct conjunction<First, Preds...>
 		: conditional_t<First::value, conjunction<Preds...>, First> {};
 } // namespace meta
 
-namespace internal {
-namespace meta_ {
+namespace _detail {
+namespace _meta {
 
 template <typename T>
 struct decay_helper : meta::type_identity<T> {};
@@ -137,7 +137,7 @@ template <typename Default, template <typename...> class Ftor, typename... Args>
 struct detector : _detector<void, Ftor, Args...> {};
 
 template <template <typename...> class Op, typename... Args>
-using is_detected = typename detector<meta_::none, Op, Args...>::value_type;
+using is_detected = typename detector<_meta::none, Op, Args...>::value_type;
 
 #endif
 
@@ -176,8 +176,8 @@ template <typename T>
 struct is_complete<T, bool_constant<sizeof(T) == sizeof(T)> /* NOLINT */>
 		: true_type {};
 
-} // namespace meta_
-} // namespace internal
+} // namespace _meta
+} // namespace _detail
 
 namespace concepts {
 using meta::conjunction;
@@ -192,12 +192,12 @@ VEG_DEF_CONCEPT(
 VEG_DEF_CONCEPT(
 		(template <typename...> class Op, typename... Args),
 		detected,
-		internal::meta_::is_detected_v<Op, Args...>);
+		_detail::_meta::is_detected_v<Op, Args...>);
 #else
 VEG_DEF_CONCEPT(
 		(template <typename...> class Op, typename... Args),
 		detected,
-		internal::meta_::is_detected<Op, Args...>::value);
+		_detail::_meta::is_detected<Op, Args...>::value);
 #endif
 
 VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL((typename T, typename U), base_of, T, U);
@@ -206,14 +206,14 @@ VEG_DEF_CONCEPT(
 		typename T,
 		const_type,
 		VEG_HAS_BUILTIN_OR(
-				__is_const, __is_const(T), (internal::meta_::is_const<T>::value)));
+				__is_const, __is_const(T), (_detail::_meta::is_const<T>::value)));
 VEG_DEF_CONCEPT(
 		typename T,
 		void_type,
 		VEG_CONCEPT(same<void const volatile, T const volatile>));
 
 // can't use __is_pointer because of <bits/cpp_type_traits.h> header
-VEG_DEF_CONCEPT(typename T, pointer, internal::meta_::is_pointer<T>::value);
+VEG_DEF_CONCEPT(typename T, pointer, _detail::_meta::is_pointer<T>::value);
 
 VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL(typename T, lvalue_reference, T);
 VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL(typename T, rvalue_reference, T);
@@ -225,7 +225,7 @@ VEG_DEF_CONCEPT(
 #if VEG_HAS_BUILTIN(__is_complete_type)
 VEG_DEF_CONCEPT(typename T, complete, __is_complete_type(T));
 #else
-VEG_DEF_CONCEPT(typename T, complete, internal::meta_::is_complete<T>::value);
+VEG_DEF_CONCEPT(typename T, complete, _detail::_meta::is_complete<T>::value);
 #endif
 
 } // namespace concepts
@@ -233,9 +233,9 @@ VEG_DEF_CONCEPT(typename T, complete, internal::meta_::is_complete<T>::value);
 namespace meta {
 
 template <typename T>
-using unref_t = typename internal::meta_::unref<T&>::type;
+using unref_t = typename _detail::_meta::unref<T&>::type;
 template <typename T>
-using unptr_t = typename internal::meta_::is_pointer<T>::type;
+using unptr_t = typename _detail::_meta::is_pointer<T>::type;
 
 template <typename Default, template <typename...> class Op, typename... Args>
 using detected_or_t = typename meta::conditional_t<
@@ -244,20 +244,20 @@ using detected_or_t = typename meta::conditional_t<
 		meta::type_identity<Default>>::type;
 
 template <template <typename...> class Op, typename... Args>
-using detected_t = detected_or_t<internal::meta_::none, Op, Args...>;
+using detected_t = detected_or_t<_detail::_meta::none, Op, Args...>;
 
 #ifdef __clang__
 template <template <typename...> class Op, typename... Args>
 using detected_return_t = Op<Args...>;
 #else
 template <template <typename...> class Op, typename... Args>
-using detected_return_t = detected_or_t<internal::meta_::none, Op, Args...>;
+using detected_return_t = detected_or_t<_detail::_meta::none, Op, Args...>;
 #endif
 
 template <typename T>
-using decay_t = typename internal::meta_::decay_helper<uncvref_t<T>>::type;
+using decay_t = typename _detail::_meta::decay_helper<uncvref_t<T>>::type;
 } // namespace meta
-template <typename T> 
+template <typename T>
 using DoNotDeduce = meta::type_identity_t<T>;
 } // namespace veg
 

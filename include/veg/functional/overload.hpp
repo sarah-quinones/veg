@@ -102,7 +102,7 @@ struct overload {
 	VEG_INLINE constexpr auto operator()(Fns... fns) const
 			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Fns>)))
 					-> Overload<Fns...> {
-		return {internal::MoveFn<Fns>{VEG_FWD(fns)}...};
+		return {_detail::MoveFn<Fns>{VEG_FWD(fns)}...};
 	}
 };
 } // namespace nb

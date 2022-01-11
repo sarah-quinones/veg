@@ -13,7 +13,7 @@ struct unreachable {
 #ifdef NDEBUG
 		HEDLEY_UNREACHABLE();
 #else
-		abi::internal::terminate();
+		_detail::terminate();
 #endif
 	}
 };

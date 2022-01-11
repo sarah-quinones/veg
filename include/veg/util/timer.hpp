@@ -8,18 +8,13 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace abi {
-inline namespace VEG_ABI_VERSION {
-namespace time {
+namespace time {} // namespace time
+
+namespace _detail {
+namespace _time {
 auto monotonic_nanoseconds_since_epoch() VEG_ALWAYS_NOEXCEPT -> i64;
 void log_elapsed_time(i64 duration, char const* msg, std::FILE* out)
 		VEG_ALWAYS_NOEXCEPT;
-} // namespace time
-} // namespace VEG_ABI_VERSION
-} // namespace abi
-
-namespace internal {
-namespace time_ {
 template <typename Fn>
 struct RaiiTimerWrapper {
 	struct raw_parts {
@@ -28,23 +23,24 @@ struct RaiiTimerWrapper {
 	} self;
 
 	RaiiTimerWrapper(Fn fn) VEG_NOEXCEPT
-			: self{abi::time::monotonic_nanoseconds_since_epoch(), VEG_FWD(fn)} {}
+			: self{_detail::_time::monotonic_nanoseconds_since_epoch(), VEG_FWD(fn)} {
+	}
 
 	void operator()()
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, void, i64>)) {
 		i64 time_delta =
-				i64(abi::time::monotonic_nanoseconds_since_epoch() - self.begin);
+				i64(_detail::_time::monotonic_nanoseconds_since_epoch() - self.begin);
 		VEG_FWD(self.fn)(time_delta);
 	}
 };
-} // namespace time_
-} // namespace internal
+} // namespace _time
+} // namespace _detail
 
 namespace time {
 namespace nb {
 struct monotonic_nanoseconds_since_epoch {
 	auto operator()() const VEG_NOEXCEPT -> i64 {
-		return abi::time::monotonic_nanoseconds_since_epoch();
+		return _detail::_time::monotonic_nanoseconds_since_epoch();
 	}
 };
 } // namespace nb
@@ -59,15 +55,15 @@ struct LogElapsedTime {
 	std::FILE* out;
 
 	void operator()(i64 duration) const VEG_ALWAYS_NOEXCEPT {
-		abi::time::log_elapsed_time(duration, msg, out);
+		_detail::_time::log_elapsed_time(duration, msg, out);
 	}
 };
 
 template <typename Fn>
-struct RaiiTimer : Defer<internal::time_::RaiiTimerWrapper<Fn>> {
+struct RaiiTimer : Defer<_detail::_time::RaiiTimerWrapper<Fn>> {
 	VEG_CHECK_CONCEPT(fn_once<Fn, void, i64>);
-	using Defer<internal::time_::RaiiTimerWrapper<Fn>>::Defer;
-	using Defer<internal::time_::RaiiTimerWrapper<Fn>>::fn;
+	using Defer<_detail::_time::RaiiTimerWrapper<Fn>>::Defer;
+	using Defer<_detail::_time::RaiiTimerWrapper<Fn>>::fn;
 };
 
 namespace nb {

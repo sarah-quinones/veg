@@ -64,7 +64,7 @@ struct Dyn {
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator+,
 			(b, R))
-	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::add_fn(*this, b));
+	const VEG_DEDUCE_RET(_detail::binary_traits<Dyn, R>::add_fn(*this, b));
 
 	VEG_TEMPLATE(
 			(typename R),
@@ -72,7 +72,7 @@ struct Dyn {
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator-,
 			(b, R))
-	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::sub_fn(*this, b));
+	const VEG_DEDUCE_RET(_detail::binary_traits<Dyn, R>::sub_fn(*this, b));
 
 	VEG_TEMPLATE(
 			(typename R),
@@ -80,27 +80,27 @@ struct Dyn {
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator*,
 			(b, R))
-	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::mul_fn(*this, b));
+	const VEG_DEDUCE_RET(_detail::binary_traits<Dyn, R>::mul_fn(*this, b));
 
 	VEG_TEMPLATE(
 			(typename R),
 			requires(
 					VEG_CONCEPT(index<R>) &&
-					VEG_CONCEPT(index<typename internal::binary_traits<Dyn, R>::Div>)),
+					VEG_CONCEPT(index<typename _detail::binary_traits<Dyn, R>::Div>)),
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator/,
 			(b, R))
-	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::div_fn(*this, b));
+	const VEG_DEDUCE_RET(_detail::binary_traits<Dyn, R>::div_fn(*this, b));
 
 	VEG_TEMPLATE(
 			(typename R),
 			requires(
 					VEG_CONCEPT(index<R>) &&
-					VEG_CONCEPT(index<typename internal::binary_traits<Dyn, R>::Mod>)),
+					VEG_CONCEPT(index<typename _detail::binary_traits<Dyn, R>::Mod>)),
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator%,
 			(b, R))
-	const VEG_DEDUCE_RET(internal::binary_traits<Dyn, R>::mod_fn(*this, b));
+	const VEG_DEDUCE_RET(_detail::binary_traits<Dyn, R>::mod_fn(*this, b));
 
 #define VEG_CMP(Name, Op)                                                      \
 	VEG_TEMPLATE(                                                                \
@@ -110,7 +110,7 @@ struct Dyn {
 			operator Op, /* NOLINT */                                                \
 			(b, R))                                                                  \
 	const VEG_DEDUCE_RET(                                                        \
-			internal::binary_traits<Dyn, R>::cmp_##Name##_fn(*this, b))
+			_detail::binary_traits<Dyn, R>::cmp_##Name##_fn(*this, b))
 
 	VEG_CMP(eq, ==);
 	VEG_CMP(neq, !=);
@@ -141,7 +141,7 @@ VEG_INLINE constexpr Fix<N>::Fix // NOLINT(hicpp-explicit-conversions)
 		(Dyn arg) VEG_NOEXCEPT
 		: Fix((VEG_INTERNAL_ASSERT_PRECONDITION(isize(arg) == N), arg), unsafe) {}
 
-namespace internal {
+namespace _detail {
 
 template <>
 struct binary_traits<Dyn, Dyn> {
@@ -222,7 +222,7 @@ struct binary_traits<Dyn, Fix<N>> : binary_traits<Dyn, Dyn> {
 	}
 };
 
-} // namespace internal
+} // namespace _detail
 
 inline namespace literals {
 VEG_INLINE constexpr auto operator"" _v(unsigned long long n) VEG_NOEXCEPT

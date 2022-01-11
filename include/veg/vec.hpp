@@ -11,15 +11,15 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace internal {
+namespace _detail {
 namespace _vector {
 namespace adl {
 struct AdlBase {};
 } // namespace adl
 } // namespace _vector
-} // namespace internal
+} // namespace _detail
 
-namespace internal {
+namespace _detail {
 template <typename T>
 VEG_INLINE constexpr auto min2(T a, T b) noexcept -> T {
 	return (static_cast<T const&>(a) < static_cast<T const&>(b)) ? VEG_FWD(a)
@@ -39,8 +39,7 @@ VEG_INLINE constexpr auto vector_grow_compute(usize current_cap) noexcept
 // new_cap must be larger than current_cap
 VEG_INLINE constexpr auto
 vector_grow_choose(usize current_cap, usize new_cap) noexcept -> usize {
-	return internal::max2(
-			_collections::vector_grow_compute(current_cap), new_cap);
+	return _detail::max2(_collections::vector_grow_compute(current_cap), new_cap);
 }
 
 template <typename T>
@@ -58,11 +57,11 @@ struct relocate_pointer<T, false> {
 			_collections::relocate<T>;
 };
 } // namespace _collections
-} // namespace internal
+} // namespace _detail
 
 namespace collections {
 template <typename T>
-struct relocate_pointer : internal::_collections::relocate_pointer<T> {};
+struct relocate_pointer : _detail::_collections::relocate_pointer<T> {};
 } // namespace collections
 
 namespace vector {
@@ -76,7 +75,7 @@ struct RawVector {
 };
 } // namespace vector
 
-namespace internal {
+namespace _detail {
 namespace _collections {
 template <bool IsNoExcept>
 struct CloneImpl;
@@ -341,7 +340,7 @@ struct CloneFromImpl<false> {
 			return;
 		}
 
-		usize assign_len = internal::min2(lhs_copy.len(), rhs_raw.len());
+		usize assign_len = _detail::min2(lhs_copy.len(), rhs_raw.len());
 		// copy assign until the shared len
 		_collections::slice_clone_from( //
 				VEG_FWD(lhs_alloc),
@@ -453,9 +452,9 @@ VEG_INLINE VEG_CPP20(constexpr) void clone_from(
 					VEG_FWD(lhs_alloc), VEG_FWD(cloner), lhs_raw, rhs_alloc, rhs_raw);
 }
 } // namespace _collections
-} // namespace internal
+} // namespace _detail
 
-namespace internal {
+namespace _detail {
 namespace _vector {
 
 template <typename T>
@@ -496,7 +495,7 @@ public:
 			//    - end is 8 byte aligned
 			//    - A is the SystemAlloc
 #if VEG_HAS_ASAN
-			internal::__sanitizer_annotate_contiguous_container( //
+			_detail::__sanitizer_annotate_contiguous_container( //
 					raw.data,
 					raw.end_alloc,
 					raw.data,
@@ -511,17 +510,17 @@ public:
 	}
 };
 } // namespace _vector
-} // namespace internal
+} // namespace _detail
 
 #if VEG_HAS_ASAN
 #define __VEG_ASAN_ANNOTATE() /* NOLINT */                                     \
 	if (ptr() != nullptr) {                                                      \
-		internal::__sanitizer_annotate_contiguous_container(                       \
+		_detail::__sanitizer_annotate_contiguous_container(                        \
 				ptr(), ptr() + capacity(), ptr() + len(), ptr() + capacity());         \
 	}                                                                            \
 	auto&& _veglib_asan = defer([&]() noexcept {                                 \
 		if (ptr() != nullptr) {                                                    \
-			internal::__sanitizer_annotate_contiguous_container(                     \
+			_detail::__sanitizer_annotate_contiguous_container(                      \
 					ptr(), ptr() + capacity(), ptr() + capacity(), ptr() + len());       \
 		}                                                                          \
 	});                                                                          \
@@ -536,9 +535,9 @@ template <
 		typename A = mem::SystemAlloc,
 		bool NoThrowCopy = VEG_CONCEPT(nothrow_copyable<T>) &&
                        VEG_CONCEPT(nothrow_copy_assignable<T>)>
-struct VecIncomplete : private internal::_vector::adl::AdlBase {
+struct VecIncomplete : private _detail::_vector::adl::AdlBase {
 private:
-	internal::_vector::VecAlloc<T, A> _;
+	_detail::_vector::VecAlloc<T, A> _;
 
 public:
 	VEG_NODISCARD VEG_INLINE
@@ -601,8 +600,8 @@ private:
 	VEG_INLINE void _reserve_one_more(Unsafe /*tag*/) {
 		this->_reserve_grow_exact(
 				unsafe,
-				1 + isize(internal::_collections::vector_grow_compute(
-								usize(capacity()))));
+				1 + isize(
+								_detail::_collections::vector_grow_compute(usize(capacity()))));
 	}
 
 	static_assert(VEG_CONCEPT(nothrow_move_assignable<A>), ".");
@@ -628,7 +627,7 @@ public:
 			: _{
 						tuplify,
 						VEG_FWD(alloc),
-						internal::_vector::RawVectorMoveRaii<T>{
+						_detail::_vector::RawVectorMoveRaii<T>{
 								from_raw_parts, VEG_FWD(rawvec)},
 				} {}
 
@@ -654,7 +653,7 @@ public:
 			: _{rhs._} {
 		__VEG_ASAN_ANNOTATE();
 		vector::RawVector<T> rhs_raw = rhs.raw_ref().get();
-		mem::AllocBlock blk = internal::_collections::alloc_and_copy(
+		mem::AllocBlock blk = _detail::_collections::alloc_and_copy(
 				this->alloc_mut(unsafe),
 				mut(mem::DefaultCloner{}),
 				rhs_raw.data,
@@ -675,7 +674,7 @@ public:
 		if (this != mem::addressof(rhs)) {
 			__VEG_ASAN_ANNOTATE();
 
-			internal::_collections::clone_from(
+			_detail::_collections::clone_from(
 					this->alloc_mut(unsafe),
 					mut(mem::DefaultCloner{}),
 					this->raw_mut(unsafe).get(),
@@ -695,7 +694,7 @@ public:
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(alloc::nothrow_grow<A>)) {
 		auto cap = capacity();
 		if (new_cap > cap) {
-			this->reserve_exact(isize(internal::_collections::vector_grow_choose(
+			this->reserve_exact(isize(_detail::_collections::vector_grow_choose(
 					usize(cap), usize(new_cap))));
 		}
 	}
@@ -708,7 +707,7 @@ public:
 
 		T* end = raw.end;
 		raw.end = raw.data;
-		internal::_collections::backward_destroy(
+		_detail::_collections::backward_destroy(
 				this->alloc_mut(unsafe), mut(mem::DefaultCloner{}), raw.data, end);
 	}
 
@@ -750,11 +749,11 @@ public:
 	}
 	VEG_INLINE VEG_CPP20(constexpr) void push(T value) VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_movable<T>) && VEG_CONCEPT(alloc::nothrow_alloc<A>)) {
-		this->push_with(internal::MoveFn<T>{VEG_FWD(value)});
+		this->push_with(_detail::MoveFn<T>{VEG_FWD(value)});
 	}
 	VEG_INLINE VEG_CPP20(constexpr) void push_unchecked(Unsafe /*tag*/, T value)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) {
-		this->push_with_unchecked(unsafe, internal::MoveFn<T>{VEG_FWD(value)});
+		this->push_with_unchecked(unsafe, _detail::MoveFn<T>{VEG_FWD(value)});
 	}
 
 	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto as_ref() const VEG_NOEXCEPT
@@ -809,19 +808,19 @@ template <typename T, typename A = mem::SystemAlloc>
 struct Vec : collections::VecIncomplete<T, A>,
 						 meta::conditional_t<
 								 VEG_CONCEPT(copyable<T>),
-								 internal::EmptyI<0>,
-								 internal::NoCopyCtor>,
+								 _detail::EmptyI<0>,
+								 _detail::NoCopyCtor>,
 						 meta::conditional_t<
 								 VEG_CONCEPT(copy_assignable<T>),
-								 internal::EmptyI<1>,
-								 internal::NoCopyAssign> {
+								 _detail::EmptyI<1>,
+								 _detail::NoCopyAssign> {
 
 	using collections::VecIncomplete<T, A>::VecIncomplete;
 	Vec() = default;
 	VEG_EXPLICIT_COPY(Vec);
 };
 
-namespace internal {
+namespace _detail {
 namespace _vector {
 namespace adl {
 VEG_TEMPLATE(
@@ -832,7 +831,7 @@ VEG_TEMPLATE(
 		(lhs, collections::VecIncomplete<T, LhsA> const&),
 		(rhs, collections::VecIncomplete<U, RhsA> const&))
 VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_eq<T, U>))->bool {
-	return internal::_slice::adl::operator==(lhs.as_ref(), rhs.as_ref());
+	return _detail::_slice::adl::operator==(lhs.as_ref(), rhs.as_ref());
 }
 } // namespace adl
 struct DbgVecI {
@@ -875,7 +874,7 @@ struct OrdVecI {
 	}
 };
 } // namespace _vector
-} // namespace internal
+} // namespace _detail
 
 template <typename T, typename A>
 struct cpo::is_trivially_relocatable<collections::VecIncomplete<T, A>>
@@ -892,17 +891,17 @@ struct cpo::is_trivially_constructible<Vec<T, A>>
 		: cpo::is_trivially_constructible<A> {};
 
 template <typename T, typename A>
-struct fmt::Debug<Vec<T, A>> : internal::_vector::DbgVec {};
+struct fmt::Debug<Vec<T, A>> : _detail::_vector::DbgVec {};
 template <typename T, typename A>
 struct fmt::Debug<collections::VecIncomplete<T, A>>
-		: internal::_vector::DbgVecI {};
+		: _detail::_vector::DbgVecI {};
 
 template <typename T, typename LhsA, typename U, typename RhsA>
-struct cmp::Ord<Vec<T, LhsA>, Vec<U, RhsA>> : internal::_vector::OrdVec {};
+struct cmp::Ord<Vec<T, LhsA>, Vec<U, RhsA>> : _detail::_vector::OrdVec {};
 template <typename T, typename LhsA, typename U, typename RhsA>
 struct cmp::Ord< //
 		collections::VecIncomplete<T, LhsA>,
-		collections::VecIncomplete<U, RhsA>> : internal::_vector::OrdVecI {};
+		collections::VecIncomplete<U, RhsA>> : _detail::_vector::OrdVecI {};
 } // namespace veg
 
 #undef __VEG_ASAN_ANNOTATE

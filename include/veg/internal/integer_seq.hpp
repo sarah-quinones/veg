@@ -9,16 +9,16 @@ namespace veg {
 namespace meta {
 
 template <typename T, T N>
-using make_integer_sequence = internal::meta_::make_integer_sequence<T, N>*;
+using make_integer_sequence = _detail::_meta::make_integer_sequence<T, N>*;
 template <usize N>
-using make_index_sequence = internal::meta_::make_integer_sequence<usize, N>*;
+using make_index_sequence = _detail::_meta::make_integer_sequence<usize, N>*;
 
 template <typename T, T... Nums>
-using integer_sequence = internal::meta_::integer_sequence<T, Nums...>*;
+using integer_sequence = _detail::_meta::integer_sequence<T, Nums...>*;
 template <usize... Nums>
 using index_sequence = integer_sequence<usize, Nums...>;
 template <typename... Ts>
-using type_sequence = internal::meta_::type_sequence<Ts...>*;
+using type_sequence = _detail::_meta::type_sequence<Ts...>*;
 
 template <typename Seq, typename... Bs>
 struct and_test : false_type {};
@@ -40,8 +40,8 @@ struct or_test<index_sequence<Is...>, indexed<Is, false_type>...> : false_type {
 };
 
 } // namespace meta
-namespace internal {
-namespace meta_ {
+namespace _detail {
+namespace _meta {
 using namespace meta;
 
 template <typename ISeq, typename... Ts>
@@ -53,19 +53,19 @@ struct all_same_impl<
 
 template <>
 struct all_same_impl<meta::index_sequence<>> : true_type {};
-} // namespace meta_
-} // namespace internal
+} // namespace _meta
+} // namespace _detail
 
 namespace concepts {
 VEG_DEF_CONCEPT(
 		typename... Ts,
 		all_same,
-		internal::meta_::
+		_detail::_meta::
 				all_same_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...>::value);
 } // namespace concepts
 
-namespace internal {
-namespace meta_ {
+namespace _detail {
+namespace _meta {
 template <template <typename...> class F, typename Seq>
 struct apply_type_seq;
 template <template <typename...> class F, typename... Ts>
@@ -149,31 +149,31 @@ struct concat_type_seq<true_type, F, F<Ts...>, F<Us...>, F<Vs...>, Seqs...> {
 			F<Ts..., Us..., Vs...>,
 			typename concat_type_seq<true_type, F, Seqs...>::type>::type;
 };
-} // namespace meta_
-} // namespace internal
+} // namespace _meta
+} // namespace _detail
 namespace meta {
 template <template <typename... F> class F, typename... Seqs>
-using type_sequence_cat = typename internal::meta_::concat_type_seq<
-		bool_constant<VEG_ALL_OF(internal::meta_::specializes<F, Seqs>::value)>,
+using type_sequence_cat = typename _detail::_meta::concat_type_seq<
+		bool_constant<VEG_ALL_OF(_detail::_meta::specializes<F, Seqs>::value)>,
 		F,
 		Seqs...>::type;
 
 template <template <typename...> class F, typename... Seqs>
-using type_sequence_zip = typename internal::meta_::zip_type_seq<
+using type_sequence_zip = typename _detail::_meta::zip_type_seq<
 		meta::bool_constant<
-				VEG_ALL_OF(internal::meta_::specializes<F, Seqs>::value) &&
+				VEG_ALL_OF(_detail::_meta::specializes<F, Seqs>::value) &&
 				VEG_CONCEPT(all_same<constant<
 												usize,
-												internal::meta_::specialize_len<F, Seqs>::value>...>)>,
+												_detail::_meta::specialize_len<F, Seqs>::value>...>)>,
 		F,
 		Seqs...>::type;
 
 template <template <typename...> class F, typename Seq>
 using type_sequence_apply =
-		typename internal::meta_::apply_type_seq<F, Seq>::type;
+		typename _detail::_meta::apply_type_seq<F, Seq>::type;
 } // namespace meta
 
-namespace internal {
+namespace _detail {
 
 template <usize I, typename T>
 struct HollowLeaf {};
@@ -192,7 +192,7 @@ auto get_idx(HollowLeaf<I, T> const*) VEG_NOEXCEPT -> meta::constant<usize, I>;
 template <usize I>
 struct pack_ith_elem {
 	template <typename... Ts>
-	using Type = decltype(internal::get_type<I>(
+	using Type = decltype(_detail::get_type<I>(
 			static_cast<
 					HollowIndexedTuple<meta::make_index_sequence<sizeof...(Ts)>, Ts...>*>(
 					nullptr)));
@@ -201,22 +201,22 @@ struct pack_ith_elem {
 template <typename T>
 struct pack_idx_elem {
 	template <typename... Ts>
-	using Type = decltype(internal::get_idx<T>(
+	using Type = decltype(_detail::get_idx<T>(
 			static_cast<
 					HollowIndexedTuple<meta::make_index_sequence<sizeof...(Ts)>, Ts...>*>(
 					nullptr)));
 };
-} // namespace internal
+} // namespace _detail
 
 template <typename T, typename... Ts>
-using idx = typename internal::pack_idx_elem<T>::template Type<Ts...>;
+using idx = typename _detail::pack_idx_elem<T>::template Type<Ts...>;
 
 #if VEG_HAS_BUILTIN(__type_pack_element)
 template <usize I, typename... Ts>
 using ith = __type_pack_element<I, Ts...>;
 #else
 template <usize I, typename... Ts>
-using ith = typename internal::pack_ith_elem<I>::template Type<Ts...>;
+using ith = typename _detail::pack_ith_elem<I>::template Type<Ts...>;
 #endif
 } // namespace veg
 

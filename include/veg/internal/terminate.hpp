@@ -4,13 +4,9 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace abi {
-inline namespace VEG_ABI_VERSION {
-namespace internal {
+namespace _detail {
 [[noreturn]] void terminate() noexcept;
-}
-} // namespace VEG_ABI_VERSION
-} // namespace abi
+} // namespace _detail
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

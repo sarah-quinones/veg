@@ -1,3 +1,4 @@
+#define __VEG_DISABLE_NOEXCEPT
 /**
  * @file option_test.cc
  * @author Basit Ayantunde <rlamarrr@gmail.com>

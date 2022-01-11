@@ -1,10 +1,10 @@
 #ifndef VEG_MACROS_HPP_HSTLSKZXS
 #define VEG_MACROS_HPP_HSTLSKZXS
 #include "veg/internal/.external/hedley.ext.h"
-#include <initializer_list>
 #include "veg/internal/typedefs.hpp"
 #include "veg/internal/preprocessor.hpp"
 #include "veg/internal/prologue.hpp"
+#include <initializer_list>
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -92,7 +92,7 @@
 #if __cplusplus >= 201703L
 #define VEG_DECLVAL(...) (static_cast<__VA_ARGS__ (*)() noexcept>(nullptr)())
 #else
-#define VEG_DECLVAL(...) (::veg::internal::meta_::declval<__VA_ARGS__>())
+#define VEG_DECLVAL(...) (::veg::_detail::_meta::declval<__VA_ARGS__>())
 #endif
 
 #if defined(__clang__)
@@ -148,9 +148,9 @@
 #endif
 
 #define VEG_EVAL_ALL(...)                                                      \
-	((void)(::veg::internal::EmptyArr{                                           \
-			::veg::internal::Empty{},                                                \
-			((void)(__VA_ARGS__), ::veg::internal::Empty{})...}))
+	((void)(::veg::_detail::EmptyArr{                                            \
+			::veg::_detail::Empty{},                                                 \
+			((void)(__VA_ARGS__), ::veg::_detail::Empty{})...}))
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -182,12 +182,12 @@
 	VEG_DEF_CONCEPT(Tpl, Name, __VEG_IMPL_DISJUNCTION Terms)
 
 #define VEG_CONCEPT_EXPR(Tpl, TplNames, Name, Expr, ...)                       \
-	namespace _veg_internal {                                                    \
+	namespace _veg_detail {                                                      \
 	template <typename ExprType, __VEG_PP_REMOVE_PAREN1(Tpl)>                    \
 	concept test_return_##Name = __VA_ARGS__;                                    \
 	}                                                                            \
 	template <__VEG_PP_REMOVE_PAREN1(Tpl)>                                       \
-	concept Name = _veg_internal::                                               \
+	concept Name = _veg_detail::                                                 \
 			test_return_##Name<decltype((Expr)), __VEG_PP_REMOVE_PAREN1(TplNames)>;  \
 	template <__VEG_PP_REMOVE_PAREN1(Tpl)>                                       \
 	concept xnothrow_##Name = noexcept(Expr);                                    \
@@ -224,7 +224,7 @@
 #endif
 
 #define VEG_CONCEPT_EXPR(Tpl, TplNames, Name, Expr, ...)                       \
-	namespace _veg_internal {                                                    \
+	namespace _veg_detail {                                                      \
 	template <typename _veg_Enable, __VEG_PP_REMOVE_PAREN1(Tpl)>                 \
 	struct test_sfinae_##Name {                                                  \
 		using TestExpr = ::veg::meta::false_type;                                  \
@@ -244,14 +244,14 @@
 	VEG_DEF_CONCEPT(                                                             \
 			Tpl,                                                                     \
 			Name,                                                                    \
-			_veg_internal::test_sfinae_##Name<                                       \
+			_veg_detail::test_sfinae_##Name<                                         \
 					void,                                                                \
 					__VEG_PP_REMOVE_PAREN1(TplNames)>::TestExpr::value);                 \
 	VEG_DEF_CONCEPT(Tpl, nothrow_##Name, noexcept(Expr));                        \
 	VEG_DEF_CONCEPT(                                                             \
 			Tpl,                                                                     \
 			xnothrow_##Name,                                                         \
-			_veg_internal::test_sfinae_##Name<                                       \
+			_veg_detail::test_sfinae_##Name<                                         \
 					void,                                                                \
 					__VEG_PP_REMOVE_PAREN1(TplNames)>::NothrowTestExpr::value);          \
 	VEG_NOM_SEMICOLON
@@ -364,7 +364,7 @@
 
 #define VEG_CONSTRAINED_MEMBER_FN_NO_PARAM(Constraint, Attr_Name, Ret, ...)    \
 	template <int _ = 0>                                                         \
-	Attr_Name() __VA_ARGS__->::veg::internal::meta_::discard_1st<                \
+	Attr_Name() __VA_ARGS__->::veg::_detail::_meta::discard_1st<                 \
 			::veg::meta::enable_if_t<(                                               \
 					__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint) &&                     \
 					::veg::meta::bool_constant<(_ == 0)>::value)>,                       \
@@ -372,7 +372,7 @@
 
 #define VEG_TEMPLATE_CVT(TParams, Constraint, Attr, ...)                       \
 	template <__VEG_PP_REMOVE_PAREN(TParams)>                                    \
-	Attr operator ::veg::internal::meta_::discard_1st<                           \
+	Attr operator ::veg::_detail::_meta::discard_1st<                            \
 			::veg::meta::enable_if_t<(                                               \
 					__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint))>,                     \
 			__VA_ARGS__>()
@@ -456,7 +456,7 @@
 	__VEG_PP_TAIL Param __VEG_PP_HEAD Param
 
 #define __VEG_IMPL_TEMPLATE2_HELPER_1(Constraint, Param)                       \
-	::veg::internal::meta_::                                                     \
+	::veg::_detail::_meta::                                                      \
 			discard_1st<::veg::meta::enable_if_t<(Constraint)>, __VEG_PP_TAIL Param> \
 					__VEG_PP_HEAD Param
 
@@ -548,8 +548,8 @@ namespace meta {
 template <typename...>
 using void_t = void;
 } // namespace meta
-namespace internal {
-namespace meta_ {
+namespace _detail {
+namespace _meta {
 
 template <bool B, typename T = void>
 struct enable_if {
@@ -589,8 +589,8 @@ struct unref<T&> {
 
 template <typename T>
 auto declval() VEG_ALWAYS_NOEXCEPT -> T;
-} // namespace meta_
-} // namespace internal
+} // namespace _meta
+} // namespace _detail
 
 namespace meta {
 template <typename T>
@@ -621,14 +621,14 @@ struct unused {
 VEG_NIEBLOID(unused);
 
 using usize = decltype(sizeof(0));
-namespace internal {
+namespace _detail {
 
 template <isize I>
 struct EmptyI {};
 
 using Empty = EmptyI<0>;
 using EmptyArr = Empty[];
-namespace meta_ {
+namespace _meta {
 
 template <typename T, T... Nums>
 struct integer_sequence;
@@ -645,7 +645,7 @@ using make_integer_sequence = integer_sequence<T, __integer_pack(N)...>;
 
 #else
 
-namespace internal {
+namespace _detail {
 
 template <typename Seq1, typename Seq2>
 struct _merge;
@@ -690,11 +690,11 @@ struct _make_integer_sequence<T, 1> {
 	using type = integer_sequence<T, 0>;
 };
 
-} // namespace internal
+} // namespace _detail
 
 template <typename T, T N>
 using make_integer_sequence =
-		typename internal::_make_integer_sequence<T, N>::type;
+		typename _detail::_make_integer_sequence<T, N>::type;
 
 #endif
 
@@ -705,7 +705,7 @@ using make_integer_sequence =
 			VEG_HAS_BUILTIN_OR(                                                      \
 					__is_##Name,                                                         \
 					__is_##Name(__VA_ARGS__),                                            \
-					(internal::meta_::is_##Name<__VA_ARGS__>::value)))
+					(_detail::_meta::is_##Name<__VA_ARGS__>::value)))
 
 template <usize N>
 using make_index_sequence = make_integer_sequence<usize, N>;
@@ -713,7 +713,7 @@ using make_index_sequence = make_integer_sequence<usize, N>;
 template <typename... Ts>
 struct type_sequence;
 
-} // namespace meta_
+} // namespace _meta
 
 template <usize I, typename T>
 struct SimpleLeaf {
@@ -724,7 +724,7 @@ template <typename Seq, typename... Ts>
 struct SimpleITuple;
 
 template <usize... Is, typename... Ts>
-struct SimpleITuple<meta_::integer_sequence<usize, Is...>, Ts...>
+struct SimpleITuple<_meta::integer_sequence<usize, Is...>, Ts...>
 		: SimpleLeaf<Is, Ts>... {
 #if __cplusplus < 201703
 	constexpr SimpleITuple(Ts... args) noexcept
@@ -734,7 +734,7 @@ struct SimpleITuple<meta_::integer_sequence<usize, Is...>, Ts...>
 
 template <typename... Ts>
 using SimpleTuple =
-		SimpleITuple<meta_::make_index_sequence<sizeof...(Ts)>, Ts...>;
+		SimpleITuple<_meta::make_index_sequence<sizeof...(Ts)>, Ts...>;
 
 template <typename... Ts>
 constexpr auto make_simple_tuple(Empty /*dummy*/, Ts... args) noexcept
@@ -755,11 +755,11 @@ struct mem_ptr_type<Mem C::*> {
 
 constexpr auto all_of_slice(bool const* arr, usize size) VEG_NOEXCEPT -> bool {
 	return size == 0 ? true
-	                 : (arr[0] && internal::all_of_slice(arr + 1, size - 1));
+	                 : (arr[0] && _detail::all_of_slice(arr + 1, size - 1));
 }
 template <usize N>
 inline constexpr auto all_of(bool const (&lst)[N]) VEG_NOEXCEPT -> bool {
-	return internal::all_of_slice(lst, N);
+	return _detail::all_of_slice(lst, N);
 }
 
 template <typename T>
@@ -779,13 +779,13 @@ struct member_extract_access {
 	static constexpr bool value = Detect::value;
 	using Type = typename Detect::Type;
 };
-} // namespace internal
+} // namespace _detail
 namespace meta {
 template <bool B, typename T = void>
-using enable_if_t = typename internal::meta_::enable_if<B, T>::type;
+using enable_if_t = typename _detail::_meta::enable_if<B, T>::type;
 
 template <typename T>
-using uncvref_t = typename internal::meta_::uncvlref<T&>::type;
+using uncvref_t = typename _detail::_meta::uncvlref<T&>::type;
 } // namespace meta
 using meta::uncvref_t;
 
@@ -802,8 +802,8 @@ using bool_constant = constant<bool, B>;
 using true_type = bool_constant<true>;
 using false_type = bool_constant<false>;
 } // namespace meta
-namespace internal {
-namespace meta_ {
+namespace _detail {
+namespace _meta {
 
 struct wrapper_base {
 	static auto test(...) -> meta::false_type;
@@ -815,8 +815,8 @@ struct wrapper : wrapper_base {
 };
 template <typename T, typename U>
 using is_same = decltype(wrapper<T>::test(static_cast<wrapper<U>*>(nullptr)));
-} // namespace meta_
-} // namespace internal
+} // namespace _meta
+} // namespace _detail
 namespace concepts {
 VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL((typename T, typename U), same, T, U);
 } // namespace concepts
@@ -839,15 +839,15 @@ VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL((typename T, typename U), same, T, U);
 	void _veg_lib_name_test()&& noexcept {                                       \
 		static_assert(                                                             \
 				VEG_CONCEPT(same<decltype(this), __VEG_PP_REMOVE_PAREN(PClass)*>),     \
-				"struct mismatch in VEG_REFLECT");                                      \
+				"struct mismatch in VEG_REFLECT");                                     \
 	}                                                                            \
 	struct _veglib_impl_member_extract {                                         \
 		using Type = __VEG_PP_REMOVE_PAREN(PClass);                                \
-		using MemberTuple = decltype(::veg::internal::make_simple_tuple(           \
-				::veg::internal::Empty {} __VEG_PP_TUPLE_FOR_EACH(                     \
+		using MemberTuple = decltype(::veg::_detail::make_simple_tuple(            \
+				::veg::_detail::Empty {} __VEG_PP_TUPLE_FOR_EACH(                      \
 						__VEG_IMPL_GET_MEMBER_PTR, _, (__VA_ARGS__))));                    \
 		static constexpr auto member_pointers() noexcept -> MemberTuple {          \
-			return ::veg::internal::make_simple_tuple(::veg::internal::Empty {       \
+			return ::veg::_detail::make_simple_tuple(::veg::_detail::Empty {         \
 			} __VEG_PP_TUPLE_FOR_EACH(__VEG_IMPL_GET_MEMBER_PTR, _, (__VA_ARGS__))); \
 		}                                                                          \
 		static constexpr char const* class_name_ptr =                              \
@@ -861,7 +861,7 @@ VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL((typename T, typename U), same, T, U);
 				__VEG_PP_TUPLE_FOR_EACH(                                               \
 						__VEG_IMPL_GET_MEMBER_NAME_LEN, _, (__VA_ARGS__))};                \
 	};                                                                           \
-	friend struct ::veg::internal::member_extract_access<__VEG_PP_REMOVE_PAREN(  \
+	friend struct ::veg::_detail::member_extract_access<__VEG_PP_REMOVE_PAREN(   \
 			PClass)>;                                                                \
 	VEG_NOM_SEMICOLON
 

@@ -30,18 +30,16 @@
 #endif
 
 namespace veg {
-namespace internal {
+namespace _detail {
 namespace type_parse {
 void function_decl_to_str(RefMut<std::string> str, FunctionDecl decl) noexcept;
 } // namespace type_parse
 [[noreturn]] void terminate() VEG_ALWAYS_NOEXCEPT {
 	std::terminate();
 }
-} // namespace internal
-namespace abi {
-inline namespace VEG_ABI_VERSION {
+} // namespace _detail
 
-namespace internal {
+namespace _detail {
 String::~String() {
 	std::free(self.ptr);
 }
@@ -85,9 +83,6 @@ void String::insert_newline(usize pos) {
 	}
 }
 
-[[noreturn]] void terminate() VEG_ALWAYS_NOEXCEPT {
-	std::terminate();
-}
 thread_local i64
 		counter = // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 		0;
@@ -613,9 +608,9 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 		output +=
 				with_color(gray, to_owned(file) + (':' + std::to_string(line)) + ':');
 		output += '\n';
-		veg::internal::type_parse::function_decl_to_str(
+		veg::_detail::type_parse::function_decl_to_str(
 				mut(output),
-				veg::internal::type_parse::parse_function_decl({
+				veg::_detail::type_parse::parse_function_decl({
 						from_raw_parts,
 						{func.data(), func.size()},
 				}));
@@ -760,8 +755,6 @@ auto snprintf1(char* out, usize n, unsigned type, void* arg) -> usize {
 		terminate();
 	}
 }
-} // namespace internal
-} // namespace VEG_ABI_VERSION
-} // namespace abi
+} // namespace _detail
 } // namespace veg
 #include "veg/internal/epilogue.hpp"

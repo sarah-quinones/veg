@@ -7,7 +7,7 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace internal {
+namespace _detail {
 template <usize>
 struct UTagImpl;
 
@@ -28,18 +28,18 @@ struct coalesce_impl<meta::index_sequence<Is...>, ignore_I<Is, T>...> {
 	using Type = T;
 };
 } // namespace _meta
-} // namespace internal
+} // namespace _detail
 namespace meta {
 template <typename... Ts>
 struct coalesce
-		: internal::_meta::
+		: _detail::_meta::
 					coalesce_impl<meta::make_index_sequence<sizeof...(Ts)>, Ts...> {};
 
 template <typename... Ts>
 using coalesce_t = typename coalesce<Ts...>::Type;
 } // namespace meta
 
-namespace internal {
+namespace _detail {
 namespace _visit {
 
 template <usize N>
@@ -197,15 +197,15 @@ template <typename Ret, bool NoExcept, usize I, typename Fn>
 VEG_INLINE constexpr auto visit(usize i, Fn fn) VEG_NOEXCEPT_IF(NoExcept)
 		-> Ret {
 #if __cplusplus >= 201402L
-	return internal::visit14<Ret, NoExcept, I>(i, VEG_FWD(fn));
+	return _detail::visit14<Ret, NoExcept, I>(i, VEG_FWD(fn));
 #else
 	return meta::is_consteval()
-	           ? internal::visit11<Ret, NoExcept, I>(i, VEG_FWD(fn))
-	           : internal::visit14<Ret, NoExcept, I>(i, VEG_FWD(fn));
+	           ? _detail::visit11<Ret, NoExcept, I>(i, VEG_FWD(fn))
+	           : _detail::visit14<Ret, NoExcept, I>(i, VEG_FWD(fn));
 #endif
 }
 
-} // namespace internal
+} // namespace _detail
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

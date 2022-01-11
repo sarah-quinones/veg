@@ -97,7 +97,7 @@
 #undef VEG_INTERNAL_ASSERT_INVARIANT
 
 #define VEG_INTERNAL_ASSERT_PRECONDITIONS(...)                                 \
-	VEG_INTERNAL_ASSERT_PRECONDITION(::veg::internal::all_of({__VA_ARGS__}))
+	VEG_INTERNAL_ASSERT_PRECONDITION(::veg::_detail::all_of({__VA_ARGS__}))
 
 #define VEG_INTERNAL_ASSERT_PRECONDITION(Cond)                                 \
 	(bool(Cond) ? (void)0 : ((throw 0) /* NOLINT */, (void)0))

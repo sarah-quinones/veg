@@ -10,13 +10,9 @@
 #include <cstring>
 
 namespace veg {
-namespace abi {
-inline namespace VEG_ABI_VERSION {
-namespace internal {
+namespace _detail {
 auto snprintf1(char* out, usize n, unsigned type, void* arg) -> usize;
 }
-} // namespace VEG_ABI_VERSION
-} // namespace abi
 
 namespace fmt {
 template <typename T>
@@ -50,7 +46,7 @@ protected:
 
 using BufferMut = Buffer&;
 } // namespace fmt
-namespace internal {
+namespace _detail {
 namespace _fmt {
 
 struct DbgStructScope {
@@ -74,11 +70,11 @@ struct DbgStructScope {
 using BufferMut = veg::fmt::BufferMut;
 
 inline void to_string_impl(BufferMut out, unsigned type, void* arg) {
-	usize n = abi::internal::snprintf1(nullptr, 0, type, arg) + 1;
+	usize n = _detail::snprintf1(nullptr, 0, type, arg) + 1;
 
 	usize old_size = out.size();
 	out.resize(out.size() + n);
-	abi::internal::snprintf1(out.data() + old_size, usize(n), type, arg);
+	_detail::snprintf1(out.data() + old_size, usize(n), type, arg);
 	out.resize(old_size + n - 1);
 }
 
@@ -136,13 +132,13 @@ template <>
 struct dbg_g_impl<true> {
 
 	template <typename T>
-	using Access = typename internal::member_extract_access<T>::Type;
+	using Access = typename _detail::member_extract_access<T>::Type;
 
 	template <typename T, typename... Bases, usize... Is, typename... Members>
 	static void to_string_impl(
 			BufferMut out,
 			Ref<T> arg,
-			SimpleITuple<meta_::integer_sequence<usize, Is...>, Members Bases::*...>
+			SimpleITuple<_meta::integer_sequence<usize, Is...>, Members Bases::*...>
 					member_ptrs) {
 
 		out.insert(
@@ -178,7 +174,7 @@ struct dbg_g_impl<true> {
 struct dbg_g {
 	template <typename T>
 	static void to_string(BufferMut out, Ref<T> arg) {
-		dbg_g_impl<internal::member_extract_access<T>::value>::to_string(
+		dbg_g_impl<_detail::member_extract_access<T>::value>::to_string(
 				VEG_FWD(out), arg);
 	}
 };
@@ -196,19 +192,19 @@ auto enum_name_impl() noexcept -> EnumName {
 	usize len = sizeof(str) - 1;
 	usize needle_len = sizeof(needle) - 1;
 	if (!(len > needle_len)) {
-		abi::internal::terminate();
+		_detail::terminate();
 	}
 
 	usize pos = 0;
 	while (std::memcmp(str + pos, needle, needle_len) != 0) {
 		++pos;
 		if (!(pos != (len - needle_len))) {
-			abi::internal::terminate();
+			_detail::terminate();
 		}
 	}
 	pos += needle_len + 3;
 	if (!(pos < len)) {
-		abi::internal::terminate();
+		_detail::terminate();
 	}
 
 	return {
@@ -219,7 +215,7 @@ auto enum_name_impl() noexcept -> EnumName {
 
 template <typename T, T x>
 auto enum_name() noexcept -> EnumName {
-	static const auto cached = internal::_fmt::enum_name_impl<T, x>();
+	static const auto cached = _detail::_fmt::enum_name_impl<T, x>();
 	return cached;
 }
 
@@ -232,7 +228,7 @@ auto enum_name_runtime_impl(meta::index_sequence<Is...> /*tag*/, T n) noexcept
 	};
 	auto idx = usize(n);
 	if (!(idx < sizeof...(Is))) {
-		abi::internal::terminate();
+		_detail::terminate();
 	}
 
 	return fn_ptrs[idx]();
@@ -274,22 +270,22 @@ using choose_dbg = meta::conditional_t<
 												dbg_g>>>>>>;
 
 } // namespace _fmt
-} // namespace internal
+} // namespace _detail
 
 namespace fmt {
 template <typename T>
-struct Debug : internal::_fmt::choose_dbg<T> {};
+struct Debug : _detail::_fmt::choose_dbg<T> {};
 template <typename T>
-struct Debug<T*> : internal::_fmt::dbg_p {};
+struct Debug<T*> : _detail::_fmt::dbg_p {};
 template <>
 struct Debug<decltype(nullptr)> {
 	static void to_string(BufferMut out, Ref<decltype(nullptr)> /*arg*/) {
-		internal::_fmt::dbg_p::to_string(
+		_detail::_fmt::dbg_p::to_string(
 				VEG_FWD(out), ref(static_cast<void*>(nullptr)));
 	}
 };
 template <typename Ret, typename... Args>
-struct Debug<Ret (*)(Args...)> : internal::_fmt::dbg_pf {};
+struct Debug<Ret (*)(Args...)> : _detail::_fmt::dbg_pf {};
 
 namespace nb {
 struct dbg_to {
@@ -303,7 +299,7 @@ struct dbg_to {
 VEG_NIEBLOID(dbg_to);
 } // namespace fmt
 
-namespace internal {
+namespace _detail {
 namespace _fmt {
 struct DbgRef {
 	template <typename T>
@@ -318,18 +314,16 @@ struct DbgMut {
 	}
 };
 } // namespace _fmt
-} // namespace internal
+} // namespace _detail
 
 namespace fmt {
 template <typename T>
-struct Debug<Ref<T>> : internal::_fmt::DbgRef {};
+struct Debug<Ref<T>> : _detail::_fmt::DbgRef {};
 template <typename T>
-struct Debug<RefMut<T>> : internal::_fmt::DbgMut {};
+struct Debug<RefMut<T>> : _detail::_fmt::DbgMut {};
 } // namespace fmt
 
-namespace abi {
-inline namespace VEG_ABI_VERSION {
-namespace internal {
+namespace _detail {
 struct String final : fmt::Buffer {
 	struct layout {
 		char* ptr;
@@ -361,9 +355,7 @@ struct String final : fmt::Buffer {
 		return self.len;
 	}
 };
-} // namespace internal
-} // namespace VEG_ABI_VERSION
-} // namespace abi
+} // namespace _detail
 
 namespace nb {
 struct dbg {
@@ -392,7 +384,7 @@ struct dbg {
 #endif
 
 	) const -> T {
-		abi::internal::String out;
+		_detail::String out;
 
 		if (line != 0 && file != nullptr && fn != nullptr) {
 			auto file_len = usize(std::strlen(file));

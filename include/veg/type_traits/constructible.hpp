@@ -104,7 +104,7 @@ template <typename T>
 struct is_trivially_relocatable;
 } // namespace cpo
 
-namespace internal {
+namespace _detail {
 namespace _cpo {
 
 template <bool, template <typename> class Trait, typename T>
@@ -121,25 +121,25 @@ template <
 		typename... Ts>
 struct member_trait_and<
 		Trait,
-		SimpleITuple<meta_::integer_sequence<usize, Is...>, Ts Bases::*...>>
+		SimpleITuple<_meta::integer_sequence<usize, Is...>, Ts Bases::*...>>
 		: meta::bool_constant<VEG_ALL_OF(Trait<Ts>::value)> {};
 
 template <template <typename> class Trait, typename T>
 struct extract_members_deduce_trait_impl<true, Trait, T>
 		: member_trait_and<
 					Trait,
-					decltype(internal::member_extract_access<
+					decltype(_detail::member_extract_access<
 									 T>::Type::member_pointers())> {};
 
 template <template <typename> class Trait, typename T>
 struct extract_members_deduce_trait
 		: extract_members_deduce_trait_impl<
-					internal::member_extract_access<T>::value,
+					_detail::member_extract_access<T>::value,
 					Trait,
 					T> {};
 
 } // namespace _cpo
-} // namespace internal
+} // namespace _detail
 
 namespace cpo {
 template <typename T>
@@ -147,7 +147,7 @@ struct is_trivially_constructible
 		: meta::conditional_t<
 					VEG_CONCEPT(trivially_default_constructible<T>),
 					meta::true_type,
-					internal::_cpo::
+					_detail::_cpo::
 							extract_members_deduce_trait<is_trivially_relocatable, T>> {};
 
 template <typename T>
@@ -156,11 +156,11 @@ struct is_trivially_relocatable
 					VEG_CONCEPT(trivially_copyable<T>) &&
 							VEG_CONCEPT(trivially_move_constructible<T>),
 					meta::true_type,
-					internal::_cpo::
+					_detail::_cpo::
 							extract_members_deduce_trait<is_trivially_relocatable, T>> {};
 } // namespace cpo
 
-namespace internal {
+namespace _detail {
 template <typename T>
 struct DefaultFn {
 	VEG_INLINE constexpr auto
@@ -196,7 +196,7 @@ struct WithArg {
 	}
 };
 
-} // namespace internal
+} // namespace _detail
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

@@ -33,9 +33,7 @@
 #endif
 
 namespace veg {
-namespace abi {
-inline namespace VEG_ABI_VERSION {
-namespace internal {
+namespace _detail {
 void incr_counter() VEG_ALWAYS_NOEXCEPT;
 void decr_counter() VEG_ALWAYS_NOEXCEPT;
 
@@ -49,20 +47,18 @@ void set_assert_params2(ByteStringView expression, ByteStringView msg)
 struct cleanup { // NOLINT(cppcoreguidelines-special-member-functions)
 	~cleanup() VEG_ALWAYS_NOEXCEPT;
 };
-} // namespace internal
-} // namespace VEG_ABI_VERSION
-} // namespace abi
+} // namespace _detail
 
-namespace internal {
-namespace assert_ {
+namespace _detail {
+namespace _assert {
 
 template <typename T>
-auto to_string(T const& arg) -> abi::internal::String {
-	abi::internal::String buf{};
+auto to_string(T const& arg) -> _detail::String {
+	_detail::String buf{};
 
 	{
-		abi::internal::incr_counter();
-		auto&& cleanup = defer(abi::internal::decr_counter);
+		_detail::incr_counter();
+		auto&& cleanup = defer(_detail::decr_counter);
 		(void)cleanup;
 		veg::fmt::Debug<meta::decay_t<T>>::to_string(buf, ref(arg));
 	}
@@ -76,9 +72,9 @@ struct lhs_all_of_t {
 
 	template <typename U>
 	VEG_INLINE void
-	on_assertion_fail(U const& rhs, abi::internal::ByteStringView op_str) const {
-		abi::internal::set_assert_params1(
-				op_str, assert_::to_string(lhs), assert_::to_string(rhs));
+	on_assertion_fail(U const& rhs, _detail::ByteStringView op_str) const {
+		_detail::set_assert_params1(
+				op_str, _assert::to_string(lhs), _assert::to_string(rhs));
 	}
 
 #define VEG_DISABLE(Op)                                                        \
@@ -183,14 +179,13 @@ struct lhs_all_of_t {
 
 	VEG_NODISCARD VEG_INLINE constexpr auto process_bool(bool res) const -> bool {
 		return (res ? void(0)
-		            : abi::internal::set_assert_params1(
-											abi::internal::empty_str, assert_::to_string(lhs), {})),
+		            : _detail::set_assert_params1(
+											_detail::empty_str, _assert::to_string(lhs), {})),
 		       res;
 	}
 	template <typename U>
 	VEG_NODISCARD VEG_INLINE constexpr auto
-	process_op(bool res, U const& rhs, abi::internal::ByteStringView op) const
-			-> bool {
+	process_op(bool res, U const& rhs, _detail::ByteStringView op) const -> bool {
 		return (res ? void(0) : on_assertion_fail(rhs, op)), res;
 	}
 };
@@ -205,20 +200,20 @@ struct decomposer {
 
 #define __VEG_IMPL_ASSERT_IMPL(Callback, If_Fail, ...)                         \
 	static_cast<void>(                                                           \
-			(::veg::internal::assert_::decomposer{} << __VA_ARGS__)                  \
+			(::veg::_detail::_assert::decomposer{} << __VA_ARGS__)                   \
 					? (void)(0)                                                          \
-					: ((void)(::veg::abi::internal::cleanup{}),                          \
-	           ::veg::abi::internal::set_assert_params2(                         \
-								 ::veg::abi::internal::ByteStringView{                         \
+					: ((void)(::veg::_detail::cleanup{}),                                \
+	           ::veg::_detail::set_assert_params2(                               \
+								 ::veg::_detail::ByteStringView{                               \
 										 static_cast<char const*>(#__VA_ARGS__),                   \
 										 sizeof(#__VA_ARGS__) - 1},                                \
 								 If_Fail),                                                     \
-	           ::veg::abi::internal::Callback(                                   \
+	           ::veg::_detail::Callback(                                         \
 								 __LINE__,                                                     \
-								 ::veg::abi::internal::ByteStringView{                         \
+								 ::veg::_detail::ByteStringView{                               \
 										 static_cast<char const*>(__FILE__),                       \
 										 sizeof(__FILE__) - 1},                                    \
-								 ::veg::abi::internal::ByteStringView{                         \
+								 ::veg::_detail::ByteStringView{                               \
 										 static_cast<char const*>(__VEG_THIS_FUNCTION),            \
 										 sizeof(__VEG_THIS_FUNCTION) - 1})))
 
@@ -233,14 +228,14 @@ struct decomposer {
 	__VEG_IGNORE_SHIFT_PAREN_WARNING(                                            \
 			__VEG_IMPL_ASSERT_IMPL,                                                  \
 			on_assert_fail,                                                          \
-			(::veg::abi::internal::empty_str),                                       \
+			(::veg::_detail::empty_str),                                             \
 			__VA_ARGS__)
 
 #define VEG_EXPECT(...)                                                        \
 	__VEG_IGNORE_SHIFT_PAREN_WARNING(                                            \
 			__VEG_IMPL_ASSERT_IMPL,                                                  \
 			on_expect_fail,                                                          \
-			(::veg::abi::internal::empty_str),                                       \
+			(::veg::_detail::empty_str),                                             \
 			__VA_ARGS__)
 
 #define __VEG_IMPL_ALL_OF_1(Ftor, Decomposer, Callback, ...)                   \
@@ -248,14 +243,13 @@ struct decomposer {
 
 #define __VEG_IMPL_ASSERT_FTOR_EMPTY(Decomposer, Elem)                         \
 	__VEG_IMPL_ASSERT_FTOR(                                                      \
-			Decomposer,                                                              \
-			(::veg::abi::internal::empty_str, __VEG_PP_REMOVE_PAREN(Elem)))
+			Decomposer, (::veg::_detail::empty_str, __VEG_PP_REMOVE_PAREN(Elem)))
 
 #define __VEG_IMPL_ASSERT_FTOR(Decomposer, Elem)                               \
-	(::veg::internal::assert_::Decomposer{} << __VEG_PP_TAIL Elem)               \
+	(::veg::_detail::_assert::Decomposer{} << __VEG_PP_TAIL Elem)                \
 			? true                                                                   \
-			: ((void)(::veg::abi::internal::cleanup{}),                              \
-	       ::veg::abi::internal::set_assert_params2(                             \
+			: ((void)(::veg::_detail::cleanup{}),                                    \
+	       ::veg::_detail::set_assert_params2(                                   \
 						 {static_cast<char const*>(                                        \
 									__VEG_PP_STRINGIZE(__VEG_PP_TAIL Elem)),                     \
 									sizeof(__VEG_PP_STRINGIZE(__VEG_PP_TAIL Elem)) - 1},         \
@@ -263,9 +257,9 @@ struct decomposer {
 						 false),
 
 #define __VEG_IMPL_ALL_OF_2(Ftor, Decomposer, Callback, Tuple)                 \
-	(::veg::internal::all_of({__VEG_PP_TUPLE_FOR_EACH(Ftor, Decomposer, Tuple)}) \
+	(::veg::_detail::all_of({__VEG_PP_TUPLE_FOR_EACH(Ftor, Decomposer, Tuple)})  \
 	     ? (void)(0)                                                             \
-	     : ::veg::abi::internal::Callback(                                       \
+	     : ::veg::_detail::Callback(                                             \
 						 __LINE__,                                                         \
 						 {static_cast<char const*>(__FILE__), sizeof(__FILE__) - 1},       \
 						 {static_cast<char const*>(__VEG_THIS_FUNCTION),                   \
@@ -303,8 +297,8 @@ struct decomposer {
 			on_expect_fail,                                                          \
 			__VA_ARGS__)
 
-} // namespace assert_
-} // namespace internal
+} // namespace _assert
+} // namespace _detail
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

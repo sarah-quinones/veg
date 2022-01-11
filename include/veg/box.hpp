@@ -8,7 +8,7 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace internal {
+namespace _detail {
 namespace _mem {
 template <typename T>
 struct UniquePtr {
@@ -51,7 +51,7 @@ struct DerefCopyFn {
 	}
 };
 } // namespace _mem
-} // namespace internal
+} // namespace _detail
 
 namespace mem {
 template <
@@ -60,7 +60,7 @@ template <
 		bool NoThrowCopy = VEG_CONCEPT(nothrow_copyable<T>) &&
                        VEG_CONCEPT(nothrow_copy_assignable<T>)>
 struct BoxIncomplete {
-	internal::_mem::BoxAlloc<T, A> _;
+	_detail::_mem::BoxAlloc<T, A> _;
 
 	VEG_INLINE constexpr auto alloc_ref() const noexcept -> Ref<A> {
 		return ref(_[0_c]);
@@ -113,7 +113,7 @@ struct BoxIncomplete {
 			: _{
 						InPlace<Tuplify>{},
 						VEG_FWD(fn_a),
-						internal::DefaultFn<internal::_mem::UniquePtr<T>>{},
+						_detail::DefaultFn<_detail::_mem::UniquePtr<T>>{},
 				} {
 		if (!has_value) {
 			return;
@@ -123,7 +123,7 @@ struct BoxIncomplete {
 				alignof(T),
 		};
 
-		internal::_mem::ManagedAlloc<A> block{
+		_detail::_mem::ManagedAlloc<A> block{
 				mem::Alloc<A>::alloc(this->alloc_mut(unsafe), l).data,
 				l,
 				this->alloc_mut(unsafe),
@@ -144,9 +144,9 @@ struct BoxIncomplete {
 			: BoxIncomplete{
 						from_raw_parts,
 						unsafe,
-						internal::CopyFn<A>{rhs.alloc_ref().get()},
+						_detail::CopyFn<A>{rhs.alloc_ref().get()},
 						(rhs.ptr() != nullptr),
-						internal::_mem::DerefCopyFn<T>{rhs.ptr()},
+						_detail::_mem::DerefCopyFn<T>{rhs.ptr()},
 				} {
 		static_assert(
 				NoThrowCopy == (VEG_CONCEPT(nothrow_copyable<T>) &&
@@ -212,19 +212,19 @@ template <typename T, typename A = mem::SystemAlloc>
 struct Box
 		: meta::conditional_t<
 					VEG_CONCEPT(nothrow_copyable<T>) && VEG_CONCEPT(nothrow_copyable<A>),
-					internal::EmptyI<13>,
-					internal::NoCopyCtor>,
+					_detail::EmptyI<13>,
+					_detail::NoCopyCtor>,
 			meta::conditional_t<
 					VEG_CONCEPT(nothrow_copy_assignable<T>) &&
 							VEG_CONCEPT(nothrow_copy_assignable<A>),
-					internal::EmptyI<12>,
-					internal::NoCopyAssign>,
+					_detail::EmptyI<12>,
+					_detail::NoCopyAssign>,
 
 			mem::BoxIncomplete<T, A> {
 	using mem::BoxIncomplete<T, A>::BoxIncomplete;
 };
 
-namespace internal {
+namespace _detail {
 namespace _mem {
 struct OrdBoxI {
 	VEG_TEMPLATE(
@@ -288,7 +288,7 @@ struct DbgBox {
 	}
 };
 } // namespace _mem
-} // namespace internal
+} // namespace _detail
 
 template <typename T, typename A>
 struct cpo::is_trivially_relocatable<mem::BoxIncomplete<T, A>>
@@ -306,14 +306,14 @@ struct cpo::is_trivially_constructible<Box<T, A>>
 
 template <typename LT, typename RT, typename LA, typename RA>
 struct cmp::Ord<mem::BoxIncomplete<LT, LA>, mem::BoxIncomplete<RT, RA>>
-		: internal::_mem::OrdBoxI {};
+		: _detail::_mem::OrdBoxI {};
 template <typename LT, typename RT, typename LA, typename RA>
-struct cmp::Ord<Box<LT, LA>, Box<RT, RA>> : internal::_mem::OrdBox {};
+struct cmp::Ord<Box<LT, LA>, Box<RT, RA>> : _detail::_mem::OrdBox {};
 
 template <typename T, typename A>
-struct fmt::Debug<mem::BoxIncomplete<T, A>> : internal::_mem::DbgBoxI {};
+struct fmt::Debug<mem::BoxIncomplete<T, A>> : _detail::_mem::DbgBoxI {};
 template <typename T, typename A>
-struct fmt::Debug<Box<T, A>> : internal::_mem::DbgBox {};
+struct fmt::Debug<Box<T, A>> : _detail::_mem::DbgBox {};
 
 namespace nb {
 struct box {
@@ -323,9 +323,9 @@ struct box {
 		return {
 				from_raw_parts,
 				unsafe,
-				internal::DefaultFn<mem::SystemAlloc>{},
+				_detail::DefaultFn<mem::SystemAlloc>{},
 				true,
-				internal::MoveFn<T>{VEG_FWD(val)},
+				_detail::MoveFn<T>{VEG_FWD(val)},
 		};
 	}
 };

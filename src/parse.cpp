@@ -3,7 +3,7 @@
 #include <string>
 
 namespace veg {
-namespace internal {
+namespace _detail {
 namespace type_parse {
 
 auto is_ident_char(char c) noexcept -> bool {
@@ -618,7 +618,7 @@ void strip_discard_1st(RefMut<Entity> e_mut) noexcept {
 	auto name_t = Tag<EntityName>{};
 	auto elems = nested.components.as_ref();
 	if (!(elems[0] == Entity{Uwunion{name_t, {{from_literal, "veg"}}}} &&
-	      elems[1] == Entity{Uwunion{name_t, {{from_literal, "internal"}}}} &&
+	      elems[1] == Entity{Uwunion{name_t, {{from_literal, "_detail"}}}} &&
 	      elems[2] == Entity{Uwunion{name_t, {{from_literal, "meta_"}}}})) {
 		return;
 	}
@@ -784,7 +784,9 @@ void print_decl_to(RefMut<Out> out, FunctionDecl decl) noexcept {
 		type_parse::print_sv(VEG_FWD(out), {from_literal, "static "});
 	}
 	print_cv(VEG_FWD(out), decl.cv_qual);
-	type_parse::recurse_strip_discard_1st(decl.return_type.as_mut().unwrap());
+	if (decl.return_type.is_some()) {
+		type_parse::recurse_strip_discard_1st(decl.return_type.as_mut().unwrap());
+	}
 	for (isize i = 0; i < decl.args.len(); ++i) {
 		type_parse::recurse_strip_discard_1st(mut(decl.args[i]));
 	}
@@ -850,5 +852,5 @@ void function_decl_to_file(std::FILE* f, FunctionDecl decl) noexcept {
 	type_parse::print_decl_to(mut(tmp), VEG_FWD(decl));
 }
 } // namespace type_parse
-} // namespace internal
+} // namespace _detail
 } // namespace veg

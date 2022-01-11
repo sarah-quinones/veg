@@ -4,9 +4,8 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace abi {
-inline namespace VEG_ABI_VERSION {
-namespace time {
+namespace internal {
+namespace _time {
 void log_elapsed_time(i64 duration, char const* msg, std::FILE* out) noexcept {
 	i64 dt_unit[4] = {};
 
@@ -34,8 +33,7 @@ auto monotonic_nanoseconds_since_epoch() noexcept -> i64 {
 					std::chrono::steady_clock::now().time_since_epoch())
 					.count());
 }
-} // namespace time
-} // namespace VEG_ABI_VERSION
-} // namespace abi
+} // namespace _time
+} // namespace internal
 } // namespace veg
 #include "veg/internal/epilogue.hpp"
