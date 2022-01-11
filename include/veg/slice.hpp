@@ -2,7 +2,6 @@
 #define VEG_SLICE_HPP_GKSTE2JDS
 
 #include "veg/util/assert.hpp"
-#include "veg/option.hpp"
 #include "veg/util/get.hpp"
 #include "veg/internal/narrow.hpp"
 #include "veg/tuple.hpp"

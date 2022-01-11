@@ -7,6 +7,7 @@
 #include "veg/internal/narrow.hpp"
 #include "veg/slice.hpp"
 #include "veg/util/compare.hpp"
+#include "veg/util/unreachable.hpp"
 
 #include "veg/internal/prologue.hpp"
 

@@ -3,6 +3,9 @@
 
 #include "veg/box.hpp"
 #include "veg/vec.hpp"
+#include "veg/uwunion.hpp"
+#include "veg/option.hpp"
+#include "veg/util/unreachable.hpp"
 #include <cassert>
 
 namespace veg {

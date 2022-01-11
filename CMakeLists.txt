@@ -30,16 +30,15 @@ target_link_libraries(veg PRIVATE _veg_ub)
 
 option(VEG_TESTS "enable tests" OFF)
 
-add_library(project_warnings INTERFACE)
-add_library(project_options INTERFACE)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/compiler_warnings.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/static_analyzers.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/sanitizers.cmake)
-target_link_libraries(veg INTERFACE project_options project_warnings)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/extra_local_settings.cmake)
-enable_sanitizers(project_options)
-
 if(VEG_TESTS)
+  add_library(project_warnings INTERFACE)
+  add_library(project_options INTERFACE)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/compiler_warnings.cmake)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/static_analyzers.cmake)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/sanitizers.cmake)
+  target_link_libraries(veg INTERFACE project_options project_warnings)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/extra_local_settings.cmake)
+  enable_sanitizers(project_options)
 
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/conan.cmake)
   # Conan dependencies
