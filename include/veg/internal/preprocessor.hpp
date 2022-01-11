@@ -65,6 +65,40 @@
 #define __VEG_IMPL_PP_IS_1_32 0
 #define __VEG_IMPL_PP_IS_1_33 0
 
+#define __VEG_IMPL_PP_DEC_1 0
+#define __VEG_IMPL_PP_DEC_2 1
+#define __VEG_IMPL_PP_DEC_3 2
+#define __VEG_IMPL_PP_DEC_4 3
+#define __VEG_IMPL_PP_DEC_5 4
+#define __VEG_IMPL_PP_DEC_6 5
+#define __VEG_IMPL_PP_DEC_7 6
+#define __VEG_IMPL_PP_DEC_8 7
+#define __VEG_IMPL_PP_DEC_9 8
+#define __VEG_IMPL_PP_DEC_10 9
+#define __VEG_IMPL_PP_DEC_11 10
+#define __VEG_IMPL_PP_DEC_12 11
+#define __VEG_IMPL_PP_DEC_13 12
+#define __VEG_IMPL_PP_DEC_14 13
+#define __VEG_IMPL_PP_DEC_15 14
+#define __VEG_IMPL_PP_DEC_16 15
+#define __VEG_IMPL_PP_DEC_17 16
+#define __VEG_IMPL_PP_DEC_18 17
+#define __VEG_IMPL_PP_DEC_19 18
+#define __VEG_IMPL_PP_DEC_20 19
+#define __VEG_IMPL_PP_DEC_21 20
+#define __VEG_IMPL_PP_DEC_22 21
+#define __VEG_IMPL_PP_DEC_23 22
+#define __VEG_IMPL_PP_DEC_24 23
+#define __VEG_IMPL_PP_DEC_25 24
+#define __VEG_IMPL_PP_DEC_26 25
+#define __VEG_IMPL_PP_DEC_27 26
+#define __VEG_IMPL_PP_DEC_28 27
+#define __VEG_IMPL_PP_DEC_29 28
+#define __VEG_IMPL_PP_DEC_30 29
+#define __VEG_IMPL_PP_DEC_31 30
+#define __VEG_IMPL_PP_DEC_32 31
+#define __VEG_IMPL_PP_DEC_33 32
+
 #define __VEG_IMPL_PP_INC_0 1
 #define __VEG_IMPL_PP_INC_1 2
 #define __VEG_IMPL_PP_INC_2 3
@@ -99,6 +133,8 @@
 #define __VEG_IMPL_PP_INC_31 32
 #define __VEG_IMPL_PP_INC_32 33
 
+#define __VEG_IMPL_PP_DEC_I(X) __VEG_IMPL_PP_DEC_##X
+#define __VEG_IMPL_PP_DEC(X) __VEG_IMPL_PP_DEC_I(X)
 #define __VEG_IMPL_PP_INC_I(X) __VEG_IMPL_PP_INC_##X
 #define __VEG_IMPL_PP_INC(X) __VEG_IMPL_PP_INC_I(X)
 #define __VEG_IMPL_PP_IS_1_I(X) __VEG_IMPL_PP_IS_1_##X
