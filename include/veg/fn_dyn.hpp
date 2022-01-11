@@ -400,21 +400,27 @@ public:
 		return ref(raw[1_c].data);
 	}
 
+private:
+	void _destroy(void* ptr) noexcept {
+		auto vtable = this->vtable();
+		vtable->deleter_ptr(ptr);
+		mem::Alloc<A>::dealloc(
+				alloc_mut(unsafe),
+				VEG_FWD(ptr),
+				mem::Layout{
+						vtable->size_of,
+						vtable->align_of,
+				});
+	}
+
+public:
 	IndexedFnDyn() = default;
 	VEG_INLINE ~IndexedFnDyn() {
 		static_assert(VEG_CONCEPT(alloc::nothrow_dealloc<A>), ".");
 
 		auto ptr = data_ref().get();
 		if (ptr != nullptr) {
-			auto vtable = this->vtable();
-			vtable->deleter_ptr(ptr);
-			mem::Alloc<A>::dealloc(
-					alloc_mut(unsafe),
-					VEG_FWD(ptr),
-					mem::Layout{
-							vtable->size_of,
-							vtable->align_of,
-					});
+			_destroy(ptr);
 		}
 	}
 	IndexedFnDyn(IndexedFnDyn const& rhs) noexcept = delete;

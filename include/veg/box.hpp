@@ -138,7 +138,7 @@ struct BoxIncomplete {
 	BoxIncomplete() = default;
 	BoxIncomplete(BoxIncomplete&&) = default;
 
-	VEG_INLINE BoxIncomplete(BoxIncomplete const& rhs) VEG_NOEXCEPT_IF(
+	BoxIncomplete(BoxIncomplete const& rhs) VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_copyable<A>) &&
 			VEG_CONCEPT(alloc::nothrow_alloc<A>) && NoThrowCopy)
 			: BoxIncomplete{
@@ -154,7 +154,7 @@ struct BoxIncomplete {
 				".");
 	}
 
-	auto operator=(BoxIncomplete&& rhs) noexcept -> BoxIncomplete& {
+	VEG_INLINE auto operator=(BoxIncomplete&& rhs) noexcept -> BoxIncomplete& {
 		BoxIncomplete tmp = VEG_FWD(rhs);
 		{ auto cleanup = static_cast<BoxIncomplete&&>(*this); }
 		this->alloc_mut(unsafe).get() =
@@ -185,12 +185,16 @@ struct BoxIncomplete {
 		return *this;
 	}
 
+private:
+	void _destroy(T* ptr) noexcept { mem::destroy_at(ptr); }
+
+public:
 	VEG_INLINE ~BoxIncomplete() {
 		static_assert(VEG_CONCEPT(nothrow_destructible<T>), ".");
 		static_assert(VEG_CONCEPT(alloc::nothrow_dealloc<A>), ".");
-		auto ptr = this->ptr();
+		auto ptr = this->ptr_mut();
 		if (ptr != nullptr) {
-			mem::destroy_at(ptr);
+			this->_destroy(ptr);
 		}
 	}
 };
@@ -198,7 +202,7 @@ struct BoxIncomplete {
 VEG_TEMPLATE(
 		(typename LT, typename RT, typename LA, typename RA),
 		requires(VEG_CONCEPT(eq<LT, RT>)),
-		VEG_NODISCARD VEG_INLINE constexpr auto
+		VEG_NODISCARD constexpr auto
 		operator==,
 		(lhs, BoxIncomplete<LT, LA> const&),
 		(rhs, BoxIncomplete<RT, RA> const&))
@@ -230,7 +234,7 @@ struct OrdBoxI {
 	VEG_TEMPLATE(
 			(typename LT, typename RT, typename LA, typename RA),
 			requires(VEG_CONCEPT(ord<LT, RT>)),
-			VEG_NODISCARD VEG_INLINE static VEG_CPP14(constexpr) auto cmp,
+			VEG_NODISCARD static VEG_CPP14(constexpr) auto cmp,
 			(lhs, Ref<mem::BoxIncomplete<LT, LA>>),
 			(rhs, Ref<mem::BoxIncomplete<RT, RA>>))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_ord<LT, RT>))->cmp::Ordering {
@@ -252,7 +256,7 @@ struct OrdBox {
 	VEG_TEMPLATE(
 			(typename LT, typename RT, typename LA, typename RA),
 			requires(VEG_CONCEPT(ord<LT, RT>)),
-			VEG_NODISCARD VEG_INLINE static VEG_CPP14(constexpr) auto cmp,
+			VEG_NODISCARD static VEG_CPP14(constexpr) auto cmp,
 			(lhs, Ref<Box<LT, LA>>),
 			(rhs, Ref<Box<RT, RA>>))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_ord<LT, RT>))->cmp::Ordering {
