@@ -3,11 +3,12 @@
 #include <fmt/core.h>
 
 namespace veg {
-namespace internal {
+namespace _detail {
 namespace type_parse {
-void function_decl_to_file(std::FILE* f, FunctionDecl decl) noexcept;
+void function_decl_to_file(
+		std::FILE* f, _detail::type_parse::FunctionDecl decl) noexcept;
 } // namespace type_parse
-} // namespace internal
+} // namespace _detail
 } // namespace veg
 
 #define PRINT_FN() ::fmt::print("{}\n", __PRETTY_FUNCTION__)
@@ -80,7 +81,7 @@ struct A {
 } // namespace test_cases
 
 auto main() -> int {
-	using namespace veg::internal::type_parse;
+	using namespace veg::_detail::type_parse;
 	using namespace veg;
 	using Uwunion = Entity::Uwunion;
 

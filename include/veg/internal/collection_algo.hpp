@@ -64,7 +64,7 @@ struct DestroyImpl<false> {
 };
 
 template <typename T, typename A, typename C>
-VEG_INLINE VEG_CPP14(constexpr) void backward_destroy(
+VEG_CPP14(constexpr) void backward_destroy(
 		RefMut<A> alloc, RefMut<C> cloner, T* ptr, T* ptr_end)
 		VEG_NOEXCEPT_IF(VEG_CONCEPT(alloc::nothrow_destroy<C, T, A>)) {
 	DestroyImpl<VEG_CONCEPT(alloc::nothrow_destroy<C, T, A>)>::fn(

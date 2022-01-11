@@ -38,6 +38,8 @@ struct BumpAllocLayout {
 	}
 	void _assert_last(void* ptr, usize byte_size) noexcept {
 		auto* byte_ptr = static_cast<mem::byte*>(ptr);
+		(void)byte_size;
+		(void)byte_ptr;
 		VEG_DEBUG_ASSERT((byte_ptr + _align(byte_size)) == current_ptr);
 	}
 

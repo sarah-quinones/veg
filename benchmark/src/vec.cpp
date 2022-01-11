@@ -118,7 +118,7 @@ static void make_args(benchmark::internal::Benchmark* b) {
 // BENCHMARK_TEMPLATE(bench_veg_vec, int)->Apply(make_args);
 // BENCHMARK_TEMPLATE(bench_std_vec, int)->Apply(make_args);
 BENCHMARK_TEMPLATE(bench_veg_vec_unchecked, float)->Apply(make_args);
-BENCHMARK_TEMPLATE(bench_veg_vec_rsfo, float)->Apply(make_args);
+BENCHMARK_TEMPLATE(bench_veg_vec_rsao, float)->Apply(make_args);
 BENCHMARK_TEMPLATE(bench_veg_vec, float)->Apply(make_args);
 BENCHMARK_TEMPLATE(bench_std_vec, float)->Apply(make_args);
 BENCHMARK_MAIN();

@@ -851,7 +851,7 @@ struct OrdVec {
 	VEG_TEMPLATE(
 			(typename T, typename LhsA, typename U, typename RhsA),
 			requires(VEG_CONCEPT(ord<T, U>)),
-			VEG_NODISCARD VEG_INLINE static constexpr auto cmp,
+			VEG_NODISCARD static constexpr auto cmp,
 			(lhs, Ref<Vec<T, LhsA>>),
 			(rhs, Ref<Vec<U, RhsA>>))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_ord<T, U>))->cmp::Ordering {
@@ -864,7 +864,7 @@ struct OrdVecI {
 	VEG_TEMPLATE(
 			(typename T, typename LhsA, typename U, typename RhsA),
 			requires(VEG_CONCEPT(ord<T, U>)),
-			VEG_NODISCARD VEG_INLINE static constexpr auto cmp,
+			VEG_NODISCARD static constexpr auto cmp,
 			(lhs, Ref<collections::VecIncomplete<T, LhsA>>),
 			(rhs, Ref<collections::VecIncomplete<U, RhsA>>))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_ord<T, U>))->cmp::Ordering {

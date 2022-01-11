@@ -80,8 +80,8 @@
 
 #ifndef VEG_INLINE
 #define VEG_INLINE HEDLEY_ALWAYS_INLINE
-#define VEG_NO_INLINE HEDLEY_NEVER_INLINE
 #endif
+#define VEG_NO_INLINE HEDLEY_NEVER_INLINE
 
 #if defined(__cpp_concepts) && __cpp_concepts >= 201907L
 #define VEG_HAS_CONCEPTS 1
