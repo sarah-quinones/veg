@@ -33,7 +33,7 @@ static void
 bench_veg_visit_impl(std::index_sequence<Is...> /*tag*/, benchmark::State& s) {
 	using V = Uwunion<S<Is>...>;
 	using F = V (*)();
-	constexpr F fn[] = {[] { return V(Fix<Is>{}, {}); }...};
+	constexpr F fn[] = {[] { return V(Fix<isize{Is}>{}, {}); }...};
 
 	usize v = 0;
 	benchmark::DoNotOptimize(&v);

@@ -96,17 +96,17 @@ VEG_INLINE void deleter(void* data) noexcept {
 template <usize I, typename F, typename R, typename... Ts>
 VEG_INLINE constexpr auto caller(void const* data, Ts... ts) noexcept(
 		VEG_CONCEPT(nothrow_fn_once<inner_ith<F const&, I>, R, Ts...>)) -> R {
-	return (*static_cast<F const*>(data))[Fix<I>{}](VEG_FWD(ts)...);
+	return (*static_cast<F const*>(data))[Fix<isize{I}>{}](VEG_FWD(ts)...);
 };
 template <usize I, typename F, typename R, typename... Ts>
 VEG_INLINE constexpr auto caller_mut(void* data, Ts... ts) noexcept(
 		VEG_CONCEPT(nothrow_fn_once<inner_ith<F&, I>, R, Ts...>)) -> R {
-	return (*static_cast<F*>(data))[Fix<I>{}](VEG_FWD(ts)...);
+	return (*static_cast<F*>(data))[Fix<isize{I}>{}](VEG_FWD(ts)...);
 };
 template <usize I, typename F, typename R, typename... Ts>
 VEG_INLINE constexpr auto caller_once(void* data, Ts... ts) noexcept(
 		VEG_CONCEPT(nothrow_fn_once<inner_ith<F, I>, R, Ts...>)) -> R {
-	return static_cast<F&&>(*static_cast<F*>(data))[Fix<I>{}](VEG_FWD(ts)...);
+	return static_cast<F&&>(*static_cast<F*>(data))[Fix<isize{I}>{}](VEG_FWD(ts)...);
 };
 
 template <usize I, typename Sig>

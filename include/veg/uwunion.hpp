@@ -1246,7 +1246,7 @@ public:
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))
 			: Base{
 						_detail::_uwunion::EmplaceTag{},
-						_detail::UTag<I>{},
+						_detail::UTag<usize{I}>{},
 						_detail::_uwunion::IdxMoveFn<T>{VEG_FWD(arg)},
 						I,
 				} {}

@@ -1,6 +1,7 @@
 #ifndef VEG_ALLOC_HPP_QHYOV5XDS
 #define VEG_ALLOC_HPP_QHYOV5XDS
 
+#include "veg/internal/has_asan.hpp"
 #include "veg/ref.hpp"
 #include "veg/type_traits/constructible.hpp"
 #include "veg/type_traits/assignable.hpp"
@@ -17,19 +18,6 @@ template <typename T>
 struct Cloner {};
 } // namespace mem
 namespace _detail {
-
-#if defined(__clang__)
-#if __has_feature(address_sanitizer)
-#define VEG_HAS_ASAN 1
-#else
-#define VEG_HAS_ASAN 0
-#endif
-
-#elif defined(__SANITIZE_ADDRESS__) && __SANITIZE_ADDRESS__ == 1
-#define VEG_HAS_ASAN 1
-#else
-#define VEG_HAS_ASAN 0
-#endif
 
 #if VEG_HAS_ASAN
 extern "C" void __sanitizer_annotate_contiguous_container /* NOLINT */ (

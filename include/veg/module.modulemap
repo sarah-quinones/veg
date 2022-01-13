@@ -1,4 +1,70 @@
 module veg {
+  module _internal {
+    module assert_impl {
+      header "internal/assert_impl.hpp"
+      export *
+    }
+    module byte_string_ref {
+      header "internal/byte_string_ref.hpp"
+      export *
+    }
+    module collection_algo {
+      header "internal/collection_algo.hpp"
+      export *
+    }
+    module delete_special_members {
+      header "internal/delete_special_members.hpp"
+      export *
+    }
+    module dyn_index {
+      header "internal/dyn_index.hpp"
+      export *
+    }
+    module fix_index {
+      header "internal/fix_index.hpp"
+      export *
+    }
+    module fmt {
+      header "internal/fmt.hpp"
+      export *
+    }
+    module integer_seq {
+      header "internal/integer_seq.hpp"
+      export *
+    }
+    module macros {
+      header "internal/macros.hpp"
+      export *
+    }
+    module narrow {
+      header "internal/narrow.hpp"
+      export *
+    }
+    module parse {
+      header "internal/parse.hpp"
+      export *
+    }
+    module preprocessor {
+      header "internal/preprocessor.hpp"
+      export *
+    }
+    module std {
+      header "internal/std.hpp"
+      export *
+    }
+    module terminate {
+      header "internal/terminate.hpp"
+      export *
+    }
+    module typedefs {
+      header "internal/typedefs.hpp"
+      export *
+    }
+    module visit {
+      header "internal/visit.hpp"
+      export *
+    }
+  }
 
   module box {
     header "box.hpp"
