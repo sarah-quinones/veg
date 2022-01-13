@@ -169,7 +169,8 @@
 
 #define VEG_DEF_CONCEPT(Tpl, Name, ...)                                        \
 	template <__VEG_PP_REMOVE_PAREN1(Tpl)>                                       \
-	concept Name = __VA_ARGS__
+	concept Name = __VA_ARGS__;                                                  \
+	VEG_NOM_SEMICOLON
 
 #define VEG_CHECK_CONCEPT_MACRO(Namespace, ...)                                \
 	static_assert(                                                               \
@@ -474,6 +475,17 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#if __cplusplus >= 201703L
+#define VEG_INLINE_VAR(Name, Obj)                                              \
+	inline constexpr auto const& Name = ::veg::meta::static_const<Obj>::value;   \
+	static_assert((void(Name), true), ".")
+
+#define VEG_INLINE_VAR_TEMPLATE(Tpl, Name, ...) /* NOLINT */                   \
+	template <__VEG_PP_REMOVE_PAREN(Tpl)>                                        \
+	inline constexpr auto const& Name =                                          \
+			::veg::meta::static_const<__VA_ARGS__>::value;                           \
+	VEG_NOM_SEMICOLON /* NOLINT */
+#else
 #define VEG_INLINE_VAR(Name, Obj)                                              \
 	namespace /* NOLINT */ {                                                     \
 	constexpr auto const& Name = ::veg::meta::static_const<Obj>::value;          \
@@ -490,6 +502,7 @@
 	VEG_NOM_SEMICOLON /* NOLINT */
 #else
 #define VEG_INLINE_VAR_TEMPLATE(Tpl, Name, ...) VEG_NOM_SEMICOLON
+#endif
 #endif
 
 #define VEG_NIEBLOID(Name) VEG_INLINE_VAR(Name, nb::Name) // NOLINT
