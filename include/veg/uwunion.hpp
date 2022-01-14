@@ -12,6 +12,7 @@
 #include "veg/internal/visit.hpp"
 #include "veg/internal/fix_index.hpp"
 #include "veg/internal/fmt.hpp"
+#include "veg/cereal/bin_cereal.hpp"
 
 #include "veg/internal/prologue.hpp"
 
@@ -1752,6 +1753,70 @@ struct DbgUwunionBase {
 		_uwunion::dbg_impl(VEG_FWD(out), u.get());
 	}
 };
+
+template <typename File>
+struct BinCerealVisitor {
+	RefMut<File> f;
+	template <typename T>
+			void operator()(Ref<T> t) &&
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(aux::cereal::xnothrow_bin_serializable<T, File>)) {
+		cereal::BinCereal<T>::serialize_to(VEG_FWD(f), VEG_FWD(t));
+	}
+};
+template <typename File, typename... Ts>
+struct BinDeserialVisitor {
+	RefMut<File> f;
+	template <usize I>
+			auto operator()(UTag<I> /*itag*/) &&
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(
+					aux::cereal::xnothrow_bin_deserializable_unsafe<ith<I, Ts...>, File>))
+					-> Uwunion<Ts...> {
+		return {
+				inplace[Fix<isize{I}>{}],
+				VEG_LAZY_BY_REF(
+						cereal::BinCereal<ith<I, Ts...>>::unchecked_deserialize_from(
+								unsafe, Tag<ith<I, Ts...>>{}, VEG_FWD(f)))};
+	}
+};
+
+struct BinCerealUwunionBase {
+	VEG_TEMPLATE(
+			(typename... Ts, typename File),
+			requires(VEG_ALL_OF(VEG_CONCEPT(bin_cereal<Ts, File>))),
+			static void serialize_to,
+			(f, RefMut<File>),
+			(t, Ref<Uwunion<Ts...>>))
+	VEG_NOEXCEPT_IF(VEG_ALL_OF(
+			VEG_CONCEPT(aux::cereal::xnothrow_bin_serializable<Ts, File>))) {
+		using TagType = meta::conditional_t<sizeof...(Ts) < 256U, u8, usize>;
+		cereal::BinCereal<TagType>::serialize_to(
+				VEG_FWD(f), ref(TagType(t.get().index())));
+		t.get().as_ref().visit(BinCerealVisitor<File>{VEG_FWD(f)});
+	}
+
+	VEG_TEMPLATE(
+			(typename... Ts, typename File),
+			requires(VEG_ALL_OF(VEG_CONCEPT(bin_cereal<Ts, File>))),
+			static auto unchecked_deserialize_from,
+			(/*unsafe*/, Unsafe),
+			(/*tag*/, Tag<Uwunion<Ts...>>),
+			(f, RefMut<File>))
+	VEG_NOEXCEPT_IF(
+			VEG_ALL_OF(VEG_CONCEPT(
+					aux::cereal::xnothrow_bin_deserializable_unsafe<Ts, File>)))
+			->Uwunion<Ts...> {
+		using TagType = meta::conditional_t<sizeof...(Ts) < 256U, u8, usize>;
+		TagType index = cereal::BinCereal<TagType>::unchecked_deserialize_from(
+				unsafe, Tag<TagType>{}, mut(f.get()));
+
+		return veg::_detail::visit14<
+				Uwunion<Ts...>,
+				VEG_ALL_OF(VEG_CONCEPT(
+						aux::cereal::xnothrow_bin_deserializable_unsafe<Ts, File>)),
+				sizeof...(Ts)>(index, BinDeserialVisitor<File, Ts...>{VEG_FWD(f)});
+	}
+};
 } // namespace _uwunion
 } // namespace _detail
 
@@ -1763,6 +1828,10 @@ struct cmp::Ord<
 		uwunion::IndexedUwunion<meta::index_sequence<Is...>, Ts...>,
 		uwunion::IndexedUwunion<meta::index_sequence<Is...>, Us...>>
 		: _detail::_uwunion::OrdUwunionBase {};
+
+template <typename... Ts>
+struct cereal::BinCereal<Uwunion<Ts...>>
+		: _detail::_uwunion::BinCerealUwunionBase {};
 
 template <typename... Ts>
 struct fmt::Debug<Uwunion<Ts...>> : _detail::_uwunion::DbgUwunionBase {};

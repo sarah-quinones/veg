@@ -115,13 +115,17 @@ constexpr Token basic_tokens[] = {
 		{{from_literal, "int"}, TokenKind::COMPOSITE_PRIMITIVE},
 };
 
-auto find_matching(StrView c, StrView str, usize initial_count = 0) noexcept
-		-> Tuple<StrView, StrView> {
+auto find_matching(
+		StrView c,
+		StrView str,
+		usize initial_count = 0,
+		bool ignore_angled = false) noexcept -> Tuple<StrView, StrView> {
 	usize delimiter_count = initial_count;
 	usize angled_delimiter_count = 0;
 	usize pos = 0;
 	for (; pos < str.len(); ++pos) {
-		if (delimiter_count == 0 && angled_delimiter_count == 0 &&
+		if (delimiter_count == 0 &&
+		    (ignore_angled || angled_delimiter_count == 0) &&
 		    str.skip_leading(pos).begins_with(c)) {
 			break;
 		}
@@ -192,6 +196,9 @@ auto parse_token(StrView str) noexcept -> Tuple<Token, StrView> {
 }
 
 auto parse_entity(StrView str) -> Entity {
+	// if (str.ltrim(' ').begins_with(
+	// 				{from_literal, "::veg::_detail::_meta::discard_1st<"})) {
+	// }
 	return type_parse::greedy_parse_entity(str)[0_c];
 }
 
@@ -360,7 +367,7 @@ auto greedy_parse_entity(StrView str) noexcept -> Tuple<Entity, StrView> {
 			VEG_BIND(
 					auto,
 					(inside_parens, after_parens),
-					type_parse::find_matching({from_literal, ")"}, after_token));
+					type_parse::find_matching({from_literal, ")"}, after_token, 0, true));
 			assert(after_parens.begins_with({from_literal, ")"}));
 			inside_parens._.begin -= 1;
 			inside_parens._.len += 2;
@@ -619,7 +626,7 @@ void strip_discard_1st(RefMut<Entity> e_mut) noexcept {
 	auto elems = nested.components.as_ref();
 	if (!(elems[0] == Entity{Uwunion{name_t, {{from_literal, "veg"}}}} &&
 	      elems[1] == Entity{Uwunion{name_t, {{from_literal, "_detail"}}}} &&
-	      elems[2] == Entity{Uwunion{name_t, {{from_literal, "meta_"}}}})) {
+	      elems[2] == Entity{Uwunion{name_t, {{from_literal, "_meta"}}}})) {
 		return;
 	}
 
@@ -789,6 +796,12 @@ void print_decl_to(RefMut<Out> out, FunctionDecl decl) noexcept {
 	}
 	for (isize i = 0; i < decl.args.len(); ++i) {
 		type_parse::recurse_strip_discard_1st(mut(decl.args[i]));
+	}
+	for (isize i = 0; i < decl.dependent_expansions.len(); ++i) {
+		type_parse::recurse_strip_discard_1st(
+				mut(decl.dependent_expansions[i][0_c]));
+		type_parse::recurse_strip_discard_1st(
+				mut(decl.dependent_expansions[i][1_c]));
 	}
 
 	type_parse::print_sv(VEG_FWD(out), {from_literal, "fn "});

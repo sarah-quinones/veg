@@ -15,6 +15,7 @@ namespace _mem {
 
 template <usize MaxAlign>
 struct BumpAllocLayout {
+
 	mem::byte* current_ptr;
 	mem::byte* start_ptr;
 	mem::byte* end_ptr;
@@ -107,18 +108,18 @@ struct BumpAllocLayout {
 } // namespace _detail
 
 namespace mem {
-
 template <usize MaxAlign>
 struct BumpAlloc : private _detail::_mem::BumpAllocLayout<MaxAlign> {
+#if VEG_HAS_ASAN
+	static_assert(MaxAlign >= 8, ".");
+#endif
+
 	BumpAlloc(FromSlice /*tag*/, SliceMut<byte> s) noexcept
 			: _detail::_mem::BumpAllocLayout<MaxAlign>{
 						s.mut_ptr(),
 						s.mut_ptr(),
 						s.mut_ptr() + s.len(),
 				} {
-#if VEG_HAS_ASAN
-		VEG_ASSERT((std::uintptr_t(s.ptr()) % 8) == std::uintptr_t(0));
-#endif
 
 		VEG_ASSERT_ALL_OF(
 				((std::uintptr_t(s.ptr()) % MaxAlign) == std::uintptr_t(0)),

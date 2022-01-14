@@ -7,7 +7,9 @@
 #include "veg/ref.hpp"
 #include "veg/type_traits/primitives.hpp"
 #include "veg/internal/prologue.hpp"
+
 #include <cstring>
+#include <cstdio>
 
 namespace veg {
 namespace _detail {
@@ -344,7 +346,7 @@ struct String final : fmt::Buffer {
 	void reserve(usize new_cap) override;
 	void insert(usize pos, char const* data, usize len) override;
 	void insert_newline(usize pos) override;
-	void eprint() const VEG_ALWAYS_NOEXCEPT;
+	void eprintln(std::FILE* f) const VEG_ALWAYS_NOEXCEPT;
 
 	VEG_NODISCARD VEG_INLINE auto data() const VEG_ALWAYS_NOEXCEPT
 			-> char* override {
@@ -355,9 +357,66 @@ struct String final : fmt::Buffer {
 		return self.len;
 	}
 };
+
+inline void dbg_prefix(
+		RefMut<String> str,
+		unsigned line,
+		char const* file,
+		char const* fn) noexcept {
+	auto& out = str.get();
+
+	if (line != 0 && file != nullptr && fn != nullptr) {
+		auto file_len = usize(std::strlen(file));
+		auto fn_len = usize(std::strlen(fn));
+
+		out.append_literal("[");
+		out.insert(1, fn, fn_len);
+		out.append_literal(":");
+		out.insert(1 + fn_len + 1, file, file_len);
+		out.append_literal(":");
+		fmt::Debug<unsigned>::to_string(out, nb::ref{}(line));
+		out.append_literal("] ");
+	}
+}
 } // namespace _detail
 
 namespace nb {
+struct dbg_to {
+	template <typename T>
+	auto operator()( //
+			std::FILE* f,
+			T&& arg,
+			unsigned line =
+#if VEG_HAS_BUILTIN(__builtin_LINE)
+					__builtin_LINE(),
+#else
+					0,
+#endif
+
+			char const* file =
+#if VEG_HAS_BUILTIN(__builtin_FILE)
+					__builtin_FILE(),
+#else
+					nullptr,
+#endif
+
+			char const* fn =
+#if VEG_HAS_BUILTIN(__builtin_FUNCTION)
+					__builtin_FUNCTION()
+#else
+					nullptr
+#endif
+
+	) const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> T {
+		_detail::String out;
+
+		_detail::dbg_prefix(mut{}(out), line, file, fn);
+		fmt::Debug<uncvref_t<T>>::to_string(out, nb::ref{}(arg));
+		out.eprintln(f);
+		return T(VEG_FWD(arg));
+	}
+};
+
 struct dbg {
 	template <typename T>
 	auto operator()( //
@@ -383,27 +442,12 @@ struct dbg {
 					nullptr
 #endif
 
-	) const -> T {
-		_detail::String out;
-
-		if (line != 0 && file != nullptr && fn != nullptr) {
-			auto file_len = usize(std::strlen(file));
-			auto fn_len = usize(std::strlen(fn));
-
-			out.append_literal("[");
-			out.insert(1, fn, fn_len);
-			out.append_literal(":");
-			out.insert(1 + fn_len + 1, file, file_len);
-			out.append_literal(":");
-			fmt::Debug<unsigned>::to_string(out, nb::ref{}(line));
-			out.append_literal("] ");
-		}
-		fmt::Debug<uncvref_t<T>>::to_string(out, nb::ref{}(arg));
-		out.eprint();
-		return T(VEG_FWD(arg));
+	) const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> T {
+		return dbg_to{}(stderr, VEG_FWD(arg), line, file, fn);
 	}
 };
 } // namespace nb
+VEG_NIEBLOID(dbg_to);
 VEG_NIEBLOID(dbg);
 } // namespace veg
 

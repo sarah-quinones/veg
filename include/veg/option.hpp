@@ -370,6 +370,27 @@ constexpr auto operator==(None /*lhs*/, None /*rhs*/) VEG_NOEXCEPT -> bool {
 
 namespace _detail {
 namespace _option {
+struct BinCerealOptionBase {
+	VEG_TEMPLATE(
+			(typename T, typename File),
+			requires(VEG_CONCEPT(bin_cereal<T, File>)),
+			static void serialize_to,
+			(f, RefMut<File>),
+			(t, Ref<Option<T>>))
+	VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(aux::cereal::xnothrow_bin_serializable<T, File>)) {
+		bool is_some = t.get().is_some();
+		cereal::BinCereal<bool>::serialize_to(VEG_FWD(f), ref(is_some));
+		if (is_some) {
+			cereal::BinCereal<T>::serialize_to(
+					VEG_FWD(f),
+					t //
+							.get()
+							.as_ref()
+							.unwrap_unchecked(unsafe));
+		}
+	}
+};
 struct DbgOptionBase {
 	template <typename T>
 	static void to_string(fmt::BufferMut out, Ref<Option<T>> opt) {
@@ -418,6 +439,9 @@ struct OrdOptionBaseRhsNone {
 };
 } // namespace _option
 } // namespace _detail
+
+template <typename T>
+struct cereal::BinCereal<Option<T>> : _detail::_option::BinCerealOptionBase {};
 
 template <typename T>
 struct fmt::Debug<Option<T>> : _detail::_option::DbgOptionBase {};

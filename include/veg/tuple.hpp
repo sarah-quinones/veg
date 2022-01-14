@@ -6,6 +6,7 @@
 #include "veg/type_traits/invocable.hpp"
 #include "veg/util/get.hpp"
 #include "veg/internal/fix_index.hpp"
+#include "veg/cereal/bin_cereal.hpp"
 #include "veg/internal/prologue.hpp"
 
 #if defined(__GLIBCXX__)
@@ -867,6 +868,57 @@ struct DebugTupleBase {
 		_tuple::to_string_impl(VEG_FWD(out), tup.get());
 	}
 };
+
+template <typename File>
+struct BinCerealVisitor {
+	RefMut<File> f;
+	template <typename T>
+			VEG_INLINE void operator()(Ref<T> t) &
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(aux::cereal::xnothrow_bin_serializable<T, File>)) {
+		cereal::BinCereal<T>::serialize_to(mut(f.get()), VEG_FWD(t));
+	}
+};
+template <typename T, typename File>
+struct BinCerealFn {
+	RefMut<File> f;
+	VEG_INLINE auto operator()() &&
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(aux::cereal::xnothrow_bin_serializable<T, File>)) -> T {
+		return cereal::BinCereal<T>::unchecked_deserialize_from(
+				unsafe, Tag<T>{}, VEG_FWD(f));
+	}
+};
+
+struct BinCerealTupleBase {
+	VEG_TEMPLATE(
+			(typename... Ts, typename File),
+			requires(VEG_ALL_OF(VEG_CONCEPT(bin_cereal<Ts, File>))),
+			static void serialize_to,
+			(f, RefMut<File>),
+			(t, Ref<Tuple<Ts...>>))
+	VEG_NOEXCEPT_IF(VEG_ALL_OF(
+			VEG_CONCEPT(aux::cereal::xnothrow_bin_serializable<Ts, File>))) {
+		tuple::for_each(t.get().as_ref(), BinCerealVisitor<File>{VEG_FWD(f)});
+	}
+
+	VEG_TEMPLATE(
+			(typename... Ts, typename File),
+			requires(VEG_ALL_OF(VEG_CONCEPT(bin_cereal<Ts, File>))),
+			static auto unchecked_deserialize_from,
+			(/*unsafe*/, Unsafe),
+			(/*tag*/, Tag<Tuple<Ts...>>),
+			(f, RefMut<File>))
+	VEG_NOEXCEPT_IF(
+			VEG_ALL_OF(VEG_CONCEPT(
+					aux::cereal::xnothrow_bin_deserializable_unsafe<Ts, File>)))
+			->Tuple<Ts...> {
+		return {
+				inplace[tuplify],
+				BinCerealFn<Ts, File>{VEG_FWD(f)}...,
+		};
+	}
+};
 } // namespace _tuple
 } // namespace _detail
 
@@ -883,6 +935,9 @@ struct fmt::Debug<Tuple<Ts...>> : _detail::_tuple::DebugTupleBase {};
 template <usize... Is, typename... Ts>
 struct fmt::Debug<tuple::IndexedTuple<meta::index_sequence<Is...>, Ts...>>
 		: _detail::_tuple::DebugITupleBase {};
+
+template <typename... Ts>
+struct cereal::BinCereal<Tuple<Ts...>> : _detail::_tuple::BinCerealTupleBase {};
 } // namespace veg
 
 template <typename... Ts>

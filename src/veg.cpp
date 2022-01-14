@@ -44,9 +44,9 @@ String::~String() {
 	std::free(self.ptr);
 }
 
-void String::eprint() const VEG_ALWAYS_NOEXCEPT {
-	std::cerr.write(self.ptr, isize(self.len));
-	std::cerr.put('\n');
+void String::eprintln(std::FILE* f) const VEG_ALWAYS_NOEXCEPT {
+	std::fwrite(self.ptr, 1, self.len, f);
+	std::fputc('\n', f);
 }
 void String::reserve(usize new_cap) {
 	if (new_cap > self.cap) {
@@ -134,19 +134,19 @@ auto with_color(color_t c, std::string s) -> std::string {
 	s = "\x1b[38;2;000;000;000m" + VEG_FWD(s) + "\x1b[0m";
 
 	size_t i = 7;
-	s[i++] = '0' + c.r / 100;
-	s[i++] = '0' + (c.r % 100) / 10;
-	s[i++] = '0' + (c.r % 10);
+	s[i++] = char('0' + c.r / 100);
+	s[i++] = char('0' + (c.r % 100) / 10);
+	s[i++] = char('0' + (c.r % 10));
 	++i;
 
-	s[i++] = '0' + c.g / 100;
-	s[i++] = '0' + (c.g % 100) / 10;
-	s[i++] = '0' + (c.g % 10);
+	s[i++] = char('0' + c.g / 100);
+	s[i++] = char('0' + (c.g % 100) / 10);
+	s[i++] = char('0' + (c.g % 10));
 	++i;
 
-	s[i++] = '0' + c.b / 100;
-	s[i++] = '0' + (c.b % 100) / 10;
-	s[i++] = '0' + (c.b % 10);
+	s[i++] = char('0' + c.b / 100);
+	s[i++] = char('0' + (c.b % 100) / 10);
+	s[i++] = char('0' + (c.b % 10));
 
 	return s;
 }
@@ -674,12 +674,14 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 }
 
 void on_expect_fail(long line, ByteStringView file, ByteStringView func) {
-	std::cerr << on_fail(line, file, func, false);
+	auto str = on_fail(line, file, func, false);
+	std::fwrite(str.data(), 1, str.size(), stderr);
 }
 
 [[noreturn]] void
 on_assert_fail(long line, ByteStringView file, ByteStringView func) {
-	std::cerr << on_fail(line, file, func, false);
+	auto str = on_fail(line, file, func, true);
+	std::fwrite(str.data(), 1, str.size(), stderr);
 	std::terminate();
 }
 
