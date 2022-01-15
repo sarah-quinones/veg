@@ -723,7 +723,6 @@ void set_assert_params2(       //
 
 auto snprintf1(char* out, usize n, unsigned type, void* arg) -> usize {
 	unsigned type_id = type % 4U;
-	unsigned metadata = type / 4U;
 
 	switch (type_id) {
 	case 0: // signed
@@ -735,24 +734,9 @@ auto snprintf1(char* out, usize n, unsigned type, void* arg) -> usize {
 	case 2: // pointer
 		return usize(std::snprintf(out, n, "%p", arg));
 	case 3: { // float
-		int precision = 0;
-		switch (metadata) {
-		case sizeof(float):
-			precision = int(std::numeric_limits<float>::max_digits10);
-			break;
-		case sizeof(double):
-			precision = int(std::numeric_limits<double>::max_digits10);
-			break;
-		case sizeof(long double):
-			precision = int(std::numeric_limits<long double>::max_digits10);
-			break;
-		default: {
-		}
-		}
-		return usize(std::snprintf(
-				out, n, "%.*Le", precision, *static_cast<long double*>(arg)));
+		return usize(
+				std::snprintf(out, n, "%+.4Le", *static_cast<long double*>(arg)));
 	}
-		HEDLEY_FALL_THROUGH;
 	default:
 		terminate();
 	}
