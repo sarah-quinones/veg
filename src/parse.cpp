@@ -196,9 +196,28 @@ auto parse_token(StrView str) noexcept -> Tuple<Token, StrView> {
 }
 
 auto parse_entity(StrView str) -> Entity {
-	// if (str.ltrim(' ').begins_with(
-	// 				{from_literal, "::veg::_detail::_meta::discard_1st<"})) {
-	// }
+	StrView special_strs[] = {
+			{from_literal, "::veg::_detail::_meta::discard_1st<"},
+			{from_literal, "veg::_detail::_meta::discard_1st<"},
+	};
+	;
+	for (auto special_str : special_strs) {
+		if (str.ltrim(' ').begins_with(special_str)) {
+			VEG_BIND(
+					auto,
+					(inside_angled, after),
+					type_parse::find_matching(
+							{from_literal, ">"},
+							str.ltrim(' ').skip_leading(special_str.len())));
+			assert(after.begins_with({from_literal, ">"}));
+			VEG_BIND(
+					auto,
+					(before_comma, comma_and_after),
+					type_parse::find_matching({from_literal, ","}, inside_angled));
+			assert(comma_and_after.begins_with({from_literal, ","}));
+			return type_parse::parse_entity(comma_and_after.skip_leading(1));
+		}
+	}
 	return type_parse::greedy_parse_entity(str)[0_c];
 }
 
@@ -608,76 +627,6 @@ auto parse_function_decl(StrView str) noexcept -> FunctionDecl {
 	};
 }
 
-void strip_discard_1st(RefMut<Entity> e_mut) noexcept {
-	using Uwunion = Entity::Uwunion;
-	auto nested_t = Tag<NestedEntity>{};
-
-	auto e = e_mut.as_const();
-
-	if (!e->kind.holds(nested_t)) {
-		return;
-	}
-	auto const& nested = e->kind[nested_t];
-	if (nested.components.len() != 4) {
-		return;
-	}
-
-	auto name_t = Tag<EntityName>{};
-	auto elems = nested.components.as_ref();
-	if (!(elems[0] == Entity{Uwunion{name_t, {{from_literal, "veg"}}}} &&
-	      elems[1] == Entity{Uwunion{name_t, {{from_literal, "_detail"}}}} &&
-	      elems[2] == Entity{Uwunion{name_t, {{from_literal, "_meta"}}}})) {
-		return;
-	}
-
-	auto const& last = elems[3];
-	auto tpl_t = Tag<TemplatedEntity>{};
-	if (!last.kind.holds(tpl_t)) {
-		return;
-	}
-	auto const& as_tpl = last.kind[tpl_t];
-	if (!(*as_tpl.tpl.ptr() ==
-	      Entity{Uwunion{name_t, {{from_literal, "discard_1st"}}}})) {
-		return;
-	}
-	if (as_tpl.args.len() != 2) {
-		return;
-	}
-	*e_mut = as_tpl.args[1];
-}
-
-void recurse_strip_discard_1st(RefMut<Entity> e_mut) noexcept {
-	type_parse::strip_discard_1st(VEG_FWD(e_mut));
-	e_mut->kind.as_mut().visit_i(tuplify(
-			[](RefMut<EntityName> e) noexcept {},
-			[](RefMut<TemplatedEntity> e) noexcept {
-				type_parse::recurse_strip_discard_1st(mut(*e->tpl));
-				for (isize i = 0; i < e->args.len(); ++i) {
-					type_parse::recurse_strip_discard_1st(mut(e->args[i]));
-				}
-			},
-			[](RefMut<NestedEntity> e) noexcept {
-				for (isize i = 0; i < e->components.len(); ++i) {
-					type_parse::recurse_strip_discard_1st(mut(e->components[i]));
-				}
-			},
-			[](RefMut<Pointer> e) noexcept {
-				type_parse::recurse_strip_discard_1st(mut(*e->entity));
-			},
-			[](RefMut<Array> e) noexcept {
-				type_parse::recurse_strip_discard_1st(mut(*e->entity));
-				type_parse::recurse_strip_discard_1st(mut(*e->size));
-			},
-			[](RefMut<Function> e) noexcept {
-				type_parse::recurse_strip_discard_1st(mut(*e->return_type));
-				for (isize i = 0; i < e->args.len(); ++i) {
-					type_parse::recurse_strip_discard_1st(mut(e->args[i]));
-				}
-			})
-
-	);
-}
-
 template <typename Out>
 void print_sv(RefMut<Out> out, StrView str) noexcept {
 	out->append(str.ptr(), str.len());
@@ -791,18 +740,6 @@ void print_decl_to(RefMut<Out> out, FunctionDecl decl) noexcept {
 		type_parse::print_sv(VEG_FWD(out), {from_literal, "static "});
 	}
 	print_cv(VEG_FWD(out), decl.cv_qual);
-	if (decl.return_type.is_some()) {
-		type_parse::recurse_strip_discard_1st(decl.return_type.as_mut().unwrap());
-	}
-	for (isize i = 0; i < decl.args.len(); ++i) {
-		type_parse::recurse_strip_discard_1st(mut(decl.args[i]));
-	}
-	for (isize i = 0; i < decl.dependent_expansions.len(); ++i) {
-		type_parse::recurse_strip_discard_1st(
-				mut(decl.dependent_expansions[i][0_c]));
-		type_parse::recurse_strip_discard_1st(
-				mut(decl.dependent_expansions[i][1_c]));
-	}
 
 	type_parse::print_sv(VEG_FWD(out), {from_literal, "fn "});
 	type_parse::print_entity_to(VEG_FWD(out), ref(decl.full_name), 0);
