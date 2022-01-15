@@ -566,23 +566,15 @@ private:
 		vector::RawVector<T>& raw = this->raw_mut(unsafe).get();
 		auto len = usize(this->len());
 
-		mem::AllocBlock new_block =
-				(capacity() == 0)
-						? mem::Alloc<A>::alloc(
-									this->alloc_mut(unsafe),
-									mem::Layout{
-											new_cap * sizeof(T),
-											alignof(T),
-									})
-						: mem::Alloc<A>::grow(
-									this->alloc_mut(unsafe),
-									VEG_FWD(raw.data),
-									mem::Layout{
-											usize(byte_capacity()),
-											alignof(T),
-									},
-									new_cap * sizeof(T),
-									mem::RelocFn{collections::relocate_pointer<T>::value});
+		mem::AllocBlock new_block = mem::Alloc<A>::grow(
+				this->alloc_mut(unsafe),
+				VEG_FWD(raw.data),
+				mem::Layout{
+						usize(byte_capacity()),
+						alignof(T),
+				},
+				new_cap * sizeof(T),
+				mem::RelocFn{collections::relocate_pointer<T>::value});
 
 		T* data = static_cast<T*>(new_block.data);
 		raw = {

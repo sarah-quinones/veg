@@ -34,14 +34,10 @@ struct BumpAllocLayout {
 	}
 
 	auto _is_last(void* ptr, usize byte_size) noexcept -> bool {
-		auto* byte_ptr = static_cast<mem::byte*>(ptr);
-		return (byte_ptr + _align(byte_size)) == current_ptr;
+		return ptr == (current_ptr - _align(byte_size));
 	}
 	void _assert_last(void* ptr, usize byte_size) noexcept {
-		auto* byte_ptr = static_cast<mem::byte*>(ptr);
-		(void)byte_size;
-		(void)byte_ptr;
-		VEG_DEBUG_ASSERT((byte_ptr + _align(byte_size)) == current_ptr);
+		VEG_DEBUG_ASSERT(ptr == (current_ptr - _align(byte_size)));
 	}
 
 	void _dealloc_last_unchecked(void* ptr, mem::Layout /*layout*/) {
@@ -75,7 +71,7 @@ struct BumpAllocLayout {
 			-> mem::AllocBlock {
 		auto rem_bytes = usize(end_ptr - static_cast<mem::byte*>(ptr));
 		auto given_bytes = _align(new_byte_size);
-		VEG_ASSERT(given_bytes < rem_bytes);
+		VEG_DEBUG_ASSERT(given_bytes < rem_bytes);
 		current_ptr = static_cast<mem::byte*>(ptr) + given_bytes;
 		return {ptr, given_bytes};
 	}
@@ -85,6 +81,11 @@ struct BumpAllocLayout {
 			mem::Layout old_layout,
 			usize new_byte_size,
 			mem::RelocFn /*reloc*/) noexcept -> mem::AllocBlock {
+		if (ptr == nullptr) {
+			mem::AllocBlock blk =
+					_alloc(mem::Layout{new_byte_size, old_layout.align});
+			return blk;
+		}
 		_assert_last(ptr, old_layout.byte_size);
 		return _grow_last_unchecked(ptr, new_byte_size);
 	}
