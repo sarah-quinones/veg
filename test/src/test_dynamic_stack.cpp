@@ -27,7 +27,7 @@ public:
 TEST_CASE("dynamic stack: raii") {
 	Array<unsigned char, 4096> buf{};
 
-	DynStackView stack{buf.as_mut()};
+	dynstack::DynStackView stack{buf.as_mut()};
 
 	{
 		auto s1 = stack.make_new(Tag<S>{}, 3).unwrap();
@@ -68,7 +68,7 @@ TEST_CASE("dynamic stack: raii") {
 
 TEST_CASE("dynamic stack: evil_reorder") {
 	Array<unsigned char, 4096> buf{};
-	DynStackView stack{buf.as_mut()};
+	veg::dynstack::DynStackView stack{buf.as_mut()};
 	auto good = [&] {
 		auto s1 = stack.make_new(Tag<int>{}, 30).unwrap();
 		auto s2 = stack.make_new(Tag<double>{}, 20).unwrap();
@@ -85,7 +85,7 @@ TEST_CASE("dynamic stack: evil_reorder") {
 
 TEST_CASE("dynamic stack: assign") {
 	alignas(double) Array<unsigned char, 100> buf{};
-	DynStackView stack{buf.as_mut()};
+	veg::dynstack::DynStackView stack{buf.as_mut()};
 
 	{
 		auto s1 = stack.make_new(Tag<char>{}, 30);
@@ -103,7 +103,7 @@ TEST_CASE("dynamic stack: assign") {
 
 TEST_CASE("dynamic stack: return") {
 	Array<unsigned char, 4096> buf{};
-	DynStackView stack(buf.as_mut());
+	veg::dynstack::DynStackView stack(buf.as_mut());
 
 	auto s = [&] {
 		auto s1 = stack.make_new(Tag<S>{}, 3).unwrap();
@@ -123,7 +123,7 @@ TEST_CASE("dynamic stack: return") {
 
 TEST_CASE("dynamic stack: manual_lifetimes") {
 	Array<unsigned char, 4096> buf{};
-	DynStackView stack(buf.as_mut());
+	veg::dynstack::DynStackView stack(buf.as_mut());
 
 	{
 		auto s = stack.make_alloc(Tag<S>{}, 3).unwrap();
@@ -132,11 +132,11 @@ TEST_CASE("dynamic stack: manual_lifetimes") {
 		CHECK(S::n_instances() == 0);
 
 		{
-			new (s.mut_ptr() + 0) S{};
+			new (s.ptr_mut() + 0) S{};
 			CHECK(S::n_instances() == 1);
-			new (s.mut_ptr() + 1) S{};
+			new (s.ptr_mut() + 1) S{};
 			CHECK(S::n_instances() == 2);
-			new (s.mut_ptr() + 2) S{};
+			new (s.ptr_mut() + 2) S{};
 			CHECK(S::n_instances() == 3);
 
 			(s.ptr() + 2)->~S();
@@ -158,7 +158,7 @@ struct T : S {
 
 TEST_CASE("dynamic stack: alignment") {
 	Array<unsigned char, 4096 + 1> buf{};
-	DynStackView stack(buf.as_mut().split_at_mut(1)[1_c]);
+	veg::dynstack::DynStackView stack(buf.as_mut().split_at_mut(1)[1_c]);
 
 	CHECK(stack.remaining_bytes() == 4096);
 	CHECK(T::n_instances() == 0);
@@ -197,7 +197,7 @@ public:
 
 TEST_CASE("dynamic stack: throwing") {
 	Array<unsigned char, 4096> buf{};
-	DynStackView stack(buf.as_mut());
+	veg::dynstack::DynStackView stack(buf.as_mut());
 
 	CHECK(throwing::n_instances() == 0);
 	auto s1 = stack.make_new(Tag<throwing>{}, 3);

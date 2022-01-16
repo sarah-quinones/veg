@@ -54,6 +54,10 @@ struct StackReq {
 				(max2)(a.align, b.align),
 		};
 	}
+
+	constexpr auto alloc_req() const noexcept -> isize {
+		return size_bytes + align - 1;
+	}
 };
 
 template <typename T>
