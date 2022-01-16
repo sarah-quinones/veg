@@ -115,7 +115,7 @@ struct CloneImpl<true> {
 template <>
 struct CloneImpl<false> {
 	template <typename T, typename A, typename C>
-	static VEG_CPP20(constexpr) void fn( //
+	static void fn( //
 			RefMut<A> alloc,
 			RefMut<C> cloner,
 			T* out,
@@ -289,12 +289,12 @@ struct CloneFromImpl;
 template <>
 struct CloneFromImpl<false> {
 	template <typename T, typename A, typename C>
-	static VEG_CPP20(constexpr) void fn(
-			RefMut<A> lhs_alloc,
-			RefMut<C> cloner,
-			vector::RawVector<T>& lhs_raw,
-			Ref<A> rhs_alloc,
-			vector::RawVector<T> const rhs_raw)
+	static void
+	fn(RefMut<A> lhs_alloc,
+	   RefMut<C> cloner,
+	   vector::RawVector<T>& lhs_raw,
+	   Ref<A> rhs_alloc,
+	   vector::RawVector<T> const rhs_raw)
 			VEG_NOEXCEPT_IF(
 					VEG_CONCEPT(nothrow_copy_assignable<A>) &&    //
 					VEG_CONCEPT(alloc::nothrow_alloc<A>) &&       //
@@ -383,12 +383,12 @@ struct CloneFromImpl<false> {
 template <>
 struct CloneFromImpl<true> {
 	template <typename T, typename A, typename C>
-	static VEG_CPP20(constexpr) void fn(
-			RefMut<A> lhs_alloc,
-			vector::RawVector<T>& lhs_raw,
-			RefMut<C> cloner,
-			Ref<A> rhs_alloc,
-			vector::RawVector<T> const rhs_raw)
+	static void
+	fn(RefMut<A> lhs_alloc,
+	   vector::RawVector<T>& lhs_raw,
+	   RefMut<C> cloner,
+	   Ref<A> rhs_alloc,
+	   vector::RawVector<T> const rhs_raw)
 			VEG_NOEXCEPT_IF(
 					VEG_CONCEPT(nothrow_copy_assignable<A>) && //
 					VEG_CONCEPT(alloc::nothrow_dealloc<A>) &&
@@ -437,7 +437,7 @@ struct CloneFromImpl<true> {
 };
 
 template <typename T, typename A, typename C>
-VEG_INLINE VEG_CPP20(constexpr) void clone_from(
+VEG_INLINE void clone_from(
 		RefMut<A> lhs_alloc,
 		RefMut<C> cloner,
 		vector::RawVector<T>& lhs_raw,
@@ -485,7 +485,7 @@ public:
 	auto operator=(VecAlloc const&) -> VecAlloc& = default;
 	auto operator=(VecAlloc&&) -> VecAlloc& = default;
 
-	VEG_INLINE VEG_CPP20(constexpr) ~VecAlloc()
+	VEG_INLINE ~VecAlloc()
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(alloc::nothrow_dealloc<A>)) {
 		vector::RawVector<T> raw = (*this)[1_c]._;
 		if ((raw.data != nullptr) && (raw.end_alloc != 0)) {
@@ -601,7 +601,7 @@ private:
 	static_assert(VEG_CONCEPT(nothrow_movable<A>), ".");
 
 public:
-	VEG_INLINE VEG_CPP20(constexpr) ~VecIncomplete() {
+	VEG_INLINE ~VecIncomplete() {
 		static_assert(
 				(VEG_CONCEPT(alloc::nothrow_dealloc<A>) &&
 		     VEG_CONCEPT(nothrow_destructible<T>)),
@@ -612,11 +612,11 @@ public:
 		}
 	}
 
-	VEG_INLINE VEG_CPP20(constexpr) VecIncomplete() = default;
+	VEG_INLINE VecIncomplete() = default;
 
-	VEG_INLINE VEG_CPP20(constexpr)
-			VecIncomplete(FromRawParts /*tag*/, vector::RawVector<T> rawvec, A alloc)
-					VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<A>))
+	VEG_INLINE
+	VecIncomplete(FromRawParts /*tag*/, vector::RawVector<T> rawvec, A alloc)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<A>))
 			: _{
 						tuplify,
 						VEG_FWD(alloc),
@@ -624,9 +624,8 @@ public:
 								from_raw_parts, VEG_FWD(rawvec)},
 				} {}
 
-	VEG_INLINE VEG_CPP20(constexpr) VecIncomplete(VecIncomplete&&) = default;
-	VEG_INLINE VEG_CPP20(constexpr) auto operator=(VecIncomplete&& rhs)
-			-> VecIncomplete& {
+	VEG_INLINE VecIncomplete(VecIncomplete&&) = default;
+	VEG_INLINE auto operator=(VecIncomplete&& rhs) -> VecIncomplete& {
 		auto tmp = VEG_FWD(rhs);
 		{ auto cleanup = static_cast<VecIncomplete&&>(*this); }
 
@@ -639,10 +638,9 @@ public:
 		return *this;
 	};
 
-	explicit VEG_CPP20(constexpr) VecIncomplete(VecIncomplete const& rhs)
-			VEG_NOEXCEPT_IF(
-					VEG_CONCEPT(nothrow_copyable<A>) && //
-					VEG_CONCEPT(alloc::nothrow_alloc<A>) && NoThrowCopy)
+	explicit VecIncomplete(VecIncomplete const& rhs) VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(nothrow_copyable<A>) && //
+			VEG_CONCEPT(alloc::nothrow_alloc<A>) && NoThrowCopy)
 			: _{rhs._} {
 		__VEG_ASAN_ANNOTATE();
 		vector::RawVector<T> rhs_raw = rhs.raw_ref().get();
@@ -660,7 +658,6 @@ public:
 		};
 	}
 
-	VEG_CPP20(constexpr)
 	auto operator=(VecIncomplete const& rhs) VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_copy_assignable<A>) &&
 			VEG_CONCEPT(alloc::nothrow_alloc<A>) && NoThrowCopy) -> VecIncomplete& {
@@ -692,28 +689,71 @@ public:
 		}
 	}
 
-	VEG_INLINE VEG_CPP20(constexpr) void clear()
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+	VEG_INLINE void pop_several_unchecked(Unsafe unsafe, isize n) VEG_NOEXCEPT {
+		VEG_DEBUG_ASSERT(n <= len());
 		__VEG_ASAN_ANNOTATE();
 
 		vector::RawVector<T>& raw = this->raw_mut(unsafe).get();
 
 		T* end = raw.end;
-		raw.end = raw.data;
+		raw.end -= n;
 		_detail::_collections::backward_destroy(
-				this->alloc_mut(unsafe), mut(mem::DefaultCloner{}), raw.data, end);
+				this->alloc_mut(unsafe), mut(mem::DefaultCloner{}), end - n, end);
+	}
+
+	VEG_INLINE void pop_several(isize n) VEG_NOEXCEPT {
+		VEG_ASSERT(n <= len());
+		pop_several_unchecked(unsafe, n);
+	}
+
+	VEG_INLINE void clear() VEG_NOEXCEPT { pop_several_unchecked(unsafe, len()); }
+
+	VEG_CONSTRAINED_MEMBER_FN(
+			requires(VEG_CONCEPT(constructible<T>)),
+			VEG_INLINE auto resize,
+			((n, isize)),
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(alloc::nothrow_grow<T>) &&
+					VEG_CONCEPT(nothrow_constructible<T>))
+					->void) {
+		__VEG_ASAN_ANNOTATE();
+
+		vector::RawVector<T>& raw = raw_mut(unsafe).get();
+
+		if (n > len()) {
+			reserve(n);
+			::new (static_cast<void*>(ptr_mut() + len())) T[n - len()]{};
+			raw.end = raw.data + n;
+		} else {
+			pop_several_unchecked(unsafe, len() - n);
+		}
+	}
+
+	VEG_CONSTRAINED_MEMBER_FN(
+			requires(VEG_CONCEPT(constructible<T>)),
+			VEG_INLINE auto resize_uninit,
+			((n, isize)),
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(alloc::nothrow_grow<T>) &&
+					VEG_CONCEPT(nothrow_constructible<T>))
+					->void) {
+		__VEG_ASAN_ANNOTATE();
+
+		vector::RawVector<T>& raw = raw_mut(unsafe).get();
+
+		if (n > len()) {
+			reserve(n);
+			::new (static_cast<void*>(ptr_mut() + len())) T[n - len()];
+			raw.end = raw.data + n;
+		} else {
+			pop_several_unchecked(unsafe, len() - n);
+		}
 	}
 
 	VEG_TEMPLATE(
 			typename Fn,
-			requires(VEG_CONCEPT(fn_mut<Fn, isize, T*, isize>)),
-			VEG_INLINE VEG_CPP20(constexpr) void resize_and_overwrite,
-			(fn, Fn));
-
-	VEG_TEMPLATE(
-			typename Fn,
 			requires(VEG_CONCEPT(fn_once<Fn, T>)),
-			VEG_INLINE VEG_CPP20(constexpr) void push_with_unchecked,
+			VEG_INLINE void push_with_unchecked,
 			(/*tag*/, Unsafe),
 			(fn, Fn))
 	VEG_NOEXCEPT_IF(
@@ -729,7 +769,7 @@ public:
 	VEG_TEMPLATE(
 			typename Fn,
 			requires(VEG_CONCEPT(fn_once<Fn, T>)),
-			VEG_INLINE VEG_CPP20(constexpr) void push_with,
+			VEG_INLINE void push_with,
 			(fn, Fn))
 	VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_fn_once<Fn, T>) &&
@@ -740,57 +780,49 @@ public:
 		}
 		this->push_with_unchecked(unsafe, VEG_FWD(fn));
 	}
-	VEG_INLINE VEG_CPP20(constexpr) void push(T value) VEG_NOEXCEPT_IF(
+	VEG_INLINE void push(T value) VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_movable<T>) && VEG_CONCEPT(alloc::nothrow_alloc<A>)) {
 		this->push_with(_detail::MoveFn<T>{VEG_FWD(value)});
 	}
-	VEG_INLINE VEG_CPP20(constexpr) void push_unchecked(Unsafe /*tag*/, T value)
+	VEG_INLINE void push_unchecked(Unsafe /*tag*/, T value)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) {
 		this->push_with_unchecked(unsafe, _detail::MoveFn<T>{VEG_FWD(value)});
 	}
 
-	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto as_ref() const VEG_NOEXCEPT
-			-> Slice<T> {
+	VEG_NODISCARD VEG_INLINE auto as_ref() const VEG_NOEXCEPT -> Slice<T> {
 		return {from_raw_parts, unsafe, ptr(), len()};
 	}
-	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto as_mut() const VEG_NOEXCEPT
-			-> Slice<T> {
+	VEG_NODISCARD VEG_INLINE auto as_mut() const VEG_NOEXCEPT -> Slice<T> {
 		return {from_raw_parts, unsafe, ptr_mut(), len()};
 	}
 
-	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto ptr() const VEG_NOEXCEPT
-			-> T const* {
+	VEG_NODISCARD VEG_INLINE auto ptr() const VEG_NOEXCEPT -> T const* {
 		return this->raw_ref().get().data;
 	}
-	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto ptr_mut() VEG_NOEXCEPT
-			-> T* {
+	VEG_NODISCARD VEG_INLINE auto ptr_mut() VEG_NOEXCEPT -> T* {
 		return const_cast<T*>(this->ptr());
 	}
-	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto len() const VEG_NOEXCEPT
-			-> isize {
+	VEG_NODISCARD VEG_INLINE auto len() const VEG_NOEXCEPT -> isize {
 		auto& raw = this->raw_ref().get();
 		return isize(raw.end - raw.data);
 	}
-	VEG_NODISCARD VEG_INLINE
-	VEG_CPP20(constexpr) auto capacity() const VEG_NOEXCEPT -> isize {
+	VEG_NODISCARD VEG_INLINE auto capacity() const VEG_NOEXCEPT -> isize {
 		auto& raw = this->raw_ref().get();
 		return isize(raw.end_alloc - raw.data);
 	}
-	VEG_NODISCARD VEG_INLINE
-	VEG_CPP20(constexpr) auto byte_capacity() const VEG_NOEXCEPT -> isize {
+	VEG_NODISCARD VEG_INLINE auto byte_capacity() const VEG_NOEXCEPT -> isize {
 		auto& raw = this->raw_ref().get();
 		return meta::is_consteval()
 		           ? (raw.end_alloc - raw.data) * isize(sizeof(T))
 		           : (reinterpret_cast<char const*>(raw.end_alloc) -
 		              reinterpret_cast<char const*>(raw.data));
 	}
-	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto
-	operator[](isize i) const VEG_NOEXCEPT -> T const& {
+	VEG_NODISCARD VEG_INLINE auto operator[](isize i) const VEG_NOEXCEPT
+			-> T const& {
 		VEG_ASSERT(usize(i) < usize(len()));
 		return this->ptr()[i];
 	}
-	VEG_NODISCARD VEG_INLINE VEG_CPP20(constexpr) auto
-	operator[](isize i) VEG_NOEXCEPT -> T& {
+	VEG_NODISCARD VEG_INLINE auto operator[](isize i) VEG_NOEXCEPT -> T& {
 		return const_cast<T&>(
 				static_cast<VecIncomplete const*>(this)->operator[](i));
 	}
