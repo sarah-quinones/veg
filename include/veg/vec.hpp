@@ -714,7 +714,7 @@ public:
 			void resize,
 			(n, isize))
 	VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(alloc::nothrow_grow<T>) &&
+			VEG_CONCEPT(alloc::nothrow_grow<A>) &&
 			VEG_CONCEPT(nothrow_constructible<T>)) {
 		__VEG_ASAN_ANNOTATE();
 
@@ -735,7 +735,7 @@ public:
 			void resize_uninit,
 			(n, isize))
 	VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(alloc::nothrow_grow<T>) &&
+			VEG_CONCEPT(alloc::nothrow_grow<A>) &&
 			VEG_CONCEPT(nothrow_constructible<T>)) {
 		__VEG_ASAN_ANNOTATE();
 
