@@ -732,7 +732,7 @@ public:
 	VEG_TEMPLATE(
 			typename U = T,
 			requires(VEG_CONCEPT(constructible<U>)),
-			void resize_uninit,
+			void resize_for_overwrite,
 			(n, isize))
 	VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(alloc::nothrow_grow<A>) &&
