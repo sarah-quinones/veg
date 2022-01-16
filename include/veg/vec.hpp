@@ -722,7 +722,7 @@ public:
 
 		if (n > len()) {
 			reserve(n);
-			::new (static_cast<void*>(ptr_mut() + len())) T[n - len()]{};
+			::new (static_cast<void*>(ptr_mut() + len())) T[usize(n - len())]{};
 			raw.end = raw.data + n;
 		} else {
 			pop_several_unchecked(unsafe, len() - n);
@@ -743,7 +743,7 @@ public:
 
 		if (n > len()) {
 			reserve(n);
-			::new (static_cast<void*>(ptr_mut() + len())) T[n - len()];
+			::new (static_cast<void*>(ptr_mut() + len())) T[usize(n - len())];
 			raw.end = raw.data + n;
 		} else {
 			pop_several_unchecked(unsafe, len() - n);
