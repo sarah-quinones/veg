@@ -792,7 +792,7 @@ public:
 	VEG_NODISCARD VEG_INLINE auto as_ref() const VEG_NOEXCEPT -> Slice<T> {
 		return {from_raw_parts, unsafe, ptr(), len()};
 	}
-	VEG_NODISCARD VEG_INLINE auto as_mut() const VEG_NOEXCEPT -> Slice<T> {
+	VEG_NODISCARD VEG_INLINE auto as_mut() const VEG_NOEXCEPT -> SliceMut<T> {
 		return {from_raw_parts, unsafe, ptr_mut(), len()};
 	}
 
