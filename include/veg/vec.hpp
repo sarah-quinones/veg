@@ -708,14 +708,14 @@ public:
 
 	VEG_INLINE void clear() VEG_NOEXCEPT { pop_several_unchecked(unsafe, len()); }
 
-	VEG_CONSTRAINED_MEMBER_FN(
-			requires(VEG_CONCEPT(constructible<T>)),
-			VEG_INLINE auto resize,
-			((n, isize)),
-			VEG_NOEXCEPT_IF(
-					VEG_CONCEPT(alloc::nothrow_grow<T>) &&
-					VEG_CONCEPT(nothrow_constructible<T>))
-					->void) {
+	VEG_TEMPLATE(
+			typename U = T,
+			requires(VEG_CONCEPT(constructible<U>)),
+			void resize,
+			(n, isize))
+	VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(alloc::nothrow_grow<T>) &&
+			VEG_CONCEPT(nothrow_constructible<T>)) {
 		__VEG_ASAN_ANNOTATE();
 
 		vector::RawVector<T>& raw = raw_mut(unsafe).get();
@@ -729,14 +729,14 @@ public:
 		}
 	}
 
-	VEG_CONSTRAINED_MEMBER_FN(
-			requires(VEG_CONCEPT(constructible<T>)),
-			VEG_INLINE auto resize_uninit,
-			((n, isize)),
-			VEG_NOEXCEPT_IF(
-					VEG_CONCEPT(alloc::nothrow_grow<T>) &&
-					VEG_CONCEPT(nothrow_constructible<T>))
-					->void) {
+	VEG_TEMPLATE(
+			typename U = T,
+			requires(VEG_CONCEPT(constructible<U>)),
+			void resize_uninit,
+			(n, isize))
+	VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(alloc::nothrow_grow<T>) &&
+			VEG_CONCEPT(nothrow_constructible<T>)) {
 		__VEG_ASAN_ANNOTATE();
 
 		vector::RawVector<T>& raw = raw_mut(unsafe).get();
