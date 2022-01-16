@@ -14,7 +14,48 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
+namespace _detail {
+namespace _dynstack {
+constexpr auto max2(isize a, isize b) noexcept -> isize {
+	return (a > b) ? a : b;
+}
+constexpr auto round_up_pow2(isize a, isize b) noexcept -> isize {
+	return isize((usize(a) + ~-usize(b)) & -usize(b));
+}
+} // namespace _dynstack
+} // namespace _detail
 namespace dynstack {
+struct StackReq {
+	isize size_bytes;
+	isize align;
+
+	constexpr friend auto operator==(StackReq a, StackReq b) noexcept -> bool {
+		return a.size_bytes == b.size_bytes && a.align == b.align;
+	}
+
+	constexpr friend auto operator&(StackReq a, StackReq b) noexcept -> StackReq {
+		using namespace _detail::_dynstack;
+		return {
+				round_up_pow2(     //
+						round_up_pow2( //
+								a.size_bytes,
+								b.align) +
+								b.size_bytes,
+						(max2)(a.align, b.align)),
+				(max2)(a.align, b.align),
+		};
+	}
+	constexpr friend auto operator|(StackReq a, StackReq b) noexcept -> StackReq {
+		using namespace _detail::_dynstack;
+		return {
+				(max2)( //
+						round_up_pow2(a.size_bytes, max2(a.align, b.align)),
+						round_up_pow2(b.size_bytes, max2(a.align, b.align))),
+				(max2)(a.align, b.align),
+		};
+	}
+};
+
 template <typename T>
 struct DynStackArray;
 template <typename T>
