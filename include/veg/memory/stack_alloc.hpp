@@ -117,9 +117,9 @@ struct BumpAlloc : private _detail::_mem::BumpAllocLayout<MaxAlign> {
 
 	BumpAlloc(FromSlice /*tag*/, SliceMut<byte> s) noexcept
 			: _detail::_mem::BumpAllocLayout<MaxAlign>{
-						s.mut_ptr(),
-						s.mut_ptr(),
-						s.mut_ptr() + s.len(),
+						s.ptr_mut(),
+						s.ptr_mut(),
+						s.ptr_mut() + s.len(),
 				} {
 
 		VEG_ASSERT_ALL_OF(

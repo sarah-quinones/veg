@@ -14,10 +14,12 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
+namespace dynstack {
 template <typename T>
 struct DynStackArray;
 template <typename T>
 struct DynStackAlloc;
+} // namespace dynstack
 
 namespace _detail {
 // if possible:
@@ -66,7 +68,7 @@ inline auto align_next(isize alignment, isize size, void*& ptr, isize& space)
 } // namespace _detail
 
 namespace _detail {
-namespace dynstack {
+namespace _dynstack {
 template <typename T, bool = VEG_CONCEPT(trivially_destructible<T>)>
 struct DynStackArrayDtor {};
 
@@ -79,12 +81,12 @@ struct DynStackArrayDtor<T, false> {
 	auto operator=(DynStackArrayDtor&&) -> DynStackArrayDtor& = default;
 	VEG_INLINE ~DynStackArrayDtor()
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
-		auto& self = static_cast<DynStackArray<T>&>(*this);
+		auto& self = static_cast<dynstack::DynStackArray<T>&>(*this);
 		veg::_detail::_collections::backward_destroy(
 				mut(mem::SystemAlloc{}),
 				mut(mem::DefaultCloner{}),
-				self.mut_ptr(),
-				self.mut_ptr() + self.DynStackAlloc<T>::Base::len);
+				self.ptr_mut(),
+				self.ptr_mut() + self.template DynStackAlloc<T>::Base::len);
 	}
 };
 
@@ -94,14 +96,14 @@ struct DynAllocBase;
 struct default_init_fn {
 	template <typename T>
 	auto make(void* ptr, isize len) -> T* {
-		return ::new (ptr) T[len];
+		return ::new (ptr) T[usize(len)];
 	}
 };
 
 struct zero_init_fn {
 	template <typename T>
 	auto make(void* ptr, isize len) -> T* {
-		return ::new (ptr) T[len]{};
+		return ::new (ptr) T[usize(len)]{};
 	}
 };
 
@@ -109,17 +111,18 @@ struct no_init_fn {
 	template <typename T>
 	auto make(void* ptr, isize len) -> T* {
 		return veg::mem::launder(static_cast<T*>(
-				static_cast<void*>(::new (ptr) unsigned char[len * isize(sizeof(T))])));
+				static_cast<void*>(::new (ptr) unsigned char[usize(len) * sizeof(T)])));
 	}
 };
 
-} // namespace dynstack
+} // namespace _dynstack
 } // namespace _detail
 
+namespace dynstack {
 struct DynStackView {
 public:
 	DynStackView(SliceMut<unsigned char> s) VEG_NOEXCEPT
-			: stack_data(s.mut_ptr()),
+			: stack_data(s.ptr_mut()),
 				stack_bytes(s.len()) {}
 
 	VEG_NODISCARD
@@ -127,7 +130,7 @@ public:
 		return isize(stack_bytes);
 	}
 	VEG_NODISCARD
-	auto mut_ptr() const VEG_NOEXCEPT -> void* { return stack_data; }
+	auto ptr_mut() const VEG_NOEXCEPT -> void* { return stack_data; }
 	VEG_NODISCARD
 	auto ptr() const VEG_NOEXCEPT -> void const* { return stack_data; }
 
@@ -148,7 +151,7 @@ public:
 			->Option<DynStackArray<T>> {
 		assert_valid_len(len);
 		DynStackArray<T> get{
-				*this, isize(len), align, _detail::dynstack::zero_init_fn{}};
+				*this, isize(len), align, _detail::_dynstack::zero_init_fn{}};
 		if (get.ptr() == nullptr) {
 			return none;
 		}
@@ -167,7 +170,7 @@ public:
 			->Option<DynStackArray<T>> {
 		assert_valid_len(len);
 		DynStackArray<T> get{
-				*this, isize(len), align, _detail::dynstack::default_init_fn{}};
+				*this, isize(len), align, _detail::_dynstack::default_init_fn{}};
 		if (get.ptr() == nullptr) {
 			return none;
 		}
@@ -180,7 +183,7 @@ public:
 			-> Option<DynStackAlloc<T>> {
 		assert_valid_len(len);
 		DynStackAlloc<T> get{
-				*this, isize(len), align, _detail::dynstack::no_init_fn{}};
+				*this, isize(len), align, _detail::_dynstack::no_init_fn{}};
 		if (get.ptr() == nullptr) {
 			return none;
 		}
@@ -195,16 +198,17 @@ private:
 	friend struct DynStackAlloc;
 	template <typename T>
 	friend struct DynStackArray;
-	friend struct _detail::dynstack::cleanup;
-	friend struct _detail::dynstack::DynAllocBase;
+	friend struct _detail::_dynstack::cleanup;
+	friend struct _detail::_dynstack::DynAllocBase;
 };
+} // namespace dynstack
 
 namespace _detail {
-namespace dynstack {
+namespace _dynstack {
 
 struct cleanup {
 	bool const& success;
-	DynStackView& parent;
+	veg::dynstack::DynStackView& parent;
 	void* old_data;
 	isize old_rem_bytes;
 
@@ -217,7 +221,7 @@ struct cleanup {
 };
 
 struct DynAllocBase {
-	DynStackView* parent;
+	veg::dynstack::DynStackView* parent;
 	void* old_pos;
 	void const volatile* data;
 	isize len;
@@ -241,17 +245,18 @@ struct DynAllocBase {
 		}
 	}
 };
-} // namespace dynstack
+} // namespace _dynstack
 } // namespace _detail
 
+namespace dynstack {
 template <typename T>
-struct DynStackAlloc : _detail::dynstack::DynAllocBase {
+struct DynStackAlloc : _detail::_dynstack::DynAllocBase {
 private:
-	using Base = _detail::dynstack::DynAllocBase;
+	using Base = _detail::_dynstack::DynAllocBase;
 
 public:
 	VEG_INLINE ~DynStackAlloc() VEG_NOEXCEPT {
-		Base::destroy(mut_ptr() + Base::len);
+		Base::destroy(ptr_mut() + Base::len);
 	}
 
 	DynStackAlloc(DynStackAlloc const&) = delete;
@@ -273,7 +278,7 @@ public:
 	VEG_NODISCARD auto as_mut() VEG_NOEXCEPT -> SliceMut<T> {
 		return {
 				FromRawParts{},
-				mut_ptr(),
+				ptr_mut(),
 				len(),
 				unsafe,
 		};
@@ -288,7 +293,7 @@ public:
 		};
 	}
 
-	VEG_NODISCARD auto mut_ptr() VEG_NOEXCEPT -> T* {
+	VEG_NODISCARD auto ptr_mut() VEG_NOEXCEPT -> T* {
 		return static_cast<T*>(const_cast<void*>(Base::data));
 	}
 	VEG_NODISCARD auto ptr() const VEG_NOEXCEPT -> T const* {
@@ -301,7 +306,7 @@ public:
 private:
 	friend struct DynStackArray<T>;
 	friend struct DynStackView;
-	friend struct _detail::dynstack::DynStackArrayDtor<T>;
+	friend struct _detail::_dynstack::DynStackArrayDtor<T>;
 
 	template <typename Fn>
 	DynStackAlloc(DynStackView& parent_ref, isize alloc_size, isize align, Fn fn)
@@ -324,7 +329,7 @@ private:
 
 		if (ptr != nullptr) {
 			bool success = false;
-			auto&& cleanup = defer(_detail::dynstack::cleanup{
+			auto&& cleanup = defer(_detail::_dynstack::cleanup{
 					success, *parent, parent_data, parent_bytes});
 			(void)cleanup;
 
@@ -339,15 +344,15 @@ private:
 template <typename T>
 struct DynStackArray : private // destruction order matters
 											 DynStackAlloc<T>,
-											 _detail::dynstack::DynStackArrayDtor<T> {
+											 _detail::_dynstack::DynStackArrayDtor<T> {
 private:
-	using Base = _detail::dynstack::DynAllocBase;
+	using Base = _detail::_dynstack::DynAllocBase;
 
 public:
 	using DynStackAlloc<T>::as_ref;
 	using DynStackAlloc<T>::as_mut;
 	using DynStackAlloc<T>::ptr;
-	using DynStackAlloc<T>::mut_ptr;
+	using DynStackAlloc<T>::ptr_mut;
 	using DynStackAlloc<T>::len;
 
 	~DynStackArray() = default;
@@ -367,8 +372,9 @@ public:
 private:
 	using DynStackAlloc<T>::DynStackAlloc;
 	friend struct DynStackView;
-	friend struct _detail::dynstack::DynStackArrayDtor<T>;
+	friend struct _detail::_dynstack::DynStackArrayDtor<T>;
 };
+} // namespace dynstack
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

@@ -135,7 +135,7 @@ struct SliceMut : private Slice<T> {
 	}
 	VEG_NODISCARD
 	VEG_INLINE
-	constexpr auto mut_ptr() const VEG_NOEXCEPT -> T* {
+	constexpr auto ptr_mut() const VEG_NOEXCEPT -> T* {
 		return const_cast<T*>(ptr());
 	}
 	VEG_NODISCARD
@@ -149,7 +149,7 @@ struct SliceMut : private Slice<T> {
 		return {
 				from_raw_parts,
 				unsafe,
-				reinterpret_cast<unsigned char*>(mut_ptr()),
+				reinterpret_cast<unsigned char*>(ptr_mut()),
 				isize(sizeof(T)) * len(),
 		};
 	}
@@ -163,13 +163,13 @@ struct SliceMut : private Slice<T> {
 							 SliceMut<T>{
 									 FromRawParts{},
 									 unsafe,
-									 mut_ptr(),
+									 ptr_mut(),
 									 idx,
 							 },
 							 SliceMut<T>{
 									 FromRawParts{},
 									 unsafe,
-									 mut_ptr() + idx,
+									 ptr_mut() + idx,
 									 len() - idx,
 							 },
 					 };
