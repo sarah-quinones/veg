@@ -127,11 +127,12 @@ struct DynStackArrayDtor<T, false> {
 	VEG_INLINE ~DynStackArrayDtor()
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
 		auto& self = static_cast<dynstack::DynStackArray<T>&>(*this);
+		using Base = typename dynstack::DynStackAlloc<T>::Base const&;
 		veg::_detail::_collections::backward_destroy(
 				mut(mem::SystemAlloc{}),
 				mut(mem::DefaultCloner{}),
 				self.ptr_mut(),
-				self.ptr_mut() + self.template DynStackAlloc<T>::Base::len);
+				self.ptr_mut() + Base(self).len);
 	}
 };
 
