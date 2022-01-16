@@ -165,9 +165,9 @@ struct no_init_fn {
 } // namespace _detail
 
 namespace dynstack {
-struct DynStackView {
+struct DynStackMut : _detail::NoCopyCtor, _detail::NoCopyAssign {
 public:
-	DynStackView(SliceMut<unsigned char> s) VEG_NOEXCEPT
+	DynStackMut(SliceMut<unsigned char> s) VEG_NOEXCEPT
 			: stack_data(s.ptr_mut()),
 				stack_bytes(s.len()) {}
 
@@ -254,7 +254,7 @@ namespace _dynstack {
 
 struct cleanup {
 	bool const& success;
-	veg::dynstack::DynStackView& parent;
+	veg::dynstack::DynStackMut& parent;
 	void* old_data;
 	isize old_rem_bytes;
 
@@ -267,7 +267,7 @@ struct cleanup {
 };
 
 struct DynAllocBase {
-	veg::dynstack::DynStackView* parent;
+	veg::dynstack::DynStackMut* parent;
 	void* old_pos;
 	void const volatile* data;
 	isize len;
@@ -351,11 +351,11 @@ public:
 
 private:
 	friend struct DynStackArray<T>;
-	friend struct DynStackView;
+	friend struct DynStackMut;
 	friend struct _detail::_dynstack::DynStackArrayDtor<T>;
 
 	template <typename Fn>
-	DynStackAlloc(DynStackView& parent_ref, isize alloc_size, isize align, Fn fn)
+	DynStackAlloc(DynStackMut& parent_ref, isize alloc_size, isize align, Fn fn)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T>))
 			: Base{
 						&parent_ref,
@@ -417,7 +417,7 @@ public:
 
 private:
 	using DynStackAlloc<T>::DynStackAlloc;
-	friend struct DynStackView;
+	friend struct DynStackMut;
 	friend struct _detail::_dynstack::DynStackArrayDtor<T>;
 };
 } // namespace dynstack

@@ -27,7 +27,7 @@ public:
 TEST_CASE("dynamic stack: raii") {
 	Array<unsigned char, 4096> buf{};
 
-	dynstack::DynStackView stack{buf.as_mut()};
+	dynstack::DynStackMut stack{buf.as_mut()};
 
 	{
 		auto s1 = stack.make_new(Tag<S>{}, 3).unwrap();
@@ -68,7 +68,7 @@ TEST_CASE("dynamic stack: raii") {
 
 TEST_CASE("dynamic stack: evil_reorder") {
 	Array<unsigned char, 4096> buf{};
-	veg::dynstack::DynStackView stack{buf.as_mut()};
+	veg::dynstack::DynStackMut stack{buf.as_mut()};
 	auto good = [&] {
 		auto s1 = stack.make_new(Tag<int>{}, 30).unwrap();
 		auto s2 = stack.make_new(Tag<double>{}, 20).unwrap();
@@ -85,7 +85,7 @@ TEST_CASE("dynamic stack: evil_reorder") {
 
 TEST_CASE("dynamic stack: assign") {
 	alignas(double) Array<unsigned char, 100> buf{};
-	veg::dynstack::DynStackView stack{buf.as_mut()};
+	veg::dynstack::DynStackMut stack{buf.as_mut()};
 
 	{
 		auto s1 = stack.make_new(Tag<char>{}, 30);
@@ -103,7 +103,7 @@ TEST_CASE("dynamic stack: assign") {
 
 TEST_CASE("dynamic stack: return") {
 	Array<unsigned char, 4096> buf{};
-	veg::dynstack::DynStackView stack(buf.as_mut());
+	veg::dynstack::DynStackMut stack(buf.as_mut());
 
 	auto s = [&] {
 		auto s1 = stack.make_new(Tag<S>{}, 3).unwrap();
@@ -123,7 +123,7 @@ TEST_CASE("dynamic stack: return") {
 
 TEST_CASE("dynamic stack: manual_lifetimes") {
 	Array<unsigned char, 4096> buf{};
-	veg::dynstack::DynStackView stack(buf.as_mut());
+	veg::dynstack::DynStackMut stack(buf.as_mut());
 
 	{
 		auto s = stack.make_alloc(Tag<S>{}, 3).unwrap();
@@ -158,7 +158,7 @@ struct T : S {
 
 TEST_CASE("dynamic stack: alignment") {
 	Array<unsigned char, 4096 + 1> buf{};
-	veg::dynstack::DynStackView stack(buf.as_mut().split_at_mut(1)[1_c]);
+	veg::dynstack::DynStackMut stack(buf.as_mut().split_at_mut(1)[1_c]);
 
 	CHECK(stack.remaining_bytes() == 4096);
 	CHECK(T::n_instances() == 0);
@@ -197,7 +197,7 @@ public:
 
 TEST_CASE("dynamic stack: throwing") {
 	Array<unsigned char, 4096> buf{};
-	veg::dynstack::DynStackView stack(buf.as_mut());
+	veg::dynstack::DynStackMut stack(buf.as_mut());
 
 	CHECK(throwing::n_instances() == 0);
 	auto s1 = stack.make_new(Tag<throwing>{}, 3);
