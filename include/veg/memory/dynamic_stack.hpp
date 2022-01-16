@@ -27,7 +27,7 @@ namespace _detail {
 //
 // otherwise, if there is not enough space for aligning or advancing the
 // pointer, returns nullptr and the values are left unmodified
-inline auto align_next(usize alignment, usize size, void*& ptr, usize& space)
+inline auto align_next(isize alignment, isize size, void*& ptr, isize& space)
 		VEG_ALWAYS_NOEXCEPT -> void* {
 	static_assert(
 			sizeof(std::uintptr_t) >= sizeof(void*),
@@ -37,29 +37,29 @@ inline auto align_next(usize alignment, usize size, void*& ptr, usize& space)
 
 	// assert alignment is power of two
 	VEG_ASSERT_ALL_OF( //
-			(alignment > usize{0}),
+			(alignment > isize{0}),
 			((u64(alignment) & (u64(alignment) - 1)) == u64(0)));
 
 	if (space < size) {
 		return nullptr;
 	}
 
-	std::uintptr_t lo_mask = alignment - 1;
+	std::uintptr_t lo_mask = usize(alignment) - 1;
 	std::uintptr_t hi_mask = ~lo_mask;
 
 	auto const intptr = reinterpret_cast<std::uintptr_t>(ptr);
 	auto* const byteptr = static_cast<byte_ptr>(ptr);
 
-	auto offset = ((intptr + alignment - 1) & hi_mask) - intptr;
+	auto offset = ((intptr + usize(alignment) - 1) & hi_mask) - intptr;
 
-	if (space - size < offset) {
+	if (usize(space) - usize(size) < offset) {
 		return nullptr;
 	}
 
 	void* const rv = byteptr + offset;
 
-	ptr = byteptr + (offset + size);
-	space = space - (offset + size);
+	ptr = byteptr + (offset + usize(size));
+	space = space - (isize(offset) + (size));
 
 	return rv;
 }
@@ -93,23 +93,23 @@ struct DynAllocBase;
 
 struct default_init_fn {
 	template <typename T>
-	auto make(void* ptr, usize len) -> T* {
+	auto make(void* ptr, isize len) -> T* {
 		return ::new (ptr) T[len];
 	}
 };
 
 struct zero_init_fn {
 	template <typename T>
-	auto make(void* ptr, usize len) -> T* {
+	auto make(void* ptr, isize len) -> T* {
 		return ::new (ptr) T[len]{};
 	}
 };
 
 struct no_init_fn {
 	template <typename T>
-	auto make(void* ptr, usize len) -> T* {
+	auto make(void* ptr, isize len) -> T* {
 		return veg::mem::launder(static_cast<T*>(
-				static_cast<void*>(::new (ptr) unsigned char[len * sizeof(T)])));
+				static_cast<void*>(::new (ptr) unsigned char[len * isize(sizeof(T))])));
 	}
 };
 
@@ -120,7 +120,7 @@ struct DynStackView {
 public:
 	DynStackView(SliceMut<unsigned char> s) VEG_NOEXCEPT
 			: stack_data(s.mut_ptr()),
-				stack_bytes(usize(s.len())) {}
+				stack_bytes(s.len()) {}
 
 	VEG_NODISCARD
 	auto remaining_bytes() const VEG_NOEXCEPT -> isize {
@@ -132,8 +132,8 @@ public:
 	auto ptr() const VEG_NOEXCEPT -> void const* { return stack_data; }
 
 private:
-	VEG_INLINE void assert_valid_len(usize len, usize sizeofT) VEG_NOEXCEPT {
-		VEG_INTERNAL_ASSERT_PRECONDITION(usize(len) < ((-usize(1)) / sizeofT));
+	VEG_INLINE void assert_valid_len(isize len) VEG_NOEXCEPT {
+		VEG_INTERNAL_ASSERT_PRECONDITIONS(isize(len) >= 0);
 	}
 
 public:
@@ -142,13 +142,13 @@ public:
 			requires VEG_CONCEPT(constructible<T>),
 			VEG_NODISCARD auto make_new,
 			(/*unused*/, Tag<T>),
-			(len, usize),
-			(align = alignof(T), usize))
+			(len, isize),
+			(align = alignof(T), isize))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T>))
 			->Option<DynStackArray<T>> {
-		assert_valid_len(len, sizeof(T));
+		assert_valid_len(len);
 		DynStackArray<T> get{
-				*this, usize(len), align, _detail::dynstack::zero_init_fn{}};
+				*this, isize(len), align, _detail::dynstack::zero_init_fn{}};
 		if (get.ptr() == nullptr) {
 			return none;
 		}
@@ -160,14 +160,14 @@ public:
 			requires VEG_CONCEPT(constructible<T>),
 			VEG_NODISCARD auto make_new_for_overwrite,
 			(/*unused*/, Tag<T>),
-			(len, usize),
-			(align = alignof(T), usize))
+			(len, isize),
+			(align = alignof(T), isize))
 
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T>))
 			->Option<DynStackArray<T>> {
-		assert_valid_len(len, sizeof(T));
+		assert_valid_len(len);
 		DynStackArray<T> get{
-				*this, usize(len), align, _detail::dynstack::default_init_fn{}};
+				*this, isize(len), align, _detail::dynstack::default_init_fn{}};
 		if (get.ptr() == nullptr) {
 			return none;
 		}
@@ -176,11 +176,11 @@ public:
 
 	template <typename T>
 	VEG_NODISCARD auto make_alloc(
-			Tag<T> /*unused*/, usize len, usize align = alignof(T)) VEG_NOEXCEPT
+			Tag<T> /*unused*/, isize len, isize align = alignof(T)) VEG_NOEXCEPT
 			-> Option<DynStackAlloc<T>> {
-		assert_valid_len(len, sizeof(T));
+		assert_valid_len(len);
 		DynStackAlloc<T> get{
-				*this, usize(len), align, _detail::dynstack::no_init_fn{}};
+				*this, isize(len), align, _detail::dynstack::no_init_fn{}};
 		if (get.ptr() == nullptr) {
 			return none;
 		}
@@ -189,7 +189,7 @@ public:
 
 private:
 	void* stack_data;
-	usize stack_bytes;
+	isize stack_bytes;
 
 	template <typename T>
 	friend struct DynStackAlloc;
@@ -206,7 +206,7 @@ struct cleanup {
 	bool const& success;
 	DynStackView& parent;
 	void* old_data;
-	usize old_rem_bytes;
+	isize old_rem_bytes;
 
 	VEG_INLINE void operator()() const VEG_NOEXCEPT {
 		if (!success) {
@@ -220,7 +220,7 @@ struct DynAllocBase {
 	DynStackView* parent;
 	void* old_pos;
 	void const volatile* data;
-	usize len;
+	isize len;
 
 	void destroy(void const volatile* void_data_end) VEG_NOEXCEPT {
 		if (len != 0) {
@@ -234,7 +234,7 @@ struct DynAllocBase {
 					parent_stack_data == data_end,
 					parent_stack_data >= old_position);
 
-			parent->stack_bytes += static_cast<usize>(
+			parent->stack_bytes += static_cast<isize>(
 					static_cast<unsigned char*>(parent->stack_data) -
 					static_cast<unsigned char*>(old_pos));
 			parent->stack_data = old_pos;
@@ -304,7 +304,7 @@ private:
 	friend struct _detail::dynstack::DynStackArrayDtor<T>;
 
 	template <typename Fn>
-	DynStackAlloc(DynStackView& parent_ref, usize alloc_size, usize align, Fn fn)
+	DynStackAlloc(DynStackView& parent_ref, isize alloc_size, isize align, Fn fn)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<T>))
 			: Base{
 						&parent_ref,
@@ -314,11 +314,11 @@ private:
 				} {
 
 		void* const parent_data = parent_ref.stack_data;
-		usize const parent_bytes = parent_ref.stack_bytes;
+		isize const parent_bytes = parent_ref.stack_bytes;
 
 		void* const ptr = _detail::align_next(
 				align,
-				alloc_size * sizeof(T),
+				alloc_size * isize(sizeof(T)),
 				parent_ref.stack_data,
 				parent_ref.stack_bytes);
 
