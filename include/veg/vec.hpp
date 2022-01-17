@@ -705,7 +705,7 @@ public:
 	}
 
 	VEG_INLINE void pop_several_unchecked(Unsafe unsafe, isize n) VEG_NOEXCEPT {
-		VEG_DEBUG_ASSERT(n <= len());
+		VEG_DEBUG_ASSERT_ALL_OF(0 <= n, n <= len());
 		__VEG_ASAN_ANNOTATE();
 
 		vector::RawVector<T>& raw = this->raw_mut(unsafe).get();
@@ -717,7 +717,7 @@ public:
 	}
 
 	VEG_INLINE void pop_several(isize n) VEG_NOEXCEPT {
-		VEG_ASSERT(n <= len());
+		VEG_ASSERT_ALL_OF(0 <= n, n <= len());
 		pop_several_unchecked(unsafe, n);
 	}
 
@@ -732,7 +732,7 @@ public:
 	}
 	VEG_INLINE auto pop_mid_unchecked(Unsafe /*unsafe*/, isize i)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> T {
-		VEG_DEBUG_ASSERT(i <= len());
+		VEG_DEBUG_ASSERT(0 <= i, i < len());
 		T* elem = raw_ref().get().data + i;
 		T t = static_cast<T&&>(*elem);
 
@@ -755,7 +755,7 @@ public:
 	}
 	VEG_INLINE auto pop_mid(isize i)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> T {
-		VEG_ASSERT(i <= len());
+		VEG_ASSERT(0 <= i, i < len());
 		return pop_mid_unchecked(unsafe, i);
 	}
 
@@ -801,6 +801,35 @@ public:
 		} else {
 			pop_several_unchecked(unsafe, len() - n);
 		}
+	}
+
+	VEG_TEMPLATE(
+			typename Fn,
+			requires(VEG_CONCEPT(fn_once<Fn, T>)),
+			VEG_INLINE void push_mid_with,
+			(fn, Fn),
+			(i, isize))
+	VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(nothrow_fn_once<Fn, T>) &&
+			VEG_CONCEPT(alloc::nothrow_alloc<A>)) {
+		__VEG_ASAN_ANNOTATE();
+		static_assert(VEG_CONCEPT(nothrow_fn_once<Fn, T>), ".");
+
+		VEG_ASSERT(0 <= i, i <= len());
+
+		reserve(len() + 1);
+		vector::RawVector<T>& raw = this->raw_mut(unsafe).get();
+		T* elem = raw.data + i;
+		_detail::_collections::relocate_backward<T>( //
+				elem + 1,
+				elem,
+				sizeof(T) * usize(raw.end - elem));
+		mem::construct_with(elem, VEG_FWD(fn));
+		++raw.end;
+	}
+	VEG_INLINE void push_mid(T value, isize i) VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(nothrow_movable<T>) && VEG_CONCEPT(alloc::nothrow_alloc<A>)) {
+		this->push_mid_with(_detail::MoveFn<T>{VEG_FWD(value)}, i);
 	}
 
 	VEG_TEMPLATE(
