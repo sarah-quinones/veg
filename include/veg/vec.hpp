@@ -815,7 +815,7 @@ public:
 		__VEG_ASAN_ANNOTATE();
 		static_assert(VEG_CONCEPT(nothrow_fn_once<Fn, T>), ".");
 
-		VEG_ASSERT(0 <= i, i <= len());
+		VEG_ASSERT_ALL_OF(0 <= i, i <= len());
 
 		reserve(len() + 1);
 		vector::RawVector<T>& raw = this->raw_mut(unsafe).get();
