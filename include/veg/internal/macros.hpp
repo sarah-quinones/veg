@@ -101,7 +101,7 @@
 			->decltype((__VA_ARGS__)) {                                              \
 		return __VA_ARGS__;                                                        \
 	}
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) && (__GNUC__ >= 9)
 #define VEG_ARROW(...)                                                         \
 	noexcept(noexcept((__VA_ARGS__))) __attribute__((always_inline))             \
 			->decltype((__VA_ARGS__)) {                                              \
