@@ -739,7 +739,7 @@ public:
 		// this block does not throw
 		{
 			mem::destroy_at(elem);
-			_detail::_collections::relocate_backward<T>( //
+			_detail::_collections::relocate<T>( //
 					elem,
 					elem + 1,
 					sizeof(T) * usize(len() - i - 1));
