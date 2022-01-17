@@ -117,29 +117,23 @@ struct Fix : _detail::idx::adl::IdxBase<Fix<N>> {
 		return {};
 	}
 
-	VEG_TEMPLATE(
-			(typename R),
-			requires(VEG_CONCEPT(index<R>)),
-			VEG_NODISCARD VEG_INLINE constexpr auto
-			operator+,
-			(b, R))
-	const VEG_DEDUCE_RET(_detail::binary_traits<Fix, R>::add_fn(*this, b));
+#define VEG_OP(Op, Name, TypeName)                                             \
+	VEG_TEMPLATE(                                                                \
+			(typename R),                                                            \
+			requires(VEG_CONCEPT(index<R>)),                                         \
+			VEG_NODISCARD VEG_INLINE constexpr auto                                  \
+			operator Op,                                                             \
+			(b, R))                                                                  \
+	const VEG_NOEXCEPT->typename _detail::binary_traits<Fix, R>::TypeName {      \
+		return _detail::binary_traits<Fix, R>::Name##_fn(*this, b);                \
+	}                                                                            \
+	VEG_NOM_SEMICOLON
 
-	VEG_TEMPLATE(
-			(typename R),
-			requires(VEG_CONCEPT(index<R>)),
-			VEG_NODISCARD VEG_INLINE constexpr auto
-			operator-,
-			(b, R))
-	const VEG_DEDUCE_RET(_detail::binary_traits<Fix, R>::sub_fn(*this, b));
+	VEG_OP(+, add, Add);
+	VEG_OP(-, sub, Sub);
+	VEG_OP(*, mul, Mul);
 
-	VEG_TEMPLATE(
-			(typename R),
-			requires(VEG_CONCEPT(index<R>)),
-			VEG_NODISCARD VEG_INLINE constexpr auto
-			operator*,
-			(b, R))
-	const VEG_DEDUCE_RET(_detail::binary_traits<Fix, R>::mul_fn(*this, b));
+#undef VEG_OP
 
 	VEG_TEMPLATE(
 			(typename R),
@@ -149,7 +143,9 @@ struct Fix : _detail::idx::adl::IdxBase<Fix<N>> {
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator/,
 			(b, R))
-	const VEG_DEDUCE_RET(_detail::binary_traits<Fix, R>::div_fn(*this, b));
+	const VEG_NOEXCEPT->typename _detail::binary_traits<Fix, R>::Div {
+		return _detail::binary_traits<Fix, R>::div_fn(*this, b);
+	}
 
 	VEG_TEMPLATE(
 			(typename R),
@@ -159,24 +155,30 @@ struct Fix : _detail::idx::adl::IdxBase<Fix<N>> {
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator%,
 			(b, R))
-	const VEG_DEDUCE_RET(_detail::binary_traits<Fix, R>::mod_fn(*this, b));
+	const VEG_NOEXCEPT->typename _detail::binary_traits<Fix, R>::Mod {
+		return _detail::binary_traits<Fix, R>::mod_fn(*this, b);
+	}
 
-#define VEG_CMP(Name, Op)                                                      \
+#define VEG_CMP(Name, TypeName, Op)                                            \
 	VEG_TEMPLATE(                                                                \
 			(typename R),                                                            \
 			requires(VEG_CONCEPT(index<R>)),                                         \
 			VEG_NODISCARD VEG_INLINE constexpr auto                                  \
-			operator Op,                                                             \
+			operator Op, /* NOLINT */                                                \
 			(b, R))                                                                  \
-	const VEG_DEDUCE_RET(                                                        \
-			_detail::binary_traits<Fix, R>::cmp_##Name##_fn(*this, b))
+	const VEG_NOEXCEPT->typename _detail::binary_traits<Fix, R>::TypeName {      \
+		return _detail::binary_traits<Fix, R>::cmp_##Name##_fn(*this, b);          \
+	}                                                                            \
+	VEG_NOM_SEMICOLON
 
-	VEG_CMP(eq, ==);
-	VEG_CMP(neq, !=);
-	VEG_CMP(lt, <);
-	VEG_CMP(le, <=);
-	VEG_CMP(gt, >);
-	VEG_CMP(ge, >=);
+	VEG_CMP(eq, CmpEq, ==);
+	VEG_CMP(neq, CmpNEq, !=);
+	VEG_CMP(lt, CmpLT, <);
+	VEG_CMP(le, CmpLE, <=);
+	VEG_CMP(gt, CmpGT, >);
+	VEG_CMP(ge, CmpGE, >=);
+
+#undef VEG_CMP
 
 #undef VEG_CMP
 };
