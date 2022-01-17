@@ -736,8 +736,6 @@ public:
 		T* elem = raw_ref().get().data + i;
 		T t = static_cast<T&&>(*elem);
 
-		--raw_mut(unsafe).get().end;
-
 		// this block does not throw
 		{
 			mem::destroy_at(elem);
@@ -746,6 +744,8 @@ public:
 					elem + 1,
 					sizeof(T) * usize(len() - i - 1));
 		}
+		--raw_mut(unsafe).get().end;
+
 		return t;
 	}
 
