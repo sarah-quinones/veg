@@ -177,6 +177,21 @@ auto relocate(void* out, void const* in, usize nbytes) noexcept -> void* {
 	return out;
 }
 
+template <typename T>
+auto relocate_backward(void* out, void const* in, usize nbytes) noexcept
+		-> void* {
+	T* out_T = static_cast<T*>(out);
+	T* in_T = const_cast<T*>(static_cast<T const*>(in));
+	usize n = nbytes / sizeof(T);
+
+	for (usize i = 0; i < n; ++i) {
+		out_T[n - i - 1] = static_cast<T&&>(in_T[n - i - 1]);
+		in_T[n - i - 1].~T();
+	}
+
+	return out;
+}
+
 template <typename A>
 struct AllocCleanup {
 	RefMut<A> alloc;
@@ -704,6 +719,37 @@ public:
 	VEG_INLINE void pop_several(isize n) VEG_NOEXCEPT {
 		VEG_ASSERT(n <= len());
 		pop_several_unchecked(unsafe, n);
+	}
+
+	VEG_INLINE auto pop_unchecked(Unsafe /*unsafe*/)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> T {
+		VEG_DEBUG_ASSERT(1 <= len());
+		T* last = raw_ref().get().end - 1;
+		T t = static_cast<T&&>(*last);
+		mem::destroy_at(last);
+		return t;
+	}
+	VEG_INLINE auto pop_mid_unchecked(Unsafe /*unsafe*/, isize i)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> T {
+		VEG_DEBUG_ASSERT(i <= len());
+		T* elem = raw_ref().get().data + i;
+		T t = static_cast<T&&>(*elem);
+		mem::destroy_at(elem);
+		_detail::_collections::relocate_backward<T>( //
+				elem,
+				elem + 1,
+				sizeof(T) * usize(len() - i - 1));
+		return t;
+	}
+
+	VEG_INLINE auto pop() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> T {
+		VEG_ASSERT(1 <= len());
+		return pop_unchecked(unsafe);
+	}
+	VEG_INLINE auto pop_mid(isize i)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> T {
+		VEG_ASSERT(i <= len());
+		return pop_mid_unchecked(unsafe, i);
 	}
 
 	VEG_INLINE void clear() VEG_NOEXCEPT { pop_several_unchecked(unsafe, len()); }
