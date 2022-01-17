@@ -726,6 +726,7 @@ public:
 		VEG_DEBUG_ASSERT(1 <= len());
 		T* last = raw_ref().get().end - 1;
 		T t = static_cast<T&&>(*last);
+		--raw_mut(unsafe).get().end;
 		mem::destroy_at(last);
 		return t;
 	}
@@ -734,11 +735,17 @@ public:
 		VEG_DEBUG_ASSERT(i <= len());
 		T* elem = raw_ref().get().data + i;
 		T t = static_cast<T&&>(*elem);
-		mem::destroy_at(elem);
-		_detail::_collections::relocate_backward<T>( //
-				elem,
-				elem + 1,
-				sizeof(T) * usize(len() - i - 1));
+
+		--raw_mut(unsafe).get().end;
+
+		// this block does not throw
+		{
+			mem::destroy_at(elem);
+			_detail::_collections::relocate_backward<T>( //
+					elem,
+					elem + 1,
+					sizeof(T) * usize(len() - i - 1));
+		}
 		return t;
 	}
 
