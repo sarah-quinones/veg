@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
-project(veg CXX)
+
+set(veg_version 0.1)
+
+project(veg LANGUAGES CXX VERSION ${veg_version})
 
 get_directory_property(has_parent PARENT_DIRECTORY)
 
@@ -23,7 +26,11 @@ add_library(
   ${CMAKE_CURRENT_SOURCE_DIR}/src/parse.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/ub.cpp
 )
-target_include_directories(veg PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(veg SYSTEM INTERFACE
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+target_include_directories(veg PRIVATE include)
 
 option(VEG_TESTS "enable tests" OFF)
 
@@ -51,11 +58,35 @@ if(VEG_TESTS)
   add_subdirectory(benchmark)
 endif()
 
-include(GNUInstallDirs)
-install(
-  TARGETS veg
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ DESTINATION include/)
+option(VEG_INSTALL "enable install" ON)
+
+if(VEG_INSTALL)
+  include(GNUInstallDirs)
+  include(CMakePackageConfigHelpers)
+  install(
+    TARGETS veg EXPORT veg-targets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  )
+  install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ DESTINATION include/)
+  install(EXPORT veg-targets
+    FILE veg-targets.cmake
+    NAMESPACE veg::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/veg
+  )
+  write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/veg-config-version.cmake"
+    VERSION "${veg_version}"
+    COMPATIBILITY AnyNewerVersion
+  )
+  configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/veg-config.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/veg
+  )
+  install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/veg-config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/veg-config-version.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/veg
+  )
+endif()
