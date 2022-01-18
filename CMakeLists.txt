@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(veg_version 0.1)
+set(CMAKE_DEBUG_POSTFIX "-d") # append -d to debug targets so they can be installed alongside release ones
 
+set(veg_version 0.1)
 project(veg LANGUAGES CXX VERSION ${veg_version})
 
 get_directory_property(has_parent PARENT_DIRECTORY)
