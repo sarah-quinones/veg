@@ -1,9 +1,14 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(CMAKE_DEBUG_POSTFIX "-d") # append -d to debug targets so they can be installed alongside release ones
+set(CMAKE_DEBUG_POSTFIX "-d") # append -d to debug targets so they can be
+                              # installed alongside release ones
 
 set(veg_version 0.1)
-project(veg LANGUAGES CXX VERSION ${veg_version})
+project(
+  veg
+  LANGUAGES CXX
+  VERSION ${veg_version}
+)
 
 get_directory_property(has_parent PARENT_DIRECTORY)
 
@@ -27,9 +32,9 @@ add_library(
   ${CMAKE_CURRENT_SOURCE_DIR}/src/parse.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/ub.cpp
 )
-target_include_directories(veg SYSTEM INTERFACE
-  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+target_include_directories(
+  veg SYSTEM INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+                       $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 target_include_directories(veg PRIVATE include)
 
@@ -42,6 +47,8 @@ if(VEG_TESTS)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/static_analyzers.cmake)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/sanitizers.cmake)
   target_link_libraries(veg INTERFACE project_options project_warnings)
+  set(VEG_TARGETS veg project_options project_warnings)
+
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/extra_local_settings.cmake)
   enable_sanitizers(project_options)
 
@@ -57,6 +64,8 @@ if(VEG_TESTS)
   enable_testing()
   add_subdirectory(test)
   add_subdirectory(benchmark)
+else()
+  set(VEG_TARGETS)
 endif()
 
 option(VEG_INSTALL "enable install" ON)
@@ -65,13 +74,15 @@ if(VEG_INSTALL)
   include(GNUInstallDirs)
   include(CMakePackageConfigHelpers)
   install(
-    TARGETS veg EXPORT veg-targets
+    TARGETS ${VEG_TARGETS}
+    EXPORT veg-targets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
   install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ DESTINATION include/)
-  install(EXPORT veg-targets
+  install(
+    EXPORT veg-targets
     FILE veg-targets.cmake
     NAMESPACE veg::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/veg
@@ -81,13 +92,13 @@ if(VEG_INSTALL)
     VERSION "${veg_version}"
     COMPATIBILITY AnyNewerVersion
   )
-  configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/config.cmake.in"
+  configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/config.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/veg-config.cmake"
     INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/veg
   )
-  install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/veg-config.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/veg-config-version.cmake"
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/veg
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/veg-config.cmake"
+                "${CMAKE_CURRENT_BINARY_DIR}/veg-config-version.cmake"
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/veg
   )
 endif()
