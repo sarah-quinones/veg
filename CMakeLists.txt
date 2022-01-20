@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.15)
 
 set(CMAKE_DEBUG_POSTFIX "-d") # append -d to debug targets so they can be
                               # installed alongside release ones
