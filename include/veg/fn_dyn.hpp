@@ -106,7 +106,8 @@ VEG_INLINE constexpr auto caller_mut(void* data, Ts... ts) noexcept(
 template <usize I, typename F, typename R, typename... Ts>
 VEG_INLINE constexpr auto caller_once(void* data, Ts... ts) noexcept(
 		VEG_CONCEPT(nothrow_fn_once<inner_ith<F, I>, R, Ts...>)) -> R {
-	return static_cast<F&&>(*static_cast<F*>(data))[Fix<isize{I}>{}](VEG_FWD(ts)...);
+	return static_cast<F&&>(*static_cast<F*>(data))[Fix<isize{I}>{}](
+			VEG_FWD(ts)...);
 };
 
 template <usize I, typename Sig>
@@ -276,8 +277,9 @@ public:
 
 	IndexedFnRefDyn() = default;
 
-	IndexedFnRefDyn(FromRawParts /*tag*/, VTable vtable, void* data) VEG_NOEXCEPT
-			: raw{vtable, data} {}
+	template <int _>
+	IndexedFnRefDyn(_::FromRawParts<_> /*tag*/, VTable vtable, void* data)
+			VEG_NOEXCEPT : raw{vtable, data} {}
 
 	VEG_TEMPLATE(
 			(typename T),
@@ -335,8 +337,9 @@ public:
 
 	IndexedFnMutDyn() = default;
 
-	IndexedFnMutDyn(FromRawParts /*tag*/, VTable vtable, void* data) VEG_NOEXCEPT
-			: raw{vtable, data} {}
+	template <int _>
+	IndexedFnMutDyn(_::FromRawParts<_> /*tag*/, VTable vtable, void* data)
+			VEG_NOEXCEPT : raw{vtable, data} {}
 
 	VEG_TEMPLATE(
 			(typename T),
@@ -434,34 +437,35 @@ public:
 		raw = VEG_FWD(tmp.raw);
 	}
 
-	VEG_TEMPLATE(
-			(int _, typename FnA),
-			requires(VEG_CONCEPT(fn_once<FnA, A>)),
-			IndexedFnDyn,
-			(/*tag*/, _::FromRawParts<_>),
-			(fn_a, FnA),
-			(vtable, VTable),
-			(data, void*))
-	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<FnA, A>))
-			: raw{
-						inplace[tuplify],
-						VEG_FWD(fn_a),
-						_detail::MoveFn<_raw0>{_raw0{vtable, data}},
-				} {}
+	template <int _>
+	VEG_INLINE IndexedFnDyn(
+			_::FromRawParts<_> /*tag*/,
+			Unsafe /*unsafe*/,
+			A alloc,
+			VTable vtable,
+			void* data) VEG_NOEXCEPT : raw{
+																		 tuplify,
+																		 VEG_FWD(alloc),
+																		 _raw0{vtable, data},
+																 } {}
 
 	VEG_TEMPLATE(
-			(typename FnA, typename FnT, typename T = meta::invoke_result_t<FnT>),
+			(typename FnT, typename T = meta::invoke_result_t<FnT>),
 			requires(
-					VEG_CONCEPT(fn_once<FnA, A>) && VEG_CONCEPT(fn_once<FnT, T>) &&
+					VEG_CONCEPT(fn_once<FnT, T>) &&
 					VEG_ALL_OF(VEG_CONCEPT(fn_once_with_sig<inner_ith<T&&, Is>, Sigs>))),
 			IndexedFnDyn,
 			(/*tag*/, InPlace<From>),
-			(fn_a, FnA),
+			(alloc, A),
 			(fn_t, FnT))
 	VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(alloc::nothrow_alloc<A>) &&
 			VEG_CONCEPT(nothrow_fn_once<FnT, T>))
-			: raw{inplace[tuplify], VEG_FWD(fn_a), _detail::DefaultFn<_raw0>{}} {
+			: raw{
+						inplace[tuplify],
+						_detail::MoveFn<A>{VEG_FWD(alloc)},
+						_detail::DefaultFn<_raw0>{},
+				} {
 		auto l = mem::Layout{sizeof(T), alignof(T)};
 		_detail::_mem::ManagedAlloc<A> block{
 				mem::Alloc<A>::alloc(alloc_mut(unsafe), l).data,

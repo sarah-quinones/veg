@@ -97,27 +97,23 @@ struct BoxIncomplete {
 		return ptr_mut();
 	}
 
-	VEG_TEMPLATE(
-			(int _, typename FnT, typename FnA),
-			requires(VEG_CONCEPT(fn_once<FnT, T>) && VEG_CONCEPT(fn_once<FnA, A>)),
-			BoxIncomplete,
-			(/*tag*/, _::FromRawParts<_>),
-			(/*tag*/, Unsafe),
-			(fn_a, FnA),
-			(has_value, bool),
-			(fn_t, FnT))
-	VEG_NOEXCEPT_IF(
-			(VEG_CONCEPT(nothrow_fn_once<FnT, T>) &&
-	     VEG_CONCEPT(nothrow_fn_once<FnA, A>)))
+	template <int _>
+	VEG_INLINE
+	BoxIncomplete(_::FromRawParts<_> /*tag*/, Unsafe /*unsafe*/, A alloc, T* ptr)
+			VEG_NOEXCEPT : _{
+												 tuplify,
+												 VEG_FWD(alloc),
+												 _detail::_mem::UniquePtr<T>{VEG_FWD(ptr)},
+										 } {}
 
+	template <int _>
+	BoxIncomplete(_::FromAllocAndVaue<_> /*tag*/, A alloc, T value)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))
 			: _{
-						InPlace<Tuplify>{},
-						VEG_FWD(fn_a),
-						_detail::DefaultFn<_detail::_mem::UniquePtr<T>>{},
+						tuplify,
+						VEG_FWD(alloc),
+						_detail::_mem::UniquePtr<T>{},
 				} {
-		if (!has_value) {
-			return;
-		}
 		mem::Layout l{
 				sizeof(T),
 				alignof(T),
@@ -129,7 +125,7 @@ struct BoxIncomplete {
 				this->alloc_mut(unsafe),
 		};
 
-		mem::construct_with(static_cast<T*>(block.data), VEG_FWD(fn_t));
+		mem::construct_at(static_cast<T*>(block.data), VEG_FWD(value));
 
 		this->data_mut(unsafe).get() = static_cast<T*>(block.data);
 		block.data = nullptr;
@@ -141,17 +137,29 @@ struct BoxIncomplete {
 	BoxIncomplete(BoxIncomplete const& rhs) VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_copyable<A>) &&
 			VEG_CONCEPT(alloc::nothrow_alloc<A>) && NoThrowCopy)
-			: BoxIncomplete{
-						from_raw_parts,
-						unsafe,
+			: _{
+						InPlace<Tuplify>{},
 						_detail::CopyFn<A>{rhs.alloc_ref().get()},
-						(rhs.ptr() != nullptr),
-						_detail::_mem::DerefCopyFn<T>{rhs.ptr()},
+						_detail::DefaultFn<_detail::_mem::UniquePtr<T>>{},
 				} {
-		static_assert(
-				NoThrowCopy == (VEG_CONCEPT(nothrow_copyable<T>) &&
-		                    VEG_CONCEPT(nothrow_copy_assignable<T>)),
-				".");
+		if (rhs.ptr() == nullptr) {
+			return;
+		}
+
+		mem::Layout l{
+				sizeof(T),
+				alignof(T),
+		};
+
+		_detail::_mem::ManagedAlloc<A> block{
+				mem::Alloc<A>::alloc(this->alloc_mut(unsafe), l).data,
+				l,
+				this->alloc_mut(unsafe),
+		};
+
+		mem::construct_at(static_cast<T*>(block.data), *rhs.ptr());
+		this->data_mut(unsafe).get() = static_cast<T*>(block.data);
+		block.data = nullptr;
 	}
 
 	VEG_INLINE auto operator=(BoxIncomplete&& rhs) noexcept -> BoxIncomplete& {
@@ -325,10 +333,9 @@ struct box {
 	VEG_INLINE auto operator()(T val) const
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> Box<T> {
 		return {
-				from_raw_parts,
+				from_alloc_and_value,
 				unsafe,
 				_detail::DefaultFn<mem::SystemAlloc>{},
-				true,
 				_detail::MoveFn<T>{VEG_FWD(val)},
 		};
 	}

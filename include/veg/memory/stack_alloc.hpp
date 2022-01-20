@@ -6,9 +6,6 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-inline namespace tags {
-VEG_TAG(from_slice, FromSlice);
-} // namespace tags
 
 namespace _detail {
 namespace _mem {
@@ -42,7 +39,7 @@ struct BumpAllocLayout {
 
 	void _dealloc_last_unchecked(void* ptr, mem::Layout layout) {
 		VEG_DEBUG_ASSERT(ptr == (current_ptr - _align(layout.byte_size)));
-    (void)layout;
+		(void)layout;
 		current_ptr = static_cast<mem::byte*>(ptr);
 	}
 
@@ -118,7 +115,7 @@ struct BumpAlloc : private _detail::_mem::BumpAllocLayout<MaxAlign> {
 	static_assert(MaxAlign >= 8, ".");
 #endif
 
-	BumpAlloc(FromSlice /*tag*/, SliceMut<byte> s) noexcept
+	BumpAlloc(FromSliceMut /*tag*/, SliceMut<byte> s) noexcept
 			: _detail::_mem::BumpAllocLayout<MaxAlign>{
 						s.ptr_mut(),
 						s.ptr_mut(),

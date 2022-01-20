@@ -71,9 +71,8 @@ namespace tuple {
 namespace nb {
 struct tuplify {
 	template <typename... Ts>
-	VEG_NODISCARD VEG_INLINE constexpr auto operator()(Ts... args) const
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>)))
-					-> veg::Tuple<Ts...> {
+	VEG_NODISCARD VEG_INLINE constexpr auto
+	operator()(Ts... args) const VEG_NOEXCEPT -> veg::Tuple<Ts...> {
 		return {tuplify{}, Ts(VEG_FWD(args))...};
 	}
 };
@@ -257,8 +256,7 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 #define __VEG_IMPL_INPLACE /* NOLINT */ inplace, VEG_FWD(fns)
 #endif
 
-	VEG_INLINE constexpr IndexedTuple(Tuplify /*tag*/, Ts... args)
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>)))
+	VEG_INLINE constexpr IndexedTuple(Tuplify /*tag*/, Ts... args) VEG_NOEXCEPT
 			: TupleLeaf<Is, Ts>{__VEG_IMPL_FWD}... {}
 
 	VEG_TEMPLATE(
@@ -557,11 +555,8 @@ struct zip {
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator(),
 			(... tups, Tuples))
-	const VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Tuples>)))
-			->Zip<Tuples...> {
-		return zip::pre_apply(
-				veg::meta::bool_constant<VEG_ALL_OF(
-						VEG_CONCEPT(trivially_copyable<Tuples>))>{},
+	const VEG_NOEXCEPT->Zip<Tuples...> {
+		return zip::apply(
 				static_cast<typename meta::TupleBaseInfo<Tuples>::IndexedTuple&&>(
 						tups)...);
 	}
@@ -575,8 +570,7 @@ private:
 	}
 	template <typename... Tuples>
 	VEG_INLINE static constexpr auto
-	pre_apply(veg::meta::false_type /*unused*/, Tuples&&... tups) VEG_NOEXCEPT_IF(
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Tuples>))))
+	pre_apply(veg::meta::false_type /*unused*/, Tuples&&... tups) VEG_NOEXCEPT
 			-> Zip<Tuples...> {
 		return zip::from_ref_to_result(
 				Tag<veg::meta::type_sequence_zip<
@@ -632,8 +626,8 @@ private:
 	struct ConverterImpl<veg::meta::index_sequence<Is...>, InnerTargets...> {
 		IndexedTuple<veg::meta::index_sequence<Is...>, InnerTargets&&...>&& refs;
 
-		VEG_INLINE constexpr auto operator()() const&& VEG_NOEXCEPT_IF(VEG_ALL_OF(
-				VEG_CONCEPT(nothrow_movable<InnerTargets>))) -> Tuple<InnerTargets...> {
+		VEG_INLINE constexpr auto operator()() const && VEG_NOEXCEPT
+																										-> Tuple<InnerTargets...> {
 
 			return {
 					inplace[tuplify{}],
@@ -655,8 +649,7 @@ private:
 	VEG_INLINE static constexpr auto from_ref_to_result(
 			Tag<Tuple<OuterTargets...>> /*tag*/,
 			IndexedTuple<veg::meta::index_sequence<Is...>, Tups...> zipped_refs)
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<OuterTargets>)))
-					-> Tuple<OuterTargets...> {
+			VEG_NOEXCEPT -> Tuple<OuterTargets...> {
 		return {
 				((void)zipped_refs, inplace[tuplify{}]),
 				typename Converter<OuterTargets>::Type{
@@ -681,11 +674,8 @@ struct cat {
 			VEG_NODISCARD VEG_INLINE constexpr auto
 			operator(),
 			(... tups, Tuples))
-	const VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Tuples>)))
-			->Concat<Tuples...> {
-		return cat::pre_apply(
-				veg::meta::bool_constant<VEG_ALL_OF(
-						VEG_CONCEPT(trivially_copyable<Tuples>))>{},
+	const VEG_NOEXCEPT->Concat<Tuples...> {
+		return cat::apply(
 				static_cast<typename meta::TupleBaseInfo<Tuples>::IndexedTuple&&>(
 						tups)...);
 	}
@@ -700,9 +690,8 @@ private:
 
 	template <typename... Tuples>
 	VEG_INLINE static constexpr auto
-	pre_apply(veg::meta::false_type /*unused*/, Tuples&&... tups)
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Tuples>)))
-					-> Concat<Tuples...> {
+	pre_apply(veg::meta::false_type /*unused*/, Tuples&&... tups) VEG_NOEXCEPT
+			-> Concat<Tuples...> {
 		return cat::template from_ref_to_result(
 				Tag<veg::meta::type_sequence_cat<Tuple, Tuples...>>{},
 				cat::apply(_detail::_tuple::tuple_fwd(VEG_FWD(tups))...));
@@ -711,9 +700,8 @@ private:
 	template <typename... Targets, usize... Is, typename... Refs>
 	VEG_INLINE static constexpr auto from_ref_to_result(
 			Tag<Tuple<Targets...>> /*tag*/,
-			IndexedTuple<veg::meta::index_sequence<Is...>, Refs...> refs)
-			VEG_NOEXCEPT_IF(VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Targets>)))
-					-> veg::Tuple<Targets...> {
+			IndexedTuple<veg::meta::index_sequence<Is...>, Refs...> refs) VEG_NOEXCEPT
+			-> veg::Tuple<Targets...> {
 		return {
 				inplace[tuplify{}],
 				_detail::MoveFn<Targets>{static_cast<Targets&&>(

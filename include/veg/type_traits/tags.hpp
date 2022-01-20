@@ -5,11 +5,6 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-namespace internal {
-template <typename T>
-struct make_unsafe;
-} // namespace internal
-
 inline namespace tags {
 VEG_TAG_TEMPLATE(typename T, tag, Tag, T);
 VEG_TAG(from_raw_parts, FromRawParts);
@@ -20,6 +15,12 @@ VEG_TAG(as_ref_once, AsRefOnce);
 
 VEG_TAG(safe, Safe);
 VEG_TAG(unsafe, Unsafe);
+
+VEG_TAG(from_alloc, FromAlloc);
+VEG_TAG(from_alloc_and_value, FromAllocAndVaue);
+
+VEG_TAG(from_slice, FromSlice);
+VEG_TAG(from_slice_mut, FromSliceMut);
 template <typename Tag>
 struct InPlace {
 	InPlace() = default;
