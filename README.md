@@ -1,1 +1,1 @@
-https://veg.readthedocs.io/
+https://github.com/kitegi/veg/wiki
