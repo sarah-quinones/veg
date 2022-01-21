@@ -351,8 +351,31 @@ struct box {
 		};
 	}
 };
+struct box_with_alloc {
+	VEG_TEMPLATE(
+			(typename A, typename T),
+			requires(
+					VEG_CONCEPT(nothrow_movable<A>) &&         //
+					VEG_CONCEPT(nothrow_move_assignable<A>) && //
+					VEG_CONCEPT(alloc::alloc<A>)),
+			VEG_INLINE auto
+			operator(),
+			(alloc, A),
+			(val, T))
+	VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(alloc::nothrow_alloc<A>) && //
+			VEG_CONCEPT(nothrow_movable<T>))
+			->Box<T, A> {
+		return {
+				from_alloc_and_value,
+				VEG_FWD(alloc),
+				VEG_FWD(val),
+		};
+	}
+};
 } // namespace nb
 VEG_NIEBLOID(box);
+VEG_NIEBLOID(box_with_alloc);
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

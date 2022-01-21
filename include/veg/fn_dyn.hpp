@@ -497,9 +497,7 @@ public:
 	VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(alloc::nothrow_alloc<A>) && VEG_CONCEPT(nothrow_movable<T>))
 			: IndexedFnDyn{
-						inplace[from],
-						_detail::MoveFn<A>{VEG_FWD(alloc)},
-						_detail::MoveFn<T>{(VEG_FWD(t))}} {}
+						inplace[from], VEG_FWD(alloc), _detail::MoveFn<T>{(VEG_FWD(t))}} {}
 };
 
 template <typename... Sigs>
