@@ -49,12 +49,16 @@ public:
 
 	VEG_INLINE
 	constexpr Slice(
-			FromRawParts /*tag*/, Unsafe /*tag*/, T const* data_, isize count)
+			Unsafe /*tag*/, FromRawParts /*tag*/, T const* data_, isize count)
 			VEG_NOEXCEPT : data{data_},
 										 size{count} {}
 
-	constexpr Slice(InitList<T> lst) VEG_NOEXCEPT
-			: Slice<T>{unsafe, from_raw_parts, lst.data, lst.len} {}
+	constexpr Slice(InitList<T> lst) VEG_NOEXCEPT : Slice<T>{
+																											unsafe,
+																											from_raw_parts,
+																											lst.data,
+																											lst.len,
+																									} {}
 
 	VEG_NODISCARD
 	VEG_INLINE
@@ -99,8 +103,8 @@ public:
 	VEG_NODISCARD VEG_INLINE constexpr auto as_bytes() const VEG_NOEXCEPT
 			-> Slice<unsigned char> {
 		return {
-				from_raw_parts,
 				unsafe,
+				from_raw_parts,
 				reinterpret_cast<unsigned char const*>(data),
 				isize(sizeof(T)) * size,
 		};
@@ -114,10 +118,10 @@ struct SliceMut : private Slice<T> {
 
 	VEG_INLINE
 	constexpr SliceMut(
-			FromRawParts /*tag*/, Unsafe /*tag*/, T const* data_, isize count)
+			Unsafe /*tag*/, FromRawParts /*tag*/, T const* data_, isize count)
 			VEG_NOEXCEPT : Slice<T>{
-												 FromRawParts{},
 												 unsafe,
+												 from_raw_parts,
 												 data_,
 												 count,
 										 } {}
@@ -147,8 +151,8 @@ struct SliceMut : private Slice<T> {
 	VEG_NODISCARD VEG_INLINE constexpr auto as_mut_bytes() const VEG_NOEXCEPT
 			-> SliceMut<unsigned char> {
 		return {
-				from_raw_parts,
 				unsafe,
+				from_raw_parts,
 				reinterpret_cast<unsigned char*>(ptr_mut()),
 				isize(sizeof(T)) * len(),
 		};
@@ -161,14 +165,14 @@ struct SliceMut : private Slice<T> {
 		       Tuple<SliceMut<T>, SliceMut<T>>{
 							 tuplify,
 							 SliceMut<T>{
-									 FromRawParts{},
 									 unsafe,
+									 from_raw_parts,
 									 ptr_mut(),
 									 idx,
 							 },
 							 SliceMut<T>{
-									 FromRawParts{},
 									 unsafe,
+									 from_raw_parts,
 									 ptr_mut() + idx,
 									 len() - idx,
 							 },
@@ -184,16 +188,16 @@ struct Array {
 
 	constexpr auto as_ref() const -> Slice<T> {
 		return {
-				from_raw_parts,
 				unsafe,
+				from_raw_parts,
 				static_cast<T const*>(_),
 				N,
 		};
 	}
 	VEG_CPP14(constexpr) auto as_mut() -> SliceMut<T> {
 		return {
-				from_raw_parts,
 				unsafe,
+				from_raw_parts,
 				static_cast<T*>(_),
 				N,
 		};

@@ -12,7 +12,7 @@ TEST_CASE("empty box") {
 
 	dbg(u);
 
-	Box<int> v = u; /* NOLINT */
+	Box<int> v{u}; /* NOLINT */
 	Box<int> w;
 	w = u;
 
@@ -29,7 +29,7 @@ TEST_CASE("full box") {
 	REQUIRE(*u.data_ref() != nullptr);
 	REQUIRE(**u.data_ref() == 3);
 
-	Box<int> v = u; /* NOLINT */
+	Box<int> v{u}; /* NOLINT */
 	Box<int> w;
 	REQUIRE(cmp::cmp(ref(v), ref(w)) == cmp::Ordering::greater);
 	REQUIRE(cmp::cmp(ref(w), ref(v)) == cmp::Ordering::less);
@@ -93,7 +93,7 @@ TEST_CASE("reserve and push some values") {
 	using A = mem::StackAlloc<alignof(int)>;
 	alignas(int) Array<mem::byte, 4096> stack{};
 
-	Vec<int, A> v{from_raw_parts, {}, A{from_slice, stack.as_mut()}};
+	Vec<int, A> v{unsafe, from_raw_parts, {}, A{from_slice_mut, stack.as_mut()}};
 
 	v.reserve(16);
 	v.push(1);
@@ -134,7 +134,7 @@ TEST_CASE("stack alloc clone") {
 	using A = mem::StackAlloc<alignof(int)>;
 	alignas(int) Array<mem::byte, 4096> stack{};
 
-	Vec<int, A> v1{from_raw_parts, {}, A{from_slice, stack.as_mut()}};
+	Vec<int, A> v1{unsafe, from_raw_parts, {}, A{from_slice_mut, stack.as_mut()}};
 
 	v1.push(1);
 	v1.push(2);

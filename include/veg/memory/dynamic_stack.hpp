@@ -167,9 +167,8 @@ struct no_init_fn {
 namespace dynstack {
 struct DynStackMut : _detail::NoCopyCtor, _detail::NoCopyAssign {
 public:
-	DynStackMut(SliceMut<unsigned char> s) VEG_NOEXCEPT
-			: stack_data(s.ptr_mut()),
-				stack_bytes(s.len()) {}
+	DynStackMut(SliceMut<unsigned char> s) VEG_NOEXCEPT : stack_data(s.ptr_mut()),
+																												stack_bytes(s.len()) {}
 
 	VEG_NODISCARD
 	auto remaining_bytes() const VEG_NOEXCEPT -> isize {
@@ -323,6 +322,7 @@ public:
 
 	VEG_NODISCARD auto as_mut() VEG_NOEXCEPT -> SliceMut<T> {
 		return {
+				unsafe,
 				FromRawParts{},
 				ptr_mut(),
 				len(),
@@ -332,6 +332,7 @@ public:
 
 	VEG_NODISCARD auto as_ref() const VEG_NOEXCEPT -> Slice<T> {
 		return {
+				unsafe,
 				FromRawParts{},
 				ptr(),
 				len(),

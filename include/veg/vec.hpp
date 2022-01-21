@@ -630,8 +630,11 @@ public:
 	VEG_INLINE VecIncomplete() = default;
 
 	VEG_INLINE
-	VecIncomplete(FromRawParts /*tag*/, vector::RawVector<T> rawvec, A alloc)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<A>))
+	VecIncomplete(
+			Unsafe /*unsafe*/,
+			FromRawParts /*tag*/,
+			vector::RawVector<T> rawvec,
+			A alloc) VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<A>))
 			: _{
 						tuplify,
 						VEG_FWD(alloc),
@@ -872,10 +875,10 @@ public:
 	}
 
 	VEG_NODISCARD VEG_INLINE auto as_ref() const VEG_NOEXCEPT -> Slice<T> {
-		return {from_raw_parts, unsafe, ptr(), len()};
+		return {unsafe, from_raw_parts, ptr(), len()};
 	}
 	VEG_NODISCARD VEG_INLINE auto as_mut() VEG_NOEXCEPT -> SliceMut<T> {
-		return {from_raw_parts, unsafe, ptr_mut(), len()};
+		return {unsafe, from_raw_parts, ptr_mut(), len()};
 	}
 
 	VEG_NODISCARD VEG_INLINE auto ptr() const VEG_NOEXCEPT -> T const* {

@@ -278,8 +278,11 @@ public:
 	IndexedFnRefDyn() = default;
 
 	template <int _>
-	IndexedFnRefDyn(_::FromRawParts<_> /*tag*/, VTable vtable, void* data)
-			VEG_NOEXCEPT : raw{vtable, data} {}
+	IndexedFnRefDyn( //
+			Unsafe /*unsafe*/,
+			_::FromRawParts<_> /*tag*/,
+			VTable vtable,
+			void* data) VEG_NOEXCEPT : raw{vtable, data} {}
 
 	VEG_TEMPLATE(
 			(typename T),
@@ -338,8 +341,11 @@ public:
 	IndexedFnMutDyn() = default;
 
 	template <int _>
-	IndexedFnMutDyn(_::FromRawParts<_> /*tag*/, VTable vtable, void* data)
-			VEG_NOEXCEPT : raw{vtable, data} {}
+	IndexedFnMutDyn( //
+			Unsafe /*unsafe*/,
+			_::FromRawParts<_> /*tag*/,
+			VTable vtable,
+			void* data) VEG_NOEXCEPT : raw{vtable, data} {}
 
 	VEG_TEMPLATE(
 			(typename T),
@@ -439,8 +445,8 @@ public:
 
 	template <int _>
 	VEG_INLINE IndexedFnDyn(
-			_::FromRawParts<_> /*tag*/,
 			Unsafe /*unsafe*/,
+			_::FromRawParts<_> /*tag*/,
 			A alloc,
 			VTable vtable,
 			void* data) VEG_NOEXCEPT : raw{

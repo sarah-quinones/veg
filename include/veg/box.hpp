@@ -5,6 +5,7 @@
 #include "veg/type_traits/constructible.hpp"
 #include "veg/memory/alloc.hpp"
 #include "veg/tuple.hpp"
+#include "veg/util/assert.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
@@ -69,8 +70,8 @@ struct BoxIncomplete {
 			-> RefMut<A> {
 		return mut(_[0_c]);
 	}
-	VEG_INLINE constexpr auto data_ref() const noexcept -> Ref<T*> {
-		return ref(_[1_c].inner);
+	VEG_INLINE constexpr auto data_ref() const noexcept -> Ref<T const*> {
+		return ref(*static_cast<T const* const*>(mem::addressof(_[1_c].inner)));
 	}
 	VEG_INLINE VEG_CPP14(constexpr) auto data_mut(Unsafe /*tag*/) noexcept
 			-> RefMut<T*> {
@@ -78,28 +79,32 @@ struct BoxIncomplete {
 	}
 
 	VEG_INLINE constexpr auto ptr() const noexcept -> T const* {
-		return data_ref().get();
+		return _[1_c].inner;
 	}
 	VEG_INLINE VEG_CPP14(constexpr) auto ptr_mut() noexcept -> T* {
-		return data_ref().get();
+		return _[1_c].inner;
 	}
 
 	VEG_INLINE constexpr auto operator*() const noexcept -> T const& {
+		VEG_ASSERT(ptr() != nullptr);
 		return *ptr();
 	}
 	VEG_INLINE VEG_CPP14(constexpr) auto operator*() noexcept -> T& {
+		VEG_ASSERT(ptr() != nullptr);
 		return *ptr_mut();
 	}
 	VEG_INLINE constexpr auto operator->() const noexcept -> T const* {
+		VEG_ASSERT(ptr() != nullptr);
 		return ptr();
 	}
 	VEG_INLINE VEG_CPP14(constexpr) auto operator->() noexcept -> T* {
+		VEG_ASSERT(ptr() != nullptr);
 		return ptr_mut();
 	}
 
 	template <int _>
 	VEG_INLINE
-	BoxIncomplete(_::FromRawParts<_> /*tag*/, Unsafe /*unsafe*/, A alloc, T* ptr)
+	BoxIncomplete(Unsafe /*unsafe*/, _::FromRawParts<_> /*tag*/, A alloc, T* ptr)
 			VEG_NOEXCEPT : _{
 												 tuplify,
 												 VEG_FWD(alloc),
@@ -107,13 +112,19 @@ struct BoxIncomplete {
 										 } {}
 
 	template <int _>
-	BoxIncomplete(_::FromAllocAndVaue<_> /*tag*/, A alloc, T value)
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))
+	BoxIncomplete(_::FromAlloc<_> /*tag*/, A alloc) VEG_NOEXCEPT
 			: _{
 						tuplify,
 						VEG_FWD(alloc),
 						_detail::_mem::UniquePtr<T>{},
-				} {
+				} {}
+
+	template <int _, typename U = T>
+	BoxIncomplete(_::FromAllocAndVaue<_> /*tag*/, A alloc, T value)
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_movable<U>) &&
+					VEG_CONCEPT(alloc::nothrow_alloc<A>))
+			: BoxIncomplete{from_alloc, VEG_FWD(alloc)} {
 		mem::Layout l{
 				sizeof(T),
 				alignof(T),
@@ -134,7 +145,7 @@ struct BoxIncomplete {
 	BoxIncomplete() = default;
 	BoxIncomplete(BoxIncomplete&&) = default;
 
-	BoxIncomplete(BoxIncomplete const& rhs) VEG_NOEXCEPT_IF(
+	explicit BoxIncomplete(BoxIncomplete const& rhs) VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_copyable<A>) &&
 			VEG_CONCEPT(alloc::nothrow_alloc<A>) && NoThrowCopy)
 			: _{
@@ -234,6 +245,7 @@ struct Box
 
 			mem::BoxIncomplete<T, A> {
 	using mem::BoxIncomplete<T, A>::BoxIncomplete;
+	VEG_EXPLICIT_COPY(Box);
 };
 
 namespace _detail {
@@ -334,9 +346,8 @@ struct box {
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> Box<T> {
 		return {
 				from_alloc_and_value,
-				unsafe,
-				_detail::DefaultFn<mem::SystemAlloc>{},
-				_detail::MoveFn<T>{VEG_FWD(val)},
+				mem::SystemAlloc{},
+				VEG_FWD(val),
 		};
 	}
 };
