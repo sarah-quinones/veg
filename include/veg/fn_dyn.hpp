@@ -123,21 +123,21 @@ struct VTableLeafI<I, NoThrowIf<B, R(Ts...)>>;
 
 template <usize I, bool B, typename R, typename... Ts>
 struct VTableLeafI<I, NoThrowIf<B, R(Ts...) const&>> {
-	auto (*fn_ptr)(void const*, Ts...) noexcept -> R;
+	auto (*fn_ptr)(void const*, Ts...) noexcept(B) -> R;
 	template <typename F>
 	VEG_INLINE constexpr VTableLeafI(Tag<F> /*tag*/) noexcept //
 			: fn_ptr{_fn::caller<I, F, R, Ts...>} {}
 };
 template <usize I, bool B, typename R, typename... Ts>
 struct VTableLeafI<I, NoThrowIf<B, R(Ts...)&>> {
-	auto (*fn_ptr)(void*, Ts...) noexcept -> R;
+	auto (*fn_ptr)(void*, Ts...) noexcept(B) -> R;
 	template <typename F>
 	VEG_INLINE constexpr VTableLeafI(Tag<F> /*tag*/) noexcept
 			: fn_ptr{_fn::caller_mut<I, F, R, Ts...>} {}
 };
 template <usize I, bool B, typename R, typename... Ts>
 struct VTableLeafI<I, NoThrowIf<B, R(Ts...) &&>> {
-	auto (*fn_ptr)(void*, Ts...) noexcept -> R;
+	auto (*fn_ptr)(void*, Ts...) noexcept(B) -> R;
 	template <typename F>
 	VEG_INLINE constexpr VTableLeafI(Tag<F> /*tag*/) noexcept
 			: fn_ptr{_fn::caller_once<I, F, R, Ts...>} {}
@@ -191,21 +191,21 @@ struct FnCrtp<D, I, NoThrowIf<B, R(Ts...) const&>> {
 template <typename D, usize I, bool B, typename R, typename... Ts>
 struct FnCrtp<D, I, NoThrowIf<B, R(Ts...)&>> {
 	VEG_INLINE auto operator()(Ts... ts) & noexcept(B) -> R {
-		auto& self = static_cast<D const&>(*this);
+		auto& self = static_cast<D&>(*this);
 		auto vtable = static_cast<VTableLeafI<I, NoThrowIf<B, R(Ts...)&>> const*>(
 				self.vtable());
 		VEG_ASSERT(vtable != nullptr);
-		return vtable->fn_ptr(self.data_ref().get(), VEG_FWD(ts)...);
+		return vtable->fn_ptr(self.data_mut().get(), VEG_FWD(ts)...);
 	}
 };
 template <typename D, usize I, bool B, typename R, typename... Ts>
 struct FnCrtp<D, I, NoThrowIf<B, R(Ts...) &&>> {
 	VEG_INLINE auto operator()(Ts... ts) && noexcept(B) -> R {
-		auto& self = static_cast<D const&>(*this);
+		auto& self = static_cast<D&>(*this);
 		auto vtable = static_cast<VTableLeafI<I, NoThrowIf<B, R(Ts...) &&>> const*>(
 				self.vtable());
 		VEG_ASSERT(vtable != nullptr);
-		return vtable->fn_ptr(self.data_ref().get(), VEG_FWD(ts)...);
+		return vtable->fn_ptr(self.data_mut().get(), VEG_FWD(ts)...);
 	}
 };
 
@@ -274,6 +274,7 @@ public:
 	VEG_INLINE auto data_ref() const noexcept -> Ref<void const*> {
 		return ref(raw.data);
 	}
+	VEG_INLINE auto ptr() const noexcept -> void const* { return raw.data; }
 
 	IndexedFnRefDyn() = default;
 
@@ -281,7 +282,7 @@ public:
 	IndexedFnRefDyn( //
 			Unsafe /*unsafe*/,
 			_::FromRawParts<_> /*tag*/,
-			VTable vtable,
+			VTable const* vtable,
 			void* data) VEG_NOEXCEPT : raw{vtable, data} {}
 
 	VEG_TEMPLATE(
@@ -337,6 +338,8 @@ public:
 	VEG_INLINE auto data_ref() const noexcept -> Ref<void*> {
 		return ref(raw.data);
 	}
+	VEG_INLINE auto ptr() const noexcept -> void const* { return raw.data; }
+	VEG_INLINE auto ptr_mut() noexcept -> void* { return raw.data; }
 
 	IndexedFnMutDyn() = default;
 
@@ -344,7 +347,7 @@ public:
 	IndexedFnMutDyn( //
 			Unsafe /*unsafe*/,
 			_::FromRawParts<_> /*tag*/,
-			VTable vtable,
+			VTable const* vtable,
 			void* data) VEG_NOEXCEPT : raw{vtable, data} {}
 
 	VEG_TEMPLATE(
@@ -408,6 +411,8 @@ public:
 	VEG_INLINE auto data_ref() const noexcept -> Ref<void*> {
 		return ref(raw[1_c].data);
 	}
+	VEG_INLINE auto ptr() const noexcept -> void const* { return raw[1_c].data; }
+	VEG_INLINE auto ptr_mut() noexcept -> void* { return raw[1_c].data; }
 
 private:
 	void _destroy(void* ptr) noexcept {
@@ -448,7 +453,7 @@ public:
 			Unsafe /*unsafe*/,
 			_::FromRawParts<_> /*tag*/,
 			A alloc,
-			VTable vtable,
+			VTable const* vtable,
 			void* data) VEG_NOEXCEPT : raw{
 																		 tuplify,
 																		 VEG_FWD(alloc),
