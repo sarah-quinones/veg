@@ -21,7 +21,7 @@ struct InitList {
 namespace nb {
 struct init_list {
 	template <typename T>
-	VEG_NODISCARD VEG_INLINE constexpr auto
+	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
 	operator()(std::initializer_list<T> l) const noexcept -> InitList<T> {
 		return {l.begin(), l.size()};
 	}

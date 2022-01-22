@@ -207,7 +207,7 @@ public:
 			requires(VEG_CONCEPT(eq<T, U>)),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto contains,
 			(val, Ref<U>))
-	const VEG_NOEXCEPT->bool {
+	const VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_eq<T, U>))->bool {
 		if (is_none()) {
 			return false;
 		}
@@ -217,7 +217,7 @@ public:
 	VEG_TEMPLATE(
 			typename Fn,
 			requires(VEG_CONCEPT(fn_once<Fn, T>)),
-			VEG_CPP14(constexpr) auto emplace,
+			VEG_CPP14(constexpr) auto emplace_with,
 			(fn, Fn)) &
 			VEG_NOEXCEPT_IF(
 					VEG_CONCEPT(nothrow_destructible<T>) &&
@@ -225,6 +225,11 @@ public:
 		this->template _emplace<usize{1}>(
 				_detail::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)});
 		return this->_get();
+	}
+
+	VEG_CPP14(constexpr)
+	auto emplace(T value) VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> T& {
+		return emplace_with(_detail::MoveFn<T>{VEG_FWD(value)});
 	}
 
 	VEG_TEMPLATE(
