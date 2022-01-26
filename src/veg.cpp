@@ -23,10 +23,18 @@
 #define ISATTY ::isatty
 #define FILENO ::fileno
 #else
-#include <io.h>
 
+#ifndef __APPLE__
+#include <io.h>
 #define ISATTY ::_isatty
 #define FILENO ::_fileno
+#else
+#include <sys/uio.h>
+#include <unistd.h>
+#define ISATTY ::isatty
+#define FILENO ::fileno
+#endif
+
 #endif
 
 namespace veg {
