@@ -27,7 +27,8 @@
 			Trait,                                                                   \
 			VEG_HAS_BUILTIN_OR(                                                      \
 					__VEG_PP_CAT(__, Std_Trait),                                         \
-					__VEG_PP_CAT(__, Std_Trait)(__VA_ARGS__),                            \
+					((sizeof(::veg::_detail::Wrapper<__VEG_PP_HEAD(__VA_ARGS__)>),       \
+	          __VEG_PP_CAT(__, Std_Trait)(__VA_ARGS__))),                        \
 					(::std::Std_Trait<__VA_ARGS__>::value)))
 #define VEG_DEF_CONCEPT_FROM_BUILTIN_OR_STD(Tpl, Trait, ...)                   \
 	VEG_DEF_CONCEPT_FROM_BUILTIN_OR_TRAIT(                                       \

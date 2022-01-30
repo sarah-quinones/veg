@@ -562,6 +562,10 @@ template <typename...>
 using void_t = void;
 } // namespace meta
 namespace _detail {
+template <typename T>
+struct Wrapper {
+	T inner;
+};
 namespace _meta {
 
 template <bool B, typename T = void>

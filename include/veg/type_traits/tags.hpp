@@ -11,6 +11,7 @@ VEG_TAG(from_raw_parts, FromRawParts);
 VEG_TAG(as_ref, AsRef);
 VEG_TAG(as_mut, AsMut);
 VEG_TAG(from, From);
+VEG_TAG(from_i, FromI);
 VEG_TAG(as_ref_once, AsRefOnce);
 
 VEG_TAG(safe, Safe);

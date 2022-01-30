@@ -290,7 +290,7 @@ public:
 			requires(VEG_ALL_OF(
 					VEG_CONCEPT(fn_once_with_sig<inner_ith<T const&, Is>, Sigs>))),
 			VEG_INLINE IndexedFnRefDyn,
-			(/*tag*/, From),
+			(/*tag*/, FromI),
 			(t, Ref<T>))
 	VEG_NOEXCEPT : IndexedFnRefDyn{} {
 		this->data_mut(unsafe).get() = mem::addressof(t.get());
@@ -355,7 +355,7 @@ public:
 			requires(
 					VEG_ALL_OF(VEG_CONCEPT(fn_once_with_sig<inner_ith<T&, Is>, Sigs>))),
 			VEG_INLINE IndexedFnMutDyn,
-			(/*tag*/, From),
+			(/*tag*/, FromI),
 			(t, RefMut<T>))
 	VEG_NOEXCEPT : IndexedFnMutDyn{} {
 		this->data_mut(unsafe).get() = const_cast<void*>(mem::addressof(t.get()));
@@ -466,7 +466,7 @@ public:
 					VEG_CONCEPT(fn_once<FnT, T>) &&
 					VEG_ALL_OF(VEG_CONCEPT(fn_once_with_sig<inner_ith<T&&, Is>, Sigs>))),
 			IndexedFnDyn,
-			(/*tag*/, InPlace<From>),
+			(/*tag*/, InPlace<FromI>),
 			(alloc, A),
 			(fn_t, FnT))
 	VEG_NOEXCEPT_IF(
@@ -496,7 +496,7 @@ public:
 			requires(
 					VEG_ALL_OF(VEG_CONCEPT(fn_once_with_sig<inner_ith<T&&, Is>, Sigs>))),
 			VEG_INLINE IndexedFnDyn,
-			(/*tag*/, From),
+			(/*tag*/, FromI),
 			(alloc, A),
 			(t, T))
 	VEG_NOEXCEPT_IF(

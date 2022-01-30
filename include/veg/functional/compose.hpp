@@ -7,13 +7,6 @@
 
 namespace veg {
 
-namespace _detail {
-template <typename T>
-struct Wrapper {
-	T inner;
-};
-} // namespace _detail
-
 namespace fn {
 template <typename... Fns>
 struct ComposeOnce;
