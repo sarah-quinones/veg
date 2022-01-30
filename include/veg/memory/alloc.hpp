@@ -11,7 +11,12 @@
 
 #include <cstddef>  // std::max_align_t
 #include <cstdlib>  // std::{malloc, free, realloc}, ::{aligned_alloc, free}
+#ifndef __APPLE__
 #include <malloc.h> // ::malloc_usable_size
+#else
+#include <malloc/malloc.h>
+#define malloc_usable_size malloc_size
+#endif
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
