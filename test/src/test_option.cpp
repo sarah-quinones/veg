@@ -121,7 +121,7 @@ TEST_CASE("option: all") {
 		VEG_CPP17(constexpr)
 		auto opt = [&] {
 			Option<int> x;
-			x.emplace([&] { return 1; });
+			x.emplace_with([&] { return 1; });
 			return x;
 		}();
 
@@ -133,7 +133,7 @@ TEST_CASE("option: all") {
 		VEG_CPP17(constexpr)
 		auto opt = [&] {
 			Option<Option<int>> x;
-			x.emplace([&] { return some(1); });
+			x.emplace_with([&] { return some(1); });
 			return x;
 		}();
 
@@ -144,7 +144,7 @@ TEST_CASE("option: all") {
 
 		auto opt = [&] {
 			Option<vector<int>> x;
-			x.emplace([&] { return vector<int>{1, 2, 3, 4}; });
+			x.emplace_with([&] { return vector<int>{1, 2, 3, 4}; });
 			return x;
 		}();
 

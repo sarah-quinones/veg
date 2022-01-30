@@ -24,7 +24,7 @@ TEST_CASE("trivial") {
 	} fn;
 
 	STATIC_ASSERT(u1 == u1);
-	// STATIC_ASSERT(cmp::cmp(u1, u1) == cmp::Ordering::equal);
+	STATIC_ASSERT(cmp::cmp(ref(u1), ref(u1)) == cmp::Ordering::equal);
 
 	STATIC_ASSERT_IF_14(u1.as_ref().map(fn).unwrap(0_c) == 1312.0);
 	STATIC_ASSERT_IF_14(u2.as_ref().map(fn).unwrap(1_c) == 0.8F);

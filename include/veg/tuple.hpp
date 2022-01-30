@@ -300,7 +300,8 @@ struct IndexedTuple<meta::index_sequence<Is...>, Ts...> : TupleLeaf<Is, Ts>... {
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto
 			operator[],
 			(/*arg*/, Fix<I>)) &&
-			VEG_NOEXCEPT -> ith<usize{I}, Ts...> {
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<ith<usize{I}, Ts...>>))
+					-> ith<usize{I}, Ts...> {
 		using Ti = ith<usize{I}, Ts...>;
 
 		return static_cast<Ti&&>(

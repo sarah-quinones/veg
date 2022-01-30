@@ -209,7 +209,7 @@ struct pack_idx_elem {
 } // namespace _detail
 
 template <typename T, typename... Ts>
-using idx = typename _detail::pack_idx_elem<T>::template Type<Ts...>;
+using position_of = typename _detail::pack_idx_elem<T>::template Type<Ts...>;
 
 #if VEG_HAS_BUILTIN(__type_pack_element)
 template <usize I, typename... Ts>
