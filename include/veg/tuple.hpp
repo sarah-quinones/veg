@@ -162,17 +162,15 @@ struct unpack {
 struct for_each_i {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Ts, usize... Is),
-			requires(VEG_ALL_OF(VEG_CONCEPT(fn_mut<Fn, void, Fix<isize{Is}>, Ts&&>))),
+			requires(VEG_ALL_OF(VEG_CONCEPT(fn_once<inner_ith<Fn&, Is>, void, Ts>))),
 			VEG_INLINE VEG_CPP14(constexpr) void
 			operator(),
 			(args, IndexedTuple<veg::meta::index_sequence<Is...>, Ts...>&&),
 			(fn, Fn))
 	const VEG_NOEXCEPT_IF(
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_mut<Fn, void, Fix<isize{Is}>, Ts&&>))) {
-		VEG_EVAL_ALL(
-				fn(Fix<isize{Is}>{},
-		       static_cast<Ts&&>(
-							 static_cast<TupleLeaf<Is, Ts>&&>(args).__VEG_IMPL_LEAF_GET())));
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_once<inner_ith<Fn, Is>, void, Ts>))) {
+		VEG_EVAL_ALL(fn[Fix<isize{Is}>{}](static_cast<Ts&&>(
+				static_cast<TupleLeaf<Is, Ts>&&>(args).__VEG_IMPL_LEAF_GET())));
 	}
 };
 
@@ -195,7 +193,7 @@ struct map_i {
 	VEG_TEMPLATE(
 			(typename Fn, typename... Ts, usize... Is),
 			requires(VEG_ALL_OF(
-					VEG_CONCEPT(fn_mut< //
+					VEG_CONCEPT(fn_once< //
 											inner_ith<Fn&, Is>,
 											veg::meta::invoke_result_t<inner_ith<Fn&, Is>, Ts>,
 											Ts>))),
@@ -204,7 +202,7 @@ struct map_i {
 			(args, IndexedTuple<veg::meta::index_sequence<Is...>, Ts...>&&),
 			(fn, Fn))
 	const VEG_NOEXCEPT_IF(
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_mut< //
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_fn_once< //
 														 inner_ith<Fn&, Is>,
 														 veg::meta::invoke_result_t<inner_ith<Fn&, Is>, Ts>,
 														 Ts>)))

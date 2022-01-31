@@ -286,7 +286,8 @@
 #define __VEG_IMPL_OVERLOAD(Name_Tpl, Param)                                   \
 	template <                                                                   \
 			__VEG_PP_REMOVE_PAREN(__VEG_PP_TAIL Name_Tpl),                           \
-			::veg::meta::enable_if_t<__VEG_PP_UNWRAP Param, int> = 0>                \
+			typename ::veg::_detail::_meta::enable_if<__VEG_PP_UNWRAP Param, int>::  \
+					type = 0>                                                            \
 	auto __VEG_PP_CAT(                                                           \
 			check_, __VEG_PP_HEAD Name_Tpl)() noexcept->::veg::meta::true_type;
 
@@ -345,10 +346,6 @@
 	Attr_Name __VEG_PP_TUPLE_TRANSFORM_I(__VEG_IMPL_PARAM_EXPAND, _, Params)     \
 	__VA_ARGS__ requires __VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint)
 
-#define VEG_CONSTRAINED_MEMBER_FN_NO_PARAM(Constraint, Attr_Name, Ret, ...)    \
-	Attr_Name() __VA_ARGS__->__VEG_PP_REMOVE_PAREN(Ret) requires __VEG_PP_CAT2(  \
-			__VEG_IMPL_PREFIX_, Constraint)
-
 #define VEG_TEMPLATE_CVT(TParams, Constraint, Attr, ...)                       \
 	template <__VEG_PP_REMOVE_PAREN(TParams)>                                    \
 	Constraint Attr operator __VA_ARGS__()
@@ -363,19 +360,10 @@
 			__VEG_PP_REMOVE_PAREN(Params))                                           \
 	__VA_ARGS__
 
-#define VEG_CONSTRAINED_MEMBER_FN_NO_PARAM(Constraint, Attr_Name, Ret, ...)    \
-	template <int _ = 0>                                                         \
-	Attr_Name() __VA_ARGS__->::veg::_detail::_meta::discard_1st<                 \
-			::veg::meta::enable_if_t<(                                               \
-					__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint) &&                     \
-					::veg::meta::bool_constant<(_ == 0)>::value)>,                       \
-			__VEG_PP_REMOVE_PAREN(Ret)>
-
 #define VEG_TEMPLATE_CVT(TParams, Constraint, Attr, ...)                       \
 	template <__VEG_PP_REMOVE_PAREN(TParams)>                                    \
-	Attr operator ::veg::_detail::_meta::discard_1st<                            \
-			::veg::meta::enable_if_t<(                                               \
-					__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint))>,                     \
+	Attr operator ::veg::meta::enable_if_t<                                      \
+			(__VEG_PP_CAT2(__VEG_IMPL_PREFIX_, Constraint)),                         \
 			__VA_ARGS__>()
 #endif
 
@@ -457,9 +445,8 @@
 	__VEG_PP_TAIL Param __VEG_PP_HEAD Param
 
 #define __VEG_IMPL_TEMPLATE2_HELPER_1(Constraint, Param)                       \
-	::veg::_detail::_meta::                                                      \
-			discard_1st<::veg::meta::enable_if_t<(Constraint)>, __VEG_PP_TAIL Param> \
-					__VEG_PP_HEAD Param
+	::veg::meta::enable_if_t<(Constraint), __VEG_PP_TAIL Param> __VEG_PP_HEAD    \
+			Param
 
 #define __VEG_IMPL_TEMPLATE2_HELPER(I, Constraint, Param)                      \
 	__VEG_PP_CAT2(                                                               \
@@ -799,7 +786,8 @@ struct member_extract_access {
 } // namespace _detail
 namespace meta {
 template <bool B, typename T = void>
-using enable_if_t = typename _detail::_meta::enable_if<B, T>::type;
+using enable_if_t = _detail::_meta::
+		discard_1st<typename _detail::_meta::enable_if<B, void>::type, T>;
 
 template <typename T>
 using uncvref_t = typename _detail::_meta::uncvlref<T&>::type;

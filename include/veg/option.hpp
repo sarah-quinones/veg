@@ -143,11 +143,12 @@ public:
 		return *this;
 	}
 
-	VEG_CONSTRAINED_MEMBER_FN_NO_PARAM(
-			requires(VEG_CONCEPT(option<T>)),
+	VEG_TEMPLATE(
+			typename _ = T,
+			requires(VEG_CONCEPT(option<_>)),
 			VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto flatten,
-			T,
-			&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))) {
+			(= safe, Safe))
+	&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))->T {
 		return static_cast<Option<T>&&>(*this).map_or_else(
 				_detail::_option::into_fn<T>{}, _detail::_option::ret_none<T>{});
 	}

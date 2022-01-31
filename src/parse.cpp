@@ -197,8 +197,8 @@ auto parse_token(StrView str) noexcept -> Tuple<Token, StrView> {
 
 auto parse_entity(StrView str) -> Entity {
 	StrView special_strs[] = {
-			{from_literal, "::veg::_detail::_meta::discard_1st<"},
-			{from_literal, "veg::_detail::_meta::discard_1st<"},
+			{from_literal, "::veg::meta::enable_if_t<"},
+			{from_literal, "veg::meta::enable_if_t<"},
 	};
 	;
 	for (auto special_str : special_strs) {

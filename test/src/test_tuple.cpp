@@ -331,16 +331,17 @@ TEST_CASE("tuple: ✨ functional programming ✨") {
 
 	{ STATIC_ASSERT(tuple::zip(tuplify(), tuplify(), tuplify()) == tuplify()); }
 
-#if __cplusplus >= 201402L
 	{
 		constexpr auto x = tuplify(i64(1), float(2.5), i64(3));
 		float acc = 0;
 
-		x.as_ref() | bind_back_once(tuple::for_each_i, [&](auto N, auto i) -> void {
-			acc += float(*i) * i64{N};
-		});
+		x.as_ref() | bind_back_once(
+										 tuple::for_each_i,
+										 tuplify(
+												 [&](Ref<i64> i) -> void { acc += 0 * float(*i); },
+												 [&](Ref<float> i) -> void { acc += 1 * float(*i); },
+												 [&](Ref<i64> i) -> void { acc += 2 * float(*i); }));
 		CHECK(acc == 1 * 0 + 2.5F * 1 + 3 * 2);
 	}
-#endif
 }
 #include "veg/internal/epilogue.hpp"

@@ -16,7 +16,7 @@ TEST_CASE("function_view: no_args") {
 
 	auto inc2_global_lambda = tuplify([]() noexcept { global += 2; });
 
-	FnRef f{from, ref(inc_lambda)};
+	FnRef f{from_i, ref(inc_lambda)};
 	CHECK(i == 0);
 	f();
 	CHECK(i == 1);
@@ -25,15 +25,15 @@ TEST_CASE("function_view: no_args") {
 	FnRef{f}();
 	CHECK(i == 3);
 
-	f = {from, ref(inc2_lambda)};
+	f = {from_i, ref(inc2_lambda)};
 	f();
 	CHECK(i == 5);
 
-	f = {from, ref(returns_lambda)};
+	f = {from_i, ref(returns_lambda)};
 	f();
 	CHECK(i == 8);
 
-	f = FnRef{from, ref(inc2_global_lambda)};
+	f = FnRef{from_i, ref(inc2_global_lambda)};
 	f();
 	CHECK(global == 2);
 }
