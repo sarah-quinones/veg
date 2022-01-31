@@ -32,7 +32,7 @@ VEG_DEF_CONCEPT(
 		trivially_destructible,
 		VEG_HAS_BUILTIN_OR(
 				__has_trivial_destructor,
-				(__has_trivial_destructor(T)),
+				((sizeof(T), __has_trivial_destructor(T))),
 				(std::is_trivially_destructible<T>::value)));
 
 VEG_DEF_CONCEPT_FROM_BUILTIN_OR_STD(typename T, trivially_copyable, T);
