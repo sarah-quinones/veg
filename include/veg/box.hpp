@@ -108,8 +108,10 @@ struct BoxIncomplete {
 			VEG_NOEXCEPT : _{
 												 tuplify,
 												 VEG_FWD(alloc),
-												 _detail::_mem::UniquePtr<T>{VEG_FWD(ptr)},
-										 } {}
+												 _detail::_mem::UniquePtr<T>{},
+										 } {
+		data_mut(unsafe).get() = VEG_FWD(ptr);
+	}
 
 	template <int _>
 	BoxIncomplete(_::FromAlloc<_> /*tag*/, A alloc) VEG_NOEXCEPT
