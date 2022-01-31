@@ -196,26 +196,39 @@ auto parse_token(StrView str) noexcept -> Tuple<Token, StrView> {
 }
 
 auto parse_entity(StrView str) -> Entity {
-	StrView special_strs[] = {
-			{from_literal, "::veg::meta::enable_if_t<"},
-			{from_literal, "veg::meta::enable_if_t<"},
-	};
-	;
-	for (auto special_str : special_strs) {
-		if (str.ltrim(' ').begins_with(special_str)) {
-			VEG_BIND(
-					auto,
-					(inside_angled, after),
-					type_parse::find_matching(
-							{from_literal, ">"},
-							str.ltrim(' ').skip_leading(special_str.len())));
-			assert(after.begins_with({from_literal, ">"}));
-			VEG_BIND(
-					auto,
-					(before_comma, comma_and_after),
-					type_parse::find_matching({from_literal, ","}, inside_angled));
-			assert(comma_and_after.begins_with({from_literal, ","}));
-			return type_parse::parse_entity(comma_and_after.skip_leading(1));
+	StrView enable_if_t = {from_literal, "enable_if_t<"};
+	VEG_BIND(auto, (before, after), type_parse::find_matching(enable_if_t, str));
+
+	if (after.len() != 0) {
+
+		bool is_namespace = true;
+		for (isize i = 0; i < before.len(); ++i) {
+			if (!(type_parse::is_ident_char(before.ptr()[i]) ||
+			      before.ptr()[i] == ':')) {
+				is_namespace = false;
+				break;
+			}
+		}
+
+		if (is_namespace) {
+			StrView special_str = str.head(before.len() + enable_if_t.len());
+      dbg(special_str);
+
+			if (str.ltrim(' ').begins_with(special_str)) {
+				VEG_BIND(
+						auto,
+						(inside_angled, after),
+						type_parse::find_matching(
+								{from_literal, ">"},
+								str.ltrim(' ').skip_leading(special_str.len())));
+				assert(after.begins_with({from_literal, ">"}));
+				VEG_BIND(
+						auto,
+						(before_comma, comma_and_after),
+						type_parse::find_matching({from_literal, ","}, inside_angled));
+				assert(comma_and_after.begins_with({from_literal, ","}));
+				return type_parse::parse_entity(comma_and_after.skip_leading(1));
+			}
 		}
 	}
 	return type_parse::greedy_parse_entity(str)[0_c];
