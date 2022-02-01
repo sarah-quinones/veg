@@ -195,6 +195,14 @@ public:
 	~throwing() { --n_instances_mut(); }
 };
 
+TEST_CASE("dynamic stack: overaligned zero sized") {
+	alignas(2 * alignof(int)) Array<unsigned char, 4096> buf{};
+	veg::dynstack::DynStackMut stack(buf.as_mut());
+
+	auto s1 = stack.make_alloc(Tag<int>{}, 1, 2 * alignof(int)).unwrap();
+	auto s3 = stack.make_alloc(Tag<int>{}, 0, 2 * alignof(int)).unwrap();
+}
+
 TEST_CASE("dynamic stack: throwing") {
 	Array<unsigned char, 4096> buf{};
 	veg::dynstack::DynStackMut stack(buf.as_mut());

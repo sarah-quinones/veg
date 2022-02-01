@@ -79,8 +79,15 @@
 #endif
 
 #ifndef VEG_INLINE
+
+#ifdef NDEBUG
 #define VEG_INLINE HEDLEY_ALWAYS_INLINE
+#else
+#define VEG_INLINE inline
 #endif
+
+#endif
+
 #define VEG_NO_INLINE HEDLEY_NEVER_INLINE
 
 #if defined(__cpp_concepts) && __cpp_concepts >= 201907L

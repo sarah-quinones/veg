@@ -272,7 +272,7 @@ struct DynAllocBase {
 	isize len;
 
 	void destroy(void const volatile* void_data_end) VEG_NOEXCEPT {
-		if (len != 0) {
+		if (data != nullptr) {
 			// in case resource lifetimes are reodered by moving ownership
 			auto* parent_stack_data = static_cast<unsigned char*>(parent->stack_data);
 			auto* old_position = static_cast<unsigned char*>(old_pos);
@@ -314,8 +314,7 @@ public:
 	auto operator=(DynStackAlloc&& rhs) VEG_NOEXCEPT -> DynStackAlloc& {
 		Base tmp_rhs = static_cast<Base>(rhs);
 		static_cast<Base&>(rhs) = {};
-
-		DynStackAlloc tmp_lhs = static_cast<DynStackAlloc&&>(*this);
+		{ DynStackAlloc tmp_lhs = static_cast<DynStackAlloc&&>(*this); }
 		static_cast<Base&>(*this) = tmp_rhs;
 		return *this;
 	}
