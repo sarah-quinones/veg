@@ -285,6 +285,14 @@ struct IndexedFnRefDyn<meta::index_sequence<Is...>, Sigs...>
 					Sigs>...> {
 	static_assert(VEG_ALL_OF(VEG_CONCEPT(sig<Sigs>)), ".");
 
+	template <isize I>
+	auto operator[](Fix<I> /*tag*/) const noexcept -> _detail::_fn::FnCrtp< //
+			IndexedFnRefDyn<meta::index_sequence<Is...>, Sigs...>,
+			I,
+			ith<I, Sigs...>> const& {
+		return *this;
+	}
+
 	using VTable = _detail::_fn::VTableI<meta::index_sequence<Is...>, Sigs...>;
 	using _detail::_fn::Group<_detail::_fn::FnCrtp<
 			IndexedFnRefDyn<meta::index_sequence<Is...>, Sigs...>,
@@ -370,6 +378,21 @@ struct IndexedFnMutDyn<meta::index_sequence<Is...>, Sigs...>
 					Sigs>...> {
 	static_assert(VEG_ALL_OF(VEG_CONCEPT(sig_mut<Sigs>)), ".");
 
+	template <isize I>
+	auto operator[](Fix<I> /*tag*/) const noexcept -> _detail::_fn::FnCrtp< //
+			IndexedFnMutDyn<meta::index_sequence<Is...>, Sigs...>,
+			I,
+			ith<I, Sigs...>> const& {
+		return *this;
+	}
+	template <isize I>
+	auto operator[](Fix<I> /*tag*/) noexcept -> _detail::_fn::FnCrtp< //
+			IndexedFnMutDyn<meta::index_sequence<Is...>, Sigs...>,
+			I,
+			ith<I, Sigs...>>& {
+		return *this;
+	}
+
 	using VTable = _detail::_fn::VTableI<meta::index_sequence<Is...>, Sigs...>;
 	using _detail::_fn::Group<_detail::_fn::FnCrtp<
 			IndexedFnMutDyn<meta::index_sequence<Is...>, Sigs...>,
@@ -453,6 +476,32 @@ struct IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>
 					IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>,
 					Is,
 					Sigs>...> {
+
+	template <isize I>
+	auto operator[](Fix<I> /*tag*/) const& noexcept -> _detail::_fn::FnCrtp< //
+			IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>,
+			I,
+			ith<I, Sigs...>> const& {
+		return *this;
+	}
+	template <isize I>
+	auto operator[](Fix<I> /*tag*/) & noexcept -> _detail::_fn::FnCrtp< //
+			IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>,
+			I,
+			ith<I, Sigs...>>& {
+		return *this;
+	}
+	template <isize I>
+	auto operator[](Fix<I> /*tag*/) && noexcept -> _detail::_fn::FnCrtp< //
+			IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>,
+			I,
+			ith<I, Sigs...>>&& {
+		return static_cast<_detail::_fn::FnCrtp< //
+				IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>,
+				I,
+				ith<I, Sigs...>>&&>(*this);
+	}
+
 	static_assert(VEG_ALL_OF(VEG_CONCEPT(sig_once<Sigs>)), ".");
 	static_assert(VEG_CONCEPT(nothrow_movable<A>), ".");
 	static_assert(VEG_CONCEPT(nothrow_move_assignable<A>), ".");
