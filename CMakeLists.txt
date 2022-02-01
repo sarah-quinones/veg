@@ -40,6 +40,8 @@ target_include_directories(veg PRIVATE include)
 
 option(VEG_TESTS "enable tests" OFF)
 
+set(VEG_TARGETS veg)
+
 if(VEG_TESTS)
   add_library(project_warnings INTERFACE)
   add_library(project_options INTERFACE)
@@ -47,7 +49,7 @@ if(VEG_TESTS)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/static_analyzers.cmake)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/sanitizers.cmake)
   target_link_libraries(veg INTERFACE project_options project_warnings)
-  set(VEG_TARGETS veg project_options project_warnings)
+  set(VEG_TARGETS ${VEG_TARGETS} project_options project_warnings)
 
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/extra_local_settings.cmake)
   enable_sanitizers(project_options)
@@ -64,8 +66,6 @@ if(VEG_TESTS)
   enable_testing()
   add_subdirectory(test)
   add_subdirectory(benchmark)
-else()
-  set(VEG_TARGETS)
 endif()
 
 option(VEG_INSTALL "enable install" ON)
