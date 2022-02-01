@@ -94,21 +94,37 @@ VEG_INLINE void deleter(void* data) noexcept {
 	static_cast<T*>(data)->~T();
 }
 template <usize I, typename F, typename R, typename... Ts>
-VEG_INLINE constexpr auto caller(void const* data, Ts... ts) noexcept(
+VEG_INLINE constexpr auto caller_i(void const* data, Ts... ts) noexcept(
 		VEG_CONCEPT(nothrow_fn_once<inner_ith<F const&, I>, R, Ts...>)) -> R {
 	return (*static_cast<F const*>(data))[Fix<isize{I}>{}](VEG_FWD(ts)...);
-};
+}
 template <usize I, typename F, typename R, typename... Ts>
-VEG_INLINE constexpr auto caller_mut(void* data, Ts... ts) noexcept(
+VEG_INLINE constexpr auto caller_i_mut(void* data, Ts... ts) noexcept(
 		VEG_CONCEPT(nothrow_fn_once<inner_ith<F&, I>, R, Ts...>)) -> R {
 	return (*static_cast<F*>(data))[Fix<isize{I}>{}](VEG_FWD(ts)...);
-};
+}
 template <usize I, typename F, typename R, typename... Ts>
-VEG_INLINE constexpr auto caller_once(void* data, Ts... ts) noexcept(
+VEG_INLINE constexpr auto caller_i_once(void* data, Ts... ts) noexcept(
 		VEG_CONCEPT(nothrow_fn_once<inner_ith<F, I>, R, Ts...>)) -> R {
 	return static_cast<F&&>(*static_cast<F*>(data))[Fix<isize{I}>{}](
 			VEG_FWD(ts)...);
-};
+}
+
+template <typename F, typename R, typename... Ts>
+VEG_INLINE constexpr auto caller(void const* data, Ts... ts) noexcept(
+		VEG_CONCEPT(nothrow_fn<F, R, Ts...>)) -> R {
+	return (*static_cast<F const*>(data))(VEG_FWD(ts)...);
+}
+template <typename F, typename R, typename... Ts>
+VEG_INLINE constexpr auto caller_mut(void* data, Ts... ts) noexcept(
+		VEG_CONCEPT(nothrow_fn_mut<F, R, Ts...>)) -> R {
+	return (*static_cast<F*>(data))(VEG_FWD(ts)...);
+}
+template <typename F, typename R, typename... Ts>
+VEG_INLINE constexpr auto caller_once(void* data, Ts... ts) noexcept(
+		VEG_CONCEPT(nothrow_fn_once<F, R, Ts...>)) -> R {
+	return static_cast<F&&>(*static_cast<F*>(data))(VEG_FWD(ts)...);
+}
 
 template <usize I, typename Sig>
 struct VTableLeafI;
@@ -124,22 +140,38 @@ struct VTableLeafI<I, NoThrowIf<B, R(Ts...)>>;
 template <usize I, bool B, typename R, typename... Ts>
 struct VTableLeafI<I, NoThrowIf<B, R(Ts...) const&>> {
 	auto (*fn_ptr)(void const*, Ts...) noexcept(B) -> R;
+
 	template <typename F>
-	VEG_INLINE constexpr VTableLeafI(Tag<F> /*tag*/) noexcept //
-			: fn_ptr{_fn::caller<I, F, R, Ts...>} {}
+	VEG_INLINE constexpr VTableLeafI(
+			meta::true_type /*unused*/, Tag<F> /*tag*/) noexcept //
+			: fn_ptr{_fn::caller_i<I, F, R, Ts...>} {}
+	template <typename F>
+	VEG_INLINE constexpr VTableLeafI(
+			meta::false_type /*unused*/, Tag<F> /*tag*/) noexcept //
+			: fn_ptr{_fn::caller<F, R, Ts...>} {}
 };
 template <usize I, bool B, typename R, typename... Ts>
 struct VTableLeafI<I, NoThrowIf<B, R(Ts...)&>> {
 	auto (*fn_ptr)(void*, Ts...) noexcept(B) -> R;
 	template <typename F>
-	VEG_INLINE constexpr VTableLeafI(Tag<F> /*tag*/) noexcept
-			: fn_ptr{_fn::caller_mut<I, F, R, Ts...>} {}
+	VEG_INLINE constexpr VTableLeafI(
+			meta::true_type /*unused*/, Tag<F> /*tag*/) noexcept
+			: fn_ptr{_fn::caller_i_mut<I, F, R, Ts...>} {}
+	template <typename F>
+	VEG_INLINE constexpr VTableLeafI(
+			meta::false_type /*unused*/, Tag<F> /*tag*/) noexcept
+			: fn_ptr{_fn::caller_mut<F, R, Ts...>} {}
 };
 template <usize I, bool B, typename R, typename... Ts>
 struct VTableLeafI<I, NoThrowIf<B, R(Ts...) &&>> {
 	auto (*fn_ptr)(void*, Ts...) noexcept(B) -> R;
 	template <typename F>
-	VEG_INLINE constexpr VTableLeafI(Tag<F> /*tag*/) noexcept
+	VEG_INLINE constexpr VTableLeafI(
+			meta::true_type /*unused*/, Tag<F> /*tag*/) noexcept
+			: fn_ptr{_fn::caller_i_once<I, F, R, Ts...>} {}
+	template <typename F>
+	VEG_INLINE constexpr VTableLeafI(
+			meta::false_type /*unused*/, Tag<F> /*tag*/) noexcept
 			: fn_ptr{_fn::caller_once<I, F, R, Ts...>} {}
 };
 
@@ -154,25 +186,34 @@ struct VTableI<meta::index_sequence<Is...>, Sigs...>
 	usize align_of;
 
 	template <typename F>
-	VEG_INLINE constexpr VTableI(Tag<F> /*tag*/) noexcept
-			: VTableLeafI<Is, Sigs>{Tag<F>{}}...,
+	VEG_INLINE constexpr VTableI(
+			meta::true_type /*unused*/, Tag<F> /*tag*/) noexcept
+			: VTableLeafI<Is, Sigs>{meta::true_type{}, Tag<F>{}}...,
+				deleter_ptr(_fn::deleter<F>),
+				size_of(sizeof(F)),
+				align_of(alignof(F)) {}
+
+	template <typename F>
+	VEG_INLINE constexpr VTableI(
+			meta::false_type /*unused*/, Tag<F> /*tag*/) noexcept
+			: VTableLeafI<Is, Sigs>{meta::false_type{}, Tag<F>{}}...,
 				deleter_ptr(_fn::deleter<F>),
 				size_of(sizeof(F)),
 				align_of(alignof(F)) {}
 };
 
-template <typename T, typename Seq, typename... Sigs>
+template <bool B, typename T, typename Seq, typename... Sigs>
 struct VTableIObject;
 
-template <typename T, usize... Is, typename... Sigs>
-struct VTableIObject<T, meta::index_sequence<Is...>, Sigs...> {
+template <bool B, typename T, usize... Is, typename... Sigs>
+struct VTableIObject<B, T, meta::index_sequence<Is...>, Sigs...> {
 	static constexpr VTableI<meta::index_sequence<Is...>, Sigs...> value{
-			Tag<T>{}};
+			meta::bool_constant<B>{}, Tag<T>{}};
 };
 
-template <typename T, usize... Is, typename... Sigs>
+template <bool B, typename T, usize... Is, typename... Sigs>
 constexpr VTableI<meta::index_sequence<Is...>, Sigs...>
-		VTableIObject<T, meta::index_sequence<Is...>, Sigs...>::value;
+		VTableIObject<B, T, meta::index_sequence<Is...>, Sigs...>::value;
 
 template <typename D, usize I, typename Sig>
 struct FnCrtp {};
@@ -252,11 +293,11 @@ struct IndexedFnRefDyn<meta::index_sequence<Is...>, Sigs...>
 
 private:
 	struct Raw {
-		VTable const* vtable = {};
-		void const* data = {};
+		VTable const* vtable;
+		void const* data;
 	};
 
-	Raw raw;
+	Raw raw = {};
 
 public:
 	VEG_INLINE auto vtable_mut(Unsafe /*tag*/) noexcept -> RefMut<VTable const*> {
@@ -283,7 +324,7 @@ public:
 			Unsafe /*unsafe*/,
 			_::FromRawParts<_> /*tag*/,
 			VTable const* vtable,
-			void* data) VEG_NOEXCEPT : raw{vtable, data} {}
+			void const* data) VEG_NOEXCEPT : raw{vtable, data} {}
 
 	VEG_TEMPLATE(
 			(typename T),
@@ -292,12 +333,33 @@ public:
 			VEG_INLINE IndexedFnRefDyn,
 			(/*tag*/, FromI),
 			(t, Ref<T>))
-	VEG_NOEXCEPT : IndexedFnRefDyn{} {
-		this->data_mut(unsafe).get() = mem::addressof(t.get());
-		this->vtable_mut(unsafe).get() = mem::addressof(
-				_detail::_fn::VTableIObject<T, meta::index_sequence<Is...>, Sigs...>::
-						value);
-	}
+	VEG_NOEXCEPT : IndexedFnRefDyn{
+										 unsafe,
+										 from_raw_parts,
+										 mem::addressof(_detail::_fn::VTableIObject<
+																		true,
+																		T,
+																		meta::index_sequence<Is...>,
+																		Sigs...>::value),
+										 mem::addressof(t.get()),
+								 } {}
+
+	VEG_TEMPLATE(
+			(typename T),
+			requires(VEG_ALL_OF(VEG_CONCEPT(fn_with_sig<T, Sigs>))),
+			VEG_INLINE IndexedFnRefDyn,
+			(/*tag*/, From),
+			(t, Ref<T>))
+	VEG_NOEXCEPT : IndexedFnRefDyn{
+										 unsafe,
+										 from_raw_parts,
+										 mem::addressof(_detail::_fn::VTableIObject<
+																		false,
+																		T,
+																		meta::index_sequence<Is...>,
+																		Sigs...>::value),
+										 mem::addressof(t.get()),
+								 } {}
 };
 
 template <usize... Is, typename... Sigs>
@@ -357,12 +419,32 @@ public:
 			VEG_INLINE IndexedFnMutDyn,
 			(/*tag*/, FromI),
 			(t, RefMut<T>))
-	VEG_NOEXCEPT : IndexedFnMutDyn{} {
-		this->data_mut(unsafe).get() = const_cast<void*>(mem::addressof(t.get()));
-		this->vtable_mut(unsafe).get() = mem::addressof(
-				_detail::_fn::VTableIObject<T, meta::index_sequence<Is...>, Sigs...>::
-						value);
-	}
+	VEG_NOEXCEPT : IndexedFnMutDyn{
+										 unsafe,
+										 from_raw_parts,
+										 mem::addressof(_detail::_fn::VTableIObject<
+																		true,
+																		T,
+																		meta::index_sequence<Is...>,
+																		Sigs...>::value),
+										 mem::addressof(t.get()),
+								 } {}
+	VEG_TEMPLATE(
+			(typename T),
+			requires(VEG_ALL_OF(VEG_CONCEPT(fn_with_sig<T, Sigs>))),
+			VEG_INLINE IndexedFnMutDyn,
+			(/*tag*/, From),
+			(t, Ref<T>))
+	VEG_NOEXCEPT : IndexedFnMutDyn{
+										 unsafe,
+										 from_raw_parts,
+										 mem::addressof(_detail::_fn::VTableIObject<
+																		false,
+																		T,
+																		meta::index_sequence<Is...>,
+																		Sigs...>::value),
+										 mem::addressof(t.get()),
+								 } {}
 };
 
 template <usize... Is, typename A, typename... Sigs>
@@ -486,8 +568,41 @@ public:
 		mem::construct_with(static_cast<T*>(block.data), VEG_FWD(fn_t));
 		this->data_mut(unsafe).get() = block.data;
 		this->vtable_mut(unsafe).get() = mem::addressof(
-				_detail::_fn::VTableIObject<T, meta::index_sequence<Is...>, Sigs...>::
-						value);
+				_detail::_fn::
+						VTableIObject<true, T, meta::index_sequence<Is...>, Sigs...>::
+								value);
+		block.data = nullptr;
+	}
+
+	VEG_TEMPLATE(
+			(typename FnT, typename T = meta::invoke_result_t<FnT>),
+			requires(
+					VEG_CONCEPT(fn_once<FnT, T>) &&
+					VEG_ALL_OF(VEG_CONCEPT(fn_once_with_sig<T, Sigs>))),
+			IndexedFnDyn,
+			(/*tag*/, InPlace<From>),
+			(alloc, A),
+			(fn_t, FnT))
+	VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(alloc::nothrow_alloc<A>) &&
+			VEG_CONCEPT(nothrow_fn_once<FnT, T>))
+			: raw{
+						inplace[tuplify],
+						_detail::MoveFn<A>{VEG_FWD(alloc)},
+						_detail::DefaultFn<_raw0>{},
+				} {
+		auto l = mem::Layout{sizeof(T), alignof(T)};
+		_detail::_mem::ManagedAlloc<A> block{
+				mem::Alloc<A>::alloc(alloc_mut(unsafe), l).data,
+				l,
+				this->alloc_mut(unsafe),
+		};
+		mem::construct_with(static_cast<T*>(block.data), VEG_FWD(fn_t));
+		this->data_mut(unsafe).get() = block.data;
+		this->vtable_mut(unsafe).get() = mem::addressof(
+				_detail::_fn::
+						VTableIObject<false, T, meta::index_sequence<Is...>, Sigs...>::
+								value);
 		block.data = nullptr;
 	}
 
@@ -497,6 +612,20 @@ public:
 					VEG_ALL_OF(VEG_CONCEPT(fn_once_with_sig<inner_ith<T&&, Is>, Sigs>))),
 			VEG_INLINE IndexedFnDyn,
 			(/*tag*/, FromI),
+			(alloc, A),
+			(t, T))
+	VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(alloc::nothrow_alloc<A>) && VEG_CONCEPT(nothrow_movable<T>))
+			: IndexedFnDyn{
+						inplace[from_i],
+						VEG_FWD(alloc),
+						_detail::MoveFn<T>{(VEG_FWD(t))}} {}
+
+	VEG_TEMPLATE(
+			(typename T),
+			requires(VEG_ALL_OF(VEG_CONCEPT(fn_once_with_sig<T, Sigs>))),
+			VEG_INLINE IndexedFnDyn,
+			(/*tag*/, From),
 			(alloc, A),
 			(t, T))
 	VEG_NOEXCEPT_IF(

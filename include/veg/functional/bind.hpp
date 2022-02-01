@@ -27,10 +27,7 @@ VEG_INLINE static constexpr auto call_bound_back_once(
 		VEG_NOEXCEPT_IF(
 				VEG_CONCEPT(nothrow_fn_once<Fn, Ret, Args..., StoredArgs...>)) -> Ret {
 	return VEG_FWD(fn)(
-			VEG_FWD(args)...,
-			static_cast<StoredArgs&&>(
-					static_cast<tuple::TupleLeaf<Is, StoredArgs>&>(stored)
-							.__VEG_IMPL_LEAF_GET())...);
+			VEG_FWD(args)..., __VEG_IMPL_LEAF_ONCE(stored, Is, StoredArgs)...);
 }
 template <
 		typename Fn,
@@ -45,10 +42,7 @@ VEG_INLINE static constexpr auto call_bound_front_once(
 		VEG_NOEXCEPT_IF(
 				VEG_CONCEPT(nothrow_fn_once<Fn, Ret, StoredArgs..., Args...>)) -> Ret {
 	return VEG_FWD(fn)(
-			static_cast<StoredArgs&&>(
-					static_cast<tuple::TupleLeaf<Is, StoredArgs>&>(stored)
-							.__VEG_IMPL_LEAF_GET())...,
-			VEG_FWD(args)...);
+			__VEG_IMPL_LEAF_ONCE(stored, Is, StoredArgs)..., VEG_FWD(args)...);
 }
 
 template <
@@ -64,9 +58,7 @@ VEG_INLINE static constexpr auto call_bound_back_mut(
 		VEG_NOEXCEPT_IF(VEG_CONCEPT(
 				nothrow_fn_mut<Fn, Ret, Args..., RefMut<StoredArgs>...>)) -> Ret {
 	return fn(
-			VEG_FWD(args)...,
-			mut(static_cast<tuple::TupleLeaf<Is, StoredArgs>&>(stored)
-	            .__VEG_IMPL_LEAF_GET())...);
+			VEG_FWD(args)..., mut(__VEG_IMPL_LEAF_MUT(stored, Is, StoredArgs))...);
 }
 template <
 		typename Fn,
@@ -81,9 +73,7 @@ VEG_INLINE static constexpr auto call_bound_front_mut(
 		VEG_NOEXCEPT_IF(VEG_CONCEPT(
 				nothrow_fn_mut<Fn, Ret, RefMut<StoredArgs>..., Args...>)) -> Ret {
 	return fn(
-			mut(static_cast<tuple::TupleLeaf<Is, StoredArgs>&>(stored)
-	            .__VEG_IMPL_LEAF_GET())...,
-			VEG_FWD(args)...);
+			mut(__VEG_IMPL_LEAF_MUT(stored, Is, StoredArgs))..., VEG_FWD(args)...);
 }
 
 template <
@@ -100,10 +90,7 @@ VEG_INLINE static constexpr auto call_bound_back(
 		Args&&... args)
 		VEG_NOEXCEPT_IF(
 				VEG_CONCEPT(nothrow_fn<Fn, Ret, Args..., Ref<StoredArgs>...>)) -> Ret {
-	return fn(
-			VEG_FWD(args)...,
-			ref(static_cast<tuple::TupleLeaf<Is, StoredArgs> const&>(stored)
-	            .__VEG_IMPL_LEAF_GET())...);
+	return fn(VEG_FWD(args)..., ref(__VEG_IMPL_LEAF(stored, Is, StoredArgs))...);
 }
 template <
 		typename Fn,
@@ -119,10 +106,7 @@ VEG_INLINE static constexpr auto call_bound_front(
 		Args&&... args)
 		VEG_NOEXCEPT_IF(
 				VEG_CONCEPT(nothrow_fn<Fn, Ret, Ref<StoredArgs>..., Args...>)) -> Ret {
-	return fn(
-			ref(static_cast<tuple::TupleLeaf<Is, StoredArgs> const&>(stored)
-	            .__VEG_IMPL_LEAF_GET())...,
-			VEG_FWD(args)...);
+	return fn(ref(__VEG_IMPL_LEAF(stored, Is, StoredArgs))..., VEG_FWD(args)...);
 }
 
 template <
@@ -140,9 +124,7 @@ VEG_INLINE static constexpr auto call_bound_back_copy(
 				-> Ret {
 	return fn(
 			VEG_FWD(args)...,
-			static_cast<StoredArgs>(
-					static_cast<tuple::TupleLeaf<Is, StoredArgs> const&>(stored)
-							.__VEG_IMPL_LEAF_GET())...);
+			static_cast<StoredArgs>(__VEG_IMPL_LEAF(stored, Is, StoredArgs))...);
 }
 template <
 		typename Fn,
@@ -158,9 +140,7 @@ VEG_INLINE static constexpr auto call_bound_front_copy(
 		VEG_NOEXCEPT_IF(
 				VEG_CONCEPT(nothrow_fn<Fn, Ret, Ref<StoredArgs>..., Args...>)) -> Ret {
 	return fn(
-			static_cast<StoredArgs>(
-					static_cast<tuple::TupleLeaf<Is, StoredArgs> const&>(stored)
-							.__VEG_IMPL_LEAF_GET())...,
+			static_cast<StoredArgs>(__VEG_IMPL_LEAF(stored, Is, StoredArgs))...,
 			VEG_FWD(args)...);
 }
 

@@ -33,7 +33,7 @@ TEST_CASE("function_view: no_args") {
 	f();
 	CHECK(i == 8);
 
-	f = FnRef{from_i, ref(inc2_global_lambda)};
+	f = FnRef{from, ref(inc2_global_lambda[0_c])};
 	f();
 	CHECK(global == 2);
 }
