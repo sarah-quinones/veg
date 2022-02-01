@@ -168,11 +168,11 @@ struct VTableLeafI<I, NoThrowIf<B, R(Ts...) &&>> {
 	template <typename F>
 	VEG_INLINE constexpr VTableLeafI(
 			meta::true_type /*unused*/, Tag<F> /*tag*/) noexcept
-			: fn_ptr{_fn::caller_i_once<I, F, R, Ts...>} {}
+			: fn_ptr{_fn::caller_i_once<F, R, Ts...>} {}
 	template <typename F>
 	VEG_INLINE constexpr VTableLeafI(
 			meta::false_type /*unused*/, Tag<F> /*tag*/) noexcept
-			: fn_ptr{_fn::caller_once<I, F, R, Ts...>} {}
+			: fn_ptr{_fn::caller_once<F, R, Ts...>} {}
 };
 
 template <typename Seq, typename... Sigs>
@@ -236,7 +236,7 @@ struct FnCrtp<D, I, NoThrowIf<B, R(Ts...)&>> {
 		auto vtable = static_cast<VTableLeafI<I, NoThrowIf<B, R(Ts...)&>> const*>(
 				self.vtable());
 		VEG_ASSERT(vtable != nullptr);
-		return vtable->fn_ptr(self.data_mut().get(), VEG_FWD(ts)...);
+		return vtable->fn_ptr(self.data_mut(unsafe).get(), VEG_FWD(ts)...);
 	}
 };
 template <typename D, usize I, bool B, typename R, typename... Ts>
@@ -246,7 +246,7 @@ struct FnCrtp<D, I, NoThrowIf<B, R(Ts...) &&>> {
 		auto vtable = static_cast<VTableLeafI<I, NoThrowIf<B, R(Ts...) &&>> const*>(
 				self.vtable());
 		VEG_ASSERT(vtable != nullptr);
-		return vtable->fn_ptr(self.data_mut().get(), VEG_FWD(ts)...);
+		return vtable->fn_ptr(self.data_mut(unsafe).get(), VEG_FWD(ts)...);
 	}
 };
 
