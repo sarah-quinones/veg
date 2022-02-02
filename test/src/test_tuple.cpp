@@ -5,7 +5,6 @@
 #include <doctest.h>
 #include "veg/memory/placement.hpp"
 #include "veg/functional/overload.hpp"
-#include "veg/functional/indexed.hpp"
 #include "veg/functional/copy_fn.hpp"
 #include "veg/functional/bind.hpp"
 #include "veg/internal/prologue.hpp"
