@@ -634,13 +634,12 @@ public:
 			Unsafe /*unsafe*/,
 			FromRawParts /*tag*/,
 			vector::RawVector<T> rawvec,
-			A alloc) VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<A>))
-			: _{
-						tuplify,
-						VEG_FWD(alloc),
-						_detail::_vector::RawVectorMoveRaii<T>{
-								from_raw_parts, VEG_FWD(rawvec)},
-				} {}
+			A alloc) VEG_NOEXCEPT : _{
+																	tuplify,
+																	VEG_FWD(alloc),
+																	_detail::_vector::RawVectorMoveRaii<T>{
+																			from_raw_parts, VEG_FWD(rawvec)},
+															} {}
 
 	VEG_INLINE VecIncomplete(VecIncomplete&&) = default;
 	VEG_INLINE auto operator=(VecIncomplete&& rhs) -> VecIncomplete& {

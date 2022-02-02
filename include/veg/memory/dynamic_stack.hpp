@@ -325,7 +325,6 @@ public:
 				FromRawParts{},
 				ptr_mut(),
 				len(),
-				unsafe,
 		};
 	}
 
@@ -335,7 +334,6 @@ public:
 				FromRawParts{},
 				ptr(),
 				len(),
-				unsafe,
 		};
 	}
 
