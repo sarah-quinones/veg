@@ -46,6 +46,7 @@ Checks:          '*,-abseil-*,-fuchsia-*,-google-*,-llvm-*,-zircon-*,-altera-*,
                   -readability-magic-numbers,
                   -readability-misleading-indentation,
                   -readability-named-parameter,
+                  -readability-qualified-auto,
                   -readability-redundant-declaration,
                   '
 WarningsAsErrors: ''

@@ -231,7 +231,7 @@ struct DbgSliceBase {
 struct DbgSliceMutBase {
 	template <typename T>
 	static void to_string(fmt::BufferMut out, Ref<SliceMut<T>> arg) {
-		DbgSliceBase::to_string(VEG_FWD(out), ref(Slice<T>(arg.get())));
+		DbgSliceBase::to_string(VEG_FWD(out), ref((Slice<T> const&)(arg.get())));
 	}
 };
 struct DbgArrayBase {
@@ -319,7 +319,7 @@ struct cmp::Ord<Array<T, N>, Array<U, M>> : _detail::_slice::OrdArrayBase {};
 template <typename T>
 struct fmt::Debug<Slice<T>> : _detail::_slice::DbgSliceBase {};
 template <typename T>
-struct fmt::Debug<SliceMut<T>> : _detail::_slice::DbgSliceBase {};
+struct fmt::Debug<SliceMut<T>> : _detail::_slice::DbgSliceMutBase {};
 template <typename T, isize N>
 struct fmt::Debug<Array<T, N>> : _detail::_slice::DbgArrayBase {};
 } // namespace veg
