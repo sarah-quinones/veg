@@ -1,6 +1,7 @@
 #include "veg/util/timer.hpp"
 #include <chrono>
 #include <cinttypes>
+#include <cstdio>
 #include "veg/internal/prologue.hpp"
 
 namespace veg {

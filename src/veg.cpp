@@ -1,10 +1,6 @@
 #include "veg/util/assert.hpp"
 #include "veg/util/timer.hpp"
 #include "veg/internal/parse.hpp"
-#include <cinttypes>
-#include <iostream>
-#include <memory>
-#include <limits>
 
 #include <cstdio>
 #include <cstdlib>
@@ -12,9 +8,7 @@
 
 #include <exception>
 #include <string>
-#include <vector>
 #include <new>
-#include <chrono>
 #include "veg/internal/prologue.hpp"
 
 #ifdef __unix__
@@ -60,7 +54,7 @@ void String::reserve(usize new_cap) {
 	if (new_cap > self.cap) {
 		auto* new_alloc = static_cast<char*>(std::realloc(self.ptr, new_cap));
 		if (new_alloc == nullptr) {
-			throw std::bad_alloc{};
+			std::terminate();
 		}
 		self.ptr = new_alloc;
 		self.cap = new_cap;
@@ -120,9 +114,6 @@ auto ByteStringView::operator==(ByteStringView other) const VEG_ALWAYS_NOEXCEPT
 ByteStringView::ByteStringView(char const* str) VEG_ALWAYS_NOEXCEPT
 		: ByteStringView{str, std::strlen(str)} {}
 
-#define LIT(x)                                                                 \
-	ByteStringView { x, sizeof(x) - 1 }
-
 struct color_t {
 	std::uint8_t r;
 	std::uint8_t g;
@@ -168,7 +159,7 @@ struct assertion_data {
 	std::string rhs;
 };
 
-thread_local std::vector<assertion_data>
+thread_local Vec<assertion_data>
 		failed_asserts // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 		= {};
 
@@ -176,405 +167,10 @@ cleanup::~cleanup() VEG_ALWAYS_NOEXCEPT {
 	failed_asserts.clear();
 }
 
-auto split_at(ByteStringView& text, usize n) -> ByteStringView {
-	ByteStringView token = {text.data_, n};
-	text = {text.data_ + n, text.len_ - n};
-	return token;
-}
-
-auto starts_tk1(ByteStringView text, bool extended_char_set = false) -> bool {
-	return (
-			(!extended_char_set &&          //
-	     (text.starts_with(LIT("<")) || //
-	      text.starts_with(LIT(">")) || //
-	      text.starts_with(LIT("{")) || //
-	      text.starts_with(LIT("}")) || //
-	      text.starts_with(LIT("(")) || //
-	      text.starts_with(LIT(")")) || //
-	      text.starts_with(LIT(" "))    //
-	      )) ||                         //
-			text.starts_with(LIT("[")) ||   //
-			text.starts_with(LIT("]")) ||   //
-			text.starts_with(LIT("=")) ||   //
-			text.starts_with(LIT(",")) ||   //
-			text.starts_with(LIT(";")) ||   //
-			text.starts_with(LIT("*")) ||   //
-			text.starts_with(LIT("&"))      //
-	);
-}
-
-auto starts_tk2(ByteStringView text) -> bool {
-	return (
-			text.starts_with(LIT("->")) || //
-			text.starts_with(LIT("&&")) || //
-			text.starts_with(LIT("::")));
-}
-
-enum kind_e {
-	whitespace,
-	keyword,
-	ident,
-	qual,
-	other,
-};
-
-struct token_t {
-	ByteStringView text;
-	kind_e kind;
-};
-
-auto split_if_starts_with(ByteStringView& code_str, ByteStringView word)
-		-> ByteStringView {
-	if (code_str.starts_with(word)) {
-		return split_at(code_str, word.size());
-	}
-	return empty_str;
-}
-
-auto next_tk(ByteStringView& code_str, bool extended_char_set = false)
-		-> token_t {
-	// trim initial spaces
-	while (code_str.starts_with(LIT(" "))) {
-		code_str = {code_str.data() + 1, code_str.size() - 1};
-	}
-
-	ByteStringView matching = {" ", 1};
-	if (extended_char_set) {
-		if (code_str.starts_with(LIT("<"))) {
-			matching = {">", 1};
-		} else if (code_str.starts_with(LIT("{"))) {
-			matching = {"}", 1};
-		} else if (code_str.starts_with(LIT("("))) {
-			matching = {")", 1};
-		} else {
-			extended_char_set = false;
-		}
-	}
-
-	if (code_str.size() == 0) {
-		return {code_str, other};
-	}
-	if (starts_tk2(code_str)) {
-		return {split_at(code_str, 2), other};
-	}
-
-	if (starts_tk1(code_str, extended_char_set)) {
-		return {split_at(code_str, 1), other};
-	}
-
-#define CONCAT2(A, B) A##B
-#define CONCAT(A, B) CONCAT2(A, B)
-
-#define STR2(A) #A
-#define STR(A) STR2(A)
-
-	ByteStringView word{nullptr, 0};
-#define TOKEN_RETURN(Word, Kind)                                               \
-	if ((word =                                                                  \
-	         split_if_starts_with(code_str, {STR(Word), sizeof(STR(Word)) - 1})) \
-	        .size() > 0) {                                                       \
-		return {word, Kind};                                                       \
-	}                                                                            \
-	(void)0
-
-	TOKEN_RETURN(noexcept, keyword);
-
-	if (code_str.starts_with(LIT("__cdecl"))) {
-		code_str = {code_str.data() + 7, code_str.size() - 7};
-		return {{"", 0}, other};
-	}
-
-	TOKEN_RETURN(const, qual);
-	TOKEN_RETURN(volatile, qual);
-	TOKEN_RETURN(mutable, qual);
-	TOKEN_RETURN(struct, qual);
-	TOKEN_RETURN(typename, qual);
-	TOKEN_RETURN(template, qual);
-
-	TOKEN_RETURN(static, keyword);
-	TOKEN_RETURN(inline, keyword);
-	TOKEN_RETURN(extern, keyword);
-
-	TOKEN_RETURN(constexpr, keyword);
-	TOKEN_RETURN(virtual, keyword);
-
-	TOKEN_RETURN(decltype(auto), ident);
-	TOKEN_RETURN(auto, ident);
-
-	TOKEN_RETURN(long double, ident);
-
-	TOKEN_RETURN(unsigned long long int, ident);
-	TOKEN_RETURN(unsigned long int, ident);
-	TOKEN_RETURN(unsigned short int, ident);
-	TOKEN_RETURN(unsigned long long, ident);
-	TOKEN_RETURN(unsigned long, ident);
-	TOKEN_RETURN(unsigned short, ident);
-
-	TOKEN_RETURN(long long unsigned int, ident);
-	TOKEN_RETURN(long unsigned int, ident);
-	TOKEN_RETURN(short unsigned int, ident);
-	TOKEN_RETURN(long long unsigned, ident);
-	TOKEN_RETURN(long unsigned, ident);
-	TOKEN_RETURN(short unsigned, ident);
-
-	TOKEN_RETURN(long long int, ident);
-	TOKEN_RETURN(long int, ident);
-	TOKEN_RETURN(short int, ident);
-	TOKEN_RETURN(long long, ident);
-	TOKEN_RETURN(long, ident);
-	TOKEN_RETURN(short, ident);
-
-#undef TOKEN_RETURN
-
-	ByteStringView new_str = code_str;
-	while (
-			!(new_str.size() == 0 || starts_tk1(new_str, extended_char_set) ||
-	      starts_tk2(new_str))) {
-		if (new_str.starts_with(matching)) {
-			extended_char_set = false;
-		}
-		new_str = {new_str.data() + 1, new_str.size() - 1};
-	}
-
-	ByteStringView token = {
-			code_str.data(), static_cast<usize>(new_str.data() - code_str.data())};
-	code_str = new_str;
-	return {token, ident};
-}
-
-auto peek_next_tk(ByteStringView code_str, bool extended_char_set = false)
-		-> token_t {
-	return next_tk(code_str, extended_char_set);
-}
-
-auto merge_tk(ByteStringView code_str, token_t prev_tk) -> ByteStringView {
-	return {
-			prev_tk.text.data(),
-			static_cast<usize>(
-					(code_str.data() + code_str.size()) - prev_tk.text.data())};
-}
-
-auto one_of(ByteStringView token, std::initializer_list<ByteStringView> tokens)
-		-> bool {
-	for (auto tk : tokens) { // NOLINT(readability-use-anyofallof)
-		if (token == tk) {
-			return true;
-		}
-	}
-	return false;
-}
-
 using std::size_t;
-enum scope_e { lparen, rparen, lsquare, rsquare, langle, rangle };
-
-struct parse_type_result_t {
-	std::vector<token_t> tokens = {};
-	size_t max_nesting_count = 0;
-	size_t num_nested = 0;
-	bool multiline = false;
-};
-
-auto parse_type(ByteStringView& code_str) -> parse_type_result_t {
-
-	constexpr token_t newline = {{"\n", 1}, whitespace};
-	constexpr token_t indent = {{"| ", 2}, whitespace};
-
-	struct state { // NOLINT(cppcoreguidelines-pro-type-member-init)
-		size_t indent_level;
-		size_t num_nested;
-		token_t token;
-		bool need_newline;
-		parse_type_result_t res;
-		bool entering;
-	};
-	std::vector<state> stack;
-	stack.push_back({0, 0, {empty_str, {}}, false, {}, true});
-
-	while (true) {
-		bool continue_ = false;
-		char const* begin = code_str.data();
-
-		auto* state = &stack.back();
-		bool entering = state->entering;
-
-		if (entering) {
-			state->res.num_nested = state->num_nested;
-		}
-
-		auto add_ln = [&] {
-			state->res.multiline = true;
-			state->res.tokens.push_back(newline);
-			for (size_t i = 0; i < state->indent_level; ++i) {
-				state->res.tokens.push_back(indent);
-			}
-		};
-
-		token_t previous_token{empty_str, other};
-		auto token = entering ? next_tk(code_str, true) : state->token;
-
-		for (; !entering || token.text.size() > 0;
-		     (previous_token = token, token = next_tk(code_str))) {
-
-			if (!entering || token.text == ByteStringView{"<", 1}) {
-				// if token comes after space, assume it's an identifier instead of
-				// template syntax
-
-				if (entering) {
-					if (token.text.data() > begin && *(token.text.data() - 1) == ' ') {
-						code_str = merge_tk(code_str, token);
-						++(state->res.num_nested);
-						state->entering = false;
-						state->token = token;
-						continue_ = true;
-						break;
-					}
-
-					state->res.tokens.push_back(token);
-				}
-
-				bool need_newline = state->need_newline;
-				if (entering) {
-					++state->indent_level;
-				}
-				while (!entering || (token.text.size() > 0 &&
-				                     !(token.text == ByteStringView{">", 1}))) {
-
-					if (entering) {
-						stack.push_back({state->indent_level, 0, token, false, {}, true});
-						continue_ = true;
-						break;
-					}
-
-					auto nested = VEG_MOV(state->res);
-					stack.pop_back();
-					if (stack.empty()) {
-						return nested;
-					}
-					state = &stack.back();
-					entering = true;
-
-					state->res.multiline = state->res.multiline || nested.multiline;
-
-					if (nested.tokens.empty()) {
-						state->res = {};
-						state->entering = false;
-						state->token = token;
-						state->need_newline = need_newline;
-						continue_ = true;
-						break;
-					}
-
-					state->res.max_nesting_count = std::max(
-							state->res.max_nesting_count, nested.max_nesting_count + 1);
-					state->res.num_nested += nested.num_nested;
-
-					token = next_tk(code_str);
-
-					if (state->res.num_nested > 1 ||
-					    one_of(token.text, {{",", 1}, {";", 1}})) {
-						need_newline = true;
-						add_ln();
-					}
-
-					state->res.tokens.insert(
-							state->res.tokens.end(),
-							nested.tokens.begin(),
-							nested.tokens.end());
-
-					if (one_of(token.text, {{",", 1}, {";", 1}})) {
-						state->res.tokens.push_back(token);
-					}
-				}
-				if (continue_) {
-					break;
-				}
-				--state->indent_level;
-
-				if (token.text.size() == 0) {
-					state->res = {};
-					state->entering = false;
-					state->token = token;
-					state->need_newline = need_newline;
-					continue_ = true;
-					break;
-				}
-
-				if (need_newline) {
-					add_ln();
-				}
-				state->res.tokens.push_back(token);
-				if (peek_next_tk(code_str).text == LIT("::")) {
-					continue;
-				}
-				state->entering = false;
-				state->token = token;
-				state->need_newline = need_newline;
-				continue_ = true;
-				break;
-
-			} else if (
-					one_of(
-							token.text,
-							{LIT("{"),
-			         LIT("}"),
-			         LIT("("),
-			         LIT("["),
-			         LIT(")"),
-			         LIT("]"),
-			         LIT(","),
-			         LIT(";"),
-			         LIT(">")}) ||
-					(token.kind == ident &&
-			     (previous_token.kind == ident ||
-			      one_of(
-								previous_token.text,
-								{LIT("*"), LIT(" "), LIT("&"), LIT("&&")})))) {
-
-				code_str = merge_tk(code_str, token);
-				++state->res.num_nested;
-				state->entering = false;
-				state->token = token;
-				continue_ = true;
-				break;
-			}
-			if (token.text == LIT("::")) {
-				state->res.num_nested = 0;
-			}
-			state->res.tokens.push_back(token);
-		}
-		if (continue_) {
-			continue;
-		}
-		state->entering = false;
-		state->token = token;
-	}
-	terminate();
-}
 
 auto to_owned(ByteStringView ref) -> std::string {
 	return {ref.data(), static_cast<std::size_t>(ref.size())};
-}
-
-void print_type(
-		std::string& output, parse_type_result_t const& type, color_t c) {
-
-	token_t prev_tk = {empty_str, other};
-	for (auto tk : type.tokens) {
-		if (tk.text == LIT("::")) {
-			output += with_color(c, to_owned(tk.text));
-		} else {
-			auto needs_space = [](token_t tok) -> bool {
-				return tok.kind == qual || tok.kind == ident || tok.kind == keyword;
-			};
-			bool add_space = needs_space(tk) && needs_space(prev_tk);
-
-			if (add_space) {
-				output += ' ';
-			}
-			output += to_owned(tk.text);
-		}
-		prev_tk = tk;
-	}
 }
 
 auto find(ByteStringView sv, char c) -> char const* {
@@ -601,9 +197,9 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 			"========================================"
 			"=======================================");
 	output += '\n';
-	output += with_color(orange_red, std::to_string(failed_asserts.size()));
+	output += with_color(orange_red, std::to_string(failed_asserts.len()));
 	output += " assertion";
-	if (failed_asserts.size() > 1) {
+	if (failed_asserts.len() > 1) {
 		output += 's';
 	}
 	output += ' ';
@@ -627,7 +223,8 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 
 	char const* separator = "";
 
-	for (auto const& a : failed_asserts) {
+	for (isize i = 0; i < failed_asserts.len(); ++i) {
+		auto& a = failed_asserts[i];
 		ByteStringView msg{a.callback};
 		char const* newline = find(msg, '\n');
 		bool multiline = newline != nullptr;
@@ -709,9 +306,9 @@ void set_assert_params1( //
 	auto&& clear = defer(_clear);
 	(void)clear;
 
-	failed_asserts.push_back({
+	failed_asserts.push({
 			false,
-			LIT(""),
+			ByteStringView{"", 0},
 			empty_str,
 			op,
 			std::string{lhs.data(), static_cast<std::size_t>(lhs.size())},
@@ -724,9 +321,10 @@ void set_assert_params2(       //
 		ByteStringView expression, //
 		ByteStringView msg         //
 		) VEG_ALWAYS_NOEXCEPT {
-	failed_asserts.back().finished_setup = true;
-	failed_asserts.back().expr = expression;
-	failed_asserts.back().callback = msg;
+	auto& a = failed_asserts[failed_asserts.len() - 1];
+	a.finished_setup = true;
+	a.expr = expression;
+	a.callback = msg;
 }
 
 auto snprintf1(char* out, usize n, unsigned type, void* arg) -> usize {

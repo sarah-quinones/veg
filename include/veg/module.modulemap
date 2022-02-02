@@ -172,10 +172,6 @@ module veg {
       header "functional/copy_fn.hpp"
       export *
     }
-    module indexed {
-      header "functional/indexed.hpp"
-      export *
-    }
     module overload {
       header "functional/overload.hpp"
       export *
