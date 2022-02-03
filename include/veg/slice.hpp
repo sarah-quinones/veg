@@ -224,7 +224,7 @@ struct DbgSliceBase {
 		for (isize i = 0; i < len; ++i) {
 			out.append_ln();
 			fmt::Debug<T>::to_string(out, ref(ptr[i]));
-			out.append_literal(",");
+			out.append_literal(u8",");
 		}
 	}
 };

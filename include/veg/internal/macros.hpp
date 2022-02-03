@@ -832,7 +832,148 @@ using is_same = decltype(wrapper<T>::test(static_cast<wrapper<U>*>(nullptr)));
 namespace concepts {
 VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL((typename T, typename U), same, T, U);
 } // namespace concepts
+
+enum struct CharUnit : unsigned char {};
+template <isize N>
+struct StrLiteral {
+	CharUnit _[N];
+};
+template <CharUnit... Cs>
+struct StrLiteralConstant {
+	VEG_INLINE constexpr auto to_literal() const noexcept
+			-> StrLiteral<isize(sizeof...(Cs))> {
+		return {{Cs...}};
+	}
+};
+namespace _detail {
+using NativeChar8 = meta::uncvref_t<decltype(u8""[0])>;
+} // namespace _detail
 } // namespace veg
+
+#if defined(__GNUC__)
+HEDLEY_DIAGNOSTIC_PUSH
+#pragma GCC diagnostic ignored "-Wpedantic"
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wgnu-string-literal-operator-template"
+#endif
+
+template <
+		typename Char,
+		Char... Cs>
+constexpr auto operator""__veglib_const_literal_gnuc() noexcept // NOLINT
+		-> veg::StrLiteralConstant<veg::CharUnit(Cs)...> {
+	return {};
+}
+
+HEDLEY_DIAGNOSTIC_POP
+
+#define VEG_UTF8_CONST(Literal) (u8##Literal##__veglib_const_literal_gnuc)
+
+#elif (defined(__clang__) && __cplusplus >= 202002L) ||                        \
+		(defined(__cpp_nontype_template_args) &&                                   \
+     (__cpp_nontype_template_args >= 201911L))
+namespace veg {
+namespace _detail {
+template <isize N>
+struct StrLiteralImpl {
+	veg::CharUnit _[N];
+
+	template <typename Char>
+	constexpr StrLiteralImpl(Char const* s) {
+		for (isize i = 0; i < N; ++i) {
+			_[i] = veg::CharUnit(s[i]);
+		}
+	}
+};
+template <typename Char, isize N>
+StrLiteralImpl(Char const (&)[N]) -> StrLiteralImpl<N - 1>;
+
+template <typename T>
+struct StrLiteralLen;
+
+template <isize N>
+struct StrLiteralLen<StrLiteralImpl<N>> {
+	static constexpr usize value{N};
+};
+template <isize N>
+struct StrLiteralLen<StrLiteralImpl<N> const> {
+	static constexpr usize value{N};
+};
+
+template <typename Seq, auto Literal>
+struct StrLiteralExpand;
+
+template <usize... Is, StrLiteralImpl<isize{sizeof...(Is)}> L>
+struct StrLiteralExpand<_meta::integer_sequence<usize, Is...>, L> {
+	using Type = StrLiteralConstant<L._[Is]...>;
+};
+} // namespace _detail
+} // namespace veg
+
+template <veg::_detail::StrLiteralImpl S>
+constexpr auto operator""__veglib_const_literal_cpp20() noexcept ->
+		typename veg::_detail::StrLiteralExpand< //
+				veg::_detail::_meta::make_index_sequence<
+						veg::_detail::StrLiteralLen<decltype(S)>::value>,
+				S>::Type {
+	return {};
+}
+#define VEG_UTF8_CONST(Literal) (u8##Literal##__veglib_const_literal_cpp20)
+
+#else
+
+namespace veg {
+namespace _detail {
+
+template <typename LiteralType, typename Seq>
+struct ExtractCharsImpl;
+
+template <typename LiteralType, usize... Is>
+struct ExtractCharsImpl<LiteralType, _meta::integer_sequence<usize, Is...>> {
+	using Type = StrLiteralConstant<CharUnit(LiteralType::value[Is])...>;
+};
+
+template <typename LiteralType, typename Seq>
+struct ExtractCharsImplExpr;
+
+template <typename LiteralType, usize... Is>
+struct ExtractCharsImplExpr<
+		LiteralType,
+		_meta::integer_sequence<usize, Is...>> {
+	using Type = StrLiteralConstant<CharUnit(LiteralType::value()[Is])...>;
+};
+
+template <typename LiteralType>
+auto extract_chars(LiteralType /*unused*/) -> typename ExtractCharsImpl<
+		LiteralType,
+		_meta::make_index_sequence<LiteralType::Size::value>>::Type {
+	return {};
+}
+
+template <typename LiteralType>
+auto extract_chars_expr(LiteralType /*unused*/) ->
+		typename ExtractCharsImplExpr<
+				LiteralType,
+				_meta::make_index_sequence<LiteralType::Size::value>>::Type {
+	return {};
+}
+} // namespace _detail
+} // namespace veg
+
+#define VEG_UTF8_CONST(Literal)                                                \
+	(::veg::_detail::extract_chars_expr([]() /* NOLINT */ noexcept {             \
+		struct __VEG_PP_CAT(_veglib_type, __LINE__) {                              \
+			static constexpr auto value() noexcept -> decltype(Literal) {            \
+				return Literal;                                                        \
+			}                                                                        \
+			using Size = ::veg::meta::                                               \
+					constant<::veg::usize, sizeof(value()) / sizeof(value()[0]) - 1>;    \
+		};                                                                         \
+		return __VEG_PP_CAT(_veglib_type, __LINE__){};                             \
+	}()))
+#endif
+
+#define VEG_UTF8(Literal) (VEG_UTF8_CONST(Literal).to_literal())
 
 #define VEG_DECLTYPE_VOID(...) decltype(void(__VA_ARGS__))
 #define VEG_BOOL_NOEXCEPT(...) ::veg::meta::bool_constant<noexcept(__VA_ARGS__)>
@@ -843,9 +984,10 @@ VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL((typename T, typename U), same, T, U);
 
 #define __VEG_IMPL_GET_MEMBER_PTR(_, MemberPtr) /* NOLINT */ , &Type::MemberPtr
 #define __VEG_IMPL_GET_MEMBER_NAME_PTR(_, MemberPtr) /* NOLINT */              \
-	static_cast<char const*>(__VEG_PP_STRINGIZE(MemberPtr)),
+	static_cast<::veg::_detail::NativeChar8 const*>(                             \
+			__VEG_PP_CAT(u8, __VEG_PP_STRINGIZE(MemberPtr))),
 #define __VEG_IMPL_GET_MEMBER_NAME_LEN(_, MemberPtr) /* NOLINT */              \
-	(sizeof(__VEG_PP_STRINGIZE(MemberPtr)) - 1),
+	(sizeof(__VEG_PP_CAT(u8, __VEG_PP_STRINGIZE(MemberPtr))) - 1),
 
 #define __VEG_IMPL_STRUCT_SETUP(PClass, ...) /* NOLINT */                      \
 	void _veg_lib_name_test()&& noexcept {                                       \
@@ -862,11 +1004,11 @@ VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL((typename T, typename U), same, T, U);
 			return ::veg::_detail::make_simple_tuple(::veg::_detail::Empty {         \
 			} __VEG_PP_TUPLE_FOR_EACH(__VEG_IMPL_GET_MEMBER_PTR, _, (__VA_ARGS__))); \
 		}                                                                          \
-		static constexpr char const* class_name_ptr =                              \
-				__VEG_PP_STRINGIZE (__VEG_PP_REMOVE_PAREN(PClass));                     \
-		static constexpr ::veg::usize class_name_len =                             \
-				sizeof(__VEG_PP_STRINGIZE (__VEG_PP_REMOVE_PAREN(PClass))) - 1;         \
-		static constexpr char const* member_name_ptrs[] = {                        \
+		static constexpr ::veg::_detail::NativeChar8 const* class_name_ptr =       \
+				__VEG_PP_CAT(u8, __VEG_PP_STRINGIZE (__VEG_PP_REMOVE_PAREN(PClass)));   \
+		static constexpr ::veg::usize class_name_len = sizeof(__VEG_PP_CAT(        \
+				u8, __VEG_PP_STRINGIZE (__VEG_PP_REMOVE_PAREN(PClass)))) - 1;           \
+		static constexpr ::veg::_detail::NativeChar8 const* member_name_ptrs[] = { \
 				__VEG_PP_TUPLE_FOR_EACH(                                               \
 						__VEG_IMPL_GET_MEMBER_NAME_PTR, _, (__VA_ARGS__))};                \
 		static constexpr ::veg::usize member_name_lens[] = {                       \

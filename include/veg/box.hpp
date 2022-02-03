@@ -291,11 +291,11 @@ struct DbgBoxI {
 	template <typename T>
 	static void to_string_impl(fmt::BufferMut out, T const* ptr) noexcept {
 		if (ptr != nullptr) {
-			out.append_literal("some(");
+			out.append_literal(u8"some(");
 			fmt::dbg_to(VEG_FWD(out), ref(*ptr));
-			out.append_literal(")");
+			out.append_literal(u8")");
 		} else {
-			out.append_literal("none");
+			out.append_literal(u8"none");
 		}
 	}
 

@@ -34,8 +34,8 @@ struct Buffer {
 	virtual void insert_newline(usize pos) = 0;
 
 	template <usize N>
-	VEG_INLINE void append_literal(char const (&data)[N]) {
-		insert(size(), &data[0], N - 1);
+	VEG_INLINE void append_literal(_detail::NativeChar8 const (&data)[N]) {
+		insert(size(), reinterpret_cast<char const*>(&data[0]), N - 1);
 	}
 	VEG_INLINE void append_ln() { insert_newline(size()); }
 
@@ -59,13 +59,13 @@ struct DbgStructScope {
 
 	fmt::BufferMut out;
 	DbgStructScope(fmt::BufferMut out_) : out(VEG_FWD(out_)) {
-		out.append_literal("{");
+		out.append_literal(u8"{");
 		++out.indent_level;
 	}
 	~DbgStructScope() {
 		--out.indent_level;
 		out.append_ln();
-		out.append_literal("}");
+		out.append_literal(u8"}");
 	}
 };
 
@@ -126,7 +126,7 @@ template <bool>
 struct dbg_g_impl {
 	template <typename T>
 	static void to_string(BufferMut out, Ref<T> /*arg*/) {
-		out.insert(out.size(), "{?}", 3);
+		out.append_literal(u8"{?}");
 	}
 };
 
@@ -144,24 +144,26 @@ struct dbg_g_impl<true> {
 					member_ptrs) {
 
 		out.insert(
-				out.size(), Access<T>::class_name_ptr, Access<T>::class_name_len);
-		out.append_literal(" ");
+				out.size(),
+				reinterpret_cast<char const*>(Access<T>::class_name_ptr),
+				Access<T>::class_name_len);
+		out.append_literal(u8" ");
 		{
 			_fmt::DbgStructScope _{VEG_FWD(out)};
 			VEG_EVAL_ALL(
 					(void(_.out.append_ln()),
 			     void(_.out.insert(
 							 _.out.size(),
-							 Access<T>::member_name_ptrs[Is],
+							 reinterpret_cast<char const*>(Access<T>::member_name_ptrs[Is]),
 							 Access<T>::member_name_lens[Is])),
-			     void(_.out.append_literal(": ")),
+			     void(_.out.append_literal(u8": ")),
 			     void(fmt::Debug<Members>::to_string(
 							 VEG_FWD(_.out),
 							 ref(arg.get().*
 			             (static_cast<SimpleLeaf<Is, Members Bases::*> const&>(
 												member_ptrs)
 			                  .inner)))),
-			     void(_.out.append_literal(","))
+			     void(_.out.append_literal(u8","))
 
 			         ));
 		}
@@ -346,7 +348,7 @@ struct String final : fmt::Buffer {
 	void reserve(usize new_cap) override;
 	void insert(usize pos, char const* data, usize len) override;
 	void insert_newline(usize pos) override;
-	void eprintln(std::FILE* f) const VEG_ALWAYS_NOEXCEPT;
+	void fprintln(std::FILE* f) const VEG_ALWAYS_NOEXCEPT;
 
 	VEG_NODISCARD VEG_INLINE auto data() const VEG_ALWAYS_NOEXCEPT
 			-> char* override {
@@ -369,13 +371,13 @@ inline void dbg_prefix(
 		auto file_len = usize(std::strlen(file));
 		auto fn_len = usize(std::strlen(fn));
 
-		out.append_literal("[");
+		out.append_literal(u8"[");
 		out.insert(1, fn, fn_len);
-		out.append_literal(":");
+		out.append_literal(u8":");
 		out.insert(1 + fn_len + 1, file, file_len);
-		out.append_literal(":");
+		out.append_literal(u8":");
 		fmt::Debug<unsigned>::to_string(out, nb::ref{}(line));
-		out.append_literal("] ");
+		out.append_literal(u8"] ");
 	}
 }
 } // namespace _detail
@@ -412,7 +414,7 @@ struct dbg_to {
 
 		_detail::dbg_prefix(mut{}(out), line, file, fn);
 		fmt::Debug<uncvref_t<T>>::to_string(out, nb::ref{}(arg));
-		out.eprintln(f);
+		out.fprintln(f);
 		return T(VEG_FWD(arg));
 	}
 };

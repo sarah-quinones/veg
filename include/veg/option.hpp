@@ -401,12 +401,12 @@ struct DbgOptionBase {
 	template <typename T>
 	static void to_string(fmt::BufferMut out, Ref<Option<T>> opt) {
 		if (opt.get().is_some()) {
-			out.append_literal("some(");
+			out.append_literal(u8"some(");
 			fmt::Debug<T>::to_string(
 					VEG_FWD(out), opt.get().as_ref().unwrap_unchecked(unsafe));
-			out.append_literal(")");
+			out.append_literal(u8")");
 		} else {
-			out.append_literal("none");
+			out.append_literal(u8"none");
 		}
 	}
 };
@@ -454,7 +454,7 @@ struct fmt::Debug<Option<T>> : _detail::_option::DbgOptionBase {};
 template <>
 struct fmt::Debug<None> {
 	static void to_string(fmt::BufferMut out, Ref<None> /*unused*/) {
-		out.append_literal("none");
+		out.append_literal(u8"none");
 	}
 };
 template <typename T, typename U>

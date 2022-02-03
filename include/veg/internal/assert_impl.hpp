@@ -250,9 +250,12 @@ struct decomposer {
 			? true                                                                   \
 			: ((void)(::veg::_detail::cleanup{}),                                    \
 	       ::veg::_detail::set_assert_params2(                                   \
-						 {static_cast<char const*>(                                        \
-									__VEG_PP_STRINGIZE(__VEG_PP_TAIL Elem)),                     \
-									sizeof(__VEG_PP_STRINGIZE(__VEG_PP_TAIL Elem)) - 1},         \
+						 {reinterpret_cast<char const*>(                                   \
+									__VEG_PP_CAT(u8, __VEG_PP_STRINGIZE(__VEG_PP_TAIL Elem))),   \
+									sizeof(                                                      \
+											__VEG_PP_CAT(                                            \
+													u8, __VEG_PP_STRINGIZE(__VEG_PP_TAIL Elem))) -       \
+											1},                                                      \
 	            __VEG_PP_HEAD Elem),                                             \
 						 false),
 

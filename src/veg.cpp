@@ -33,6 +33,11 @@
 
 namespace veg {
 namespace _detail {
+void write_utf8_to(std::FILE* f, char const* ptr, usize len) noexcept {
+  // TODO: handle utf8 on windows
+	std::fwrite(ptr, 1, len, f);
+}
+
 namespace type_parse {
 void function_decl_to_str(RefMut<std::string> str, FunctionDecl decl) noexcept;
 } // namespace type_parse
@@ -46,8 +51,8 @@ String::~String() {
 	std::free(self.ptr);
 }
 
-void String::eprintln(std::FILE* f) const VEG_ALWAYS_NOEXCEPT {
-	std::fwrite(self.ptr, 1, self.len, f);
+void String::fprintln(std::FILE* f) const VEG_ALWAYS_NOEXCEPT {
+	_detail::write_utf8_to(f, self.ptr, self.len);
 	std::fputc('\n', f);
 }
 void String::reserve(usize new_cap) {
@@ -280,13 +285,13 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 
 void on_expect_fail(long line, ByteStringView file, ByteStringView func) {
 	auto str = on_fail(line, file, func, false);
-	std::fwrite(str.data(), 1, str.size(), stderr);
+	_detail::write_utf8_to(stderr, str.data(), str.size());
 }
 
 [[noreturn]] void
 on_assert_fail(long line, ByteStringView file, ByteStringView func) {
 	auto str = on_fail(line, file, func, true);
-	std::fwrite(str.data(), 1, str.size(), stderr);
+	_detail::write_utf8_to(stderr, str.data(), str.size());
 	std::terminate();
 }
 

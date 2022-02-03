@@ -844,7 +844,7 @@ static void to_string_impl(
 			(_.out.append_ln(),
 	     fmt::Debug<Ts>::to_string(
 					 VEG_FWD(_.out), ref(__VEG_IMPL_LEAF(tup, Is, Ts))),
-	     _.out.append_literal(",")));
+	     _.out.append_literal(u8",")));
 }
 
 struct DebugITupleBase {
