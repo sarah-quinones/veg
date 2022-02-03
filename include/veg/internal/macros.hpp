@@ -551,6 +551,9 @@
 #define VEG_NOM_SEMICOLON static_assert(true, ".")
 
 namespace veg {
+template <typename T>
+struct Slice ;
+
 namespace meta {
 template <typename...>
 using void_t = void;
@@ -840,11 +843,16 @@ struct StrLiteral {
 };
 template <CharUnit... Cs>
 struct StrLiteralConstant {
-	VEG_INLINE constexpr auto to_literal() const noexcept
-			-> StrLiteral<isize(sizeof...(Cs))> {
-		return {{Cs...}};
-	}
+private:
+	static constexpr StrLiteral<isize(sizeof...(Cs))> literal = {{Cs...}};
+
+public:
+  VEG_INLINE constexpr auto slice() const noexcept -> Slice<CharUnit> ;
 };
+
+template <CharUnit... Cs>
+constexpr StrLiteral<isize(sizeof...(Cs))> StrLiteralConstant<Cs...>::literal;
+
 namespace _detail {
 using NativeChar8 = meta::uncvref_t<decltype(u8""[0])>;
 } // namespace _detail
@@ -867,7 +875,8 @@ constexpr auto operator""__veglib_const_literal_gnuc() noexcept // NOLINT
 
 HEDLEY_DIAGNOSTIC_POP
 
-#define VEG_UTF8_CONST(Literal) (u8##Literal##__veglib_const_literal_gnuc)
+#define __VEG_IMPL_UTF8_CONST(Literal)                                         \
+	(u8##Literal##__veglib_const_literal_gnuc)
 
 #elif (defined(__clang__) && __cplusplus >= 202002L) ||                        \
 		(defined(__cpp_nontype_template_args) &&                                   \
@@ -918,7 +927,8 @@ constexpr auto operator""__veglib_const_literal_cpp20() noexcept ->
 				S>::Type {
 	return {};
 }
-#define VEG_UTF8_CONST(Literal) (u8##Literal##__veglib_const_literal_cpp20)
+#define __VEG_IMPL_UTF8_CONST(Literal)                                         \
+	(u8##Literal##__veglib_const_literal_cpp20)
 
 #else
 
@@ -960,7 +970,7 @@ auto extract_chars_expr(LiteralType /*unused*/) ->
 } // namespace _detail
 } // namespace veg
 
-#define VEG_UTF8_CONST(Literal)                                                \
+#define __VEG_IMPL_UTF8_CONST(Literal)                                         \
 	(::veg::_detail::extract_chars_expr([]() /* NOLINT */ noexcept {             \
 		struct __VEG_PP_CAT(_veglib_type, __LINE__) {                              \
 			static constexpr auto value() noexcept -> decltype(Literal) {            \
@@ -972,8 +982,6 @@ auto extract_chars_expr(LiteralType /*unused*/) ->
 		return __VEG_PP_CAT(_veglib_type, __LINE__){};                             \
 	}()))
 #endif
-
-#define VEG_UTF8(Literal) (VEG_UTF8_CONST(Literal).to_literal())
 
 #define VEG_DECLTYPE_VOID(...) decltype(void(__VA_ARGS__))
 #define VEG_BOOL_NOEXCEPT(...) ::veg::meta::bool_constant<noexcept(__VA_ARGS__)>
