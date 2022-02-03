@@ -552,7 +552,7 @@
 
 namespace veg {
 template <typename T>
-struct Slice ;
+struct Slice;
 
 namespace meta {
 template <typename...>
@@ -847,7 +847,7 @@ private:
 	static constexpr StrLiteral<isize(sizeof...(Cs))> literal = {{Cs...}};
 
 public:
-  VEG_INLINE constexpr auto slice() const noexcept -> Slice<CharUnit> ;
+	VEG_INLINE constexpr auto slice() const noexcept -> Slice<CharUnit>;
 };
 
 template <CharUnit... Cs>
@@ -858,7 +858,7 @@ using NativeChar8 = meta::uncvref_t<decltype(u8""[0])>;
 } // namespace _detail
 } // namespace veg
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) || (__cplusplus >= 201402L || defined(__clang__))
 HEDLEY_DIAGNOSTIC_PUSH
 #pragma GCC diagnostic ignored "-Wpedantic"
 #ifdef __clang__
@@ -875,7 +875,7 @@ constexpr auto operator""__veglib_const_literal_gnuc() noexcept // NOLINT
 
 HEDLEY_DIAGNOSTIC_POP
 
-#define __VEG_IMPL_UTF8_CONST(Literal)                                         \
+#define __VEG_IMPL_UTF8_CONST(Literal) /* NOLINT */                            \
 	(u8##Literal##__veglib_const_literal_gnuc)
 
 #elif (defined(__clang__) && __cplusplus >= 202002L) ||                        \
