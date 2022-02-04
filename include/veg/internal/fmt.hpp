@@ -145,8 +145,8 @@ struct dbg_g_impl<true> {
 
 		out.insert(
 				out.size(),
-				reinterpret_cast<char const*>(Access<T>::class_name_ptr),
-				Access<T>::class_name_len);
+				reinterpret_cast<char const*>(Access<T>::class_name_ptr()),
+				Access<T>::class_name_len());
 		out.append_literal(u8" ");
 		{
 			_fmt::DbgStructScope _{VEG_FWD(out)};
@@ -154,8 +154,9 @@ struct dbg_g_impl<true> {
 					(void(_.out.append_ln()),
 			     void(_.out.insert(
 							 _.out.size(),
-							 reinterpret_cast<char const*>(Access<T>::member_name_ptrs[Is]),
-							 Access<T>::member_name_lens[Is])),
+							 reinterpret_cast<char const*>(
+									 Access<T>::member_name_ptrs()._[Is]),
+							 Access<T>::member_name_lens()._[Is])),
 			     void(_.out.append_literal(u8": ")),
 			     void(fmt::Debug<Members>::to_string(
 							 VEG_FWD(_.out),

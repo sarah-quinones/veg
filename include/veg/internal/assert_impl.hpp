@@ -300,6 +300,10 @@ struct decomposer {
 			on_expect_fail,                                                          \
 			__VA_ARGS__)
 
+#define VEG_UNIMPLEMENTED()                                                    \
+	VEG_ASSERT(false);                                                           \
+	HEDLEY_UNREACHABLE()
+
 } // namespace _assert
 } // namespace _detail
 } // namespace veg

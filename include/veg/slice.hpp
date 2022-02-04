@@ -6,7 +6,6 @@
 #include "veg/internal/narrow.hpp"
 #include "veg/tuple.hpp"
 #include "veg/util/compare.hpp"
-#include "veg/internal/delete_special_members.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
@@ -59,20 +58,20 @@ public:
 
 	VEG_NODISCARD VEG_INLINE constexpr auto split_at(isize idx) const VEG_NOEXCEPT
 			-> Tuple<Slice<T>, Slice<T>> {
-		return VEG_INTERNAL_ASSERT_PRECONDITION(usize(idx) < usize(len())),
+		return VEG_INTERNAL_ASSERT_PRECONDITION(usize(idx) <= usize(len())),
 		       Tuple<Slice<T>, Slice<T>>{
 							 tuplify,
 							 Slice<T>{
+									 unsafe,
 									 FromRawParts{},
 									 data,
 									 idx,
-									 unsafe,
 							 },
 							 Slice<T>{
+									 unsafe,
 									 FromRawParts{},
 									 data + idx,
 									 size - idx,
-									 unsafe,
 							 },
 					 };
 	}
@@ -89,7 +88,7 @@ public:
 };
 
 template <typename T>
-struct SliceMut : _detail::NoCopyCtor, _detail::NoCopyAssign, private Slice<T> {
+struct SliceMut : private Slice<T> {
 	VEG_INLINE
 	constexpr SliceMut() = default;
 
@@ -135,7 +134,7 @@ struct SliceMut : _detail::NoCopyCtor, _detail::NoCopyAssign, private Slice<T> {
 
 	VEG_NODISCARD VEG_INLINE constexpr auto split_at_mut(isize idx) VEG_NOEXCEPT
 			-> Tuple<SliceMut<T>, SliceMut<T>> {
-		return VEG_INTERNAL_ASSERT_PRECONDITION(usize(idx) < usize(len())),
+		return VEG_INTERNAL_ASSERT_PRECONDITION(usize(idx) <= usize(len())),
 		       Tuple<SliceMut<T>, SliceMut<T>>{
 							 tuplify,
 							 SliceMut<T>{

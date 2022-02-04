@@ -12,14 +12,7 @@ namespace ref {
 struct RefBase {};
 } // namespace ref
 namespace mut {
-struct RefMutBase {
-	RefMutBase() = default;
-	RefMutBase(RefMutBase const&) = delete;
-	RefMutBase(RefMutBase&&) = default;
-	auto operator=(RefMutBase const&) -> RefMutBase& = delete;
-	auto operator=(RefMutBase&&) -> RefMutBase& = default;
-	~RefMutBase() = default;
-};
+struct RefMutBase {};
 } // namespace mut
 } // namespace cmp
 
@@ -71,9 +64,7 @@ public:
 	VEG_INLINE constexpr auto as_const() const noexcept -> Ref<T> {
 		return nb::ref{}(*ptr);
 	}
-	VEG_NODISCARD VEG_INLINE constexpr auto get() noexcept -> T& {
-		return *ptr;
-	}
+	VEG_NODISCARD VEG_INLINE constexpr auto get() noexcept -> T& { return *ptr; }
 	VEG_NODISCARD VEG_INLINE constexpr auto operator*() noexcept -> T& {
 		return *ptr;
 	}

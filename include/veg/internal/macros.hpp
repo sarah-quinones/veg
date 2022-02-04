@@ -855,10 +855,15 @@ constexpr StrLiteral<isize(sizeof...(Cs))> StrLiteralConstant<Cs...>::literal;
 
 namespace _detail {
 using NativeChar8 = meta::uncvref_t<decltype(u8""[0])>;
+
+template <typename T, usize N>
+struct Array_ {
+	T _[N];
+};
 } // namespace _detail
 } // namespace veg
 
-#if defined(__GNUC__) || (__cplusplus >= 201402L || defined(__clang__))
+#if defined(__clang__) || (__cplusplus >= 201402L && defined(__GNUC__))
 HEDLEY_DIAGNOSTIC_PUSH
 #pragma GCC diagnostic ignored "-Wpedantic"
 #ifdef __clang__
@@ -1012,16 +1017,27 @@ auto extract_chars_expr(LiteralType /*unused*/) ->
 			return ::veg::_detail::make_simple_tuple(::veg::_detail::Empty {         \
 			} __VEG_PP_TUPLE_FOR_EACH(__VEG_IMPL_GET_MEMBER_PTR, _, (__VA_ARGS__))); \
 		}                                                                          \
-		static constexpr ::veg::_detail::NativeChar8 const* class_name_ptr =       \
-				__VEG_PP_CAT(u8, __VEG_PP_STRINGIZE (__VEG_PP_REMOVE_PAREN(PClass)));   \
-		static constexpr ::veg::usize class_name_len = sizeof(__VEG_PP_CAT(        \
-				u8, __VEG_PP_STRINGIZE (__VEG_PP_REMOVE_PAREN(PClass)))) - 1;           \
-		static constexpr ::veg::_detail::NativeChar8 const* member_name_ptrs[] = { \
-				__VEG_PP_TUPLE_FOR_EACH(                                               \
-						__VEG_IMPL_GET_MEMBER_NAME_PTR, _, (__VA_ARGS__))};                \
-		static constexpr ::veg::usize member_name_lens[] = {                       \
-				__VEG_PP_TUPLE_FOR_EACH(                                               \
-						__VEG_IMPL_GET_MEMBER_NAME_LEN, _, (__VA_ARGS__))};                \
+		static constexpr auto class_name_ptr() noexcept                            \
+				-> ::veg::_detail::NativeChar8 const* {                                \
+			return __VEG_PP_CAT(                                                     \
+					u8, __VEG_PP_STRINGIZE (__VEG_PP_REMOVE_PAREN(PClass)));              \
+		}                                                                          \
+		static constexpr auto class_name_len() noexcept -> ::veg::usize {          \
+			return sizeof(__VEG_PP_CAT(                                              \
+					u8, __VEG_PP_STRINGIZE (__VEG_PP_REMOVE_PAREN(PClass)))) - 1;         \
+		}                                                                          \
+		static constexpr auto member_name_ptrs() noexcept                          \
+				-> ::veg::_detail::Array_<                                             \
+						::veg::_detail::NativeChar8 const*,                                \
+						__VEG_PP_TUPLE_SIZE((__VA_ARGS__))> {                              \
+			return {{__VEG_PP_TUPLE_FOR_EACH(                                        \
+					__VEG_IMPL_GET_MEMBER_NAME_PTR, _, (__VA_ARGS__))}};                 \
+		}                                                                          \
+		static constexpr auto member_name_lens() noexcept -> ::veg::_detail::      \
+				Array_<::veg::usize, __VEG_PP_TUPLE_SIZE((__VA_ARGS__))> {             \
+			return {{__VEG_PP_TUPLE_FOR_EACH(                                        \
+					__VEG_IMPL_GET_MEMBER_NAME_LEN, _, (__VA_ARGS__))}};                 \
+		}                                                                          \
 	};                                                                           \
 	friend struct ::veg::_detail::member_extract_access<__VEG_PP_REMOVE_PAREN(   \
 			PClass)>;                                                                \

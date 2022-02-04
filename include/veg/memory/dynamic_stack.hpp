@@ -165,7 +165,7 @@ struct no_init_fn {
 } // namespace _detail
 
 namespace dynstack {
-struct DynStackMut : _detail::NoCopyCtor, _detail::NoCopyAssign {
+struct DynStackMut {
 public:
 	DynStackMut(FromSliceMut /*tag*/, SliceMut<unsigned char> s) VEG_NOEXCEPT
 			: stack_data(s.ptr_mut()),
