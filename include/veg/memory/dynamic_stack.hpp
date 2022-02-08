@@ -313,10 +313,9 @@ public:
 
 	auto operator=(DynStackAlloc const&) -> DynStackAlloc& = delete;
 	auto operator=(DynStackAlloc&& rhs) VEG_NOEXCEPT -> DynStackAlloc& {
-		Base tmp_rhs = static_cast<Base>(rhs);
+		{ auto cleanup = static_cast<decltype(rhs)>(*this); }
+		static_cast<Base&>(*this) = rhs;
 		static_cast<Base&>(rhs) = {};
-		{ DynStackAlloc tmp_lhs = static_cast<DynStackAlloc&&>(*this); }
-		static_cast<Base&>(*this) = tmp_rhs;
 		return *this;
 	}
 
@@ -406,11 +405,9 @@ public:
 	auto operator=(DynStackArray const&) -> DynStackArray& = delete;
 
 	auto operator=(DynStackArray&& rhs) VEG_NOEXCEPT -> DynStackArray& {
-		Base tmp_rhs = static_cast<Base>(rhs);
+		{ auto cleanup = static_cast<decltype(rhs)>(*this); }
+		static_cast<Base&>(*this) = rhs;
 		static_cast<Base&>(rhs) = {};
-
-		DynStackArray tmp_lhs = static_cast<DynStackArray&&>(*this);
-		static_cast<Base&>(*this) = tmp_rhs;
 		return *this;
 	}
 

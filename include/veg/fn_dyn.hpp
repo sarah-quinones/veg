@@ -574,9 +574,9 @@ public:
 		raw[1_c] = {};
 	}
 	auto operator=(IndexedFnDyn&& rhs) noexcept -> IndexedFnDyn& {
-		auto tmp = VEG_FWD(rhs);
 		{ auto cleanup = static_cast<IndexedFnDyn>(*this); }
-		raw = VEG_FWD(tmp.raw);
+		raw = VEG_FWD(rhs.raw);
+    rhs.raw[1_c] = {};
 	}
 
 	template <int _>

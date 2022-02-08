@@ -643,14 +643,13 @@ public:
 
 	VEG_INLINE VecIncomplete(VecIncomplete&&) = default;
 	VEG_INLINE auto operator=(VecIncomplete&& rhs) -> VecIncomplete& {
-		auto tmp = VEG_FWD(rhs);
 		{ auto cleanup = static_cast<VecIncomplete&&>(*this); }
 
 		// can't fail
 		this->alloc_mut(unsafe).get() =
-				static_cast<A&&>(tmp.alloc_mut(unsafe).get());
-		this->raw_mut(unsafe).get() = tmp.raw_ref().get();
-		tmp.raw_mut(unsafe).get() = {};
+				static_cast<A&&>(rhs.alloc_mut(unsafe).get());
+		this->raw_mut(unsafe).get() = rhs.raw_ref().get();
+		rhs.raw_mut(unsafe).get() = {};
 
 		return *this;
 	};

@@ -176,13 +176,12 @@ struct BoxIncomplete {
 	}
 
 	VEG_INLINE auto operator=(BoxIncomplete&& rhs) noexcept -> BoxIncomplete& {
-		BoxIncomplete tmp = VEG_FWD(rhs);
 		{ auto cleanup = static_cast<BoxIncomplete&&>(*this); }
 		this->alloc_mut(unsafe).get() =
-				static_cast<A&&>(tmp.alloc_mut(unsafe).get());
-		this->data_mut(unsafe).get() = tmp.ptr_mut();
+				static_cast<A&&>(rhs.alloc_mut(unsafe).get());
+		this->data_mut(unsafe).get() = rhs.ptr_mut();
 
-		tmp.data_mut(unsafe).get() = nullptr;
+		rhs.data_mut(unsafe).get() = nullptr;
 		return *this;
 	}
 
