@@ -53,7 +53,7 @@ TEST_CASE("option: all") {
 	STATIC_ASSERT_IF_14(j.as_ref().map_or(B{}, 2000.) == 2000.);
 	STATIC_ASSERT_IF_14(i.as_ref().map_or(B{}, 2000.) == 2000. / 3);
 	STATIC_ASSERT_IF_17(
-			bool(i.as_ref().map([](Ref<int> k) { return 2.0 * *k; }) == some(6.0)));
+			bool(i.as_ref().map([](Ref<int> k) -> double { return 2.0 * *k; }) == some(6.0)));
 
 	STATIC_ASSERT_IF_14(Option<int>{some, 0}.as_ref().and_then(A{}).is_none());
 	STATIC_ASSERT_IF_14(

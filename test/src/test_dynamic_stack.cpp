@@ -1,4 +1,4 @@
-#define __VEG_DISABLE_NOEXCEPT
+#define __VEG_DISABLE_NOEXCEPT /* NOLINT */
 #include "veg/memory/dynamic_stack.hpp"
 #include <doctest.h>
 

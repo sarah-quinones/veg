@@ -18,7 +18,9 @@ auto main(int argc, char** argv) -> int {
 	    (std::strcmp(argv[argc - 2], argname) == 0)) {
 		std::FILE* _{};
 		_ = std::freopen("/dev/null", "w", stderr);
+		(void)_;
 		_ = std::freopen("/dev/null", "w", stdout);
+		(void)_;
 	} else {
 		backward::SignalHandling const sh;
 	}

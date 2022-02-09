@@ -237,9 +237,9 @@ TEST_CASE("OptionLifetimeTest: Contains") {
 }
 
 TEST_CASE("OptionTest: Exists") {
-	auto const even = [](Ref<int> x) { return *x % 2 == 0; };
+	auto const even = [](Ref<int> x) -> bool { return *x % 2 == 0; };
 
-	auto const all_even = [&](Ref<vector<int>> x) {
+	auto const all_even = [&](Ref<vector<int>> x) -> bool {
 		return std::all_of( //
 				x->begin(),
 				x->end(),
@@ -379,15 +379,17 @@ TEST_CASE("OptionLifetimeTest: Unwrap") {
 
 TEST_CASE("OptionLifetimeTest: Map") {
 	auto a = some(make_mv<0>());
-	CHECK_NOTHROW(
-			VEG_FWD(a).map([](MoveOnly<0> r) { return r; }).unwrap().done());
+	CHECK_NOTHROW(VEG_FWD(a)
+	                  .map([](MoveOnly<0> r) -> MoveOnly<0> { return r; })
+	                  .unwrap()
+	                  .done());
 }
 
 TEST_CASE("OptionTest: FnMutMap") {
 	auto fnmut_a = FnMut();
 	{
-		auto a1_ = some(90).map([&](int i) { return fnmut_a(VEG_FWD(i)); });
-		auto a2_ = some(90).map([&](int i) { return fnmut_a(VEG_FWD(i)); });
+		auto a1_ = some(90).map([&](int i) -> int { return fnmut_a(VEG_FWD(i)); });
+		auto a2_ = some(90).map([&](int i) -> int { return fnmut_a(VEG_FWD(i)); });
 		unused(a1_, a2_);
 	}
 
@@ -402,8 +404,8 @@ TEST_CASE("OptionTest: FnMutMap") {
 	CHECK(fnmut_a.call_times == 2);
 
 	auto const fnmut_b = FnMut();
-	auto b1_ = some(90).map([&](int i) { return fnmut_b(VEG_FWD(i)); });
-	auto b2_ = some(90).map([&](int i) { return fnmut_b(VEG_FWD(i)); });
+	auto b1_ = some(90).map([&](int i) -> int { return fnmut_b(VEG_FWD(i)); });
+	auto b2_ = some(90).map([&](int i) -> int { return fnmut_b(VEG_FWD(i)); });
 	CHECK(fnmut_b.call_times == 0);
 
 	auto fnconst = FnConst();
@@ -424,8 +426,10 @@ TEST_CASE("OptionTest: MapOrElse") {
 
 TEST_CASE("OptionLifetimeTest: MapOrElse") {
 	auto a = some(make_mv<0>());
-	auto fn = [](MoveOnly<0>&& /*unused*/) { return make_mv<0>(); };
-	auto fn_b = []() { return make_mv<0>(); };
+	auto fn = [](MoveOnly<0>&& /*unused*/) -> MoveOnly<0> {
+		return make_mv<0>();
+	};
+	auto fn_b = []() -> MoveOnly<0> { return make_mv<0>(); };
 	CHECK_NOTHROW(VEG_FWD(a).map_or_else(fn, fn_b).done());
 }
 
@@ -474,15 +478,15 @@ TEST_CASE("OptionLifetimeTest: MapOrElse") {
 //}
 
 TEST_CASE("OptionTest: Filter") {
-	auto is_even = [](Ref<int> num) { return *num % 2 == 0; };
-	auto is_odd = [&](Ref<int> num) { return !(is_even(num)); };
+	auto is_even = [](Ref<int> num) -> bool { return *num % 2 == 0; };
+	auto is_odd = [&](Ref<int> num) -> bool { return !(is_even(num)); };
 
 	CHECK(some(90).filter(is_even).unwrap() == 90);
 	CHECK(some(99).filter(is_odd).unwrap() == 99);
 
 	CHECK(Option<int>(none).filter(is_even).is_none());
 
-	auto all_odd = [&](Ref<vector<int>> vec) {
+	auto all_odd = [&](Ref<vector<int>> vec) -> bool {
 		return std::all_of( //
 				vec->begin(),
 				vec->end(),
@@ -623,28 +627,31 @@ TEST_CASE("OptionTest: Clone") {
 }
 
 TEST_CASE("OptionTest: OrElse") {
-	auto&& a = some(90.0F).or_else([]() { return some(0.5f); });
+	auto&& a = some(90.0F).or_else([]() -> Option<float> { return some(0.5F); });
 	CHECK(VEG_FWD(a).unwrap() == 90.0F);
 
-	auto&& b = Option<float>(none).or_else([]() { return some(0.5f); });
+	auto&& b =
+			Option<float>(none).or_else([]() -> Option<float> { return some(0.5F); });
 	CHECK(VEG_FWD(b).unwrap() == 0.5F);
 
-	auto&& c = Option<float>(none).or_else([]() { return Option<float>(none); });
+	auto&& c =
+			Option<float>(none).or_else([]() -> Option<float> { return none; });
 	CHECK(c.is_none());
 	//
 	//
-	auto&& d = some(vector<int>{1, 2, 3, 4, 5}).or_else([]() {
-		return some(vector<int>{6, 7, 8, 9, 10});
-	});
+	auto&& d =
+			some(vector<int>{1, 2, 3, 4, 5}).or_else([]() -> Option<vector<int>> {
+				return some(vector<int>{6, 7, 8, 9, 10});
+			});
 	CHECK(VEG_FWD(d).unwrap() == vector<int>{1, 2, 3, 4, 5});
 
-	auto&& e = Option<vector<int>>(none).or_else([]() {
+	auto&& e = Option<vector<int>>(none).or_else([]() -> Option<vector<int>> {
 		return some(vector<int>{6, 7, 8, 9, 10});
 	});
 	CHECK(VEG_FWD(e).unwrap() == vector<int>{6, 7, 8, 9, 10});
 
 	auto&& f = Option<vector<int>>(none).or_else(
-			[]() { return Option<vector<int>>(none); });
+			[]() -> Option<vector<int>> { return none; });
 	CHECK(f.is_none());
 }
 #include "veg/internal/epilogue.hpp"

@@ -88,7 +88,7 @@ struct CloneFn {
 	T const* in;
 	VEG_CPP14(constexpr)
 	VEG_INLINE auto operator()() VEG_NOEXCEPT_IF(NoThrow) -> T {
-		return mem::Cloner<C>::clone(VEG_FWD(cloner), ref(*in), VEG_FWD(alloc));
+		return mem::Cloner<C>::clone(cloner, ref(*in), alloc);
 	}
 };
 
@@ -102,12 +102,7 @@ struct CloneImpl<true> {
 			T* out_end,
 			T const* in) VEG_NOEXCEPT {
 		for (; out < out_end; ++out, ++in) {
-			mem::construct_with(
-					out,
-					CloneFn<true, T, A, C>{//
-			                           VEG_FWD(alloc),
-			                           VEG_FWD(cloner),
-			                           in});
+			mem::construct_with(out, CloneFn<true, T, A, C>{alloc, cloner, in});
 		}
 	}
 };
@@ -122,13 +117,13 @@ struct CloneImpl<false> {
 			T* out_end,
 			T const* in) VEG_NOEXCEPT_IF(false) {
 
-		Defer<Cleanup<T, A, C>> _{{VEG_FWD(alloc), VEG_FWD(cloner), out, out_end}};
+		Defer<Cleanup<T, A, C>> _{{alloc, cloner, out, out_end}};
 		for (; _.fn.ptr < _.fn.ptr_end; ++_.fn.ptr, ++in) {
 			mem::construct_with(
 					_.fn.ptr,
 					CloneFn<false, T, A, C>{
-							VEG_FWD(_.fn.alloc),
-							VEG_FWD(_.fn.cloner),
+							_.fn.alloc,
+							_.fn.cloner,
 							in,
 					});
 		}
@@ -141,7 +136,7 @@ void slice_clone(
 		RefMut<A> alloc, RefMut<C> cloner, T* out, T* out_end, T const* in)
 		VEG_NOEXCEPT_IF(VEG_CONCEPT(alloc::nothrow_clone<C, T, A>)) {
 	CloneImpl<VEG_CONCEPT(alloc::nothrow_clone<C, T, A>)>::fn(
-			VEG_FWD(alloc), VEG_FWD(cloner), out, out_end, in);
+			alloc, cloner, out, out_end, in);
 }
 
 template <typename T, typename A, typename C>
@@ -154,10 +149,10 @@ void slice_clone_from(
 			break;
 		}
 		mem::Cloner<C>::clone_from( //
-				VEG_FWD2(cloner),
+				RefMut<C>(cloner),
 				mut(*out),
 				ref(*in),
-				VEG_FWD2(alloc));
+				RefMut<A>(alloc));
 		++out;
 		++in;
 	}
@@ -202,7 +197,7 @@ struct AllocCleanup {
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(alloc::nothrow_dealloc<A>)) {
 		if (data != nullptr) {
 			mem::Alloc<A>::dealloc(
-					VEG_FWD(alloc), static_cast<void*>(data), mem::Layout(layout));
+					RefMut<A>(alloc), static_cast<void*>(data), mem::Layout(layout));
 		}
 	}
 };
@@ -214,19 +209,19 @@ auto alloc_and_copy(RefMut<A> alloc, RefMut<C> cloner, T const* data, usize len)
 				VEG_CONCEPT(alloc::nothrow_clone<C, T, A>)) -> mem::AllocBlock {
 
 	mem::AllocBlock block = mem::Alloc<A>::alloc(
-			VEG_FWD(alloc), mem::Layout{sizeof(T) * usize(len), alignof(T)});
+			RefMut<A>(alloc), mem::Layout{sizeof(T) * usize(len), alignof(T)});
 
 	// if copying fails, this takes care of deallocating
 	Defer<AllocCleanup<A>> _{{
-			VEG_FWD(alloc),
+			alloc,
 			block.data,
 			mem::Layout{block.byte_cap, alignof(T)},
 	}};
 
 	// copy construct elements
 	_collections::slice_clone(
-			VEG_FWD(_.fn.alloc),
-			VEG_FWD(cloner),
+			_.fn.alloc,
+			cloner,
 			static_cast<T*>(block.data),
 			static_cast<T*>(block.data) + len,
 			data);
@@ -253,30 +248,30 @@ auto realloc_and_append( //
 
 	if (out.byte_cap >= (in_len + out_len) * sizeof(T)) {
 		mem::AllocBlock block = mem::Alloc<A>::grow(
-				VEG_FWD(alloc),
-				VEG_FWD(out.data),
+				RefMut<A>(alloc),
+				static_cast<void*>(out.data),
 				mem::Layout{out.byte_cap, alignof(T)},
 				out_len * sizeof(T),
 				mem::RelocFn{collections::relocate_pointer<T>::value});
 
 		// if copying fails, this takes care of deallocating
 		Defer<AllocCleanup<A>> _{{
-				VEG_FWD(alloc),
+				alloc,
 				block.data,
 				mem::Layout{block.byte_cap, alignof(T)},
 		}};
 		// if copying fails, this takes care of destroying
 		Defer<Cleanup<T, A, C>> destroy{{
-				VEG_FWD(_.fn.alloc),
-				VEG_FWD(cloner),
+				_.fn.alloc,
+				cloner,
 				static_cast<T*>(block.data),
 				static_cast<T*>(block.data) + out_len,
 		}};
 
 		// copy construct elements
 		_collections::slice_clone( //
-				VEG_FWD(destroy.fn.alloc),
-				VEG_FWD(destroy.fn.cloner),
+				destroy.fn.alloc,
+				destroy.fn.cloner,
 				static_cast<T*>(block.data) + out_len,
 				static_cast<T*>(block.data) + in_len,
 				in);
@@ -289,8 +284,8 @@ auto realloc_and_append( //
 	} else {
 		// copy construct elements
 		_collections::slice_clone( //
-				VEG_FWD(alloc),
-				VEG_FWD(cloner),
+				alloc,
+				cloner,
 				static_cast<T*>(out.data) + out_len,
 				static_cast<T*>(out.data) + in_len,
 				in);
@@ -324,8 +319,7 @@ struct CloneFromImpl<false> {
 			T* data_end = lhs_copy.end;
 
 			// clean up old alloc
-			_collections::backward_destroy(
-					VEG_FWD(lhs_alloc), VEG_FWD(cloner), data, data_end);
+			_collections::backward_destroy(lhs_alloc, cloner, data, data_end);
 
 			// assign before deallocation in case it fails
 			lhs_raw = {};
@@ -334,7 +328,7 @@ struct CloneFromImpl<false> {
 			// don't need to deallocate on backward_destroy failure, since lhs can
 			// still access and reuse the allocation
 			mem::Alloc<A>::dealloc( //
-					VEG_FWD(lhs_alloc),
+					RefMut<A>(lhs_alloc),
 					static_cast<void*>(data),
 					mem::Layout{
 							(lhs_copy.end_alloc - lhs_copy.data) * sizeof(T), alignof(T)});
@@ -345,8 +339,8 @@ struct CloneFromImpl<false> {
 		if (lhs_raw.data == nullptr) {
 			usize len = rhs_raw.end - rhs_raw.data;
 
-			mem::AllocBlock blk = _collections::alloc_and_copy(
-					VEG_FWD(lhs_alloc), VEG_FWD(cloner), rhs_raw.data, len);
+			mem::AllocBlock blk =
+					_collections::alloc_and_copy(lhs_alloc, cloner, rhs_raw.data, len);
 			T* data = static_cast<T*>(blk.data);
 			lhs_raw = {
 					data,
@@ -359,8 +353,8 @@ struct CloneFromImpl<false> {
 		usize assign_len = _detail::min2(lhs_copy.len(), rhs_raw.len());
 		// copy assign until the shared len
 		_collections::slice_clone_from( //
-				VEG_FWD(lhs_alloc),
-				VEG_FWD(cloner),
+				lhs_alloc,
+				cloner,
 				lhs_copy.data,
 				lhs_copy.data + assign_len,
 				rhs_raw.data);
@@ -368,8 +362,8 @@ struct CloneFromImpl<false> {
 		// destroy from the shared len until end of lhs
 		lhs_raw.end = lhs_raw.data + assign_len;
 		_collections::backward_destroy( //
-				VEG_FWD(lhs_alloc),
-				VEG_FWD(cloner),
+				lhs_alloc,
+				cloner,
 				lhs_copy.data + assign_len,
 				lhs_copy.end);
 
@@ -378,8 +372,8 @@ struct CloneFromImpl<false> {
 		lhs_raw = {};
 		// realloc and copy construct new elements until end of rhs
 		mem::AllocBlock block = _collections::realloc_and_append(
-				VEG_FWD(lhs_alloc),
-				VEG_FWD(cloner),
+				lhs_alloc,
+				cloner,
 				mem::AllocBlock{
 						lhs_copy.data,
 						(lhs_copy.end_alloc - lhs_copy.data) * sizeof(T),
@@ -422,7 +416,7 @@ struct CloneFromImpl<true> {
 			// assign before deallocation in case it fails
 			lhs_raw = {};
 			mem::Alloc<A>::dealloc( //
-					VEG_FWD(lhs_alloc),
+					RefMut<A>(lhs_alloc),
 					static_cast<void*>(data),
 					mem::Layout{cap * sizeof(T), alignof(T)});
 			lhs_copy = {};
@@ -433,16 +427,16 @@ struct CloneFromImpl<true> {
 		// allocate and copy all elements
 		if (need_to_realloc) {
 			mem::AllocBlock block = _collections::alloc_and_copy( //
-					VEG_FWD(lhs_alloc),
-					VEG_FWD(cloner),
+					lhs_alloc,
+					cloner,
 					rhs_raw.data,
 					rhs_raw.len);
 			lhs_raw.data = block.data;
 			lhs_raw.cap = block.byte_cap / sizeof(T);
 		} else {
 			_collections::slice_clone( //
-					VEG_FWD(lhs_alloc),
-					VEG_FWD(cloner),
+					lhs_alloc,
+					cloner,
 					lhs_copy.data,
 					lhs_copy.data + rhs_raw.len,
 					rhs_raw.data);
@@ -465,7 +459,7 @@ VEG_INLINE void clone_from(
 				VEG_CONCEPT(alloc::nothrow_clone_from<C, T, A>)) {
 	_collections::
 			CloneFromImpl<mem::Cloner<C>::template trivial_clone<T>::value>::fn(
-					VEG_FWD(lhs_alloc), VEG_FWD(cloner), lhs_raw, rhs_alloc, rhs_raw);
+					lhs_alloc, cloner, lhs_raw, rhs_alloc, rhs_raw);
 }
 } // namespace _collections
 } // namespace _detail
@@ -583,7 +577,7 @@ private:
 
 		mem::AllocBlock new_block = mem::Alloc<A>::grow(
 				this->alloc_mut(unsafe),
-				VEG_FWD(raw.data),
+				static_cast<void*>(raw.data),
 				mem::Layout{
 						usize(byte_capacity()),
 						alignof(T),
@@ -634,12 +628,12 @@ public:
 			Unsafe /*unsafe*/,
 			FromRawParts /*tag*/,
 			vector::RawVector<T> rawvec,
-			A alloc) VEG_NOEXCEPT : _{
-																	tuplify,
-																	VEG_FWD(alloc),
-																	_detail::_vector::RawVectorMoveRaii<T>{
-																			from_raw_parts, VEG_FWD(rawvec)},
-															} {}
+			A alloc) VEG_NOEXCEPT
+			: _{
+						tuplify,
+						VEG_FWD(alloc),
+						_detail::_vector::RawVectorMoveRaii<T>{from_raw_parts, rawvec},
+				} {}
 
 	VEG_INLINE VecIncomplete(VecIncomplete&&) = default;
 	VEG_INLINE auto operator=(VecIncomplete&& rhs) -> VecIncomplete& {

@@ -164,8 +164,8 @@ TEST_CASE("move") {
 	v1.push(5);
 
 	auto v2 = VEG_FWD(v1);
-	REQUIRE(v1.ptr() == nullptr);
-	REQUIRE(v1.len() == 0);
+	REQUIRE(v1.ptr() == nullptr); // NOLINT(clang-analyzer-cplusplus.Move)
+	REQUIRE(v1.len() == 0);       // NOLINT(clang-analyzer-cplusplus.Move)
 	REQUIRE(v2.len() == 5);
 
 	REQUIRE(v2[0] == 1);

@@ -1,7 +1,10 @@
 ---
 Checks:          '*,-abseil-*,-fuchsia-*,-google-*,-llvm-*,-zircon-*,-altera-*,
                   -bugprone-easily-swappable-parameters,
+                  -bugprone-reserved-identifier,
                   -cert-dcl21-cpp,
+                  -cert-dcl37-c,
+                  -cert-dcl51-cpp,
                   -cert-dcl59-cpp,
                   -clang-diagnostic-c++98-compat-pedantic,
                   -clang-diagnostic-unused-macros,
@@ -22,6 +25,7 @@ Checks:          '*,-abseil-*,-fuchsia-*,-google-*,-llvm-*,-zircon-*,-altera-*,
                   -cppcoreguidelines-pro-type-vararg,
 
                   -hicpp-avoid-c-arrays,
+                  -hicpp-exception-baseclass,
                   -hicpp-explicit-conversions,
                   -hicpp-member-init,
                   -hicpp-noexcept-move,
