@@ -847,7 +847,7 @@ private:
 	static constexpr StrLiteral<isize(sizeof...(Cs))> literal = {{Cs...}};
 
 public:
-	VEG_INLINE constexpr auto slice() const noexcept -> Slice<CharUnit>;
+	VEG_INLINE constexpr auto as_slice() const noexcept -> Slice<CharUnit>;
 };
 
 template <CharUnit... Cs>

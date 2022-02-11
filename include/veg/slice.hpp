@@ -108,6 +108,11 @@ struct SliceMut : private Slice<T> {
 	using Slice<T>::len;
 	using Slice<T>::get_unchecked;
 
+	VEG_NODISCARD VEG_INLINE constexpr auto as_const() const noexcept
+			-> Slice<T> {
+		return *this;
+	}
+
 	VEG_NODISCARD
 	VEG_INLINE
 	constexpr auto operator[](isize idx) VEG_NOEXCEPT -> T& {

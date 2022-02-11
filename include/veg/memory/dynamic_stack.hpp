@@ -338,10 +338,12 @@ public:
 	}
 
 	VEG_NODISCARD auto ptr_mut() VEG_NOEXCEPT -> T* {
-		return static_cast<T*>(const_cast<void*>(Base::data));
+		return /* NOLINT(clang-analyzer-core.uninitialized.UndefReturn) */
+				static_cast<T*>(const_cast<void*>(Base::data));
 	}
 	VEG_NODISCARD auto ptr() const VEG_NOEXCEPT -> T const* {
-		return static_cast<T const*>(const_cast<void const*>(Base::data));
+		return /* NOLINT(clang-analyzer-core.uninitialized.UndefReturn) */
+				static_cast<T const*>(const_cast<void const*>(Base::data));
 	}
 	VEG_NODISCARD auto len() const VEG_NOEXCEPT -> isize {
 		return isize(Base::len);

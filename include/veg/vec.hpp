@@ -165,7 +165,7 @@ auto relocate(void* out, void const* in, usize nbytes) noexcept -> void* {
 	usize n = nbytes / sizeof(T);
 
 	for (usize i = 0; i < n; ++i) {
-		out_T[i] = static_cast<T&&>(in_T[i]);
+		mem::construct_at(out_T + i, static_cast<T&&>(in_T[i]));
 		in_T[i].~T();
 	}
 
@@ -180,7 +180,7 @@ auto relocate_backward(void* out, void const* in, usize nbytes) noexcept
 	usize n = nbytes / sizeof(T);
 
 	for (usize i = 0; i < n; ++i) {
-		out_T[n - i - 1] = static_cast<T&&>(in_T[n - i - 1]);
+		mem::construct_at(out_T + (n - i - 1), static_cast<T&&>(in_T[n - i - 1]));
 		in_T[n - i - 1].~T();
 	}
 
@@ -764,14 +764,16 @@ public:
 	VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(alloc::nothrow_grow<A>) &&
 			VEG_CONCEPT(nothrow_constructible<T>)) {
-		__VEG_ASAN_ANNOTATE();
 
 		vector::RawVector<T>& raw = raw_mut(unsafe).get();
 
 		if (n > len()) {
 			reserve(n);
-			::new (static_cast<void*>(ptr_mut() + len())) T[usize(n - len())]{};
-			raw.end = raw.data + n;
+			{
+				__VEG_ASAN_ANNOTATE();
+				::new (static_cast<void*>(ptr_mut() + len())) T[usize(n - len())]{};
+				raw.end = raw.data + n;
+			}
 		} else {
 			pop_several_unchecked(unsafe, len() - n);
 		}
@@ -785,14 +787,16 @@ public:
 	VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(alloc::nothrow_grow<A>) &&
 			VEG_CONCEPT(nothrow_constructible<T>)) {
-		__VEG_ASAN_ANNOTATE();
 
 		vector::RawVector<T>& raw = raw_mut(unsafe).get();
 
 		if (n > len()) {
 			reserve(n);
-			::new (static_cast<void*>(ptr_mut() + len())) T[usize(n - len())];
-			raw.end = raw.data + n;
+			{
+				__VEG_ASAN_ANNOTATE();
+				::new (static_cast<void*>(ptr_mut() + len())) T[usize(n - len())];
+				raw.end = raw.data + n;
+			}
 		} else {
 			pop_several_unchecked(unsafe, len() - n);
 		}
@@ -807,20 +811,22 @@ public:
 	VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_fn_once<Fn, T>) &&
 			VEG_CONCEPT(alloc::nothrow_alloc<A>)) {
-		__VEG_ASAN_ANNOTATE();
 		static_assert(VEG_CONCEPT(nothrow_fn_once<Fn, T>), ".");
 
 		VEG_ASSERT_ALL_OF(0 <= i, i <= len());
 
 		reserve(len() + 1);
-		vector::RawVector<T>& raw = this->raw_mut(unsafe).get();
-		T* elem = raw.data + i;
-		_detail::_collections::relocate_backward<T>( //
-				elem + 1,
-				elem,
-				sizeof(T) * usize(raw.end - elem));
-		mem::construct_with(elem, VEG_FWD(fn));
-		++raw.end;
+		{
+			__VEG_ASAN_ANNOTATE();
+			vector::RawVector<T>& raw = this->raw_mut(unsafe).get();
+			T* elem = raw.data + i;
+			_detail::_collections::relocate_backward<T>( //
+					elem + 1,
+					elem,
+					sizeof(T) * usize(raw.end - elem));
+			mem::construct_with(elem, VEG_FWD(fn));
+			++raw.end;
+		}
 	}
 	VEG_INLINE void push_mid(T value, isize i) VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_movable<T>) && VEG_CONCEPT(alloc::nothrow_alloc<A>)) {
