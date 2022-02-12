@@ -1,6 +1,6 @@
 #include <veg/internal/parse.hpp>
+#include <veg/vec.hpp>
 #include <cstdio>
-#include <string>
 
 namespace veg {
 namespace _detail {
@@ -390,7 +390,8 @@ auto greedy_parse_entity(StrView str) noexcept -> Tuple<Entity, StrView> {
 							type_parse::find_matching({from_literal, ","}, inside_angled));
 					assert(comma_and_after.begins_with({from_literal, ","}));
 					return tuplify(
-							type_parse::parse_entity(comma_and_after.skip_leading(1)), after.skip_leading(1));
+							type_parse::parse_entity(comma_and_after.skip_leading(1)),
+							after.skip_leading(1));
 				}
 			}
 		}
@@ -791,14 +792,22 @@ void print_decl_to(RefMut<Out> out, FunctionDecl decl) noexcept {
 			0);
 }
 
-void function_decl_to_str(RefMut<std::string> str, FunctionDecl decl) noexcept {
+void function_decl_to_str(RefMut<Vec<char>> str, FunctionDecl decl) noexcept {
 	struct StringWrapper {
-		std::string _;
-		void append_c(char c) noexcept { _ += c; }
-		void append(char const* s, usize n) noexcept { _.append(s, n); }
-		void append_n(char c, usize n) noexcept { _.append(n, c); }
+		Vec<char> _;
+		void append_c(char c) noexcept { _.push(c); }
+		void append(char const* s, usize n) noexcept {
+			isize old_len = _.len();
+			_.resize_for_overwrite(old_len + isize(n));
+			std::memcpy(_.ptr_mut() + old_len, s, n);
+		}
+		void append_n(char c, usize n) noexcept {
+			isize old_len = _.len();
+			_.resize_for_overwrite(old_len + isize(n));
+			::memset(_.ptr_mut() + old_len, c, n);
+		}
 	};
-	auto tmp = StringWrapper{static_cast<std::string&&>(*str)};
+	auto tmp = StringWrapper{static_cast<Vec<char>&&>(*str)};
 	type_parse::print_decl_to(mut(tmp), VEG_FWD(decl));
 	*str = VEG_FWD(tmp._);
 }

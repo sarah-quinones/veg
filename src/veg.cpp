@@ -7,39 +7,29 @@
 #include <cstring>
 
 #include <exception>
-#include <string>
 #include <new>
 #include "veg/internal/prologue.hpp"
 
-#ifdef __unix__
-#include <unistd.h>
-
-#define ISATTY ::isatty
-#define FILENO ::fileno
-#else
-
-#ifndef __APPLE__
-#include <io.h>
-#define ISATTY ::_isatty
-#define FILENO ::_fileno
-#else
+#ifdef __APPLE__
 #include <sys/uio.h>
-#include <unistd.h>
-#define ISATTY ::isatty
-#define FILENO ::fileno
 #endif
 
+#if defined(__unix__) || defined(__APPLE__)
+#include <unistd.h>
+#define HAS_COLOR_CHECK 1
+#else
+#define HAS_COLOR_CHECK 0
 #endif
 
 namespace veg {
 namespace _detail {
 void write_utf8_to(std::FILE* f, char const* ptr, usize len) noexcept {
-  // TODO: handle utf8 on windows
+	// TODO: handle utf8 on windows
 	std::fwrite(ptr, 1, len, f);
 }
 
 namespace type_parse {
-void function_decl_to_str(RefMut<std::string> str, FunctionDecl decl) noexcept;
+void function_decl_to_str(RefMut<Vec<char>> str, FunctionDecl decl) noexcept;
 } // namespace type_parse
 [[noreturn]] void terminate() VEG_ALWAYS_NOEXCEPT {
 	std::terminate();
@@ -55,7 +45,7 @@ void String::fprintln(std::FILE* f) const VEG_ALWAYS_NOEXCEPT {
 	_detail::write_utf8_to(f, self.ptr, self.len);
 	std::fputc('\n', f);
 }
-void String::reserve(usize new_cap) {
+void String::reserve(usize new_cap) noexcept {
 	if (new_cap > self.cap) {
 		auto* new_alloc = static_cast<char*>(std::realloc(self.ptr, new_cap));
 		if (new_alloc == nullptr) {
@@ -65,11 +55,11 @@ void String::reserve(usize new_cap) {
 		self.cap = new_cap;
 	}
 }
-void String::resize(usize new_len) {
+void String::resize(usize new_len) noexcept {
 	reserve(new_len);
 	self.len = new_len;
 }
-void String::insert(usize pos, char const* data_, usize len) {
+void String::insert(usize pos, char const* data_, usize len) noexcept {
 	usize old_size = size();
 	usize pre_new_size = len + old_size;
 	usize new_size =
@@ -81,11 +71,12 @@ void String::insert(usize pos, char const* data_, usize len) {
 		std::memmove(data() + pos, data_, std::size_t(len));
 	}
 }
-void String::insert_newline(usize pos) {
-	insert(pos, mem::addressof('\n'), 1);
+
+void String::insert_newline(usize pos) noexcept {
+	append_literal("\n");
 	++pos;
 	for (usize i = 0; i < indent_level; ++i) {
-		insert(pos, mem::addressof('\t'), 1);
+		append_literal(u8"\t");
 		++pos;
 	}
 }
@@ -119,39 +110,55 @@ auto ByteStringView::operator==(ByteStringView other) const VEG_ALWAYS_NOEXCEPT
 ByteStringView::ByteStringView(char const* str) VEG_ALWAYS_NOEXCEPT
 		: ByteStringView{str, std::strlen(str)} {}
 
-struct color_t {
+struct Color {
 	std::uint8_t r;
 	std::uint8_t g;
 	std::uint8_t b;
 };
 
-constexpr color_t default_color = {0, 0, 0};
-constexpr color_t olive = {128, 128, 0};
-constexpr color_t orange_red = {255, 69, 0};
-constexpr color_t azure = {240, 255, 255};
-constexpr color_t gray = {128, 128, 128};
+constexpr Color default_color = {0, 0, 0};
+constexpr Color olive = {128, 128, 0};
+constexpr Color orange_red = {255, 69, 0};
+constexpr Color azure = {240, 255, 255};
+constexpr Color gray = {128, 128, 128};
 
-auto with_color(color_t c, std::string s) -> std::string {
-	if (!ISATTY(FILENO(stderr))) {
+auto with_color(Color c, Vec<char> s) -> Vec<char> {
+#if defined(HAS_COLOR_CHECK)
+
+	if (::isatty(::fileno(stderr)) == 0) {
 		return s;
 	}
-	s = "\x1b[38;2;000;000;000m" + VEG_FWD(s) + "\x1b[0m";
+	auto& prefix = u8"\x1b[38;2;000;000;000m";
+	auto& suffix = u8"\x1b[0m";
 
-	size_t i = 7;
-	s[i++] = char('0' + c.r / 100);
-	s[i++] = char('0' + (c.r % 100) / 10);
-	s[i++] = char('0' + (c.r % 10));
+	auto old_len = s.len();
+	s.resize_for_overwrite(
+			old_len + isize{sizeof(prefix)} + isize{sizeof(suffix)});
+
+	std::memmove(s.ptr_mut() + sizeof(prefix), s.ptr(), old_len);
+	std::memcpy(s.ptr_mut(), prefix, sizeof(prefix));
+	std::memcpy(
+			s.ptr_mut() + (isize{sizeof(prefix)} + old_len), suffix, sizeof(suffix));
+
+	isize i = 7;
+
+	auto zero = char(u8"0"[0]);
+
+	s[i++] = char(zero + c.r / 100);
+	s[i++] = char(zero + (c.r % 100) / 10);
+	s[i++] = char(zero + (c.r % 10));
 	++i;
 
-	s[i++] = char('0' + c.g / 100);
-	s[i++] = char('0' + (c.g % 100) / 10);
-	s[i++] = char('0' + (c.g % 10));
+	s[i++] = char(zero + c.g / 100);
+	s[i++] = char(zero + (c.g % 100) / 10);
+	s[i++] = char(zero + (c.g % 10));
 	++i;
 
-	s[i++] = char('0' + c.b / 100);
-	s[i++] = char('0' + (c.b % 100) / 10);
-	s[i++] = char('0' + (c.b % 10));
+	s[i++] = char(zero + c.b / 100);
+	s[i++] = char(zero + (c.b % 100) / 10);
+	s[i++] = char(zero + (c.b % 10));
 
+#endif
 	return s;
 }
 
@@ -160,8 +167,8 @@ struct assertion_data {
 	ByteStringView expr;
 	ByteStringView callback;
 	ByteStringView op;
-	std::string lhs;
-	std::string rhs;
+	Vec<char> lhs;
+	Vec<char> rhs;
 };
 
 thread_local Vec<assertion_data>
@@ -174,8 +181,20 @@ cleanup::~cleanup() VEG_ALWAYS_NOEXCEPT {
 
 using std::size_t;
 
-auto to_owned(ByteStringView ref) -> std::string {
-	return {ref.data(), static_cast<std::size_t>(ref.size())};
+auto to_owned(ByteStringView ref) -> Vec<char> {
+	Vec<char> rv;
+	rv.resize_for_overwrite(isize(ref.size()));
+	std::memcpy(rv.ptr_mut(), ref.data(), ref.size());
+	;
+	return rv;
+}
+template <usize N>
+auto to_owned(char const (&ref)[N]) -> Vec<char> {
+	return to_owned(ByteStringView{ref, N - 1});
+}
+template <usize N>
+auto to_slice(char const (&ref)[N]) -> Slice<char> {
+	return {unsafe, from_raw_parts, ref, N};
 }
 
 auto find(ByteStringView sv, char c) -> char const* {
@@ -188,45 +207,78 @@ auto find(ByteStringView sv, char c) -> char const* {
 	return it;
 }
 
+void append(RefMut<Vec<char>> a, Slice<char> b) {
+	auto old_len = a->len();
+	a->resize_for_overwrite(old_len + b.len());
+	std::memcpy(a->ptr_mut() + old_len, b.ptr(), b.len());
+}
+void append_num(RefMut<Vec<char>> a, long long arg) {
+	auto len = isize(std::snprintf(nullptr, 0, "%lld", arg));
+
+	auto old_len = a->len();
+	a->resize_for_overwrite(old_len + len + 1);
+	std::snprintf(a->ptr_mut() + old_len, len + 1, "%lld", arg);
+	a->resize_for_overwrite(old_len + len);
+}
+
 auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
-		-> std::string {
+		-> Vec<char> {
 	auto _clear = [&] { failed_asserts.clear(); };
 	auto&& clear = defer(_clear);
 	(void)clear;
 
-	std::string output;
+	Vec<char> output;
+	auto ln = to_slice("\n");
 
-	output += '\n';
-	output += with_color(
-			olive,
-			"========================================"
-			"=======================================");
-	output += '\n';
-	output += with_color(orange_red, std::to_string(failed_asserts.len()));
-	output += " assertion";
+	append(mut(output), ln);
+	auto print_separator = [&]() noexcept -> void {
+		append(
+				mut(output),
+				with_color(
+						olive,
+						to_owned("========================================"
+		                 "======================================="))
+						.as_ref());
+	};
+	print_separator();
+
+	append(mut(output), ln);
+	append_num(mut(output), failed_asserts.len());
+	append(mut(output), to_slice(" assertion"));
+
 	if (failed_asserts.len() > 1) {
-		output += 's';
+		append(mut(output), to_slice("s"));
 	}
-	output += ' ';
-	output += "failed";
-	output += '\n';
+
+	append(mut(output), to_slice(" failed\n"));
+
 	if (func.size() > 0) {
-		output += "in function:\n";
-		output += to_owned(func);
-		output += '\n';
-		output +=
-				with_color(gray, to_owned(file) + (':' + std::to_string(line)) + ':');
-		output += '\n';
+		append(mut(output), to_slice("in function:\n"));
+		append(
+				mut(output), {unsafe, from_raw_parts, func.data(), isize(func.size())});
+
+		append(mut(output), ln);
+
+		{
+			auto tmp = to_owned(file);
+			append(mut(tmp), to_slice(":"));
+			append_num(mut(tmp), line);
+			append(mut(tmp), to_slice(":"));
+			append(mut(output), with_color(gray, VEG_FWD(tmp)).as_ref());
+		}
+
+		append(mut(output), ln);
+
 		veg::_detail::type_parse::function_decl_to_str(
 				mut(output),
 				veg::_detail::type_parse::parse_function_decl({
 						from_raw_parts,
 						{func.data(), func.size()},
 				}));
-		output += '\n';
+		append(mut(output), ln);
 	}
 
-	char const* separator = "";
+	auto separator = to_slice("");
 
 	for (isize i = 0; i < failed_asserts.len(); ++i) {
 		auto& a = failed_asserts[i];
@@ -234,20 +286,19 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 		char const* newline = find(msg, '\n');
 		bool multiline = newline != nullptr;
 
-		output += separator;
+		append(mut(output), separator);
 
 		if (is_fatal) {
-			output += with_color(orange_red, "fatal ");
+			append(mut(output), with_color(orange_red, to_owned("fatal ")).as_ref());
 		}
-		output += "assertion ";
-		output += '`';
-		output += with_color(orange_red, to_owned(a.expr));
-		output += '\'';
-		output += " failed:";
+		append(mut(output), to_slice("assertion `"));
+
+		append(mut(output), with_color(orange_red, to_owned(a.expr)).as_ref());
+		append(mut(output), to_slice("' failed:"));
 
 		if (!multiline) {
-			output += ' ';
-			output += to_owned(msg);
+			append(mut(output), to_slice(" "));
+			append(mut(output), to_owned(msg).as_ref());
 		} else {
 			char const* b = msg.data();
 			char const* e = newline;
@@ -255,8 +306,8 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 
 			while (b != end) {
 
-				output += "\n > ";
-				output += {b, e};
+				append(mut(output), to_slice("\n > "));
+				append(mut(output), {unsafe, from_raw_parts, b, e - b});
 
 				if (e == end) {
 					b = end;
@@ -267,31 +318,32 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 			}
 		}
 
-		output += "\nassertion expands to: `";
-		output += with_color(orange_red, a.lhs + to_owned(a.op) + a.rhs);
-		output += '\'';
-		output += '\n';
-		separator = "\n";
+		append(mut(output), to_slice("\nassertion expands to: `"));
+		{
+			Vec<char> tmp{a.lhs};
+			append(mut(tmp), to_owned(a.op).as_ref());
+			append(mut(tmp), a.rhs.as_ref());
+			append(mut(output), with_color(orange_red, VEG_FWD(tmp)).as_ref());
+		}
+		append(mut(output), to_slice("'\n"));
+		separator = to_slice("\n");
 	}
 
-	output += with_color(
-			olive,
-			"========================================"
-			"=======================================");
-	output += '\n';
+	print_separator();
+	append(mut(output), ln);
 
 	return output;
 }
 
 void on_expect_fail(long line, ByteStringView file, ByteStringView func) {
 	auto str = on_fail(line, file, func, false);
-	_detail::write_utf8_to(stderr, str.data(), str.size());
+	_detail::write_utf8_to(stderr, str.ptr(), str.len());
 }
 
 [[noreturn]] void
 on_assert_fail(long line, ByteStringView file, ByteStringView func) {
 	auto str = on_fail(line, file, func, true);
-	_detail::write_utf8_to(stderr, str.data(), str.size());
+	_detail::write_utf8_to(stderr, str.ptr(), str.len());
 	std::terminate();
 }
 
@@ -311,13 +363,21 @@ void set_assert_params1( //
 	auto&& clear = defer(_clear);
 	(void)clear;
 
+	auto lhs_vec = Vec<char>{};
+	auto rhs_vec = Vec<char>{};
+
+	lhs_vec.resize_for_overwrite(isize(lhs.size()));
+	rhs_vec.resize_for_overwrite(isize(rhs.size()));
+	std::memcpy(lhs_vec.ptr_mut(), lhs.data(), lhs.size());
+	std::memcpy(rhs_vec.ptr_mut(), rhs.data(), rhs.size());
+
 	failed_asserts.push({
 			false,
 			ByteStringView{"", 0},
 			empty_str,
 			op,
-			std::string{lhs.data(), static_cast<std::size_t>(lhs.size())},
-			std::string{rhs.data(), static_cast<std::size_t>(rhs.size())},
+			VEG_FWD(lhs_vec),
+			VEG_FWD(rhs_vec),
 	});
 
 	success = true;

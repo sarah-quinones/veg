@@ -90,7 +90,7 @@ TEST_CASE("reserve and push some values") {
 }
 
 TEST_CASE("reserve and push some values") {
-	using A = mem::StackAlloc<alignof(int)>;
+	using A = mem::StackAlloc<8>;
 	alignas(int) Array<mem::byte, 4096> stack{};
 
 	Vec<int, A> v{unsafe, from_raw_parts, {}, A{from_slice_mut, stack.as_mut()}};
@@ -131,7 +131,7 @@ TEST_CASE("clone") {
 }
 
 TEST_CASE("stack alloc clone") {
-	using A = mem::StackAlloc<alignof(int)>;
+	using A = mem::StackAlloc<8>;
 	alignas(int) Array<mem::byte, 4096> stack{};
 
 	Vec<int, A> v1{unsafe, from_raw_parts, {}, A{from_slice_mut, stack.as_mut()}};

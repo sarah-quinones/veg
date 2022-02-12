@@ -14,37 +14,48 @@
 namespace veg {
 namespace _detail {
 auto snprintf1(char* out, usize n, unsigned type, void* arg) -> usize;
-}
-
-namespace fmt {
-template <typename T>
-struct Debug;
-
-struct Buffer {
+struct String final {
 	usize indent_level = 0;
+	struct layout {
+		char* ptr;
+		usize len;
+		usize cap;
+	} self = {};
 
-	Buffer() = default;
-	Buffer(Buffer const&) = delete;
-	Buffer(Buffer&&) = delete;
-	auto operator=(Buffer const&) -> Buffer& = delete;
-	auto operator=(Buffer&&) -> Buffer& = delete;
-	virtual void reserve(usize new_cap) = 0;
-	virtual void resize(usize new_len) = 0;
-	virtual void insert(usize pos, char const* data, usize len) = 0;
-	virtual void insert_newline(usize pos) = 0;
+	~String();
+	String() = default;
+	VEG_INLINE String(String&& other) VEG_ALWAYS_NOEXCEPT : self{other.self} {
+		other.self = layout{nullptr, 0, 0};
+	}
+	String(String const&) = delete;
+	auto operator=(String const&) -> String& = delete;
+	auto operator=(String&&) -> String& = delete;
 
+	void resize(usize new_len) noexcept;
+	void reserve(usize new_cap) noexcept;
+	void insert(usize pos, char const* data, usize len) noexcept;
+	void insert_newline(usize pos) noexcept;
+	void fprintln(std::FILE* f) const noexcept;
+
+	VEG_NODISCARD VEG_INLINE auto data() const noexcept -> char* {
+		return self.ptr;
+	}
+	VEG_NODISCARD VEG_INLINE auto size() const noexcept -> usize {
+		return self.len;
+	}
 	template <usize N>
 	VEG_INLINE void append_literal(_detail::NativeChar8 const (&data)[N]) {
 		insert(size(), reinterpret_cast<char const*>(&data[0]), N - 1);
 	}
 	VEG_INLINE void append_ln() { insert_newline(size()); }
-
-	VEG_NODISCARD virtual auto data() const VEG_ALWAYS_NOEXCEPT -> char* = 0;
-	VEG_NODISCARD virtual auto size() const VEG_ALWAYS_NOEXCEPT -> usize = 0;
-
-protected:
-	~Buffer() = default;
 };
+} // namespace _detail
+
+namespace fmt {
+template <typename T>
+struct Debug;
+
+using Buffer = _detail::String;
 
 using BufferMut = Buffer&;
 } // namespace fmt
@@ -329,37 +340,6 @@ struct Debug<RefMut<T>> : _detail::_fmt::DbgMut {};
 } // namespace fmt
 
 namespace _detail {
-struct String final : fmt::Buffer {
-	struct layout {
-		char* ptr;
-		usize len;
-		usize cap;
-	} self = {};
-
-	~String();
-	String() = default;
-	VEG_INLINE String(String&& other) VEG_ALWAYS_NOEXCEPT : self{other.self} {
-		other.self = layout{nullptr, 0, 0};
-	}
-	String(String const&) = delete;
-	auto operator=(String const&) -> String& = delete;
-	auto operator=(String&&) -> String& = delete;
-
-	void resize(usize new_len) override;
-	void reserve(usize new_cap) override;
-	void insert(usize pos, char const* data, usize len) override;
-	void insert_newline(usize pos) override;
-	void fprintln(std::FILE* f) const VEG_ALWAYS_NOEXCEPT;
-
-	VEG_NODISCARD VEG_INLINE auto data() const VEG_ALWAYS_NOEXCEPT
-			-> char* override {
-		return self.ptr;
-	}
-	VEG_NODISCARD VEG_INLINE auto size() const VEG_ALWAYS_NOEXCEPT
-			-> usize override {
-		return self.len;
-	}
-};
 
 inline void dbg_prefix(
 		RefMut<String> str,
