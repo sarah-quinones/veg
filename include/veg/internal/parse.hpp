@@ -102,8 +102,16 @@ inline auto operator==(StrView a, StrView b) noexcept -> bool {
 }
 
 struct Entity;
-using BoxedEntity = mem::BoxIncomplete<Entity, mem::SystemAlloc, true>;
-using VecEntity = collections::VecIncomplete<Entity, mem::SystemAlloc, true>;
+using BoxedEntity =
+		Box<Entity,
+        mem::SystemAlloc,
+        mem::DtorAvailable::yes_nothrow,
+        mem::CopyAvailable::no>;
+using VecEntity =
+		Vec<Entity,
+        mem::SystemAlloc,
+        mem::DtorAvailable::yes_nothrow,
+        mem::CopyAvailable::no>;
 
 enum struct CvQual : unsigned char {
 	NONE,
@@ -164,10 +172,11 @@ struct Entity {
 	CvQual cv_qual;
 	VEG_REFLECT(Entity, kind, cv_qual);
 };
-inline auto operator==(Entity const& lhs, Entity const& rhs) -> bool;
+
+inline auto operator==(Entity const& lhs, Entity const& rhs) noexcept -> bool;
 
 #define REFLECT_EQ(Class)                                                      \
-	inline auto operator==(Class const& lhs, Class const& rhs)->bool {           \
+	inline auto operator==(Class const& lhs, Class const& rhs) noexcept->bool {  \
 		return cmp::reflected_eq(lhs, rhs);                                        \
 	}
 

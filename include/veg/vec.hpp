@@ -539,13 +539,14 @@ public:
 #define __VEG_ASAN_ANNOTATE() /* NOLINT */ (void)0;
 #endif
 
-namespace collections {
+namespace _detail {
+namespace _collections {
 template <
 		typename T,
 		typename A = mem::SystemAlloc,
-		bool NoThrowCopy = VEG_CONCEPT(nothrow_copyable<T>) &&
-                       VEG_CONCEPT(nothrow_copy_assignable<T>)>
-struct VecIncomplete : private _detail::_vector::adl::AdlBase {
+		mem::DtorAvailable Dtor = mem::DtorAvailableFor<T>::value,
+		mem::CopyAvailable Copy = mem::CopyAvailableFor<T>::value>
+struct VecImpl {
 private:
 	_detail::_vector::VecAlloc<T, A> _;
 
@@ -610,21 +611,20 @@ private:
 	static_assert(VEG_CONCEPT(nothrow_movable<A>), ".");
 
 public:
-	VEG_INLINE ~VecIncomplete() {
-		static_assert(
-				(VEG_CONCEPT(alloc::nothrow_dealloc<A>) &&
-		     VEG_CONCEPT(nothrow_destructible<T>)),
-				".");
+	VEG_INLINE ~VecImpl() VEG_NOEXCEPT_IF(
+			Dtor == mem::DtorAvailable::yes_nothrow &&
+			VEG_CONCEPT(alloc::nothrow_dealloc<A>)) {
+		static_assert(Dtor == mem::DtorAvailableFor<T>::value, ".");
 		vector::RawVector<T> raw = this->raw_ref().get();
 		if (raw.data != nullptr) {
 			this->clear();
 		}
 	}
 
-	VEG_INLINE VecIncomplete() = default;
+	VEG_INLINE VecImpl() = default;
 
 	VEG_INLINE
-	VecIncomplete(
+	VecImpl(
 			Unsafe /*unsafe*/,
 			FromRawParts /*tag*/,
 			vector::RawVector<T> rawvec,
@@ -635,9 +635,9 @@ public:
 						_detail::_vector::RawVectorMoveRaii<T>{from_raw_parts, rawvec},
 				} {}
 
-	VEG_INLINE VecIncomplete(VecIncomplete&&) = default;
-	VEG_INLINE auto operator=(VecIncomplete&& rhs) -> VecIncomplete& {
-		{ auto cleanup = static_cast<VecIncomplete&&>(*this); }
+	VEG_INLINE VecImpl(VecImpl&&) = default;
+	VEG_INLINE auto operator=(VecImpl&& rhs) -> VecImpl& {
+		{ auto cleanup = static_cast<VecImpl&&>(*this); }
 
 		// can't fail
 		this->alloc_mut(unsafe).get() =
@@ -648,10 +648,12 @@ public:
 		return *this;
 	};
 
-	explicit VecIncomplete(VecIncomplete const& rhs) VEG_NOEXCEPT_IF(
+	explicit VecImpl(VecImpl const& rhs) VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_copyable<A>) && //
-			VEG_CONCEPT(alloc::nothrow_alloc<A>) && NoThrowCopy)
+			VEG_CONCEPT(alloc::nothrow_alloc<A>) &&
+			Copy == mem::CopyAvailable::yes_nothrow)
 			: _{rhs._} {
+		static_assert(Copy == mem::CopyAvailableFor<T>::value, ".");
 		__VEG_ASAN_ANNOTATE();
 		vector::RawVector<T> rhs_raw = rhs.raw_ref().get();
 		mem::AllocBlock blk = _detail::_collections::alloc_and_copy(
@@ -668,9 +670,11 @@ public:
 		};
 	}
 
-	auto operator=(VecIncomplete const& rhs) VEG_NOEXCEPT_IF(
+	auto operator=(VecImpl const& rhs) VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(nothrow_copy_assignable<A>) &&
-			VEG_CONCEPT(alloc::nothrow_alloc<A>) && NoThrowCopy) -> VecIncomplete& {
+			VEG_CONCEPT(alloc::nothrow_alloc<A>) &&
+			Copy == mem::CopyAvailable::yes_nothrow) -> VecImpl& {
+		static_assert(Copy == mem::CopyAvailableFor<T>::value, ".");
 		if (this != mem::addressof(rhs)) {
 			__VEG_ASAN_ANNOTATE();
 
@@ -699,7 +703,8 @@ public:
 		}
 	}
 
-	VEG_INLINE void pop_several_unchecked(Unsafe unsafe, isize n) VEG_NOEXCEPT {
+	VEG_INLINE void pop_several_unchecked(Unsafe unsafe, isize n)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
 		VEG_DEBUG_ASSERT_ALL_OF(0 <= n, n <= len());
 		__VEG_ASAN_ANNOTATE();
 
@@ -711,7 +716,8 @@ public:
 				this->alloc_mut(unsafe), mut(mem::DefaultCloner{}), end - n, end);
 	}
 
-	VEG_INLINE void pop_several(isize n) VEG_NOEXCEPT {
+	VEG_INLINE void pop_several(isize n)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
 		VEG_ASSERT_ALL_OF(0 <= n, n <= len());
 		pop_several_unchecked(unsafe, n);
 	}
@@ -754,7 +760,10 @@ public:
 		return pop_mid_unchecked(unsafe, i);
 	}
 
-	VEG_INLINE void clear() VEG_NOEXCEPT { pop_several_unchecked(unsafe, len()); }
+	VEG_INLINE void clear()
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+		pop_several_unchecked(unsafe, len());
+	}
 
 	VEG_TEMPLATE(
 			typename U = T,
@@ -906,24 +915,25 @@ public:
 		return this->ptr()[i];
 	}
 	VEG_NODISCARD VEG_INLINE auto operator[](isize i) VEG_NOEXCEPT -> T& {
-		return const_cast<T&>(
-				static_cast<VecIncomplete const*>(this)->operator[](i));
+		return const_cast<T&>(static_cast<VecImpl const*>(this)->operator[](i));
 	}
 };
-} // namespace collections
+} // namespace _collections
+} // namespace _detail
 
-template <typename T, typename A = mem::SystemAlloc>
-struct Vec : collections::VecIncomplete<T, A>,
-						 meta::if_t<
-								 VEG_CONCEPT(copyable<T>),
-								 _detail::EmptyI<0>,
-								 _detail::NoCopyCtor>,
-						 meta::if_t<
-								 VEG_CONCEPT(copy_assignable<T>),
-								 _detail::EmptyI<1>,
-								 _detail::NoCopyAssign> {
+template <
+		typename T,
+		typename A = mem::SystemAlloc,
+		mem::DtorAvailable Dtor = mem::DtorAvailableFor<T>::value,
+		mem::CopyAvailable Copy = mem::CopyAvailableFor<T>::value>
+struct Vec : private _detail::_vector::adl::AdlBase,
+						 private meta::if_t< //
+								 Copy == mem::CopyAvailable::no,
+								 _detail::NoCopy,
+								 _detail::Empty>,
+						 public _detail::_collections::VecImpl<T, A, Dtor, Copy> {
 
-	using collections::VecIncomplete<T, A>::VecIncomplete;
+	using _detail::_collections::VecImpl<T, A, Dtor, Copy>::VecImpl;
 	Vec() = default;
 	VEG_EXPLICIT_COPY(Vec);
 };
@@ -936,19 +946,12 @@ VEG_TEMPLATE(
 		requires(VEG_CONCEPT(eq<T, U>)),
 		VEG_NODISCARD static VEG_CPP14(constexpr) auto
 		operator==,
-		(lhs, collections::VecIncomplete<T, LhsA> const&),
-		(rhs, collections::VecIncomplete<U, RhsA> const&))
+		(lhs, Vec<T, LhsA> const&),
+		(rhs, Vec<U, RhsA> const&))
 VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_eq<T, U>))->bool {
 	return _detail::_slice::adl::operator==(lhs.as_ref(), rhs.as_ref());
 }
 } // namespace adl
-struct DbgVecI {
-	template <typename T, typename A>
-	static void
-	to_string(fmt::BufferMut out, Ref<collections::VecIncomplete<T, A>> arg) {
-		fmt::Debug<Slice<T>>::to_string(out, ref(arg.get().as_ref()));
-	}
-};
 struct DbgVec {
 	template <typename T, typename A>
 	static void to_string(fmt::BufferMut out, Ref<Vec<T, A>> arg) {
@@ -968,28 +971,8 @@ struct OrdVec {
 				ref(rhs.get().as_ref()));
 	}
 };
-struct OrdVecI {
-	VEG_TEMPLATE(
-			(typename T, typename LhsA, typename U, typename RhsA),
-			requires(VEG_CONCEPT(ord<T, U>)),
-			VEG_NODISCARD static constexpr auto cmp,
-			(lhs, Ref<collections::VecIncomplete<T, LhsA>>),
-			(rhs, Ref<collections::VecIncomplete<U, RhsA>>))
-	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_ord<T, U>))->cmp::Ordering {
-		return cmp::Ord<Slice<T>, Slice<U>>::cmp( //
-				ref(lhs.get().as_ref()),
-				ref(rhs.get().as_ref()));
-	}
-};
 } // namespace _vector
 } // namespace _detail
-
-template <typename T, typename A>
-struct cpo::is_trivially_relocatable<collections::VecIncomplete<T, A>>
-		: cpo::is_trivially_relocatable<A> {};
-template <typename T, typename A>
-struct cpo::is_trivially_constructible<collections::VecIncomplete<T, A>>
-		: cpo::is_trivially_constructible<A> {};
 
 template <typename T, typename A>
 struct cpo::is_trivially_relocatable<Vec<T, A>>
@@ -1000,16 +983,9 @@ struct cpo::is_trivially_constructible<Vec<T, A>>
 
 template <typename T, typename A>
 struct fmt::Debug<Vec<T, A>> : _detail::_vector::DbgVec {};
-template <typename T, typename A>
-struct fmt::Debug<collections::VecIncomplete<T, A>>
-		: _detail::_vector::DbgVecI {};
 
 template <typename T, typename LhsA, typename U, typename RhsA>
 struct cmp::Ord<Vec<T, LhsA>, Vec<U, RhsA>> : _detail::_vector::OrdVec {};
-template <typename T, typename LhsA, typename U, typename RhsA>
-struct cmp::Ord< //
-		collections::VecIncomplete<T, LhsA>,
-		collections::VecIncomplete<U, RhsA>> : _detail::_vector::OrdVecI {};
 } // namespace veg
 
 #undef __VEG_ASAN_ANNOTATE

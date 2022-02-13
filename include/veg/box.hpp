@@ -9,14 +9,20 @@
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
+
 namespace _detail {
 namespace _mem {
 template <typename T>
 struct UniquePtr {
 	T* inner = nullptr;
 	UniquePtr() = default;
-	UniquePtr(UniquePtr&& rhs) noexcept : inner{rhs.inner} { rhs.inner = {}; }
-	VEG_INLINE UniquePtr(UniquePtr const& /*unused*/) noexcept {}
+	VEG_INLINE UniquePtr(UniquePtr&& rhs) noexcept : inner{rhs.inner} {
+		rhs.inner = {};
+	}
+	VEG_INLINE UniquePtr(FromRawParts /*from_raw_parts*/, T* ptr) noexcept
+			: inner{ptr} {}
+
+	UniquePtr(UniquePtr const& /*unused*/) = delete;
 	auto operator=(UniquePtr const&) -> UniquePtr& = delete;
 	auto operator=(UniquePtr&&) -> UniquePtr& = delete;
 	~UniquePtr() = default;
@@ -33,7 +39,8 @@ struct BoxAlloc : Tuple<A, UniquePtr<T>> {
 	auto operator=(BoxAlloc&&) -> BoxAlloc& = delete;
 	auto operator=(BoxAlloc const&) -> BoxAlloc& = delete;
 
-	VEG_INLINE ~BoxAlloc() {
+	VEG_INLINE ~BoxAlloc()
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(alloc::nothrow_dealloc<A>)) {
 		if ((*this)[1_c].inner != nullptr) {
 			mem::Alloc<A>::dealloc(
 					mut((*this)[0_c]),
@@ -43,25 +50,13 @@ struct BoxAlloc : Tuple<A, UniquePtr<T>> {
 	}
 };
 
-template <typename T>
-struct DerefCopyFn {
-	T const* ptr;
-	VEG_INLINE auto
-	operator()() const&& VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_copyable<T>)) -> T {
-		return T(*ptr);
-	}
-};
-} // namespace _mem
-} // namespace _detail
-
-namespace mem {
 template <
 		typename T,
-		typename A = SystemAlloc,
-		bool NoThrowCopy = VEG_CONCEPT(nothrow_copyable<T>) &&
-                       VEG_CONCEPT(nothrow_copy_assignable<T>)>
-struct BoxIncomplete {
-	_detail::_mem::BoxAlloc<T, A> _;
+		typename A,
+		mem::DtorAvailable Dtor,
+		mem::CopyAvailable Copy>
+struct BoxImpl {
+	BoxAlloc<T, A> _;
 
 	VEG_INLINE constexpr auto alloc_ref() const noexcept -> Ref<A> {
 		return ref(_[0_c]);
@@ -103,62 +98,27 @@ struct BoxIncomplete {
 	}
 
 	template <int _>
-	VEG_INLINE
-	BoxIncomplete(Unsafe /*unsafe*/, _::FromRawParts<_> /*tag*/, A alloc, T* ptr)
-			VEG_NOEXCEPT : _{
-												 tuplify,
-												 VEG_FWD(alloc),
-												 _detail::_mem::UniquePtr<T>{},
-										 } {
-		data_mut(unsafe).get() = VEG_FWD(ptr);
-	}
-
-	template <int _>
-	BoxIncomplete(_::FromAlloc<_> /*tag*/, A alloc) VEG_NOEXCEPT
+	VEG_INLINE BoxImpl(
+			Unsafe /*unsafe*/, _::FromRawParts<_> /*from_raw_parts*/, A alloc, T* ptr)
+			VEG_NOEXCEPT
 			: _{
-						tuplify,
-						VEG_FWD(alloc),
-						_detail::_mem::UniquePtr<T>{},
+						inplace[tuplify],
+						MoveFn<A>{VEG_FWD(alloc)},
+						VEG_LAZY_BY_REF(_detail::_mem::UniquePtr<T>{from_raw_parts, ptr}),
 				} {}
 
-	template <int _, typename U = T>
-	BoxIncomplete(_::FromAllocAndVaue<_> /*tag*/, A alloc, T value)
-			VEG_NOEXCEPT_IF(
-					VEG_CONCEPT(nothrow_movable<U>) &&
-					VEG_CONCEPT(alloc::nothrow_alloc<A>))
-			: BoxIncomplete{from_alloc, VEG_FWD(alloc)} {
-		mem::Layout l{
-				sizeof(T),
-				alignof(T),
-		};
-
-		_detail::_mem::ManagedAlloc<A> block{
-				mem::Alloc<A>::alloc(this->alloc_mut(unsafe), l).data,
-				l,
-				this->alloc_mut(unsafe),
-		};
-
-		mem::construct_at(static_cast<T*>(block.data), VEG_FWD(value));
-
-		this->data_mut(unsafe).get() = static_cast<T*>(block.data);
-		block.data = nullptr;
-	}
-
-	BoxIncomplete() = default;
-	BoxIncomplete(BoxIncomplete&&) = default;
-
-	explicit BoxIncomplete(BoxIncomplete const& rhs) VEG_NOEXCEPT_IF(
-			VEG_CONCEPT(nothrow_copyable<A>) &&
-			VEG_CONCEPT(alloc::nothrow_alloc<A>) && NoThrowCopy)
+	template <int _>
+	VEG_INLINE BoxImpl(_::FromAlloc<_> /*from_alloc*/, A alloc) VEG_NOEXCEPT
 			: _{
-						InPlace<Tuplify>{},
-						_detail::CopyFn<A>{rhs.alloc_ref().get()},
-						_detail::DefaultFn<_detail::_mem::UniquePtr<T>>{},
-				} {
-		if (rhs.ptr() == nullptr) {
-			return;
-		}
+						inplace[tuplify],
+						MoveFn<A>{VEG_FWD(alloc)},
+						DefaultFn<UniquePtr<T>>{},
+				} {}
 
+private:
+	template <typename Fn>
+	void _emplace_no_dtor_unchecked(Fn fn)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, T>)) {
 		mem::Layout l{
 				sizeof(T),
 				alignof(T),
@@ -170,13 +130,61 @@ struct BoxIncomplete {
 				this->alloc_mut(unsafe),
 		};
 
-		mem::construct_at(static_cast<T*>(block.data), *rhs.ptr());
+		mem::construct_with(static_cast<T*>(block.data), VEG_FWD(fn));
+
 		this->data_mut(unsafe).get() = static_cast<T*>(block.data);
 		block.data = nullptr;
 	}
 
-	VEG_INLINE auto operator=(BoxIncomplete&& rhs) noexcept -> BoxIncomplete& {
-		{ auto cleanup = static_cast<BoxIncomplete&&>(*this); }
+public:
+	VEG_TEMPLATE(
+			(typename _, typename Fn),
+			requires(VEG_CONCEPT(same<_, FromAllocAndValue>)),
+			BoxImpl,
+			(/*tag*/, InPlace<_>),
+			(alloc, A),
+			(fn, Fn))
+	VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(nothrow_fn_once<Fn, T>) &&
+			VEG_CONCEPT(alloc::nothrow_alloc<A>))
+			: _{
+						inplace[tuplify],
+						MoveFn<A>{VEG_FWD(alloc)},
+						DefaultFn<UniquePtr<T>>{},
+				} {
+		_emplace_no_dtor_unchecked(VEG_FWD(fn));
+	}
+
+	template <int _, typename U = T>
+	BoxImpl(_::FromAllocAndValue<_> /*tag*/, A alloc, T value) VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(nothrow_movable<U>) && VEG_CONCEPT(alloc::nothrow_alloc<A>))
+			: _{
+						inplace[tuplify],
+						MoveFn<A>{VEG_FWD(alloc)},
+						DefaultFn<UniquePtr<T>>{},
+				} {
+		_emplace_no_dtor_unchecked(MoveFn<T>{VEG_FWD(value)});
+	}
+
+	BoxImpl() = default;
+	BoxImpl(BoxImpl&&) = default;
+	explicit BoxImpl(BoxImpl const& rhs) VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(nothrow_copyable<A>) &&
+			VEG_CONCEPT(alloc::nothrow_alloc<A>) &&
+			Copy == mem::CopyAvailable::yes_nothrow)
+			: _{
+						inplace[tuplify],
+						CopyFn<A>{rhs.alloc_ref().get()},
+						DefaultFn<UniquePtr<T>>{},
+				} {
+		static_assert(Copy == mem::CopyAvailableFor<T>::value, ".");
+		if (rhs.ptr() != nullptr) {
+			_emplace_no_dtor_unchecked(CopyFn<T>{*rhs.ptr()});
+		}
+	}
+
+	VEG_INLINE auto operator=(BoxImpl&& rhs) noexcept -> BoxImpl& {
+		{ auto cleanup = static_cast<decltype(rhs)>(*this); }
 		this->alloc_mut(unsafe).get() =
 				static_cast<A&&>(rhs.alloc_mut(unsafe).get());
 		this->data_mut(unsafe).get() = rhs.ptr_mut();
@@ -185,79 +193,88 @@ struct BoxIncomplete {
 		return *this;
 	}
 
-	auto operator=(BoxIncomplete const& rhs) VEG_NOEXCEPT_IF(
+	auto operator=(BoxImpl const& rhs) VEG_NOEXCEPT_IF(
 			VEG_CONCEPT(alloc::nothrow_alloc<A>) &&
-			VEG_CONCEPT(nothrow_copy_assignable<A>) && NoThrowCopy)
-			-> BoxIncomplete& {
-		static_assert(
-				NoThrowCopy == (VEG_CONCEPT(nothrow_copyable<T>) &&
-		                    VEG_CONCEPT(nothrow_copy_assignable<T>)),
-				".");
+			VEG_CONCEPT(nothrow_copy_assignable<A>) &&
+			Copy == mem::CopyAvailable::yes_nothrow) -> BoxImpl& {
+		static_assert(Copy == mem::CopyAvailableFor<T>::value, ".");
 		if (this != mem::addressof(rhs)) {
 			if (cmp::eq(this->alloc_ref(), rhs.alloc_ref()) && //
 			    ptr() != nullptr && rhs.ptr() != nullptr) {
 				alloc_mut(unsafe).get() = rhs.alloc_ref().get();
 				*ptr_mut() = *rhs.ptr();
 			} else {
-				*this = BoxIncomplete(rhs);
+				*this = BoxImpl(rhs);
 			}
 		}
 		return *this;
 	}
 
-private:
-	void _destroy(T* ptr) noexcept { mem::destroy_at(ptr); }
+	VEG_INLINE ~BoxImpl() VEG_NOEXCEPT_IF(
+			VEG_CONCEPT(alloc::nothrow_dealloc<A>) &&
+			Dtor == mem::DtorAvailable::yes_nothrow) {
+		static_assert(Dtor == mem::DtorAvailableFor<T>::value, ".");
 
-public:
-	VEG_INLINE ~BoxIncomplete() {
-		static_assert(VEG_CONCEPT(nothrow_destructible<T>), ".");
-		static_assert(VEG_CONCEPT(alloc::nothrow_dealloc<A>), ".");
 		auto ptr = this->ptr_mut();
 		if (ptr != nullptr) {
-			this->_destroy(ptr);
+			mem::destroy_at(ptr);
 		}
 	}
 };
+} // namespace _mem
+} // namespace _detail
 
+namespace _mem {
+namespace _boxadl {
+struct AdlBase {};
+} // namespace _boxadl
+} // namespace _mem
+
+template <
+		typename T,
+		typename A = mem::SystemAlloc,
+		mem::DtorAvailable Dtor = mem::DtorAvailableFor<T>::value,
+		mem::CopyAvailable Copy = mem::CopyAvailableFor<T>::value>
+struct Box : private _mem::_boxadl::AdlBase,
+						 private meta::if_t< //
+								 Copy == mem::CopyAvailable::no,
+								 _detail::NoCopy,
+								 _detail::Empty>,
+						 public _detail::_mem::BoxImpl<T, A, Dtor, Copy> {
+private:
+	using Base = _detail::_mem::BoxImpl<T, A, Dtor, Copy>;
+
+public:
+	using Base::Base;
+};
+
+namespace _mem {
+namespace _boxadl {
 VEG_TEMPLATE(
 		(typename LT, typename RT, typename LA, typename RA),
 		requires(VEG_CONCEPT(eq<LT, RT>)),
 		VEG_NODISCARD constexpr auto
 		operator==,
-		(lhs, BoxIncomplete<LT, LA> const&),
-		(rhs, BoxIncomplete<RT, RA> const&))
+		(lhs, Box<LT, LA> const&),
+		(rhs, Box<RT, RA> const&))
 VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_eq<LT, RT>))->bool {
 	return (lhs.ptr() == nullptr || rhs.ptr() == nullptr)
 	           ? (lhs.ptr() == nullptr && rhs.ptr() == nullptr)
 	           : (*lhs.ptr() == *rhs.ptr());
 }
-} // namespace mem
-template <typename T, typename A = mem::SystemAlloc>
-struct Box
-		: meta::if_t<
-					VEG_CONCEPT(nothrow_copyable<T>) && VEG_CONCEPT(nothrow_copyable<A>),
-					_detail::EmptyI<13>,
-					_detail::NoCopyCtor>,
-			meta::if_t<
-					VEG_CONCEPT(nothrow_copy_assignable<T>) &&
-							VEG_CONCEPT(nothrow_copy_assignable<A>),
-					_detail::EmptyI<12>,
-					_detail::NoCopyAssign>,
-
-			mem::BoxIncomplete<T, A> {
-	using mem::BoxIncomplete<T, A>::BoxIncomplete;
-	VEG_EXPLICIT_COPY(Box);
-};
+} // namespace _boxadl
+} // namespace _mem
+namespace mem {} // namespace mem
 
 namespace _detail {
 namespace _mem {
-struct OrdBoxI {
+struct OrdBox {
 	VEG_TEMPLATE(
 			(typename LT, typename RT, typename LA, typename RA),
 			requires(VEG_CONCEPT(ord<LT, RT>)),
 			VEG_NODISCARD static VEG_CPP14(constexpr) auto cmp,
-			(lhs, Ref<mem::BoxIncomplete<LT, LA>>),
-			(rhs, Ref<mem::BoxIncomplete<RT, RA>>))
+			(lhs, Ref<Box<LT, LA>>),
+			(rhs, Ref<Box<RT, RA>>))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_ord<LT, RT>))->cmp::Ordering {
 		if (lhs.get().ptr() == nullptr && rhs.get().ptr() == nullptr) {
 			return cmp::Ordering::equal;
@@ -273,20 +290,7 @@ struct OrdBoxI {
 				ref(*rhs.get().ptr()));
 	}
 };
-struct OrdBox {
-	VEG_TEMPLATE(
-			(typename LT, typename RT, typename LA, typename RA),
-			requires(VEG_CONCEPT(ord<LT, RT>)),
-			VEG_NODISCARD static VEG_CPP14(constexpr) auto cmp,
-			(lhs, Ref<Box<LT, LA>>),
-			(rhs, Ref<Box<RT, RA>>))
-	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_ord<LT, RT>))->cmp::Ordering {
-		return OrdBoxI::cmp( //
-				ref(static_cast<mem::BoxIncomplete<LT, LA> const&>(lhs.get())),
-				ref(static_cast<mem::BoxIncomplete<RT, RA> const&>(rhs.get())));
-	}
-};
-struct DbgBoxI {
+struct DbgBox {
 	template <typename T>
 	static void to_string_impl(fmt::BufferMut out, T const* ptr) noexcept {
 		if (ptr != nullptr) {
@@ -299,28 +303,12 @@ struct DbgBoxI {
 	}
 
 	template <typename T, typename A>
-	static void
-	to_string(fmt::BufferMut out, Ref<mem::BoxIncomplete<T, A>> r) noexcept {
-		to_string_impl(VEG_FWD(out), r.get().ptr());
-	}
-};
-struct DbgBox {
-	template <typename T, typename A>
 	static void to_string(fmt::BufferMut out, Ref<Box<T, A>> r) noexcept {
-		DbgBoxI::to_string(
-				VEG_FWD(out),
-				ref(static_cast<mem::BoxIncomplete<T, A> const&>(r.get())));
+		to_string_impl(VEG_FWD(out), r.get().ptr());
 	}
 };
 } // namespace _mem
 } // namespace _detail
-
-template <typename T, typename A>
-struct cpo::is_trivially_relocatable<mem::BoxIncomplete<T, A>>
-		: cpo::is_trivially_relocatable<A> {};
-template <typename T, typename A>
-struct cpo::is_trivially_constructible<mem::BoxIncomplete<T, A>>
-		: cpo::is_trivially_constructible<A> {};
 
 template <typename T, typename A>
 struct cpo::is_trivially_relocatable<Box<T, A>>
@@ -330,13 +318,8 @@ struct cpo::is_trivially_constructible<Box<T, A>>
 		: cpo::is_trivially_constructible<A> {};
 
 template <typename LT, typename RT, typename LA, typename RA>
-struct cmp::Ord<mem::BoxIncomplete<LT, LA>, mem::BoxIncomplete<RT, RA>>
-		: _detail::_mem::OrdBoxI {};
-template <typename LT, typename RT, typename LA, typename RA>
 struct cmp::Ord<Box<LT, LA>, Box<RT, RA>> : _detail::_mem::OrdBox {};
 
-template <typename T, typename A>
-struct fmt::Debug<mem::BoxIncomplete<T, A>> : _detail::_mem::DbgBoxI {};
 template <typename T, typename A>
 struct fmt::Debug<Box<T, A>> : _detail::_mem::DbgBox {};
 
@@ -352,7 +335,25 @@ struct box {
 		};
 	}
 };
+
 struct box_with_alloc {
+	VEG_TEMPLATE(
+			(typename A, typename T),
+			requires(
+					VEG_CONCEPT(nothrow_movable<A>) && //
+					VEG_CONCEPT(nothrow_move_assignable<A>)),
+			VEG_INLINE auto
+			operator(),
+			(alloc, A))
+	VEG_NOEXCEPT->Box<T, A> {
+		return {
+				from_alloc,
+				VEG_FWD(alloc),
+		};
+	}
+};
+
+struct box_with_alloc_and_value {
 	VEG_TEMPLATE(
 			(typename A, typename T),
 			requires(
@@ -377,6 +378,7 @@ struct box_with_alloc {
 } // namespace nb
 VEG_NIEBLOID(box);
 VEG_NIEBLOID(box_with_alloc);
+VEG_NIEBLOID(box_with_alloc_and_value);
 } // namespace veg
 
 #include "veg/internal/epilogue.hpp"

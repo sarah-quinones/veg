@@ -18,7 +18,7 @@ VEG_TAG(safe, Safe);
 VEG_TAG(unsafe, Unsafe);
 
 VEG_TAG(from_alloc, FromAlloc);
-VEG_TAG(from_alloc_and_value, FromAllocAndVaue);
+VEG_TAG(from_alloc_and_value, FromAllocAndValue);
 
 VEG_TAG(from_slice, FromSlice);
 VEG_TAG(from_slice_mut, FromSliceMut);

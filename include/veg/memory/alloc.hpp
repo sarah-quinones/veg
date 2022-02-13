@@ -9,8 +9,8 @@
 #include "veg/memory/placement.hpp"
 #include "veg/type_traits/alloc.hpp"
 
-#include <cstddef>  // std::max_align_t
-#include <cstdlib>  // std::{malloc, free, realloc}, ::{aligned_alloc, free}
+#include <cstddef> // std::max_align_t
+#include <cstdlib> // std::{malloc, free, realloc}, ::{aligned_alloc, free}
 #ifndef __APPLE__
 #include <malloc.h> // ::malloc_usable_size
 #else
@@ -21,6 +21,33 @@
 
 namespace veg {
 namespace mem {
+enum struct CopyAvailable {
+	no,
+	yes_maythrow,
+	yes_nothrow,
+};
+enum struct DtorAvailable {
+	no,
+	yes_maythrow,
+	yes_nothrow,
+};
+template <typename T>
+struct CopyAvailableFor
+		: meta::constant<
+					mem::CopyAvailable,
+					(VEG_CONCEPT(nothrow_copyable<T>) &&
+           VEG_CONCEPT(nothrow_copy_assignable<T>))
+							? CopyAvailable::yes_nothrow
+					: (VEG_CONCEPT(copyable<T>) && VEG_CONCEPT(copy_assignable<T>))
+							? CopyAvailable::yes_maythrow
+							: CopyAvailable::no> {};
+template <typename T>
+struct DtorAvailableFor
+		: meta::constant<
+					mem::DtorAvailable,
+					VEG_CONCEPT(nothrow_destructible<T>) ? DtorAvailable::yes_nothrow
+																							 : DtorAvailable::yes_maythrow> {
+};
 
 VEG_INLINE auto aligned_alloc(usize align, usize size) noexcept -> void* {
 	usize const mask = align - 1;
