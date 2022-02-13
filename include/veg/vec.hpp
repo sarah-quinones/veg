@@ -914,11 +914,11 @@ public:
 
 template <typename T, typename A = mem::SystemAlloc>
 struct Vec : collections::VecIncomplete<T, A>,
-						 meta::conditional_t<
+						 meta::if_t<
 								 VEG_CONCEPT(copyable<T>),
 								 _detail::EmptyI<0>,
 								 _detail::NoCopyCtor>,
-						 meta::conditional_t<
+						 meta::if_t<
 								 VEG_CONCEPT(copy_assignable<T>),
 								 _detail::EmptyI<1>,
 								 _detail::NoCopyAssign> {

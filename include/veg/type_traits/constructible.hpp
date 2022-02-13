@@ -144,7 +144,7 @@ struct extract_members_deduce_trait
 namespace cpo {
 template <typename T>
 struct is_trivially_constructible
-		: meta::conditional_t<
+		: meta::if_t<
 					VEG_CONCEPT(trivially_default_constructible<T>),
 					meta::true_type,
 					_detail::_cpo::
@@ -152,7 +152,7 @@ struct is_trivially_constructible
 
 template <typename T>
 struct is_trivially_relocatable
-		: meta::conditional_t<
+		: meta::if_t<
 					VEG_CONCEPT(trivially_copyable<T>) &&
 							VEG_CONCEPT(trivially_move_constructible<T>),
 					meta::true_type,

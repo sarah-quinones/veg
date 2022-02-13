@@ -42,6 +42,23 @@ struct NoCopyCtor {
 	auto operator=(NoCopyCtor&&) -> NoCopyCtor& = default;
 };
 
+struct NoMove {
+	NoMove() = default;
+	~NoMove() = default;
+	NoMove(NoMove const&) = default;
+	NoMove(NoMove&&) = delete;
+	auto operator=(NoMove const&) -> NoMove& = default;
+	auto operator=(NoMove&&) -> NoMove& = delete;
+};
+struct NoCopy {
+	NoCopy() = default;
+	~NoCopy() = default;
+	NoCopy(NoCopy const&) = delete;
+	NoCopy(NoCopy&&) = default;
+	auto operator=(NoCopy const&) -> NoCopy& = delete;
+	auto operator=(NoCopy&&) -> NoCopy& = default;
+};
+
 } // namespace _detail
 } // namespace veg
 

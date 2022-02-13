@@ -265,22 +265,22 @@ struct dbg_e {
 };
 
 template <typename T>
-using choose_dbg = meta::conditional_t<
+using choose_dbg = meta::if_t<
 		VEG_CONCEPT(same<T, bool>),
 		dbg_b,
-		meta::conditional_t<
+		meta::if_t<
 				VEG_CONCEPT(signed_integral<T>),
 				dbg_i,
-				meta::conditional_t<
+				meta::if_t<
 						VEG_CONCEPT(unsigned_integral<T>),
 						dbg_u,
-						meta::conditional_t<
+						meta::if_t<
 								VEG_CONCEPT(floating_point<T>),
 								dbg_f,
-								meta::conditional_t<
+								meta::if_t<
 										VEG_CONCEPT(constructible<bool, T>),
 										dbg_b,
-										meta::conditional_t<
+										meta::if_t<
 												VEG_CONCEPT(enum_type<T>),
 												dbg_e,
 												dbg_g>>>>>>;

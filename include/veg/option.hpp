@@ -6,13 +6,13 @@
 #include "veg/memory/placement.hpp"
 #include "veg/memory/address.hpp"
 #include "veg/type_traits/constructible.hpp"
+#include "veg/type_traits/assignable.hpp"
+#include "veg/cereal/bin_cereal.hpp"
 #include "veg/util/compare.hpp"
 #include "veg/internal/delete_special_members.hpp"
-#include "veg/uwunion.hpp"
 #include "veg/internal/prologue.hpp"
 
 namespace veg {
-
 namespace _detail {
 namespace _option {
 namespace adl {
@@ -66,20 +66,174 @@ VEG_DEF_CONCEPT(typename T, option, meta::is_option<T>::value);
 
 namespace _detail {
 namespace _option {
-template <typename To>
-struct into_fn {
+struct MoveMapFn {
 	template <typename T>
 	VEG_INLINE constexpr auto operator()(T&& ref) const
-			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_constructible<To, T&&>)) -> To {
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> T {
 		return VEG_FWD(ref);
 	}
 };
 
 template <typename T>
-struct ret_none {
+struct RetNone {
 	VEG_INLINE VEG_CPP14(constexpr) auto operator()() const VEG_NOEXCEPT -> T {
 		return none;
 	}
+};
+
+template <typename Fn>
+struct WrapFn {
+	using T = meta::invoke_result_t<Fn>;
+	Fn fn;
+	VEG_CPP14(constexpr)
+	auto operator()() && VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, T>))
+													 -> Wrapper<T> {
+		return Wrapper<T>{VEG_FWD(fn)()};
+	}
+};
+struct DeferMakeNoneIf /* NOLINT */ {
+	Empty* none_addr;
+	bool success;
+	VEG_CPP20(constexpr) ~DeferMakeNoneIf() {
+		if (!success) {
+			mem::construct_at(none_addr);
+		}
+	}
+};
+struct DeferMakeNone /* NOLINT */ {
+	Empty* none_addr;
+	VEG_CPP20(constexpr) ~DeferMakeNone() { mem::construct_at(none_addr); }
+};
+
+template <typename T, bool = VEG_CONCEPT(trivially_destructible<T>)>
+struct OptionTrivial {
+	union {
+		Empty none_val;
+		Wrapper<T> some_val;
+	};
+	bool is_engaged = false;
+
+	constexpr OptionTrivial() VEG_NOEXCEPT : none_val{} {}
+
+	template <typename Fn>
+	constexpr OptionTrivial(Some /*some*/, Fn fn)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, T>))
+			: some_val{T(VEG_FWD(fn)())}, is_engaged{true} {}
+
+	VEG_CPP20(constexpr)
+	void disengage() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+		this->is_engaged = false;
+		_detail::_option::DeferMakeNone _{&this->none_val};
+		mem::destroy_at(mem::addressof(some_val));
+	}
+};
+template <typename T>
+struct OptionNonTrivialBase {
+	union {
+		Empty none_val;
+		Wrapper<T> some_val;
+	};
+	bool is_engaged = false;
+
+	VEG_CPP20(constexpr)
+	void disengage() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+		this->is_engaged = false;
+		_detail::_option::DeferMakeNone _{&this->none_val};
+		mem::destroy_at(mem::addressof(some_val));
+	}
+
+	VEG_CPP20(constexpr)
+	~OptionNonTrivialBase()
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
+		if (is_engaged) {
+			mem::destroy_at(mem::addressof(some_val));
+		} else {
+			mem::destroy_at(&none_val);
+		}
+	}
+	constexpr OptionNonTrivialBase() VEG_NOEXCEPT : none_val{} {}
+
+	template <typename Fn>
+	constexpr OptionNonTrivialBase(Some /*some*/, Fn fn)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, T>))
+			: some_val{T(VEG_FWD(fn)())}, is_engaged{true} {}
+
+	VEG_CPP20(constexpr)
+	OptionNonTrivialBase(OptionNonTrivialBase&& rhs)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) {
+		if (rhs.is_engaged) {
+			mem::destroy_at(&none_val);
+			DeferMakeNoneIf _{&none_val, false};
+			mem::construct_at(mem::addressof(some_val), VEG_FWD(rhs.some_val));
+			_.success = true;
+			is_engaged = true;
+		}
+	}
+	VEG_CPP20(constexpr)
+	OptionNonTrivialBase(OptionNonTrivialBase const& rhs)
+			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_copyable<T>)) {
+		if (rhs.is_engaged) {
+			mem::destroy_at(&none_val);
+			DeferMakeNoneIf _{&none_val, false};
+			mem::construct_at(mem::addressof(some_val), rhs.some_val);
+			_.success = true;
+			is_engaged = true;
+		}
+	}
+
+	VEG_CPP20(constexpr)
+	auto operator= /* NOLINT(cert-oop54-cpp) */(OptionNonTrivialBase&& rhs)
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_movable<Wrapper<T>>) &&
+					VEG_CONCEPT(nothrow_move_assignable<T>)) -> OptionNonTrivialBase& {
+		if (rhs.is_engaged) {
+			if (is_engaged) {
+				some_val.inner = VEG_FWD(rhs.some_val.inner);
+			} else {
+				mem::destroy_at(mem::addressof(none_val));
+				DeferMakeNoneIf _{&none_val, false};
+				mem::construct_at(mem::addressof(some_val), VEG_FWD(rhs.some_val));
+				_.success = true;
+				is_engaged = true;
+			}
+		} else {
+			if (is_engaged) {
+				disengage();
+			}
+		}
+		return *this;
+	}
+	VEG_CPP20(constexpr)
+	auto operator= /* NOLINT(cert-oop54-cpp) */(OptionNonTrivialBase const& rhs)
+			VEG_NOEXCEPT_IF(
+					VEG_CONCEPT(nothrow_copyable<Wrapper<T>>) &&
+					VEG_CONCEPT(nothrow_copy_assignable<T>)) -> OptionNonTrivialBase& {
+		if (rhs.is_engaged) {
+			if (is_engaged) {
+				some_val.inner = rhs.some_val.inner;
+			} else {
+				mem::destroy_at(mem::addressof(none_val));
+				DeferMakeNoneIf _{&none_val, false};
+				mem::construct_at(mem::addressof(some_val), rhs.some_val);
+				_.success = true;
+				is_engaged = true;
+			}
+		} else {
+			if (is_engaged) {
+				disengage();
+			}
+		}
+		return *this;
+	}
+};
+template <typename T>
+struct OptionNonTrivial
+		: meta::if_t<VEG_CONCEPT(copyable<Wrapper<T>>), EmptyI<0>, NoCopy>,
+			meta::if_t<VEG_CONCEPT(movable<Wrapper<T>>), EmptyI<1>, NoMove>,
+			meta::if_t<VEG_CONCEPT(copy_assignable<T>), EmptyI<2>, NoCopyAssign>,
+			meta::if_t<VEG_CONCEPT(move_assignable<T>), EmptyI<3>, NoMoveAssign>,
+			OptionNonTrivialBase<T> {
+	using OptionNonTrivialBase<T>::OptionNonTrivialBase;
 };
 
 } // namespace _option
@@ -87,19 +241,20 @@ struct ret_none {
 
 template <typename T>
 struct VEG_NODISCARD Option
-		: private _detail::_uwunion::UwunionImpl<_detail::Empty, T>,
+		: private meta::if_t<
+					VEG_CONCEPT(trivially_copyable<_detail::Wrapper<T>>),
+					_detail::_option::OptionTrivial<T>,
+					_detail::_option::OptionNonTrivial<T>>,
+
 			private _detail::_option::adl::AdlBase {
 private:
-	using Base = _detail::_uwunion::UwunionImpl<_detail::Empty, T>;
+	using Base = meta::if_t<
+			VEG_CONCEPT(trivially_copyable<_detail::Wrapper<T>>),
+			_detail::_option::OptionTrivial<T>,
+			_detail::_option::OptionNonTrivial<T>>;
 
 public:
-	constexpr Option() VEG_NOEXCEPT
-			: Base{
-						_detail::_uwunion::EmplaceTag{},
-						_detail::UTag<usize{0}>{},
-						_detail::_uwunion::IdxMoveFn<_detail::Empty>{_detail::Empty{}},
-						usize{0},
-				} {}
+	constexpr Option() VEG_NOEXCEPT = default;
 	VEG_EXPLICIT_COPY(Option);
 
 	constexpr Option // NOLINT(hicpp-explicit-conversions)
@@ -107,12 +262,7 @@ public:
 
 	VEG_INLINE constexpr Option(Some /*tag*/, T value)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))
-			: Base{
-						_detail::_uwunion::EmplaceTag{},
-						_detail::UTag<usize{1}>{},
-						_detail::_uwunion::IdxMoveFn<T>{VEG_FWD(value)},
-						usize{1},
-				} {}
+			: Base{some, _detail::MoveFn<T>{VEG_FWD(value)}} {}
 
 	VEG_TEMPLATE(
 			(typename _, typename Fn),
@@ -121,22 +271,16 @@ public:
 			(/*tag*/, InPlace<_>),
 			(fn, Fn))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_fn_once<Fn, T>))
-			: Base{
-						_detail::_uwunion::EmplaceTag{},
-						_detail::UTag<usize{1}>{},
-						_detail::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)},
-						usize{1},
-				} {}
+			: Base{some, VEG_FWD(fn)} {}
 
-	VEG_CPP14(constexpr)
+	VEG_CPP20(constexpr)
 	void reset() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) {
 		if (is_some()) {
-			this->template _emplace<usize{0}>(
-					_detail::_uwunion::IdxMoveFn<_detail::Empty>{_detail::Empty{}});
+			this->disengage();
 		}
 	}
 
-	VEG_CPP14(constexpr)
+	VEG_CPP20(constexpr)
 	auto operator=(None /*arg*/)
 			VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_destructible<T>)) -> Option& {
 		reset();
@@ -150,16 +294,16 @@ public:
 			(= safe, Safe))
 	&&VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>))->T {
 		return static_cast<Option<T>&&>(*this).map_or_else(
-				_detail::_option::into_fn<T>{}, _detail::_option::ret_none<T>{});
+				_detail::_option::MoveMapFn{}, _detail::_option::RetNone<T>{});
 	}
 
 private:
 	VEG_CPP14(constexpr) auto _get() const VEG_NOEXCEPT -> T& {
-		return const_cast<T&>(Base::template get_ref<1>());
+		return const_cast<T&>(this->some_val.inner);
 	}
 
 public:
-	VEG_CPP14(constexpr)
+	VEG_CPP20(constexpr)
 	auto take() VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_movable<T>)) -> Option<T> {
 		if (is_some()) {
 			Option<T> val{
@@ -218,14 +362,22 @@ public:
 	VEG_TEMPLATE(
 			typename Fn,
 			requires(VEG_CONCEPT(fn_once<Fn, T>)),
-			VEG_CPP14(constexpr) auto emplace_with,
+			VEG_CPP20(constexpr) auto emplace_with,
 			(fn, Fn)) &
 			VEG_NOEXCEPT_IF(
 					VEG_CONCEPT(nothrow_destructible<T>) &&
-					VEG_CONCEPT(nothrow_fn_once<Fn, T>)) -> T& {
-		this->template _emplace<usize{1}>(
-				_detail::_uwunion::TaggedFn<Fn&&>{VEG_FWD(fn)});
-		return this->_get();
+					VEG_CONCEPT(nothrow_fn_once<Fn, T>)) -> RefMut<T> {
+		if (is_some()) {
+			this->disengage();
+		}
+		mem::destroy_at(&this->none_val);
+		_detail::_option::DeferMakeNoneIf _{&this->none_val, false};
+		mem::construct_with(
+				mem::addressof(this->some_val),
+				_detail::_option::WrapFn<Fn>{VEG_FWD(fn)});
+		_.success = true;
+		this->is_engaged = true;
+		return mut(this->_get());
 	}
 
 	VEG_CPP14(constexpr)
@@ -318,7 +470,7 @@ public:
 	}
 
 	VEG_NODISCARD VEG_INLINE constexpr auto is_some() const VEG_NOEXCEPT -> bool {
-		return usize(Base::index()) != 0;
+		return this->is_engaged;
 	}
 	VEG_NODISCARD VEG_INLINE constexpr auto is_none() const VEG_NOEXCEPT -> bool {
 		return !is_some();

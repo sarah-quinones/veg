@@ -234,11 +234,11 @@ VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_eq<LT, RT>))->bool {
 } // namespace mem
 template <typename T, typename A = mem::SystemAlloc>
 struct Box
-		: meta::conditional_t<
+		: meta::if_t<
 					VEG_CONCEPT(nothrow_copyable<T>) && VEG_CONCEPT(nothrow_copyable<A>),
 					_detail::EmptyI<13>,
 					_detail::NoCopyCtor>,
-			meta::conditional_t<
+			meta::if_t<
 					VEG_CONCEPT(nothrow_copy_assignable<T>) &&
 							VEG_CONCEPT(nothrow_copy_assignable<A>),
 					_detail::EmptyI<12>,

@@ -278,8 +278,8 @@ struct binary_traits<Fix<N>, Fix<M>> {
 	VEG_CMP(cmp_gt, CmpGT, >);
 	VEG_CMP(cmp_ge, CmpGE, >=);
 
-	using Div = meta::conditional_t<M == 0, void, Fix<N / (M != 0 ? M : 1)>>;
-	using Mod = meta::conditional_t<M == 0, void, Fix<N % (M != 0 ? M : 1)>>;
+	using Div = meta::if_t<M == 0, void, Fix<N / (M != 0 ? M : 1)>>;
+	using Mod = meta::if_t<M == 0, void, Fix<N % (M != 0 ? M : 1)>>;
 
 	VEG_NODISCARD VEG_INLINE static constexpr auto
 	div_fn(Fix<N> /*a*/, Fix<M> /*b*/) VEG_NOEXCEPT -> Div {

@@ -42,6 +42,7 @@ TEST_CASE("option: all") {
 
 	constexpr Option<int> i = {some, 3};
 	constexpr Option<int> j = none;
+	STATIC_ASSERT_IF_14(i.as_ref().is_some());
 	STATIC_ASSERT_IF_14(i.as_ref().unwrap().get() == 3);
 	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).is_some());
 	STATIC_ASSERT_IF_14(i.as_ref().and_then(A{}).unwrap() == 1000. / 3);
@@ -58,14 +59,12 @@ TEST_CASE("option: all") {
 	STATIC_ASSERT_IF_14(Option<int>{some, 0}.as_ref().and_then(A{}).is_none());
 	STATIC_ASSERT_IF_14(
 			Option<int>{some, 3}.as_ref().and_then(A{}).unwrap() == 1000. / 3);
-	STATIC_ASSERT_IF_14(Option<int>{some, 42}.take().unwrap() == 42);
-	STATIC_ASSERT_IF_14(Option<int>{none}.take().is_none());
+	STATIC_ASSERT_IF_20(Option<int>{some, 42}.take().unwrap() == 42);
+	STATIC_ASSERT_IF_20(Option<int>{none}.take().is_none());
 	STATIC_ASSERT_IF_14(j.as_ref().and_then(A{}).is_none());
 
 	STATIC_ASSERT_IF_14(Option<int>{i}.or_else(A{}).unwrap() == 3);
 	STATIC_ASSERT_IF_14(Option<int>{j}.or_else(A{}).unwrap() == 13);
-
-	STATIC_ASSERT(sizeof(Option<int&>) == sizeof(int*));
 
 	{
 		using veg::clone;
@@ -118,26 +117,26 @@ TEST_CASE("option: all") {
 		CHECK(*flag.as_ref().unwrap());
 	}
 	{
-		VEG_CPP17(constexpr)
+		VEG_CPP20(constexpr)
 		auto opt = [&] {
 			Option<int> x;
 			x.emplace_with([&] { return 1; });
 			return x;
 		}();
 
-		STATIC_ASSERT_IF_17(opt == some(1));
+		STATIC_ASSERT_IF_20(opt == some(1));
 	}
 	{
 		STATIC_ASSERT(veg::cpo::is_trivially_constructible<int>::value);
 		STATIC_ASSERT(veg::cpo::is_trivially_constructible<Option<int>>::value);
-		VEG_CPP17(constexpr)
+		VEG_CPP20(constexpr)
 		auto opt = [&] {
 			Option<Option<int>> x;
 			x.emplace_with([&] { return some(1); });
 			return x;
 		}();
 
-		STATIC_ASSERT_IF_17(opt == some(some(1)));
+		STATIC_ASSERT_IF_20(opt == some(some(1)));
 	}
 	{
 		using std::vector;

@@ -69,7 +69,7 @@ template <typename T>
 using type_identity_t = typename type_identity<T>::type;
 
 template <bool B, typename T, typename F>
-using conditional_t =
+using if_t =
 		typename _detail::_meta::conditional_<B>::template type<T, F>;
 
 template <typename...>
@@ -87,11 +87,11 @@ struct conjunction<> : true_type {};
 
 template <typename First, typename... Preds>
 struct disjunction<First, Preds...>
-		: conditional_t<First::value, First, disjunction<Preds...>> {};
+		: if_t<First::value, First, disjunction<Preds...>> {};
 
 template <typename First, typename... Preds>
 struct conjunction<First, Preds...>
-		: conditional_t<First::value, conjunction<Preds...>, First> {};
+		: if_t<First::value, conjunction<Preds...>, First> {};
 } // namespace meta
 
 namespace _detail {
@@ -238,7 +238,7 @@ template <typename T>
 using unptr_t = typename _detail::_meta::is_pointer<T>::type;
 
 template <typename Default, template <typename...> class Op, typename... Args>
-using detected_or_t = typename meta::conditional_t<
+using detected_or_t = typename meta::if_t<
 		VEG_CONCEPT(detected<Op, Args...>),
 		meta::meta_apply<Op, Args...>,
 		meta::type_identity<Default>>::type;

@@ -209,8 +209,8 @@ struct binary_traits<Dyn, Fix<N>> : binary_traits<Dyn, Dyn> {
 		return binary_traits<Fix<N>, Dyn>::mul_fn({}, a);
 	}
 
-	using Div = meta::conditional_t<N == 0, void, Dyn>;
-	using Mod = meta::conditional_t<N == 0, void, Dyn>;
+	using Div = meta::if_t<N == 0, void, Dyn>;
+	using Mod = meta::if_t<N == 0, void, Dyn>;
 
 	VEG_NODISCARD VEG_INLINE static constexpr auto
 	div_fn(Dyn a, Fix<N> /*b*/) VEG_NOEXCEPT -> Div {

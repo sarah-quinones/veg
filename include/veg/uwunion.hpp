@@ -31,11 +31,6 @@ struct Uwunion;
 namespace _detail {
 namespace _uwunion {
 
-template <typename T>
-struct Storage {
-	T inner;
-};
-
 struct TrivialTag;
 struct NonTrivialTag;
 
@@ -58,7 +53,7 @@ union RawUwunionImpl<false, TrivialDtor> {
 #define VEG_TYPE_DECL(_, I) , typename __VEG_PP_CAT(T, I)
 #define VEG_TYPE_PUT(_, I) , __VEG_PP_CAT(T, I)
 #define VEG_UWUNION_HEAD(_, I)                                                 \
-	Storage<__VEG_PP_CAT(T, I)> __VEG_PP_CAT(head, I);
+	Wrapper<__VEG_PP_CAT(T, I)> __VEG_PP_CAT(head, I);
 #define VEG_UWUNION_HEAD_CTOR(_, I)                                            \
 	template <usize J, typename Fn>                                              \
 	VEG_INLINE constexpr RawUwunionImpl(UTag<I> /*unused*/, UTag<J>, Fn fn)      \
@@ -88,7 +83,7 @@ union RawUwunionImpl<false, TrivialDtor> {
 		template <typename... Ts>                                                  \
 		VEG_INLINE static constexpr auto                                           \
 		get(RawUwunion<Ts...> const& u) VEG_NOEXCEPT                               \
-				-> Storage<ith<__VEG_PP_TUPLE_SIZE(Tuple), Ts...>> const& {            \
+				-> Wrapper<ith<__VEG_PP_TUPLE_SIZE(Tuple), Ts...>> const& {            \
 			return u.__VEG_PP_CAT(head, __VEG_PP_TUPLE_SIZE(Tuple));                 \
 		}                                                                          \
 	}
@@ -99,7 +94,7 @@ template <>
 struct UwunionGetImpl<0> {
 	template <typename... Ts>
 	VEG_INLINE static constexpr auto get(RawUwunion<Ts...> const& u) VEG_NOEXCEPT
-			-> Storage<ith<0, Ts...>> const& {
+			-> Wrapper<ith<0, Ts...>> const& {
 		return u.head0;
 	}
 };
@@ -158,7 +153,7 @@ template <usize I>
 struct UwunionGetImpl {
 	template <typename... Ts>
 	VEG_INLINE static constexpr auto get(RawUwunion<Ts...> const& u) VEG_NOEXCEPT
-			-> Storage<ith<I, Ts...>> const& {
+			-> Wrapper<ith<I, Ts...>> const& {
 		return UwunionGetImpl<I - __VEG_PP_TUPLE_SIZE(VEG_TUPLE)>::get(u.tail);
 	}
 };
@@ -336,7 +331,7 @@ struct DropFn {
 	VEG_INLINE VEG_CPP20(constexpr) void
 	operator()(UTag<I> /*itag*/) const noexcept {
 		mem::destroy_at(mem::addressof(
-				const_cast<Storage<ith<I, Ts...>>&>(UwunionGetImpl<I>::get(self))));
+				const_cast<Wrapper<ith<I, Ts...>>&>(UwunionGetImpl<I>::get(self))));
 	}
 };
 
@@ -438,9 +433,9 @@ template <typename... Ts>
 struct TrivialUwunionImplGeneric {
 	template <usize I>
 	using Ith = ith<I, Ts...>;
-	using TagType = meta::conditional_t<sizeof...(Ts) < 256U, u8, usize>;
+	using TagType = meta::if_t<sizeof...(Ts) < 256U, u8, usize>;
 
-	static_assert(VEG_ALL_OF(VEG_CONCEPT(trivially_copyable<Storage<Ts>>)), ".");
+	static_assert(VEG_ALL_OF(VEG_CONCEPT(trivially_copyable<Wrapper<Ts>>)), ".");
 	union {
 		Empty _;
 		RawUwunion<Ts...> inner;
@@ -479,20 +474,6 @@ struct TrivialUwunionImplGeneric {
 template <typename... Ts>
 struct TrivialUwunionImpl : TrivialUwunionImplGeneric<Ts...> {
 	using TrivialUwunionImplGeneric<Ts...>::TrivialUwunionImplGeneric;
-};
-
-template <typename T>
-struct TrivialUwunionImpl<Empty, T>
-		: meta::conditional_t<
-					(cpo::is_trivially_constructible<T>::value &&
-           VEG_CONCEPT(trivially_move_assignable<T>)),
-					TrivialUwunionImplDefaultCtor<T>,
-					TrivialUwunionImplGeneric<Empty, T>> {
-	using Base = meta::conditional_t<
-			cpo::is_trivially_constructible<T>::value,
-			TrivialUwunionImplDefaultCtor<T>,
-			TrivialUwunionImplGeneric<Empty, T>>;
-	using Base::Base;
 };
 
 template <typename T>
@@ -592,7 +573,7 @@ struct NonTrivialUwunionDtor;
 	struct NonTrivialUwunionDtor</* NOLINT */                                    \
 	                             NeedsDtor,                                      \
 	                             Ts...> {                                        \
-		using TagType = meta::conditional_t<sizeof...(Ts) < 256U, u8, usize>;      \
+		using TagType = meta::if_t<sizeof...(Ts) < 256U, u8, usize>;               \
 		template <usize I>                                                         \
 		using Ith = ith<I, Ts...>;                                                 \
                                                                                \
@@ -684,7 +665,7 @@ struct NonTrivialCopyAssign {
 	VEG_CPP14(constexpr)
 	auto operator=(NonTrivialCopyAssign const& _rhs) /* NOLINT */ VEG_NOEXCEPT_IF(
 			VEG_ALL_OF(VEG_CONCEPT(nothrow_copyable<Ts>)) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_assignable<Storage<Ts>>)))
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_assignable<Wrapper<Ts>>)))
 			-> NonTrivialCopyAssign& {
 		using Inner = decltype(static_cast<Base*>(this)->inner.inner);
 		using Fn = UwunionGetter<Inner const&, Ts...>;
@@ -695,7 +676,7 @@ struct NonTrivialCopyAssign {
 		if (self.inner.tag == rhs.inner.tag) {
 			_detail::visit<
 					void,
-					VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_assignable<Storage<Ts>>)),
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_copy_assignable<Wrapper<Ts>>)),
 					sizeof...(Ts)>(
 					self.inner.tag,
 					AssignFn<NestedInner, Fn, Ts...>{
@@ -723,7 +704,7 @@ struct NonTrivialMoveAssign {
 	VEG_CPP14(constexpr)
 	auto operator=(NonTrivialMoveAssign&& _rhs) VEG_NOEXCEPT_IF(
 			VEG_ALL_OF(VEG_CONCEPT(nothrow_movable<Ts>)) &&
-			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_assignable<Storage<Ts>>)))
+			VEG_ALL_OF(VEG_CONCEPT(nothrow_move_assignable<Wrapper<Ts>>)))
 			-> NonTrivialMoveAssign& {
 		using Inner = decltype(static_cast<Base*>(this)->inner.inner);
 		using Fn = UwunionGetter<Inner&&, Ts...>;
@@ -734,7 +715,7 @@ struct NonTrivialMoveAssign {
 		if (self.inner.tag == rhs.inner.tag) {
 			_detail::visit<
 					void,
-					VEG_ALL_OF(VEG_CONCEPT(nothrow_move_assignable<Storage<Ts>>)),
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_move_assignable<Wrapper<Ts>>)),
 					sizeof...(Ts)>(
 					self.inner.tag,
 					AssignFn<NestedInner, Fn, Ts...>{
@@ -807,16 +788,16 @@ struct NoOpCopyMove<true, true, T> : T { /* NOLINT */
 	 !VEG_ALL_OF(VEG_CONCEPT(trivially_copy_constructible<Ts>)))
 
 #define VEG_NEEDS_MOVE_ASSIGN                                                  \
-	(!VEG_ALL_OF(VEG_CONCEPT(trivially_move_assignable<Storage<Ts>>)) &&         \
+	(!VEG_ALL_OF(VEG_CONCEPT(trivially_move_assignable<Wrapper<Ts>>)) &&         \
 	 VEG_ALL_OF(                                                                 \
 			 (VEG_CONCEPT(movable<Ts>) &&                                            \
-	      VEG_CONCEPT(move_assignable<Storage<Ts>>))))
+	      VEG_CONCEPT(move_assignable<Wrapper<Ts>>))))
 
 #define VEG_NEEDS_COPY_ASSIGN                                                  \
-	(!VEG_ALL_OF(VEG_CONCEPT(trivially_copy_assignable<Storage<Ts>>)) &&         \
+	(!VEG_ALL_OF(VEG_CONCEPT(trivially_copy_assignable<Wrapper<Ts>>)) &&         \
 	 VEG_ALL_OF(                                                                 \
 			 (VEG_CONCEPT(copyable<Ts>) &&                                           \
-	      VEG_CONCEPT(copy_assignable<Storage<Ts>>))))
+	      VEG_CONCEPT(copy_assignable<Wrapper<Ts>>))))
 
 template <usize... Is, typename... Ts>
 struct NonTrivialUwunionImpl<false, meta::index_sequence<Is...>, Ts...>
@@ -890,7 +871,7 @@ struct NonTrivialUwunionImpl<false, meta::index_sequence<Is...>, Ts...>
 
 template <typename... Ts>
 struct DoubleStorageDtor { /* NOLINT */
-	using TagType = meta::conditional_t<sizeof...(Ts) < 128U, u8, usize>;
+	using TagType = meta::if_t<sizeof...(Ts) < 128U, u8, usize>;
 	template <usize I>
 	using Ith = ith<I, Ts...>;
 
@@ -946,7 +927,7 @@ struct DoubleStorageDtor { /* NOLINT */
 
 template <typename... Ts>
 struct DoubleStorageCopyMove { /* NOLINT */
-	using TagType = meta::conditional_t<sizeof...(Ts) < 128U, u8, usize>;
+	using TagType = meta::if_t<sizeof...(Ts) < 128U, u8, usize>;
 	template <usize I>
 	using Ith = ith<I, Ts...>;
 
@@ -1061,7 +1042,7 @@ struct DoubleStorageCopyMove { /* NOLINT */
 
 			_detail::visit<
 					void,
-					VEG_ALL_OF(VEG_CONCEPT(nothrow_move_assignable<Storage<Ts>>)),
+					VEG_ALL_OF(VEG_CONCEPT(nothrow_move_assignable<Wrapper<Ts>>)),
 					sizeof...(Ts)>(
 					self_tag,
 					AssignFn<decltype(inner.inner0), Fn, Ts...>{self_inner, VEG_FWD(fn)});
@@ -1086,10 +1067,10 @@ struct DoubleStorageCopyMove { /* NOLINT */
 	VEG_INLINE
 	VEG_CPP14(constexpr)
 	auto operator=(DoubleStorageCopyMove&& rhs) VEG_NOEXCEPT_IF(VEG_ALL_OF(
-			(VEG_CONCEPT(nothrow_move_assignable<Storage<Ts>>) &&
+			(VEG_CONCEPT(nothrow_move_assignable<Wrapper<Ts>>) &&
 	     VEG_CONCEPT(nothrow_movable<Ts>)))) -> DoubleStorageCopyMove& {
 		this->template assign<VEG_ALL_OF(
-				(VEG_CONCEPT(nothrow_move_assignable<Storage<Ts>>) &&
+				(VEG_CONCEPT(nothrow_move_assignable<Wrapper<Ts>>) &&
 		     VEG_CONCEPT(nothrow_movable<Ts>)))>(
 				rhs.inner.tag_with_bit / 2U,
 				UwunionGetter<decltype(inner.inner0)&&, Ts...>{
@@ -1100,10 +1081,10 @@ struct DoubleStorageCopyMove { /* NOLINT */
 	VEG_INLINE
 	VEG_CPP14(constexpr)
 	auto operator=(DoubleStorageCopyMove const& rhs) VEG_NOEXCEPT_IF(VEG_ALL_OF(
-			(VEG_CONCEPT(nothrow_copy_assignable<Storage<Ts>>) &&
+			(VEG_CONCEPT(nothrow_copy_assignable<Wrapper<Ts>>) &&
 	     VEG_CONCEPT(nothrow_copyable<Ts>)))) -> DoubleStorageCopyMove& {
 		this->template assign<VEG_ALL_OF(
-				(VEG_CONCEPT(nothrow_copy_assignable<Storage<Ts>>) &&
+				(VEG_CONCEPT(nothrow_copy_assignable<Wrapper<Ts>>) &&
 		     VEG_CONCEPT(nothrow_copyable<Ts>)))>(
 				rhs.inner.tag_with_bit / 2U,
 				UwunionGetter<decltype(inner.inner0) const&, Ts...>{
@@ -1129,24 +1110,20 @@ struct DoubleStorageCopyMove { /* NOLINT */
 template <usize... Is, typename... Ts>
 struct NonTrivialUwunionImpl<true, meta::index_sequence<Is...>, Ts...>
 		: DoubleStorageCopyMove<Ts...>,
-			meta::conditional_t<
-					VEG_ALL_OF(VEG_CONCEPT(movable<Ts>)),
-					EmptyI<1312>,
-					NoMoveCtor>,
-			meta::conditional_t<
-					VEG_ALL_OF(VEG_CONCEPT(copyable<Ts>)),
-					EmptyI<1313>,
-					NoCopyCtor>,
-			meta::conditional_t<
+			meta::
+					if_t<VEG_ALL_OF(VEG_CONCEPT(movable<Ts>)), EmptyI<1312>, NoMoveCtor>,
+			meta::
+					if_t<VEG_ALL_OF(VEG_CONCEPT(copyable<Ts>)), EmptyI<1313>, NoCopyCtor>,
+			meta::if_t<
 					VEG_ALL_OF(
 							(VEG_CONCEPT(movable<Ts>) &&
-               VEG_CONCEPT(move_assignable<Storage<Ts>>))),
+               VEG_CONCEPT(move_assignable<Wrapper<Ts>>))),
 					EmptyI<1314>,
 					NoMoveAssign>,
-			meta::conditional_t<
+			meta::if_t<
 					VEG_ALL_OF(
 							(VEG_CONCEPT(copyable<Ts>) &&
-               VEG_CONCEPT(copy_assignable<Storage<Ts>>))),
+               VEG_CONCEPT(copy_assignable<Wrapper<Ts>>))),
 					EmptyI<1315>,
 					NoCopyAssign> {
 	using Base = DoubleStorageCopyMove<Ts...>;
@@ -1162,8 +1139,8 @@ struct NonTrivialUwunionImplSelector {
 };
 
 template <typename... Ts>
-using UwunionImpl = typename meta::conditional_t<
-		VEG_ALL_OF(VEG_CONCEPT(trivially_copyable<Storage<Ts>>)),
+using UwunionImpl = typename meta::if_t<
+		VEG_ALL_OF(VEG_CONCEPT(trivially_copyable<Wrapper<Ts>>)),
 		meta::type_identity<TrivialUwunionImpl<Ts...>>,
 		NonTrivialUwunionImplSelector<Ts...>>::type;
 
@@ -1809,7 +1786,7 @@ struct BinCerealUwunionBase {
 			(t, Ref<Uwunion<Ts...>>))
 	VEG_NOEXCEPT_IF(VEG_ALL_OF(
 			VEG_CONCEPT(aux::cereal::xnothrow_bin_serializable<Ts, File>))) {
-		using TagType = meta::conditional_t<sizeof...(Ts) < 256U, u8, usize>;
+		using TagType = meta::if_t<sizeof...(Ts) < 256U, u8, usize>;
 		cereal::BinCereal<TagType>::serialize_to(
 				VEG_FWD(f), ref(TagType(t.get().index())));
 		t.get().as_ref().visit(BinCerealVisitor<File>{VEG_FWD(f)});
@@ -1826,7 +1803,7 @@ struct BinCerealUwunionBase {
 			VEG_ALL_OF(VEG_CONCEPT(
 					aux::cereal::xnothrow_bin_deserializable_unsafe<Ts, File>)))
 			->Uwunion<Ts...> {
-		using TagType = meta::conditional_t<sizeof...(Ts) < 256U, u8, usize>;
+		using TagType = meta::if_t<sizeof...(Ts) < 256U, u8, usize>;
 		TagType index = cereal::BinCereal<TagType>::unchecked_deserialize_from(
 				unsafe, Tag<TagType>{}, mut(f.get()));
 
