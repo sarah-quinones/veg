@@ -73,7 +73,7 @@ void String::insert(usize pos, char const* data_, usize len) noexcept {
 }
 
 void String::insert_newline(usize pos) noexcept {
-	append_literal("\n");
+	append_literal(u8"\n");
 	++pos;
 	for (usize i = 0; i < indent_level; ++i) {
 		append_literal(u8"\t");

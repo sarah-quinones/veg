@@ -7,15 +7,11 @@
 namespace veg {
 inline namespace tags {
 VEG_TAG_TEMPLATE(typename T, tag, Tag, T);
-VEG_TAG(from_raw_parts, FromRawParts);
 VEG_TAG(as_ref, AsRef);
 VEG_TAG(as_mut, AsMut);
 VEG_TAG(from, From);
 VEG_TAG(from_i, FromI);
 VEG_TAG(as_ref_once, AsRefOnce);
-
-VEG_TAG(safe, Safe);
-VEG_TAG(unsafe, Unsafe);
 
 VEG_TAG(from_alloc, FromAlloc);
 VEG_TAG(from_alloc_and_value, FromAllocAndValue);

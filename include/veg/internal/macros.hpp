@@ -837,21 +837,45 @@ VEG_DEF_CONCEPT_BUILTIN_OR_INTERNAL((typename T, typename U), same, T, U);
 } // namespace concepts
 
 enum struct CharUnit : unsigned char {};
-template <isize N>
-struct StrLiteral {
-	CharUnit _[N];
-};
-template <CharUnit... Cs>
-struct StrLiteralConstant {
+
+inline namespace tags {
+VEG_TAG(from_raw_parts, FromRawParts);
+
+VEG_TAG(safe, Safe);
+VEG_TAG(unsafe, Unsafe);
+} // namespace tags
+
+struct Str {
 private:
-	static constexpr StrLiteral<isize(sizeof...(Cs))> literal = {{Cs...}};
+	struct {
+		CharUnit const* ptr;
+		isize len;
+	} _ = {};
 
 public:
+	VEG_INLINE constexpr Str(
+			Unsafe /*unsafe*/,
+			FromRawParts /*from_raw_parts*/,
+			CharUnit const* ptr,
+			isize len) noexcept
+			: _{ptr, len} {};
 	VEG_INLINE constexpr auto as_slice() const noexcept -> Slice<CharUnit>;
 };
 
 template <CharUnit... Cs>
-constexpr StrLiteral<isize(sizeof...(Cs))> StrLiteralConstant<Cs...>::literal;
+struct StrLiteralConstant {
+private:
+	static constexpr CharUnit literal[isize{sizeof...(Cs)}] = {Cs...};
+
+public:
+	VEG_INLINE constexpr auto as_slice() const noexcept -> Slice<CharUnit>;
+	VEG_INLINE constexpr auto as_str() const noexcept -> Str {
+		return {unsafe, from_raw_parts, literal, isize{sizeof...(Cs)}};
+	}
+};
+
+template <CharUnit... Cs>
+constexpr CharUnit StrLiteralConstant<Cs...>::literal[isize{sizeof...(Cs)}];
 
 namespace _detail {
 using NativeChar8 = meta::uncvref_t<decltype(u8""[0])>;
