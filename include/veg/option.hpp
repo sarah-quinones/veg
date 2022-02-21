@@ -242,14 +242,28 @@ struct OptionNonTrivial
 template <typename T>
 struct VEG_NODISCARD Option
 		: private meta::if_t<
-					VEG_CONCEPT(trivially_copyable<_detail::Wrapper<T>>),
+					((!VEG_CONCEPT(movable<_detail::Wrapper<T>>) ||
+            VEG_CONCEPT(trivially_move_constructible<_detail::Wrapper<T>>)) &&
+           (!VEG_CONCEPT(copyable<_detail::Wrapper<T>>) ||
+            VEG_CONCEPT(trivially_copy_constructible<_detail::Wrapper<T>>)) &&
+           (!VEG_CONCEPT(move_assignable<_detail::Wrapper<T>>) ||
+            VEG_CONCEPT(trivially_move_assignable<_detail::Wrapper<T>>)) &&
+           (!VEG_CONCEPT(copy_assignable<_detail::Wrapper<T>>) ||
+            VEG_CONCEPT(trivially_copy_assignable<_detail::Wrapper<T>>))),
 					_detail::_option::OptionTrivial<T>,
 					_detail::_option::OptionNonTrivial<T>>,
 
 			private _detail::_option::adl::AdlBase {
 private:
 	using Base = meta::if_t<
-			VEG_CONCEPT(trivially_copyable<_detail::Wrapper<T>>),
+			((!VEG_CONCEPT(movable<_detail::Wrapper<T>>) ||
+	      VEG_CONCEPT(trivially_move_constructible<_detail::Wrapper<T>>)) &&
+	     (!VEG_CONCEPT(copyable<_detail::Wrapper<T>>) ||
+	      VEG_CONCEPT(trivially_copy_constructible<_detail::Wrapper<T>>)) &&
+	     (!VEG_CONCEPT(move_assignable<_detail::Wrapper<T>>) ||
+	      VEG_CONCEPT(trivially_move_assignable<_detail::Wrapper<T>>)) &&
+	     (!VEG_CONCEPT(copy_assignable<_detail::Wrapper<T>>) ||
+	      VEG_CONCEPT(trivially_copy_assignable<_detail::Wrapper<T>>))),
 			_detail::_option::OptionTrivial<T>,
 			_detail::_option::OptionNonTrivial<T>>;
 

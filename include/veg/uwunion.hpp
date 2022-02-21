@@ -435,7 +435,6 @@ struct TrivialUwunionImplGeneric {
 	using Ith = ith<I, Ts...>;
 	using TagType = meta::if_t<sizeof...(Ts) < 256U, u8, usize>;
 
-	static_assert(VEG_ALL_OF(VEG_CONCEPT(trivially_copyable<Wrapper<Ts>>)), ".");
 	union {
 		Empty _;
 		RawUwunion<Ts...> inner;
@@ -1140,7 +1139,15 @@ struct NonTrivialUwunionImplSelector {
 
 template <typename... Ts>
 using UwunionImpl = typename meta::if_t<
-		VEG_ALL_OF(VEG_CONCEPT(trivially_copyable<Wrapper<Ts>>)),
+		VEG_ALL_OF(
+				((!VEG_CONCEPT(movable<Wrapper<Ts>>) ||
+          VEG_CONCEPT(trivially_move_constructible<Wrapper<Ts>>)) &&
+         (!VEG_CONCEPT(copyable<Wrapper<Ts>>) ||
+          VEG_CONCEPT(trivially_copy_constructible<Wrapper<Ts>>)) &&
+         (!VEG_CONCEPT(move_assignable<Wrapper<Ts>>) ||
+          VEG_CONCEPT(trivially_move_assignable<Wrapper<Ts>>)) &&
+         (!VEG_CONCEPT(copy_assignable<Wrapper<Ts>>) ||
+          VEG_CONCEPT(trivially_copy_assignable<Wrapper<Ts>>)))),
 		meta::type_identity<TrivialUwunionImpl<Ts...>>,
 		NonTrivialUwunionImplSelector<Ts...>>::type;
 

@@ -884,6 +884,11 @@ template <typename T, usize N>
 struct Array_ {
 	T _[N];
 };
+template <typename T>
+constexpr auto assert_complete() noexcept -> bool {
+	static_assert(sizeof(T) != 0, ".");
+	return true;
+}
 } // namespace _detail
 } // namespace veg
 
