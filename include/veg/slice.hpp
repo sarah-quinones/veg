@@ -21,7 +21,7 @@ struct AdlBase {};
 } // namespace _detail
 
 template <typename T>
-struct Slice {
+struct Slice : _detail::_slice::adl::AdlBase {
 private:
 	T const* data = nullptr;
 	isize size = 0;
@@ -214,7 +214,7 @@ VEG_TEMPLATE(
 		(lhs, SliceMut<T>),
 		(rhs, SliceMut<U>))
 VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_eq<T, U>))->bool {
-	return adl::operator==(Slice<T>(lhs), Slice<U>(rhs));
+	return adl::operator==(lhs.as_const(), rhs.as_const());
 };
 } // namespace adl
 
@@ -277,8 +277,8 @@ struct OrdSliceMutBase {
 			(rhs, Ref<SliceMut<U>>))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_ord<T, U>))->cmp::Ordering {
 		return OrdSliceBase::cmp( //
-				ref(Slice<T>(lhs.get())),
-				ref(Slice<U>(rhs.get())));
+				ref(lhs.get().as_const()),
+				ref(rhs.get().as_const()));
 	}
 };
 struct OrdArrayBase {
