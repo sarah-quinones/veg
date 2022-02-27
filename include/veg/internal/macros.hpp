@@ -80,7 +80,7 @@
 
 #ifndef VEG_INLINE
 
-#ifdef NDEBUG
+#if defined(NDEBUG) || defined(__OPTIMIZE__)
 #define VEG_INLINE HEDLEY_ALWAYS_INLINE
 #else
 #define VEG_INLINE inline

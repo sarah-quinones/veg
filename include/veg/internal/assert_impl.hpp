@@ -37,10 +37,12 @@ namespace _detail {
 void incr_counter() VEG_ALWAYS_NOEXCEPT;
 void decr_counter() VEG_ALWAYS_NOEXCEPT;
 
-[[noreturn]] void
-on_assert_fail(long line, ByteStringView file, ByteStringView func);
-void on_expect_fail(long line, ByteStringView file, ByteStringView func);
-void set_assert_params1(ByteStringView op, String lhs, String rhs);
+[[noreturn]] void on_assert_fail(
+		long line, ByteStringView file, ByteStringView func) VEG_NOEXCEPT;
+void on_expect_fail(long line, ByteStringView file, ByteStringView func)
+		VEG_NOEXCEPT;
+void set_assert_params1(ByteStringView op, String lhs, String rhs)
+		VEG_ALWAYS_NOEXCEPT;
 void set_assert_params2(ByteStringView expression, ByteStringView msg)
 		VEG_ALWAYS_NOEXCEPT;
 

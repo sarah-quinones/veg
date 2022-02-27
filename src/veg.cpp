@@ -335,13 +335,14 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 	return output;
 }
 
-void on_expect_fail(long line, ByteStringView file, ByteStringView func) {
+void on_expect_fail(long line, ByteStringView file, ByteStringView func)
+		VEG_NOEXCEPT {
 	auto str = on_fail(line, file, func, false);
 	_detail::write_utf8_to(stderr, str.ptr(), str.len());
 }
 
-[[noreturn]] void
-on_assert_fail(long line, ByteStringView file, ByteStringView func) {
+[[noreturn]] void on_assert_fail(
+		long line, ByteStringView file, ByteStringView func) VEG_NOEXCEPT {
 	auto str = on_fail(line, file, func, true);
 	_detail::write_utf8_to(stderr, str.ptr(), str.len());
 	std::terminate();
@@ -351,7 +352,7 @@ void set_assert_params1( //
 		ByteStringView op,   //
 		String lhs,          //
 		String rhs           //
-) {
+		) VEG_ALWAYS_NOEXCEPT {
 	bool success = false;
 
 	auto _clear = [&] {
