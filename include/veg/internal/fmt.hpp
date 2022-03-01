@@ -13,7 +13,7 @@
 
 namespace veg {
 namespace _detail {
-auto snprintf1(char* out, usize n, unsigned type, void* arg) -> usize;
+auto snprintf1(char* out, usize n, unsigned type, void* arg) VEG_ALWAYS_NOEXCEPT -> usize;
 struct String final {
 	usize indent_level = 0;
 	struct layout {

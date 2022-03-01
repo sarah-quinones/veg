@@ -393,7 +393,8 @@ void set_assert_params2(       //
 	a.callback = msg;
 }
 
-auto snprintf1(char* out, usize n, unsigned type, void* arg) -> usize {
+auto snprintf1(char* out, usize n, unsigned type, void* arg) VEG_ALWAYS_NOEXCEPT
+		-> usize {
 	unsigned type_id = type % 4U;
 
 	switch (type_id) {
