@@ -24,8 +24,8 @@ module veg {
       header "internal/fix_index.hpp"
       export *
     }
-    module fmt {
-      header "internal/fmt.hpp"
+    module dbg {
+      header "internal/dbg.hpp"
       export *
     }
     module integer_seq {

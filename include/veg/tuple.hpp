@@ -2,7 +2,7 @@
 #define VEG_TUPLE_HPP_B8PHUNWES
 
 #include "veg/type_traits/assignable.hpp"
-#include "veg/internal/fmt.hpp"
+#include "veg/internal/dbg.hpp"
 #include "veg/type_traits/invocable.hpp"
 #include "veg/util/get.hpp"
 #include "veg/internal/fix_index.hpp"

@@ -11,7 +11,7 @@
 #include "veg/internal/integer_seq.hpp"
 #include "veg/internal/visit.hpp"
 #include "veg/internal/fix_index.hpp"
-#include "veg/internal/fmt.hpp"
+#include "veg/internal/dbg.hpp"
 #include "veg/cereal/bin_cereal.hpp"
 
 #include "veg/internal/prologue.hpp"

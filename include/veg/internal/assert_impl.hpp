@@ -6,7 +6,7 @@
 #include "veg/util/compare.hpp"
 #include "veg/util/defer.hpp"
 #include "veg/internal/byte_string_ref.hpp"
-#include "veg/internal/fmt.hpp"
+#include "veg/internal/dbg.hpp"
 #include "veg/internal/prologue.hpp"
 
 #if HEDLEY_HAS_WARNING("-Woverloaded-shift-op-parentheses")
