@@ -1,6 +1,6 @@
 #define __VEG_DISABLE_NOEXCEPT /* NOLINT */
 #include "veg/memory/dynamic_stack.hpp"
-#include <doctest.h>
+#include <catch.hpp>
 
 #include <atomic>
 
@@ -51,7 +51,7 @@ TEST_CASE("dynamic stack: raii") {
 					auto i4 = stack.make_new(Tag<int>{}, 300).unwrap();
 					CHECK(i4.ptr() != nullptr);
 					CHECK(i4.len() == 300);
-					CHECK(stack.remaining_bytes() < 4089 - 300 * sizeof(int));
+					CHECK(stack.remaining_bytes() < isize(4089 - 300 * sizeof(int)));
 				}
 			}
 		}

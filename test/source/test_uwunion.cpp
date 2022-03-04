@@ -5,7 +5,7 @@
 #include <veg/functional/ref.hpp>
 
 #include "static_assert.hpp"
-#include <doctest.h>
+#include <catch.hpp>
 
 #include "veg/internal/prologue.hpp"
 

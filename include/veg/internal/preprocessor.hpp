@@ -1,33 +1,6 @@
 #ifndef VEG_PREPROCESSOR_HPP_U2V3WRWYS
 #define VEG_PREPROCESSOR_HPP_U2V3WRWYS
 
-#define __VEG_IMPL_PP_CAT(A, ...) A##__VA_ARGS__
-
-#define __VEG_IMPL_PP_CAT2(A, ...) A##__VA_ARGS__
-
-#define __VEG_IMPL_PP_CONSUME(X)
-
-#define __VEG_IMPL_PP_SEQ_HEAD_1(X)
-#define __VEG_IMPL_PP_SEQ_HEAD_0(X) X __VEG_IMPL_PP_SEQ_HEAD_1(
-
-#define __VEG_IMPL_PP_HEAD_0(arg, ...) arg
-#define __VEG_IMPL_PP_TAIL_0(arg, ...) __VA_ARGS__
-#define __VEG_IMPL_PP_HEAD_1(arg) arg
-#define __VEG_IMPL_PP_TAIL_1(arg)
-
-#define __VEG_IMPL_PP_STRINGIZE(...) #__VA_ARGS__
-
-#define __VEG_IMPL_PP_REMOVE_PAREN1(...) __VEG_IMPL_PP_REMOVE_PAREN1 __VA_ARGS__
-#define __VEG_IMPL_PP_REMOVE_PAREN2(...)                                       \
-	__VEG_PP_CAT(__VEG_IMPL_PP, __VA_ARGS__)
-#define __VEG_IMPL_PP__VEG_IMPL_PP_REMOVE_PAREN1
-
-#define __VEG_IMPL_PP_REMOVE_PAREN11(...)                                      \
-	__VEG_IMPL_PP_REMOVE_PAREN11 __VA_ARGS__
-#define __VEG_IMPL_PP_REMOVE_PAREN21(...)                                      \
-	__VEG_PP_CAT(__VEG_IMPL_PP, __VA_ARGS__)
-#define __VEG_IMPL_PP__VEG_IMPL_PP_REMOVE_PAREN11
-
 // clang-format off
 #define __VEG_IMPL_PP_COUNT(Arg_0, Arg_1, Arg_2, Arg_3, Arg_4, Arg_5, Arg_6, Arg_7, Arg_8, Arg_9, Arg_10, Arg_11, Arg_12, Arg_13, Arg_14, Arg_15, Arg_16, Arg_17, Arg_18, Arg_19, Arg_20, Arg_21, Arg_22, Arg_23, Arg_24, Arg_25, Arg_26, Arg_27, Arg_28, Arg_29, Arg_30, Arg_31, N, ...) N
 
@@ -184,6 +157,33 @@
 #define __VEG_IMPL_PP_MAKE_TUPLE31 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30)
 #define __VEG_IMPL_PP_MAKE_TUPLE32 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31)
 // clang-format on
+
+#define __VEG_IMPL_PP_CAT(A, ...) A##__VA_ARGS__
+#define __VEG_IMPL_PP_CAT2(A, ...) A##__VA_ARGS__
+#define __VEG_IMPL_PP_CAT3(A, ...) A##__VA_ARGS__
+
+#define __VEG_IMPL_PP_CONSUME(X)
+
+#define __VEG_IMPL_PP_SEQ_HEAD_1(X)
+#define __VEG_IMPL_PP_SEQ_HEAD_0(X) X __VEG_IMPL_PP_SEQ_HEAD_1(
+
+#define __VEG_IMPL_PP_HEAD_0(arg, ...) arg
+#define __VEG_IMPL_PP_TAIL_0(arg, ...) __VA_ARGS__
+#define __VEG_IMPL_PP_HEAD_1(arg) arg
+#define __VEG_IMPL_PP_TAIL_1(arg)
+
+#define __VEG_IMPL_PP_STRINGIZE(...) #__VA_ARGS__
+
+#define __VEG_IMPL_PP_REMOVE_PAREN1(...) __VEG_IMPL_PP_REMOVE_PAREN1 __VA_ARGS__
+#define __VEG_IMPL_PP_REMOVE_PAREN2(...)                                       \
+	__VEG_PP_CAT(__VEG_IMPL_PP, __VA_ARGS__)
+#define __VEG_IMPL_PP__VEG_IMPL_PP_REMOVE_PAREN1
+
+#define __VEG_IMPL_PP_REMOVE_PAREN11(...)                                      \
+	__VEG_IMPL_PP_REMOVE_PAREN11 __VA_ARGS__
+#define __VEG_IMPL_PP_REMOVE_PAREN21(...)                                      \
+	__VEG_PP_CAT(__VEG_IMPL_PP, __VA_ARGS__)
+#define __VEG_IMPL_PP__VEG_IMPL_PP_REMOVE_PAREN11
 
 #define __VEG_PP_MAKE_TUPLE(N) __VEG_PP_CAT2(__VEG_IMPL_PP_MAKE_TUPLE, N)
 
@@ -408,12 +408,21 @@
 	__VEG_IMPL_PP_SEQ_HEAD_0 Seq)
 #define __VEG_PP_SEQ_TAIL(Seq) __VEG_IMPL_PP_CONSUME Seq
 
-#define __VEG_PP_HEAD(...) __VEG_IMPL_PP_HEAD_0(__VA_ARGS__)
-#define __VEG_PP_TAIL(...) __VEG_IMPL_PP_TAIL_0(__VA_ARGS__)
+#define __VEG_PP_HEAD(...)                                                     \
+	__VEG_PP_CAT2(                                                               \
+			__VEG_IMPL_PP_HEAD_,                                                     \
+			__VEG_IMPL_PP_IS_1(__VEG_IMPL_PP_VARIADIC_SIZE(__VA_ARGS__)))                    \
+	(__VA_ARGS__)
+#define __VEG_PP_TAIL(...)                                                     \
+	__VEG_PP_CAT2(                                                               \
+			__VEG_IMPL_PP_TAIL_,                                                     \
+			__VEG_IMPL_PP_IS_1(__VEG_IMPL_PP_VARIADIC_SIZE(__VA_ARGS__)))                    \
+	(__VA_ARGS__)
 
 #define __VEG_PP_STRINGIZE(...) __VEG_IMPL_PP_STRINGIZE(__VA_ARGS__)
 #define __VEG_PP_CAT(A, ...) __VEG_IMPL_PP_CAT(A, __VA_ARGS__)
 #define __VEG_PP_CAT2(A, ...) __VEG_IMPL_PP_CAT2(A, __VA_ARGS__)
+#define __VEG_PP_CAT3(A, ...) __VEG_IMPL_PP_CAT3(A, __VA_ARGS__)
 #define __VEG_PP_REMOVE_PAREN(...)                                             \
 	__VEG_IMPL_PP_REMOVE_PAREN2(__VEG_IMPL_PP_REMOVE_PAREN1 __VA_ARGS__)
 #define __VEG_PP_REMOVE_PAREN1(...)                                            \

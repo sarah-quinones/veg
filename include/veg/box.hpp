@@ -58,41 +58,33 @@ template <
 struct BoxImpl {
 	BoxAlloc<T, A> _;
 
-	VEG_INLINE constexpr auto alloc_ref() const noexcept -> Ref<A> {
-		return ref(_[0_c]);
-	}
-	VEG_INLINE VEG_CPP14(constexpr) auto alloc_mut(Unsafe /*tag*/) noexcept
-			-> RefMut<A> {
+	VEG_INLINE auto alloc_ref() const noexcept -> Ref<A> { return ref(_[0_c]); }
+	VEG_INLINE auto alloc_mut(Unsafe /*tag*/) noexcept -> RefMut<A> {
 		return mut(_[0_c]);
 	}
-	VEG_INLINE constexpr auto data_ref() const noexcept -> Ref<T const*> {
+	VEG_INLINE auto data_ref() const noexcept -> Ref<T const*> {
 		return ref(*static_cast<T const* const*>(mem::addressof(_[1_c].inner)));
 	}
-	VEG_INLINE VEG_CPP14(constexpr) auto data_mut(Unsafe /*tag*/) noexcept
-			-> RefMut<T*> {
+	VEG_INLINE auto data_mut(Unsafe /*tag*/) noexcept -> RefMut<T*> {
 		return mut(_[1_c].inner);
 	}
 
-	VEG_INLINE constexpr auto ptr() const noexcept -> T const* {
-		return _[1_c].inner;
-	}
-	VEG_INLINE VEG_CPP14(constexpr) auto ptr_mut() noexcept -> T* {
-		return _[1_c].inner;
-	}
+	VEG_INLINE auto ptr() const noexcept -> T const* { return _[1_c].inner; }
+	VEG_INLINE auto ptr_mut() noexcept -> T* { return _[1_c].inner; }
 
-	VEG_INLINE constexpr auto operator*() const noexcept -> T const& {
+	VEG_INLINE auto operator*() const noexcept -> T const& {
 		VEG_ASSERT(ptr() != nullptr);
 		return *ptr();
 	}
-	VEG_INLINE VEG_CPP14(constexpr) auto operator*() noexcept -> T& {
+	VEG_INLINE auto operator*() noexcept -> T& {
 		VEG_ASSERT(ptr() != nullptr);
 		return *ptr_mut();
 	}
-	VEG_INLINE constexpr auto operator->() const noexcept -> T const* {
+	VEG_INLINE auto operator->() const noexcept -> T const* {
 		VEG_ASSERT(ptr() != nullptr);
 		return ptr();
 	}
-	VEG_INLINE VEG_CPP14(constexpr) auto operator->() noexcept -> T* {
+	VEG_INLINE auto operator->() noexcept -> T* {
 		VEG_ASSERT(ptr() != nullptr);
 		return ptr_mut();
 	}
@@ -253,7 +245,7 @@ namespace _boxadl {
 VEG_TEMPLATE(
 		(typename LT, typename RT, typename LA, typename RA),
 		requires(VEG_CONCEPT(eq<LT, RT>)),
-		VEG_NODISCARD constexpr auto
+		VEG_NODISCARD auto
 		operator==,
 		(lhs, Box<LT, LA> const&),
 		(rhs, Box<RT, RA> const&))
@@ -272,7 +264,7 @@ struct OrdBox {
 	VEG_TEMPLATE(
 			(typename LT, typename RT, typename LA, typename RA),
 			requires(VEG_CONCEPT(ord<LT, RT>)),
-			VEG_NODISCARD static VEG_CPP14(constexpr) auto cmp,
+			VEG_NODISCARD static auto cmp,
 			(lhs, Ref<Box<LT, LA>>),
 			(rhs, Ref<Box<RT, RA>>))
 	VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_ord<LT, RT>))->cmp::Ordering {

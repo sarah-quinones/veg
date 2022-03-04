@@ -37,7 +37,7 @@
 #include <vector>
 #include <algorithm>
 
-#include <doctest.h>
+#include <catch.hpp>
 #include <string>
 #include "veg/internal/prologue.hpp"
 

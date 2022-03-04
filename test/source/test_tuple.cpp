@@ -2,7 +2,7 @@
 #include <limits>
 #include <veg/tuple.hpp>
 #include <utility>
-#include <doctest.h>
+#include <catch.hpp>
 #include "veg/memory/placement.hpp"
 #include "veg/functional/overload.hpp"
 #include "veg/functional/copy_fn.hpp"

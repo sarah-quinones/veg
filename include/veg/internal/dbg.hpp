@@ -13,13 +13,13 @@
 
 namespace veg {
 namespace _detail {
-auto snprintf1(char* out, usize n, unsigned type, void* arg) VEG_ALWAYS_NOEXCEPT -> usize;
+auto snprintf1(char* out, isize n, unsigned type, void* arg) VEG_ALWAYS_NOEXCEPT -> isize;
 struct String final {
-	usize indent_level = 0;
+	isize indent_level = 0;
 	struct layout {
 		char* ptr;
-		usize len;
-		usize cap;
+		isize len;
+		isize cap;
 	} self = {};
 
 	~String();
@@ -31,19 +31,19 @@ struct String final {
 	auto operator=(String const&) -> String& = delete;
 	auto operator=(String&&) -> String& = delete;
 
-	void resize(usize new_len) noexcept;
-	void reserve(usize new_cap) noexcept;
-	void insert(usize pos, char const* data, usize len) noexcept;
-	void insert_newline(usize pos) noexcept;
+	void resize(isize new_len) noexcept;
+	void reserve(isize new_cap) noexcept;
+	void insert(isize pos, char const* data, isize len) noexcept;
+	void insert_newline(isize pos) noexcept;
 	void fprintln(std::FILE* f) const noexcept;
 
 	VEG_NODISCARD VEG_INLINE auto data() const noexcept -> char* {
 		return self.ptr;
 	}
-	VEG_NODISCARD VEG_INLINE auto size() const noexcept -> usize {
+	VEG_NODISCARD VEG_INLINE auto size() const noexcept -> isize {
 		return self.len;
 	}
-	template <usize N>
+	template <isize N>
 	VEG_INLINE void append_literal(_detail::NativeChar8 const (&data)[N]) {
 		insert(size(), reinterpret_cast<char const*>(&data[0]), N - 1);
 	}
@@ -83,11 +83,11 @@ struct DbgStructScope {
 using BufferMut = veg::fmt::BufferMut;
 
 inline void to_string_impl(BufferMut out, unsigned type, void* arg) {
-	usize n = _detail::snprintf1(nullptr, 0, type, arg) + 1;
+	isize n = _detail::snprintf1(nullptr, 0, type, arg) + 1;
 
-	usize old_size = out.size();
+	isize old_size = out.size();
 	out.resize(out.size() + n);
-	_detail::snprintf1(out.data() + old_size, usize(n), type, arg);
+	_detail::snprintf1(out.data() + old_size, n, type, arg);
 	out.resize(old_size + n - 1);
 }
 
@@ -260,7 +260,7 @@ struct dbg_e {
 	template <typename T>
 	static void to_string(BufferMut out, Ref<T> arg) {
 		EnumName name = _fmt::enum_name_runtime(arg.get());
-		out.insert(out.size(), name.ptr, name.len);
+		out.insert(out.size(), name.ptr, isize(name.len));
 	}
 };
 
@@ -349,8 +349,8 @@ inline void dbg_prefix(
 	auto& out = str.get();
 
 	if (line != 0 && file != nullptr && fn != nullptr) {
-		auto file_len = usize(std::strlen(file));
-		auto fn_len = usize(std::strlen(fn));
+		auto file_len = isize(std::strlen(file));
+		auto fn_len = isize(std::strlen(fn));
 
 		out.append_literal(u8"[");
 		out.insert(1, fn, fn_len);

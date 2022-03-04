@@ -91,7 +91,7 @@ private:
 		constexpr auto const& no_str = "maybe(false)";
 		char const* str = (T == yes) ? yes_str : no_str;
 		auto len = ((T == yes) ? sizeof(yes_str) : sizeof(no_str)) - 1;
-		out.insert(out.size(), str, (len));
+		out.insert(out.size(), str, isize(len));
 	}
 };
 

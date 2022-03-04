@@ -7,7 +7,7 @@
 namespace veg {
 namespace _detail {
 struct ByteStringView {
-	VEG_INLINE constexpr ByteStringView(char const* data, usize len)
+	VEG_INLINE constexpr ByteStringView(char const* data, isize len)
 			VEG_ALWAYS_NOEXCEPT : data_{data},
 														len_{len} {}
 
@@ -20,23 +20,23 @@ struct ByteStringView {
 											char const*,
 											decltype(VEG_DECLVAL(T const&).data())>) &&
 					VEG_CONCEPT(
-							constructible<usize, decltype(VEG_DECLVAL(T const&).size())>)),
+							constructible<isize, decltype(VEG_DECLVAL(T const&).size())>)),
 
 			VEG_INLINE constexpr ByteStringView,
 			(arg, T const&))
 	VEG_ALWAYS_NOEXCEPT : ByteStringView{
 														static_cast<char const*>(arg.data()),
-														static_cast<usize>(arg.size())} {}
+														static_cast<isize>(arg.size())} {}
 
 	char const* data_;
-	usize len_;
+	isize len_;
 
 	VEG_NODISCARD VEG_INLINE constexpr auto data() const VEG_ALWAYS_NOEXCEPT
 			-> char const* {
 		return data_;
 	}
 	VEG_NODISCARD VEG_INLINE constexpr auto size() const VEG_ALWAYS_NOEXCEPT
-			-> usize {
+			-> isize {
 		return len_;
 	}
 	VEG_NODISCARD VEG_INLINE auto

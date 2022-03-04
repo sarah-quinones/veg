@@ -1,7 +1,7 @@
 #include "static_assert.hpp"
 #include <veg/fn_dyn.hpp>
 #include <veg/option.hpp>
-#include <doctest.h>
+#include <catch.hpp>
 #include "veg/internal/prologue.hpp"
 
 using namespace veg::fn;

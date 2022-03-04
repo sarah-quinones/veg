@@ -115,16 +115,18 @@ struct SliceMut : private Slice<T> {
 
 	VEG_NODISCARD
 	VEG_INLINE
-	constexpr auto operator[](isize idx) VEG_NOEXCEPT -> T& {
+	VEG_CPP14(constexpr) auto operator[](isize idx) VEG_NOEXCEPT -> T& {
 		return const_cast<T&>(static_cast<Slice<T> const&>(*this)[idx]);
 	}
 	VEG_NODISCARD
 	VEG_INLINE
-	constexpr auto ptr_mut() VEG_NOEXCEPT -> T* { return const_cast<T*>(ptr()); }
+	VEG_CPP14(constexpr) auto ptr_mut() VEG_NOEXCEPT -> T* {
+		return const_cast<T*>(ptr());
+	}
 	VEG_NODISCARD
 	VEG_INLINE
-	constexpr auto get_mut_unchecked(Unsafe /*tag*/, isize idx) VEG_NOEXCEPT
-			-> RefMut<T> {
+	VEG_CPP14(constexpr)
+	auto get_mut_unchecked(Unsafe /*tag*/, isize idx) VEG_NOEXCEPT -> RefMut<T> {
 		return mut(const_cast<T&>(*(this->data + idx)));
 	}
 	VEG_NODISCARD VEG_INLINE auto as_mut_bytes() VEG_NOEXCEPT
@@ -137,8 +139,8 @@ struct SliceMut : private Slice<T> {
 		};
 	}
 
-	VEG_NODISCARD VEG_INLINE constexpr auto split_at_mut(isize idx) VEG_NOEXCEPT
-			-> Tuple<SliceMut<T>, SliceMut<T>> {
+	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto split_at_mut(isize idx)
+			VEG_NOEXCEPT -> Tuple<SliceMut<T>, SliceMut<T>> {
 		return VEG_INTERNAL_ASSERT_PRECONDITION(usize(idx) <= usize(len())),
 		       Tuple<SliceMut<T>, SliceMut<T>>{
 							 tuplify,

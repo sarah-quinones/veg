@@ -15,7 +15,7 @@ VEG_TAG(from_literal, FromLiteral);
 struct StrView {
 	struct Inner {
 		char const* begin;
-		usize len;
+		isize len;
 	} _{};
 
 	StrView() = default;
@@ -29,8 +29,10 @@ struct StrView {
 	VEG_NODISCARD constexpr auto ptr() const noexcept -> char const* {
 		return _.begin;
 	}
-	VEG_NODISCARD constexpr auto len() const noexcept -> usize { return _.len; }
-	VEG_NODISCARD auto split_at(usize pos) const noexcept
+	VEG_NODISCARD constexpr auto len() const noexcept -> isize {
+		return isize(_.len);
+	}
+	VEG_NODISCARD auto split_at(isize pos) const noexcept
 			-> Tuple<StrView, StrView> {
 		return (
 				assert(pos <= _.len),
@@ -41,39 +43,40 @@ struct StrView {
 				});
 	}
 	VEG_NODISCARD
-	auto substr(usize idx, usize len) const noexcept -> StrView {
+	auto substr(isize idx, isize len) const noexcept -> StrView {
 		return VEG_ASSERT_ALL_OF(
 							 (idx <= this->len()), //
 							 (idx + len <= this->len())),
 		       StrView{from_raw_parts, {_.begin + idx, len}};
 	}
-	VEG_NODISCARD auto head(usize len) const noexcept -> StrView {
+	VEG_NODISCARD auto head(isize len) const noexcept -> StrView {
 		return substr(0, len);
 	}
-	VEG_NODISCARD auto tail(usize len) const noexcept -> StrView {
+	VEG_NODISCARD auto tail(isize len) const noexcept -> StrView {
 		return assert(len <= this->len()), substr(this->len() - len, len);
 	}
-	VEG_NODISCARD auto skip_leading(usize n) const noexcept -> StrView {
+	VEG_NODISCARD auto skip_leading(isize n) const noexcept -> StrView {
 		return substr(n, len() - n);
 	}
 
 	VEG_NODISCARD
 	auto begins_with(StrView other) const noexcept -> bool {
 		return (other.len() <= len()) &&
-		       (std::memcmp(ptr(), other.ptr(), other.len()) == 0);
+		       (std::memcmp(ptr(), other.ptr(), usize(other.len())) == 0);
 	}
 	VEG_NODISCARD
 	auto ends_with(StrView other) const noexcept -> bool {
-		return (other.len() <= len()) &&
-		       (std::memcmp(
-								ptr() + (len() - other.len()), other.ptr(), other.len()) == 0);
+		return (other.len() <= len()) && (std::memcmp(
+																					ptr() + (len() - other.len()),
+																					other.ptr(),
+																					usize(other.len())) == 0);
 	}
 	VEG_NODISCARD auto eq(StrView other) const noexcept -> bool {
 		return (other.len() == len()) &&
-		       (std::memcmp(ptr(), other.ptr(), len()) == 0);
+		       (std::memcmp(ptr(), other.ptr(), usize(len())) == 0);
 	}
 	VEG_NODISCARD auto ltrim(char c) const noexcept -> StrView {
-		usize pos = 0;
+		isize pos = 0;
 		while (true) {
 			if (pos == len() || ptr()[pos] != c) {
 				break;
@@ -83,7 +86,7 @@ struct StrView {
 		return split_at(pos)[1_c];
 	}
 	VEG_NODISCARD auto rtrim(char c) const noexcept -> StrView {
-		usize pos = len();
+		isize pos = len();
 		while (true) {
 			if (pos == 0 || (ptr()[pos - 1] != c)) {
 				break;
@@ -242,7 +245,7 @@ struct fmt::Debug<_detail::type_parse::StrView> {
 	static void
 	to_string(fmt::Buffer& out, Ref<_detail::type_parse::StrView> str_ref) {
 		out.reserve(str_ref->len() + 2);
-		usize n = out.size();
+		isize n = out.size();
 		// TODO: escape sequences
 		char quotes = '\"';
 		auto str = str_ref.get();

@@ -23,9 +23,9 @@
 
 namespace veg {
 namespace _detail {
-void write_utf8_to(std::FILE* f, char const* ptr, usize len) noexcept {
+void write_utf8_to(std::FILE* f, char const* ptr, isize len) noexcept {
 	// TODO: handle utf8 on windows
-	std::fwrite(ptr, 1, len, f);
+	std::fwrite(ptr, 1, usize(len), f);
 }
 
 namespace type_parse {
@@ -45,9 +45,10 @@ void String::fprintln(std::FILE* f) const VEG_ALWAYS_NOEXCEPT {
 	_detail::write_utf8_to(f, self.ptr, self.len);
 	std::fputc('\n', f);
 }
-void String::reserve(usize new_cap) noexcept {
+void String::reserve(isize new_cap) noexcept {
 	if (new_cap > self.cap) {
-		auto* new_alloc = static_cast<char*>(std::realloc(self.ptr, new_cap));
+		auto* new_alloc =
+				static_cast<char*>(std::realloc(self.ptr, usize(new_cap)));
 		if (new_alloc == nullptr) {
 			std::terminate();
 		}
@@ -55,14 +56,14 @@ void String::reserve(usize new_cap) noexcept {
 		self.cap = new_cap;
 	}
 }
-void String::resize(usize new_len) noexcept {
+void String::resize(isize new_len) noexcept {
 	reserve(new_len);
 	self.len = new_len;
 }
-void String::insert(usize pos, char const* data_, usize len) noexcept {
-	usize old_size = size();
-	usize pre_new_size = len + old_size;
-	usize new_size =
+void String::insert(isize pos, char const* data_, isize len) noexcept {
+	isize old_size = size();
+	isize pre_new_size = len + old_size;
+	isize new_size =
 			(pre_new_size > (2 * old_size)) ? pre_new_size : (2 * old_size);
 	reserve(new_size);
 	resize(pre_new_size);
@@ -72,10 +73,10 @@ void String::insert(usize pos, char const* data_, usize len) noexcept {
 	}
 }
 
-void String::insert_newline(usize pos) noexcept {
+void String::insert_newline(isize pos) noexcept {
 	append_literal(u8"\n");
 	++pos;
-	for (usize i = 0; i < indent_level; ++i) {
+	for (isize i = 0; i < indent_level; ++i) {
 		append_literal(u8"\t");
 		++pos;
 	}
@@ -100,15 +101,15 @@ void decr_counter() VEG_ALWAYS_NOEXCEPT {
 auto ByteStringView::starts_with(ByteStringView other) const VEG_ALWAYS_NOEXCEPT
 		-> bool {
 	return size() >= other.size() &&
-	       std::memcmp(data(), other.data(), other.size()) == 0;
+	       std::memcmp(data(), other.data(), usize(other.size())) == 0;
 }
 auto ByteStringView::operator==(ByteStringView other) const VEG_ALWAYS_NOEXCEPT
 		-> bool {
 	return size() == other.size() &&
-	       std::memcmp(data(), other.data(), other.size()) == 0;
+	       std::memcmp(data(), other.data(), usize(other.size())) == 0;
 }
 ByteStringView::ByteStringView(char const* str) VEG_ALWAYS_NOEXCEPT
-		: ByteStringView{str, std::strlen(str)} {}
+		: ByteStringView{str, isize(std::strlen(str))} {}
 
 struct Color {
 	std::uint8_t r;
@@ -123,6 +124,7 @@ constexpr Color azure = {240, 255, 255};
 constexpr Color gray = {128, 128, 128};
 
 auto with_color(Color c, Vec<char> s) -> Vec<char> {
+	veg::unused(default_color, olive, orange_red, azure, gray);
 #if defined(HAS_COLOR_CHECK)
 
 	if (::isatty(::fileno(stderr)) == 0) {
@@ -135,10 +137,12 @@ auto with_color(Color c, Vec<char> s) -> Vec<char> {
 	s.resize_for_overwrite(
 			old_len + isize{sizeof(prefix)} + isize{sizeof(suffix)});
 
-	std::memmove(s.ptr_mut() + sizeof(prefix), s.ptr(), old_len);
+	std::memmove(s.ptr_mut() + sizeof(prefix), s.ptr(), usize(old_len));
 	std::memcpy(s.ptr_mut(), prefix, sizeof(prefix));
 	std::memcpy(
-			s.ptr_mut() + (isize{sizeof(prefix)} + old_len), suffix, sizeof(suffix));
+			s.ptr_mut() + (isize{sizeof(prefix)} + usize(old_len)),
+			suffix,
+			sizeof(suffix));
 
 	isize i = 7;
 
@@ -184,7 +188,7 @@ using std::size_t;
 auto to_owned(ByteStringView ref) -> Vec<char> {
 	Vec<char> rv;
 	rv.resize_for_overwrite(isize(ref.size()));
-	std::memcpy(rv.ptr_mut(), ref.data(), ref.size());
+	std::memcpy(rv.ptr_mut(), ref.data(), usize(ref.size()));
 	;
 	return rv;
 }
@@ -210,14 +214,14 @@ auto find(ByteStringView sv, char c) -> char const* {
 void append(RefMut<Vec<char>> a, Slice<char> b) {
 	auto old_len = a->len();
 	a->resize_for_overwrite(old_len + b.len());
-	std::memcpy(a->ptr_mut() + old_len, b.ptr(), b.len());
+	std::memcpy(a->ptr_mut() + old_len, b.ptr(), usize(b.len()));
 }
 void append_num(RefMut<Vec<char>> a, long long arg) {
 	auto len = isize(std::snprintf(nullptr, 0, "%lld", arg));
 
 	auto old_len = a->len();
 	a->resize_for_overwrite(old_len + len + 1);
-	std::snprintf(a->ptr_mut() + old_len, len + 1, "%lld", arg);
+	std::snprintf(a->ptr_mut() + old_len, usize(len + 1), "%lld", arg);
 	a->resize_for_overwrite(old_len + len);
 }
 
@@ -313,7 +317,7 @@ auto on_fail(long line, ByteStringView file, ByteStringView func, bool is_fatal)
 					b = end;
 				} else {
 					b = e + 1;
-					e = find({b, usize((msg.data() + msg.size()) - b)}, '\n');
+					e = find({b, (msg.data() + msg.size()) - b}, '\n');
 				}
 			}
 		}
@@ -369,8 +373,8 @@ void set_assert_params1( //
 
 	lhs_vec.resize_for_overwrite(isize(lhs.size()));
 	rhs_vec.resize_for_overwrite(isize(rhs.size()));
-	std::memcpy(lhs_vec.ptr_mut(), lhs.data(), lhs.size());
-	std::memcpy(rhs_vec.ptr_mut(), rhs.data(), rhs.size());
+	std::memcpy(lhs_vec.ptr_mut(), lhs.data(), usize(lhs.size()));
+	std::memcpy(rhs_vec.ptr_mut(), rhs.data(), usize(rhs.size()));
 
 	failed_asserts.push({
 			false,
@@ -393,22 +397,22 @@ void set_assert_params2(       //
 	a.callback = msg;
 }
 
-auto snprintf1(char* out, usize n, unsigned type, void* arg) VEG_ALWAYS_NOEXCEPT
-		-> usize {
+auto snprintf1(char* out, isize n, unsigned type, void* arg) VEG_ALWAYS_NOEXCEPT
+		-> isize {
 	unsigned type_id = type % 4U;
 
 	switch (type_id) {
 	case 0: // signed
-		return usize(
-				std::snprintf(out, n, "%lld", *static_cast<long long signed*>(arg)));
+		return isize(std::snprintf(
+				out, usize(n), "%lld", *static_cast<long long signed*>(arg)));
 	case 1: // unsigned
-		return usize(
-				std::snprintf(out, n, "%llu", *static_cast<long long unsigned*>(arg)));
+		return isize(std::snprintf(
+				out, usize(n), "%llu", *static_cast<long long unsigned*>(arg)));
 	case 2: // pointer
-		return usize(std::snprintf(out, n, "%p", arg));
+		return isize(std::snprintf(out, usize(n), "%p", arg));
 	case 3: { // float
-		return usize(
-				std::snprintf(out, n, "%+.4Le", *static_cast<long double*>(arg)));
+		return isize(std::snprintf(
+				out, usize(n), "%+.4Le", *static_cast<long double*>(arg)));
 	}
 	default:
 		terminate();

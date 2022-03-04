@@ -1,104 +1,92 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.14)
 
-set(CMAKE_DEBUG_POSTFIX "-d") # append -d to debug targets so they can be
-                              # installed alongside release ones
+include(cmake/prelude.cmake)
 
-set(veg_version 0.1)
 project(
-  veg
-  LANGUAGES CXX
-  VERSION ${veg_version}
+    veg
+    VERSION 0.1.0
+    DESCRIPTION "c++ vocabulary types and utilities"
+    HOMEPAGE_URL "https://example.com/"
+    LANGUAGES CXX
 )
 
-get_directory_property(has_parent PARENT_DIRECTORY)
+include(cmake/project-is-top-level.cmake)
+include(cmake/variables.cmake)
 
-if(has_parent)
-  set(VEG_TOP_LEVEL FALSE)
-else()
-  set(VEG_TOP_LEVEL TRUE)
-endif()
-
-set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
-
-if(VEG_DOCS)
-  add_subdirectory(docs)
-  return()
-endif()
+# ---- Declare library ----
 
 add_library(
-  veg
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/veg.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/time.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/parse.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/ub.cpp
+    veg_veg
+    source/veg.cpp
+    source/ub.cpp
+    source/parse.cpp
+    source/time.cpp
 )
+add_library(veg::veg ALIAS veg_veg)
+
+include(GenerateExportHeader)
+generate_export_header(
+    veg_veg
+    BASE_NAME veg
+    EXPORT_FILE_NAME export/veg/veg_export.hpp
+    CUSTOM_CONTENT_FROM_VARIABLE pragma_suppress_c4251
+)
+
+if(NOT BUILD_SHARED_LIBS)
+  target_compile_definitions(veg_veg PUBLIC VEG_STATIC_DEFINE)
+endif()
+
+set_target_properties(
+    veg_veg PROPERTIES
+    CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN YES
+    VERSION "${PROJECT_VERSION}"
+    SOVERSION "${PROJECT_VERSION_MAJOR}"
+    EXPORT_NAME veg
+    OUTPUT_NAME veg
+)
+
 target_include_directories(
-  veg SYSTEM INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-                       $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    veg_veg ${warning_guard}
+    PUBLIC
+    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
 )
-target_include_directories(veg PRIVATE include)
 
-option(VEG_TESTS "enable tests" OFF)
+target_include_directories(
+    veg_veg SYSTEM
+    PUBLIC
+    "$<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/export>"
+)
 
-set(VEG_TARGETS veg)
+target_compile_features(veg_veg PUBLIC cxx_std_11)
 
-if(VEG_TESTS)
-  add_library(project_warnings INTERFACE)
-  add_library(project_options INTERFACE)
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/compiler_warnings.cmake)
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/static_analyzers.cmake)
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/sanitizers.cmake)
-  target_link_libraries(veg INTERFACE project_options project_warnings)
-  set(VEG_TARGETS ${VEG_TARGETS} project_options project_warnings)
+# ---- Install rules ----
 
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/extra_local_settings.cmake)
-  enable_sanitizers(project_options)
-
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/conan.cmake)
-  # Conan dependencies
-  set(CONAN_REQUIRES fmt/8.0.1 backward-cpp/1.5 benchmark/1.6.0)
-  set(CONAN_OPTIONS)
-  run_conan()
-  target_link_libraries(veg PUBLIC CONAN_PKG::fmt)
-
-  set_project_warnings(project_warnings)
-
-  enable_testing()
-  add_subdirectory(test)
-  add_subdirectory(benchmark)
+if(NOT CMAKE_SKIP_INSTALL_RULES)
+  include(cmake/install-rules.cmake)
 endif()
 
-option(VEG_INSTALL "enable install" ON)
+# ---- Examples ----
 
-if(VEG_INSTALL)
-  include(GNUInstallDirs)
-  include(CMakePackageConfigHelpers)
-  install(
-    TARGETS ${VEG_TARGETS}
-    EXPORT veg-targets
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  )
-  install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ DESTINATION include/)
-  install(
-    EXPORT veg-targets
-    FILE veg-targets.cmake
-    NAMESPACE veg::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/veg
-  )
-  write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/veg-config-version.cmake"
-    VERSION "${veg_version}"
-    COMPATIBILITY AnyNewerVersion
-  )
-  configure_package_config_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/config.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/veg-config.cmake"
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/veg
-  )
-  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/veg-config.cmake"
-                "${CMAKE_CURRENT_BINARY_DIR}/veg-config-version.cmake"
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/veg
+if(PROJECT_IS_TOP_LEVEL)
+  option(BUILD_EXAMPLES "Build examples tree." "${veg_DEVELOPER_MODE}")
+  if(BUILD_EXAMPLES)
+    add_subdirectory(example)
+  endif()
+endif()
+
+# ---- Developer mode ----
+
+if(NOT veg_DEVELOPER_MODE)
+  return()
+elseif(NOT PROJECT_IS_TOP_LEVEL)
+  message(
+      AUTHOR_WARNING
+      "Developer mode is intended for developers of veg"
   )
 endif()
+
+find_package(fmt REQUIRED)
+target_link_libraries(veg_veg PRIVATE fmt::fmt)
+
+include(cmake/dev-mode.cmake)

@@ -1,21 +1,17 @@
-include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/doctest.cmake)
+cmake_minimum_required(VERSION 3.14)
 
-add_library(doctest_cpp_main src/doctest_main.cpp)
-target_include_directories(
-  doctest_cpp_main PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-target_link_libraries(doctest_cpp_main CONAN_PKG::backward-cpp)
+project(vegTests LANGUAGES CXX)
 
-add_library(veg.all INTERFACE)
-target_include_directories(
-  veg.all INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-target_link_libraries(veg.all INTERFACE veg doctest_cpp_main)
+include(../cmake/project-is-top-level.cmake)
+include(../cmake/folders.cmake)
 
-macro(set_cxx_version target std_version)
-  set_target_properties(${target} PROPERTIES CXX_STANDARD ${std_version})
-  set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
-endmacro()
+if(PROJECT_IS_TOP_LEVEL)
+  find_package(veg REQUIRED)
+  enable_testing()
+endif()
+
+find_package(Catch2 REQUIRED)
+include(Catch)
 
 macro(
   add_test_std_version
@@ -24,9 +20,14 @@ macro(
   filename
 )
   add_executable(test.${std_version}.${name} ${filename})
-  target_link_libraries(test.${std_version}.${name} veg.${std_version})
-  set_cxx_version(test.${std_version}.${name} ${std_version})
-  doctest_discover_tests(
+  target_link_libraries(
+    test.${std_version}.${name} PRIVATE veg::veg Catch2::Catch2WithMain
+  )
+  target_include_directories(test.${std_version}.${name} PRIVATE include)
+  target_compile_features(
+    test.${std_version}.${name} PRIVATE cxx_std_${std_version}
+  )
+  catch_discover_tests(
     test.${std_version}.${name} TEST_PREFIX test.${std_version}.
   )
 
@@ -36,44 +37,45 @@ macro(
   set(test_list ${test_list} test.${std_version}.${name})
 endmacro()
 
-macro(add_all_tests_std_version std_version)
-  add_library(veg.${std_version} OBJECT src/null.cpp)
-  target_include_directories(
-    veg.${std_version} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
-  )
-  target_link_libraries(veg.${std_version} veg.all)
-  set_cxx_version(veg.${std_version} ${std_version})
-  target_compile_definitions(
-    veg.${std_version} PUBLIC -D__VEG_INTERNAL_ASSERTIONS
-  )
-
-  add_test_std_version(${std_version} idx src/test_index.cpp)
-  add_test_std_version(${std_version} fn src/test_fn_view.cpp)
-  add_test_std_version(${std_version} dynstack src/test_dynamic_stack.cpp)
-  add_test_std_version(${std_version} tuple src/test_tuple.cpp)
-  add_test_std_version(${std_version} option src/test_option.cpp)
-  add_test_std_version(${std_version} uwunion src/test_uwunion.cpp)
-  add_test_std_version(${std_version} option.stx src/test_option.stx.cpp)
-  add_test_std_version(${std_version} vec src/vec.cpp)
-
-  add_custom_target(
-    check.${std_version}
-    COMMAND ${CMAKE_CTEST_COMMAND} --verbose --tests-regex test.${std_version}.
-    DEPENDS ${test_list.${std_version}}
-  )
-
+macro(add_test_all_std_versions name filename)
+  add_test_std_version(11 ${name} ${filename})
+  add_test_std_version(14 ${name} ${filename})
+  add_test_std_version(17 ${name} ${filename})
+  add_test_std_version(20 ${name} ${filename})
 endmacro()
 
-add_all_tests_std_version(11)
-add_all_tests_std_version(14)
-add_all_tests_std_version(17)
-add_all_tests_std_version(20)
+add_test_all_std_versions(fn source/test_fn_view.cpp)
+add_test_all_std_versions(idx source/test_index.cpp)
+add_test_all_std_versions(option source/test_option.cpp)
+add_test_all_std_versions(option.stx source/test_option.stx.cpp)
+add_test_all_std_versions(tuple source/test_tuple.cpp)
+add_test_all_std_versions(dynstack source/test_dynamic_stack.cpp)
+add_test_all_std_versions(uwunion source/test_uwunion.cpp)
 
-add_executable(test.decl_parser src/test_parser.cpp)
-target_link_libraries(test.decl_parser veg)
-
+add_custom_target(
+  check.11
+  COMMAND ${CMAKE_CTEST_COMMAND} --verbose --tests-regex test.11.
+  DEPENDS ${test_list.11}
+)
+add_custom_target(
+  check.14
+  COMMAND ${CMAKE_CTEST_COMMAND} --verbose --tests-regex test.14.
+  DEPENDS ${test_list.14}
+)
+add_custom_target(
+  check.17
+  COMMAND ${CMAKE_CTEST_COMMAND} --verbose --tests-regex test.17.
+  DEPENDS ${test_list.17}
+)
+add_custom_target(
+  check.20
+  COMMAND ${CMAKE_CTEST_COMMAND} --verbose --tests-regex test.20.
+  DEPENDS ${test_list.20}
+)
 add_custom_target(
   check
   COMMAND ${CMAKE_CTEST_COMMAND} --verbose
   DEPENDS ${test_list}
 )
+
+add_folders(Test)

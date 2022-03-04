@@ -1,0 +1,21 @@
+{
+  "name": "veg",
+  "version-semver": "0.1.0",
+  "default-features": [],
+  "features": {
+    "test": {
+      "description": "Dependencies for testing",
+      "dependencies": [
+        {
+          "name": "fmt",
+          "version>=": "8.1.1"
+        },
+        {
+          "name": "catch2",
+          "version>=": "2.13.8"
+        }
+      ]
+    }
+  },
+  "builtin-baseline": "5cf60186a241e84e8232641ee973395d4fde90e1"
+}

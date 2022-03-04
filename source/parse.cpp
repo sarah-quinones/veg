@@ -118,11 +118,11 @@ constexpr Token basic_tokens[] = {
 auto find_matching(
 		StrView c,
 		StrView str,
-		usize initial_count = 0,
+		isize initial_count = 0,
 		bool ignore_angled = false) noexcept -> Tuple<StrView, StrView> {
-	usize delimiter_count = initial_count;
-	usize angled_delimiter_count = 0;
-	usize pos = 0;
+	isize delimiter_count = initial_count;
+	isize angled_delimiter_count = 0;
+	isize pos = 0;
 	for (; pos < str.len(); ++pos) {
 		if (delimiter_count == 0 &&
 		    (ignore_angled || angled_delimiter_count == 0) &&
@@ -170,8 +170,8 @@ auto parse_token(StrView str) noexcept -> Tuple<Token, StrView> {
 		VEG_BIND(
 				auto,
 				(head, tail),
-				type_parse::find_matching({from_literal, ")"}, str, usize(-1)));
-		assert(tail.len() != usize(0));
+				type_parse::find_matching({from_literal, ")"}, str, isize(-1)));
+		assert(tail.len() != isize(0));
 		return {
 				tuplify,
 				{str.head(head.len() + 1), TokenKind::IDENT},
@@ -179,7 +179,7 @@ auto parse_token(StrView str) noexcept -> Tuple<Token, StrView> {
 		};
 	}
 
-	usize start_at = 0;
+	isize start_at = 0;
 	if (str.begins_with({from_literal, "template "})) {
 		start_at = StrView{from_literal, "template "}.len();
 	}
@@ -187,7 +187,7 @@ auto parse_token(StrView str) noexcept -> Tuple<Token, StrView> {
 		start_at = StrView{from_literal, "typename "}.len();
 	}
 
-	usize pos = start_at;
+	isize pos = start_at;
 	while (type_parse::is_ident_char(str.ptr()[pos])) {
 		++pos;
 	}
@@ -379,19 +379,20 @@ auto greedy_parse_entity(StrView str) noexcept -> Tuple<Entity, StrView> {
 				if (str.ltrim(' ').begins_with(special_str)) {
 					VEG_BIND(
 							auto,
-							(inside_angled, after),
+							(inside_angled, after2),
 							type_parse::find_matching(
 									{from_literal, ">"},
 									str.ltrim(' ').skip_leading(special_str.len())));
-					assert(after.begins_with({from_literal, ">"}));
+					assert(after2.begins_with({from_literal, ">"}));
 					VEG_BIND(
 							auto,
 							(before_comma, comma_and_after),
 							type_parse::find_matching({from_literal, ","}, inside_angled));
+					veg::unused(before_comma);
 					assert(comma_and_after.begins_with({from_literal, ","}));
 					return tuplify(
 							type_parse::parse_entity(comma_and_after.skip_leading(1)),
-							after.skip_leading(1));
+							after2.skip_leading(1));
 				}
 			}
 		}
@@ -608,8 +609,9 @@ auto parse_function_decl(StrView str) noexcept -> FunctionDecl {
 
 			VEG_BIND( //
 					auto,
-					(between_square, after_params),
+					(between_square, after_params2),
 					type_parse::find_matching({from_literal, "]"}, after_args));
+      veg::unused(after_params2);
 			while (true) {
 				between_square = between_square.trim(' ');
 				if (between_square.len() == 0) {
@@ -618,14 +620,14 @@ auto parse_function_decl(StrView str) noexcept -> FunctionDecl {
 
 				VEG_BIND(
 						auto,
-						(head, tail),
+						(head, tail2),
 						type_parse::find_matching({from_literal, "="}, between_square));
 				auto lhs = type_parse::parse_entity(head);
 				VEG_BIND(
 						auto,
 						(tail_head, tail_tail),
 						type_parse::find_matching(
-								{from_literal, has_with ? ";" : ","}, tail.skip_leading(1)));
+								{from_literal, has_with ? ";" : ","}, tail2.skip_leading(1)));
 
 				auto rhs = type_parse::parse_entity(tail_head.trim(' '));
 				auto expansion = tuplify(VEG_FWD(lhs), VEG_FWD(rhs));
@@ -796,15 +798,15 @@ void function_decl_to_str(RefMut<Vec<char>> str, FunctionDecl decl) noexcept {
 	struct StringWrapper {
 		Vec<char> _;
 		void append_c(char c) noexcept { _.push(c); }
-		void append(char const* s, usize n) noexcept {
+		void append(char const* s, isize n) noexcept {
 			isize old_len = _.len();
 			_.resize_for_overwrite(old_len + isize(n));
-			std::memcpy(_.ptr_mut() + old_len, s, n);
+			std::memcpy(_.ptr_mut() + old_len, s, usize(n));
 		}
-		void append_n(char c, usize n) noexcept {
+		void append_n(char c, isize n) noexcept {
 			isize old_len = _.len();
 			_.resize_for_overwrite(old_len + isize(n));
-			::memset(_.ptr_mut() + old_len, c, n);
+			::memset(_.ptr_mut() + old_len, c, usize(n));
 		}
 	};
 	auto tmp = StringWrapper{static_cast<Vec<char>&&>(*str)};
@@ -816,7 +818,7 @@ void function_decl_to_file(std::FILE* f, FunctionDecl decl) noexcept {
 		std::FILE* _;
 		void append_c /* NOLINT */ (char c) noexcept { std::fputc(c, _); }
 		void append /* NOLINT */ (char const* s, isize n) noexcept {
-			std::fwrite(s, 1, n, _);
+			std::fwrite(s, 1, usize(n), _);
 		}
 		void append_n /* NOLINT */ (char c, isize n) noexcept {
 			for (isize i = 0; i < n; ++i) {

@@ -64,11 +64,13 @@ public:
 	VEG_INLINE constexpr auto as_const() const noexcept -> Ref<T> {
 		return nb::ref{}(*ptr);
 	}
-	VEG_NODISCARD VEG_INLINE constexpr auto get() noexcept -> T& { return *ptr; }
-	VEG_NODISCARD VEG_INLINE constexpr auto operator*() noexcept -> T& {
+	VEG_NODISCARD VEG_INLINE constexpr auto get() const noexcept -> T& {
 		return *ptr;
 	}
-	VEG_NODISCARD VEG_INLINE constexpr auto operator->() noexcept -> T* {
+	VEG_NODISCARD VEG_INLINE constexpr auto operator*() const noexcept -> T& {
+		return *ptr;
+	}
+	VEG_NODISCARD VEG_INLINE constexpr auto operator->() const noexcept -> T* {
 		return ptr;
 	}
 };
