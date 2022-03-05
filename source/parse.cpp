@@ -406,6 +406,7 @@ auto greedy_parse_entity(StrView str) noexcept -> Tuple<Entity, StrView> {
 					auto,
 					(inside_parens, after_parens),
 					type_parse::find_matching({from_literal, ")"}, after_token, 0, true));
+			veg::unused(after_parens);
 			assert(after_parens.begins_with({from_literal, ")"}));
 			inside_parens._.begin -= 1;
 			inside_parens._.len += 2;
@@ -611,7 +612,7 @@ auto parse_function_decl(StrView str) noexcept -> FunctionDecl {
 					auto,
 					(between_square, after_params2),
 					type_parse::find_matching({from_literal, "]"}, after_args));
-      veg::unused(after_params2);
+			veg::unused(after_params2);
 			while (true) {
 				between_square = between_square.trim(' ');
 				if (between_square.len() == 0) {
@@ -657,13 +658,13 @@ void print_cv(RefMut<Out> out, CvQual cv) noexcept {
 	case CvQual::NONE:
 		break;
 	case CvQual::CONST:
-		type_parse::print_sv(VEG_FWD(out), {from_literal, "const "});
+		type_parse::print_sv(out, {from_literal, "const "});
 		break;
 	case CvQual::VOLATILE:
-		type_parse::print_sv(VEG_FWD(out), {from_literal, "volatile "});
+		type_parse::print_sv(out, {from_literal, "volatile "});
 		break;
 	case CvQual::CONST_VOLATILE:
-		type_parse::print_sv(VEG_FWD(out), {from_literal, "const volatile "});
+		type_parse::print_sv(out, {from_literal, "const volatile "});
 		break;
 	default:
 		break;
@@ -684,7 +685,7 @@ void print_slice(RefMut<Out> out, Fn fn, Slice<T> es, isize indent) {
 			out->append_c('\n');
 			out->append_n('\t', new_indent);
 		}
-		fn(VEG_FWD(out), ref(es[i]), new_indent);
+		fn(out, ref(es[i]), new_indent);
 	}
 
 	if (newline) {
@@ -694,18 +695,17 @@ void print_slice(RefMut<Out> out, Fn fn, Slice<T> es, isize indent) {
 }
 
 template <typename Out>
-void print_entity_to(RefMut<Out> out, Ref<Entity> e, isize indent) noexcept {
-	type_parse::print_cv(VEG_FWD(out), e->cv_qual);
+void print_entity_to(
+		RefMut<Out> out, Ref<Entity> entity, isize indent) noexcept {
+	type_parse::print_cv(out, entity->cv_qual);
 
-	e->kind.as_ref().visit_i(tuplify(
-			[&](Ref<EntityName> e) noexcept {
-				type_parse::print_sv(VEG_FWD(out), e->name);
-			},
+	entity->kind.as_ref().visit_i(tuplify(
+			[&](Ref<EntityName> e) noexcept { type_parse::print_sv(out, e->name); },
 			[&](Ref<TemplatedEntity> e) noexcept {
-				type_parse::print_entity_to(VEG_FWD(out), ref(*e->tpl), indent);
+				type_parse::print_entity_to(out, ref(*e->tpl), indent);
 				out->append_c('<');
 				type_parse::print_slice(
-						VEG_FWD(out), print_entity_to<Out>, e->args.as_ref(), indent);
+						out, print_entity_to<Out>, e->args.as_ref(), indent);
 				out->append_c('>');
 			},
 			[&](Ref<NestedEntity> e) noexcept {
@@ -714,8 +714,7 @@ void print_entity_to(RefMut<Out> out, Ref<Entity> e, isize indent) noexcept {
 					if (print_sep) {
 						out->append_n(':', 2);
 					}
-					type_parse::print_entity_to(
-							VEG_FWD(out), ref(e->components[i]), indent);
+					type_parse::print_entity_to(out, ref(e->components[i]), indent);
 					print_sep = true;
 				}
 			},
@@ -733,22 +732,22 @@ void print_entity_to(RefMut<Out> out, Ref<Entity> e, isize indent) noexcept {
 				default:
 					break;
 				}
-				type_parse::print_entity_to(VEG_FWD(out), ref(*e->entity), indent);
+				type_parse::print_entity_to(out, ref(*e->entity), indent);
 			},
 			[&](Ref<Array> e) noexcept {
 				out->append_c('[');
-				type_parse::print_entity_to(VEG_FWD(out), ref(*e->entity), indent);
+				type_parse::print_entity_to(out, ref(*e->entity), indent);
 				out->append_c(';');
 				out->append_c(' ');
-				type_parse::print_entity_to(VEG_FWD(out), ref(*e->size), indent);
+				type_parse::print_entity_to(out, ref(*e->size), indent);
 				out->append_c(']');
 			},
 			[&](Ref<Function> e) noexcept {
-				type_parse::print_sv(VEG_FWD(out), {from_literal, "fn ("});
+				type_parse::print_sv(out, {from_literal, "fn ("});
 				type_parse::print_slice(
-						VEG_FWD(out), print_entity_to<Out>, e->args.as_ref(), indent);
-				type_parse::print_sv(VEG_FWD(out), {from_literal, ") -> "});
-				type_parse::print_entity_to(VEG_FWD(out), ref(*e->return_type), indent);
+						out, print_entity_to<Out>, e->args.as_ref(), indent);
+				type_parse::print_sv(out, {from_literal, ") -> "});
+				type_parse::print_entity_to(out, ref(*e->return_type), indent);
 			}));
 }
 
@@ -757,21 +756,20 @@ struct Void {};
 template <typename Out>
 void print_decl_to(RefMut<Out> out, FunctionDecl decl) noexcept {
 	if (decl.is_static) {
-		type_parse::print_sv(VEG_FWD(out), {from_literal, "static "});
+		type_parse::print_sv(out, {from_literal, "static "});
 	}
-	print_cv(VEG_FWD(out), decl.cv_qual);
+	print_cv(out, decl.cv_qual);
 
-	type_parse::print_sv(VEG_FWD(out), {from_literal, "fn "});
-	type_parse::print_entity_to(VEG_FWD(out), ref(decl.full_name), 0);
+	type_parse::print_sv(out, {from_literal, "fn "});
+	type_parse::print_entity_to(out, ref(decl.full_name), 0);
 	out->append_c('(');
-	type_parse::print_slice(
-			VEG_FWD(out), print_entity_to<Out>, decl.args.as_ref(), 0);
+	type_parse::print_slice(out, print_entity_to<Out>, decl.args.as_ref(), 0);
 	out->append_c(')');
 
 	decl.return_type.as_ref().map_or( //
 			[&](Ref<Entity> ret) noexcept -> Void {
-				type_parse::print_sv(VEG_FWD(out), {from_literal, "\n\nreturns: "});
-				type_parse::print_entity_to(VEG_FWD(out), ret, 0);
+				type_parse::print_sv(out, {from_literal, "\n\nreturns: "});
+				type_parse::print_entity_to(out, ret, 0);
 				return {};
 			},
 			{});
@@ -780,15 +778,15 @@ void print_decl_to(RefMut<Out> out, FunctionDecl decl) noexcept {
 		return;
 	}
 
-	type_parse::print_sv(VEG_FWD(out), {from_literal, "\n\nwith: "});
+	type_parse::print_sv(out, {from_literal, "\n\nwith: "});
 	type_parse::print_slice(
-			VEG_FWD(out),
-			[](RefMut<Out> out,
+			out,
+			[](RefMut<Out> out_,
 	       Ref<Tuple<Entity, Entity>> tup,
 	       isize indent) noexcept {
-				type_parse::print_entity_to(VEG_FWD(out), tup->as_ref()[0_c], indent);
-				type_parse::print_sv(VEG_FWD(out), {from_literal, " = "});
-				type_parse::print_entity_to(VEG_FWD(out), tup->as_ref()[1_c], indent);
+				type_parse::print_entity_to(out_, tup->as_ref()[0_c], indent);
+				type_parse::print_sv(out_, {from_literal, " = "});
+				type_parse::print_entity_to(out_, tup->as_ref()[1_c], indent);
 			},
 			decl.dependent_expansions.as_ref(),
 			0);

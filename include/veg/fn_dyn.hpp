@@ -288,8 +288,8 @@ struct IndexedFnRefDyn<meta::index_sequence<Is...>, Sigs...>
 	template <isize I>
 	auto operator[](Fix<I> /*tag*/) const noexcept -> _detail::_fn::FnCrtp< //
 			IndexedFnRefDyn<meta::index_sequence<Is...>, Sigs...>,
-			I,
-			ith<I, Sigs...>> const& {
+			usize{I},
+			ith<usize{I}, Sigs...>> const& {
 		return *this;
 	}
 
@@ -381,15 +381,15 @@ struct IndexedFnMutDyn<meta::index_sequence<Is...>, Sigs...>
 	template <isize I>
 	auto operator[](Fix<I> /*tag*/) const noexcept -> _detail::_fn::FnCrtp< //
 			IndexedFnMutDyn<meta::index_sequence<Is...>, Sigs...>,
-			I,
-			ith<I, Sigs...>> const& {
+			usize{I},
+			ith<usize{I}, Sigs...>> const& {
 		return *this;
 	}
 	template <isize I>
 	auto operator[](Fix<I> /*tag*/) noexcept -> _detail::_fn::FnCrtp< //
 			IndexedFnMutDyn<meta::index_sequence<Is...>, Sigs...>,
-			I,
-			ith<I, Sigs...>>& {
+			usize{I},
+			ith<usize{I}, Sigs...>>& {
 		return *this;
 	}
 
@@ -480,26 +480,26 @@ struct IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>
 	template <isize I>
 	auto operator[](Fix<I> /*tag*/) const& noexcept -> _detail::_fn::FnCrtp< //
 			IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>,
-			I,
-			ith<I, Sigs...>> const& {
+			usize{I},
+			ith<usize{I}, Sigs...>> const& {
 		return *this;
 	}
 	template <isize I>
 	auto operator[](Fix<I> /*tag*/) & noexcept -> _detail::_fn::FnCrtp< //
 			IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>,
-			I,
-			ith<I, Sigs...>>& {
+			usize{I},
+			ith<usize{I}, Sigs...>>& {
 		return *this;
 	}
 	template <isize I>
 	auto operator[](Fix<I> /*tag*/) && noexcept -> _detail::_fn::FnCrtp< //
 			IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>,
-			I,
-			ith<I, Sigs...>>&& {
+			usize{I},
+			ith<usize{I}, Sigs...>>&& {
 		return static_cast<_detail::_fn::FnCrtp< //
 				IndexedFnDyn<meta::index_sequence<Is...>, A, Sigs...>,
-				I,
-				ith<I, Sigs...>>&&>(*this);
+				usize{I},
+				ith<usize{I}, Sigs...>>&&>(*this);
 	}
 
 	static_assert(VEG_ALL_OF(VEG_CONCEPT(sig_once<Sigs>)), ".");
@@ -576,7 +576,7 @@ public:
 	auto operator=(IndexedFnDyn&& rhs) noexcept -> IndexedFnDyn& {
 		{ auto cleanup = static_cast<IndexedFnDyn>(*this); }
 		raw = VEG_FWD(rhs.raw);
-    rhs.raw[1_c] = {};
+		rhs.raw[1_c] = {};
 	}
 
 	template <int _>

@@ -549,6 +549,7 @@
 #endif
 
 #define VEG_NOM_SEMICOLON static_assert(true, ".")
+#define VEG_ID(id) __VEG_PP_CAT(id, __COUNTER__)
 
 namespace veg {
 template <typename T>
@@ -960,7 +961,7 @@ public:
 template <CharUnit... Cs>
 struct StrLiteralConstant {
 private:
-	static constexpr CharUnit literal[isize{sizeof...(Cs)}] = {Cs...};
+	static constexpr CharUnit literal[sizeof...(Cs)] = {Cs...};
 
 public:
 	VEG_INLINE constexpr auto as_slice() const noexcept -> Slice<CharUnit>;
@@ -970,7 +971,7 @@ public:
 };
 
 template <CharUnit... Cs>
-constexpr CharUnit StrLiteralConstant<Cs...>::literal[isize{sizeof...(Cs)}];
+constexpr CharUnit StrLiteralConstant<Cs...>::literal[sizeof...(Cs)];
 
 namespace _detail {
 using NativeChar8 = meta::uncvref_t<decltype(u8""[0])>;

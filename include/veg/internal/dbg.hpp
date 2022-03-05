@@ -43,9 +43,9 @@ struct String final {
 	VEG_NODISCARD VEG_INLINE auto size() const noexcept -> isize {
 		return self.len;
 	}
-	template <isize N>
+	template <usize N>
 	VEG_INLINE void append_literal(_detail::NativeChar8 const (&data)[N]) {
-		insert(size(), reinterpret_cast<char const*>(&data[0]), N - 1);
+		insert(size(), reinterpret_cast<char const*>(&data[0]), isize{N} - 1);
 	}
 	VEG_INLINE void append_ln() { insert_newline(size()); }
 };
