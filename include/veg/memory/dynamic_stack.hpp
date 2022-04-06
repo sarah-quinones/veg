@@ -58,6 +58,33 @@ struct StackReq {
 	constexpr auto alloc_req() const noexcept -> isize {
 		return size_bytes + align - 1;
 	}
+
+	template <typename T>
+	static constexpr auto with_len(veg::Tag<T> /*tag*/, isize len) noexcept
+			-> StackReq {
+		return {
+				isize{sizeof(T)} * len,
+				isize{alignof(T)},
+		};
+	}
+
+	static VEG_CPP14(constexpr) auto and_(Slice<StackReq> reqs) noexcept
+			-> StackReq {
+		StackReq req{0, 1};
+		for (isize i = 0; i < reqs.len(); ++i) {
+			req = req & reqs.ptr()[i];
+		}
+		return req;
+	}
+
+	static VEG_CPP14(constexpr) auto or_(Slice<StackReq> reqs) noexcept
+			-> StackReq {
+		StackReq req{0, 1};
+		for (isize i = 0; i < reqs.len(); ++i) {
+			req = req | reqs.ptr()[i];
+		}
+		return req;
+	}
 };
 
 template <typename T>

@@ -7,6 +7,7 @@
 #include "veg/tuple.hpp"
 #include "veg/util/compare.hpp"
 #include "veg/internal/prologue.hpp"
+#include <initializer_list>
 
 namespace veg {
 template <typename T, usize N>
@@ -311,6 +312,23 @@ VEG_NOEXCEPT_IF(VEG_CONCEPT(nothrow_eq<T, U>))->bool {
 	       _detail::_slice::adl::operator==(lhs.as_ref(), rhs.as_ref());
 }
 } // namespace array
+
+namespace nb {
+struct init_list {
+	template <typename T>
+	VEG_CPP14(constexpr)
+	auto operator()(std::initializer_list<T> init_list) const noexcept
+			-> Slice<T> {
+		return {
+				unsafe,
+				from_raw_parts,
+				init_list.begin(),
+				isize(init_list.size()),
+		};
+	}
+};
+} // namespace nb
+VEG_NIEBLOID(init_list);
 
 template <typename T>
 struct cpo::is_trivially_constructible<Slice<T>> : meta::bool_constant<true> {};
