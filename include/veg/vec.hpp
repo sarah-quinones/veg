@@ -73,6 +73,9 @@ struct RawVector {
 	T* end_alloc;
 
 	VEG_INLINE constexpr auto len() const noexcept -> usize { return end - data; }
+	VEG_INLINE constexpr auto cap() const noexcept -> usize {
+		return end_alloc - data;
+	}
 };
 } // namespace vector
 
@@ -394,8 +397,8 @@ struct CloneFromImpl<true> {
 	template <typename T, typename A, typename C>
 	static void
 	fn(RefMut<A> lhs_alloc,
-	   vector::RawVector<T>& lhs_raw,
 	   RefMut<C> cloner,
+	   vector::RawVector<T>& lhs_raw,
 	   Ref<A> rhs_alloc,
 	   vector::RawVector<T> const rhs_raw)
 			VEG_NOEXCEPT_IF(
@@ -407,11 +410,11 @@ struct CloneFromImpl<true> {
 
 		bool need_to_realloc =
 				(cmp::ne(lhs_alloc.as_const(), rhs_alloc) ||
-		     (lhs_copy.cap < rhs_raw.len));
+		     (lhs_copy.cap() < rhs_raw.len()));
 		if (need_to_realloc) {
 			T* data = lhs_copy.data;
-			T* data_end = lhs_copy.data + lhs_copy.len;
-			usize cap = lhs_copy.cap;
+			T* data_end = lhs_copy.data + lhs_copy.len();
+			usize cap = lhs_copy.cap();
 
 			// assign before deallocation in case it fails
 			lhs_raw = {};
@@ -430,18 +433,18 @@ struct CloneFromImpl<true> {
 					lhs_alloc,
 					cloner,
 					rhs_raw.data,
-					rhs_raw.len);
-			lhs_raw.data = block.data;
-			lhs_raw.cap = block.byte_cap / sizeof(T);
+					rhs_raw.len());
+			lhs_raw.data = static_cast<T*>(block.data);
+			lhs_raw.end_alloc = lhs_raw.data + block.byte_cap / sizeof(T);
 		} else {
 			_collections::slice_clone( //
 					lhs_alloc,
 					cloner,
 					lhs_copy.data,
-					lhs_copy.data + rhs_raw.len,
+					lhs_copy.data + rhs_raw.len(),
 					rhs_raw.data);
 		}
-		lhs_raw.len = rhs_raw.len;
+		lhs_raw.end = lhs_raw.data + rhs_raw.len();
 	}
 };
 
@@ -552,19 +555,19 @@ private:
 
 public:
 	VEG_NODISCARD VEG_INLINE
-	VEG_CPP14(constexpr) auto alloc_ref() const VEG_NOEXCEPT -> Ref<A> {
+	VEG_CPP14(constexpr) auto alloc_ref() const VEG_NOEXCEPT->Ref<A> {
 		return ref(_[0_c]);
 	}
 	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto raw_ref() const
-			VEG_NOEXCEPT -> Ref<vector::RawVector<T>> {
+			VEG_NOEXCEPT->Ref<vector::RawVector<T>> {
 		return ref(_[1_c]._);
 	}
 	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto alloc_mut(Unsafe /*tag*/)
-			VEG_NOEXCEPT -> RefMut<A> {
+			VEG_NOEXCEPT->RefMut<A> {
 		return mut(_[0_c]);
 	}
 	VEG_NODISCARD VEG_INLINE VEG_CPP14(constexpr) auto raw_mut(Unsafe /*tag*/)
-			VEG_NOEXCEPT -> RefMut<vector::RawVector<T>> {
+			VEG_NOEXCEPT->RefMut<vector::RawVector<T>> {
 		return mut(_[1_c]._);
 	}
 
@@ -881,40 +884,40 @@ public:
 		this->push_with_unchecked(unsafe, _detail::MoveFn<T>{VEG_FWD(value)});
 	}
 
-	VEG_NODISCARD VEG_INLINE auto as_ref() const VEG_NOEXCEPT -> Slice<T> {
+	VEG_NODISCARD VEG_INLINE auto as_ref() const VEG_NOEXCEPT->Slice<T> {
 		return {unsafe, from_raw_parts, ptr(), len()};
 	}
-	VEG_NODISCARD VEG_INLINE auto as_mut() VEG_NOEXCEPT -> SliceMut<T> {
+	VEG_NODISCARD VEG_INLINE auto as_mut() VEG_NOEXCEPT->SliceMut<T> {
 		return {unsafe, from_raw_parts, ptr_mut(), len()};
 	}
 
-	VEG_NODISCARD VEG_INLINE auto ptr() const VEG_NOEXCEPT -> T const* {
+	VEG_NODISCARD VEG_INLINE auto ptr() const VEG_NOEXCEPT->T const* {
 		return this->raw_ref().get().data;
 	}
-	VEG_NODISCARD VEG_INLINE auto ptr_mut() VEG_NOEXCEPT -> T* {
+	VEG_NODISCARD VEG_INLINE auto ptr_mut() VEG_NOEXCEPT->T* {
 		return const_cast<T*>(this->ptr());
 	}
-	VEG_NODISCARD VEG_INLINE auto len() const VEG_NOEXCEPT -> isize {
+	VEG_NODISCARD VEG_INLINE auto len() const VEG_NOEXCEPT->isize {
 		auto& raw = this->raw_ref().get();
 		return isize(raw.end - raw.data);
 	}
-	VEG_NODISCARD VEG_INLINE auto capacity() const VEG_NOEXCEPT -> isize {
+	VEG_NODISCARD VEG_INLINE auto capacity() const VEG_NOEXCEPT->isize {
 		auto& raw = this->raw_ref().get();
 		return isize(raw.end_alloc - raw.data);
 	}
-	VEG_NODISCARD VEG_INLINE auto byte_capacity() const VEG_NOEXCEPT -> isize {
+	VEG_NODISCARD VEG_INLINE auto byte_capacity() const VEG_NOEXCEPT->isize {
 		auto& raw = this->raw_ref().get();
 		return meta::is_consteval()
 		           ? (raw.end_alloc - raw.data) * isize(sizeof(T))
 		           : (reinterpret_cast<char const*>(raw.end_alloc) -
 		              reinterpret_cast<char const*>(raw.data));
 	}
-	VEG_NODISCARD VEG_INLINE auto operator[](isize i) const VEG_NOEXCEPT
-			-> T const& {
+	VEG_NODISCARD VEG_INLINE auto
+	operator[](isize i) const VEG_NOEXCEPT->T const& {
 		VEG_ASSERT(usize(i) < usize(len()));
 		return this->ptr()[i];
 	}
-	VEG_NODISCARD VEG_INLINE auto operator[](isize i) VEG_NOEXCEPT -> T& {
+	VEG_NODISCARD VEG_INLINE auto operator[](isize i) VEG_NOEXCEPT->T& {
 		return const_cast<T&>(static_cast<VecImpl const*>(this)->operator[](i));
 	}
 };
